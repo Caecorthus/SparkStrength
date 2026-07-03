@@ -1,0 +1,7 @@
+{
+  "replay.global.sparkstrength.noisemaker_glow_started": "%s lit up %s",
+  "replay.global.sparkstrength.noisemaker_glow_ended": "%s's glowing time ended",
+  "ui.sparkstrength.noisemaker.unknown_player": "Unknown player",
+  "ui.sparkstrength.pagination.previous": "Previous page",
+  "ui.sparkstrength.pagination.next": "Next page"
+}

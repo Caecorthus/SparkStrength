@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "annina.sparkstrength.client.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "noisemaker.NoisemakerInventoryScreenMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

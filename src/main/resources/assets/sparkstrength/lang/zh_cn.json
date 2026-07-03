@@ -1,0 +1,7 @@
+{
+  "replay.global.sparkstrength.noisemaker_glow_started": "%s点亮了%s",
+  "replay.global.sparkstrength.noisemaker_glow_ended": "%s 的发光时间结束",
+  "ui.sparkstrength.noisemaker.unknown_player": "未知玩家",
+  "ui.sparkstrength.pagination.previous": "上一页",
+  "ui.sparkstrength.pagination.next": "下一页"
+}
