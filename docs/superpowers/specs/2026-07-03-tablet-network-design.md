@@ -19,9 +19,11 @@ The feature gives these audiences access to money visibility, shop access, and t
 - Holding a tablet does not grant money visibility, shop access, or purchase rights by itself.
 - Tablet possession is checked only in hotbar slots 0-8, matching Wathe shop insertion behavior.
 - Player IDs shown in tablet UI are Minecraft in-game names, not UUIDs.
+- The tablet clock shows each player's own client-local time, not server time.
 - Connection status must not leak death state. It only distinguishes in-game players from non-game/admin/spectator players.
 - Tablet highlights must not use the instinct key.
 - Tablet highlights match NoellesRoles Toxicologist behavior: automatic outline, gated by `localPlayer.canSee(target)`, so it does not highlight through walls.
+- Suspect color has priority over tablet-holder color when the same visible living player is both a tablet holder and a suspect.
 - Suspect highlights are visible only to tablet holders, not global glowing state.
 - Implementation must not change unrelated roles, unrelated traits, SparkTraits trait distribution, or existing NoellesRoles role logic.
 - Any nontrivial code comment added for this feature is bilingual: English and Chinese.
@@ -73,7 +75,7 @@ Behavior:
 
 The tablet GUI has:
 
-- top local clock, rendered from the user's local client time
+- top local clock, rendered from that player's own client-local system time and timezone
 - left tab list with four options:
   - Connections
   - Chat
@@ -194,6 +196,7 @@ Targets:
 Rendering:
 
 - use Vigilante role color (`0x1B8AE5`)
+- if the visible living tablet holder is also a suspect, use the suspect orange color instead of Vigilante blue
 - no instinct key
 - automatic outline result
 - only if the local player can see the target, matching NoellesRoles Toxicologist behavior
@@ -212,6 +215,7 @@ Rendering:
 
 - orange highlight
 - 5 seconds on every 45 seconds
+- this orange suspect color overrides the tablet-holder blue color for living tablet holders who are also suspects
 - no instinct key
 - automatic outline result
 - only if the local player can see the target
