@@ -4,7 +4,8 @@
   "package": "annina.sparkstrength.client.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "noisemaker.NoisemakerInventoryScreenMixin"
+    "noisemaker.NoisemakerInventoryScreenMixin",
+    "role.CriminologistHudMixin"
   ],
   "injectors": {
     "defaultRequire": 1

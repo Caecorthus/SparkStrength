@@ -20,7 +20,21 @@ loom {
     }
 }
 
+sourceSets {
+    // LambDynamicLights publishes intermediary API jars for this version, so client sources compile against a local named-shape stub.
+    // 此版本 LambDynamicLights 发布的是 intermediary API jar，因此客户端源码使用本地 Yarn 命名接口形状编译；这些 stub 不会进入最终 jar。
+    lambdynlightsStub {
+        java.srcDir("src/lambdynlightsStub/java")
+        compileClasspath += sourceSets.main.compileClasspath
+    }
+}
+
 repositories {
+    mavenCentral()
+    maven {
+        name = "Terraformers"
+        url = "https://maven.terraformersmc.com/releases/"
+    }
     maven {
         name = "Ladysnake Mods"
         url = "https://maven.ladysnake.org/releases"
@@ -47,6 +61,8 @@ repositories {
 }
 
 dependencies {
+    def siblingSparkFactionApi = findProject(":SparkFactionAPI")
+
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
@@ -55,6 +71,15 @@ dependencies {
 
     modApi files("libs/wathe-${project.wathe_version}.jar")
     modApi files("libs/noellesroles-${project.noellesroles_version}.jar")
+    if (siblingSparkFactionApi != null) {
+        implementation project(path: ":SparkFactionAPI", configuration: "namedElements")
+    } else {
+        def bundledSparkFactionApiJars = fileTree(dir: "libs", include: "sparkfactionapi-*.jar")
+        if (bundledSparkFactionApiJars.files.isEmpty()) {
+            throw new GradleException("Missing bundled SparkFactionAPI jar under libs/.")
+        }
+        modImplementation bundledSparkFactionApiJars
+    }
 
     modImplementation "org.ladysnake.cardinal-components-api:cardinal-components-base:${project.cca_version}"
     modImplementation "org.ladysnake.cardinal-components-api:cardinal-components-entity:${project.cca_version}"
@@ -66,6 +91,14 @@ dependencies {
     implementation "de.maxhenkel.voicechat:voicechat-api:${project.voicechat_api_version}"
     modRuntimeOnly "maven.modrinth:simple-voice-chat:fabric-${project.voicechat_version}"
     modRuntimeOnly "de.maxhenkel.voicechat:voicechat-api:${project.voicechat_api_version}:fabric-stub"
+
+    testImplementation "org.junit.jupiter:junit-jupiter:5.10.3"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+tasks.named("compileClientJava") {
+    dependsOn tasks.named("compileLambdynlightsStubJava")
+    classpath = sourceSets.lambdynlightsStub.output + classpath
 }
 
 processResources {
@@ -74,6 +107,7 @@ processResources {
     inputs.property "loader_version", project.loader_version
     inputs.property "wathe_version", project.wathe_version
     inputs.property "noellesroles_version", project.noellesroles_version
+    inputs.property "sparkfactionapi_version", project.sparkfactionapi_version
     inputs.property "cca_version", project.cca_version
 
     filteringCharset "UTF-8"
@@ -84,6 +118,7 @@ processResources {
                 "loader_version": project.loader_version,
                 "wathe_version": project.wathe_version,
                 "noellesroles_version": project.noellesroles_version,
+                "sparkfactionapi_version": project.sparkfactionapi_version,
                 "cca_version": project.cca_version
     }
 }
@@ -92,6 +127,10 @@ def targetJavaVersion = 21
 tasks.withType(JavaCompile).configureEach {
     it.options.encoding = "UTF-8"
     it.options.release.set(targetJavaVersion)
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 java {

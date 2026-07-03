@@ -15,6 +15,8 @@ public final class SparkStrength implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        SparkStrengthEntities.register();
+        SparkStrengthItems.register();
         SparkStrengthPackets.registerServer();
         SparkStrengthEvents.register();
         SparkStrengthReplayFormatters.register();
