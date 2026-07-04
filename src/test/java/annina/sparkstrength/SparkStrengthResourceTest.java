@@ -15,6 +15,7 @@ class SparkStrengthResourceTest {
         String metadata = Files.readString(Path.of("src/main/resources/fabric.mod.json"));
 
         assertTrue(metadata.contains("\"sparkstrength:criminologist_player\""));
+        assertTrue(metadata.contains("\"sparkstrength:veteran_knife\""));
         assertTrue(metadata.contains("\"sparkstrength:criminologist_world\""));
         assertTrue(metadata.contains("\"sparkstrength:tablet_world\""));
         assertTrue(metadata.contains("\"sparkstrength.mixins.json\""));
@@ -30,6 +31,7 @@ class SparkStrengthResourceTest {
         String mixin = Files.readString(Path.of("src/client/resources/sparkstrength.client.mixins.json"));
 
         assertTrue(mixin.contains("\"detective.CriminologistHudMixin\""));
+        assertTrue(mixin.contains("\"veteran.VeteranInstantKnifeMixin\""));
     }
 
     @Test
@@ -37,6 +39,8 @@ class SparkStrengthResourceTest {
         String mixin = Files.readString(Path.of("src/main/resources/sparkstrength.mixins.json"));
 
         assertTrue(mixin.contains("\"noellesroles.HiddenEquipmentHelperMixin\""));
+        assertTrue(mixin.contains("\"veteran.VeteranKnifeStabPayloadMixin\""));
+        assertTrue(mixin.contains("\"veteran.VeteranServerKnifeUseMixin\""));
     }
 
     @Test
@@ -65,6 +69,7 @@ class SparkStrengthResourceTest {
                 "item.sparkstrength.tablet",
                 "shop.sparkstrength.capsule",
                 "shop.sparkstrength.tablet",
+                "shop.sparkstrength.veteran_knife",
                 "screen.sparkstrength.tablet.title",
                 "screen.sparkstrength.tablet.tab.connections",
                 "screen.sparkstrength.tablet.tab.chat",

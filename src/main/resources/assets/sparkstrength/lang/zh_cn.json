@@ -9,6 +9,8 @@
   "shop.sparkstrength.capsule.description": "可装入一份食物/饮品，投掷命中后强制目标食用。",
   "shop.sparkstrength.tablet": "平板电脑",
   "shop.sparkstrength.tablet.description": "连接平板持有人，用于聊天、会议和嫌疑人追踪。",
+  "shop.sparkstrength.veteran_knife": "老兵匕首",
+  "shop.sparkstrength.veteran_knife.description": "可刺杀2次，老兵使用时无蓄力、无声音、无冷却。",
   "hud.sparkstrength.criminologist.cooldown": "犯罪行为学家 冷却中：%s秒",
   "hud.sparkstrength.criminologist.ready": "犯罪行为学家：右键尸体",
   "hud.sparkstrength.criminologist.tracking": "正在追踪：%s",

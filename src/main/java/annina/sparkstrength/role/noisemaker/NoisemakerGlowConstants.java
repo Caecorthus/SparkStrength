@@ -1,4 +1,4 @@
-package annina.sparkstrength.noisemaker;
+package annina.sparkstrength.role.noisemaker;
 
 import dev.doctor4t.wathe.game.GameConstants;
 

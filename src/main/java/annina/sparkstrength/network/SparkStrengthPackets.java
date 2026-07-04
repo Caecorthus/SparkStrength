@@ -11,7 +11,8 @@ import annina.sparkstrength.network.tablet.OpenTabletScreenS2CPacket;
 import annina.sparkstrength.network.tablet.RequestTabletSnapshotC2SPacket;
 import annina.sparkstrength.network.tablet.SendTabletChatC2SPacket;
 import annina.sparkstrength.network.tablet.SyncTabletSnapshotS2CPacket;
-import annina.sparkstrength.noisemaker.NoisemakerGlowService;
+import annina.sparkstrength.network.veteran.SyncVeteranBlackoutS2CPacket;
+import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.detective.CriminologistService;
 import annina.sparkstrength.tablet.TabletStateService;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -36,6 +37,7 @@ public final class SparkStrengthPackets {
         PayloadTypeRegistry.playS2C().register(OpenCriminologistScreenS2CPacket.ID, OpenCriminologistScreenS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(OpenTabletScreenS2CPacket.ID, OpenTabletScreenS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncTabletSnapshotS2CPacket.ID, SyncTabletSnapshotS2CPacket.CODEC);
+        PayloadTypeRegistry.playS2C().register(SyncVeteranBlackoutS2CPacket.ID, SyncVeteranBlackoutS2CPacket.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(NoisemakerGlowC2SPacket.ID, (payload, context) ->
                 NoisemakerGlowService.tryUseBackpackGlow(context.player(), payload.targetPlayer())
         );

@@ -14,6 +14,7 @@ class RoleEconomyRulesTest {
     private static final Role DETECTIVE = role("noellesroles", "detective");
     private static final Role TOXICOLOGIST = role("noellesroles", "toxicologist");
     private static final Role VIGILANTE = role("wathe", "vigilante");
+    private static final Role VETERAN = role("wathe", "veteran");
     private static final Role CORRUPT_COP = role("noellesroles", "corrupt_cop");
     private static final Role REPORTER = role("noellesroles", "reporter");
     private static final Role PIG_GOD = role("sparkwitch", "pig_god");
@@ -25,6 +26,7 @@ class RoleEconomyRulesTest {
         assertTrue(RoleEconomyRules.isGoodMoneyRole(DETECTIVE));
         assertTrue(RoleEconomyRules.isGoodMoneyRole(TOXICOLOGIST));
         assertTrue(RoleEconomyRules.isGoodMoneyRole(VIGILANTE));
+        assertTrue(RoleEconomyRules.isGoodMoneyRole(VETERAN));
         assertTrue(RoleEconomyRules.isGoodMoneyRole(CORRUPT_COP));
         assertFalse(RoleEconomyRules.isGoodMoneyRole(PIG_GOD));
         assertFalse(RoleEconomyRules.isGoodMoneyRole(REPORTER));
@@ -37,6 +39,7 @@ class RoleEconomyRulesTest {
         assertEquals(CanSeeMoney.Result.ALLOW, RoleEconomyService.moneyVisibilityResult(DETECTIVE));
         assertEquals(CanSeeMoney.Result.ALLOW, RoleEconomyService.moneyVisibilityResult(TOXICOLOGIST));
         assertEquals(CanSeeMoney.Result.ALLOW, RoleEconomyService.moneyVisibilityResult(VIGILANTE));
+        assertEquals(CanSeeMoney.Result.ALLOW, RoleEconomyService.moneyVisibilityResult(VETERAN));
         assertEquals(CanSeeMoney.Result.ALLOW, RoleEconomyService.moneyVisibilityResult(CORRUPT_COP));
         assertNull(RoleEconomyService.moneyVisibilityResult(PIG_GOD));
         assertNull(RoleEconomyService.moneyVisibilityResult(REPORTER));

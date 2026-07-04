@@ -5,6 +5,7 @@ import annina.sparkstrength.component.detective.CriminologistWorldComponent;
 import annina.sparkstrength.component.tablet.TabletWorldComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowTargetComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
+import annina.sparkstrength.component.veteran.VeteranKnifeComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import org.jetbrains.annotations.NotNull;
 import org.ladysnake.cca.api.v3.entity.EntityComponentFactoryRegistry;
@@ -31,6 +32,9 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.beginRegistration(PlayerEntity.class, CriminologistPlayerComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(CriminologistPlayerComponent::new);
+        registry.beginRegistration(PlayerEntity.class, VeteranKnifeComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(VeteranKnifeComponent::new);
     }
 
     @Override

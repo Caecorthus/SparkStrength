@@ -2,6 +2,7 @@ package annina.sparkstrength.role.economy;
 
 import annina.sparkstrength.role.detective.CriminologistRules;
 import annina.sparkstrength.role.toxicologist.ToxicologistCapsuleRules;
+import annina.sparkstrength.role.veteran.VeteranRules;
 import annina.sparkstrength.tablet.TabletShopRules;
 import dev.doctor4t.wathe.api.Role;
 import org.jetbrains.annotations.Nullable;
@@ -23,6 +24,7 @@ public final class RoleEconomyRules {
     public static boolean isGoodMoneyRole(@Nullable Role role) {
         return CriminologistRules.isDetective(role)
                 || ToxicologistCapsuleRules.isToxicologist(role)
+                || VeteranRules.isVeteran(role)
                 || TabletShopRules.canBuyTabletRole(role);
     }
 

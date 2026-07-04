@@ -4,6 +4,7 @@ import annina.sparkstrength.client.item.CapsuleClient;
 import annina.sparkstrength.client.role.corruptcop.CorruptCopClientHooks;
 import annina.sparkstrength.client.role.detective.CriminologistClientHooks;
 import annina.sparkstrength.client.role.economy.RoleEconomyClientHooks;
+import annina.sparkstrength.client.role.veteran.VeteranClientHooks;
 import annina.sparkstrength.client.screen.criminologist.CriminologistScreen;
 import annina.sparkstrength.client.screen.tablet.TabletClientState;
 import annina.sparkstrength.client.screen.tablet.TabletScreen;
@@ -11,7 +12,9 @@ import annina.sparkstrength.client.tablet.TabletClientHighlights;
 import annina.sparkstrength.network.criminologist.OpenCriminologistScreenS2CPacket;
 import annina.sparkstrength.network.tablet.OpenTabletScreenS2CPacket;
 import annina.sparkstrength.network.tablet.SyncTabletSnapshotS2CPacket;
+import annina.sparkstrength.network.veteran.SyncVeteranBlackoutS2CPacket;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
 public final class SparkStrengthClient implements ClientModInitializer {
@@ -22,7 +25,10 @@ public final class SparkStrengthClient implements ClientModInitializer {
         CriminologistClientHooks.register();
         RoleEconomyClientHooks.register();
         TabletClientHighlights.register();
+        VeteranClientHooks.register();
 
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
+                VeteranClientHooks.resetBlackoutState());
         ClientPlayNetworking.registerGlobalReceiver(OpenCriminologistScreenS2CPacket.ID,
                 (payload, context) -> context.client().execute(() ->
                         context.client().setScreen(new CriminologistScreen(payload.victimUuid()))));
@@ -36,5 +42,8 @@ public final class SparkStrengthClient implements ClientModInitializer {
                         tabletScreen.handleSnapshotUpdate();
                     }
                 }));
+        ClientPlayNetworking.registerGlobalReceiver(SyncVeteranBlackoutS2CPacket.ID,
+                (payload, context) -> context.client().execute(() ->
+                        VeteranClientHooks.setBlackoutActive(payload.active())));
     }
 }

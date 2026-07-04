@@ -1,4 +1,4 @@
-package annina.sparkstrength.noisemaker;
+package annina.sparkstrength.role.noisemaker;
 
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowTargetComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;

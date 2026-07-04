@@ -9,6 +9,8 @@
   "shop.sparkstrength.capsule.description": "Stores one food or drink, then forces the hit target to consume it.",
   "shop.sparkstrength.tablet": "Tablet",
   "shop.sparkstrength.tablet.description": "Connects tablet holders for chat, meetings, and suspect tracking.",
+  "shop.sparkstrength.veteran_knife": "Veteran Dagger",
+  "shop.sparkstrength.veteran_knife.description": "Has 2 stabs. Veterans use it instantly, silently, and without cooldown.",
   "hud.sparkstrength.criminologist.cooldown": "Criminologist cooling down: %ss",
   "hud.sparkstrength.criminologist.ready": "Criminologist: right-click a body",
   "hud.sparkstrength.criminologist.tracking": "Tracking: %s",

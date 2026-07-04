@@ -4,13 +4,17 @@ import annina.sparkstrength.component.detective.CriminologistPlayerComponent;
 import annina.sparkstrength.component.detective.CriminologistWorldComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowTargetComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
-import annina.sparkstrength.noisemaker.NoisemakerGlowService;
+import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.attendant.AttendantFlashlightService;
 import annina.sparkstrength.role.corruptcop.CorruptCopFeatureService;
 import annina.sparkstrength.role.detective.CriminologistService;
 import annina.sparkstrength.role.economy.RoleEconomyService;
 import annina.sparkstrength.role.toxicologist.ToxicologistCapsuleShop;
 import annina.sparkstrength.role.attendant.FlashlightBlackoutService;
+import annina.sparkstrength.role.veteran.VeteranBlackoutService;
+import annina.sparkstrength.role.veteran.VeteranEconomyService;
+import annina.sparkstrength.role.veteran.VeteranKnifeService;
+import annina.sparkstrength.role.veteran.VeteranShopService;
 import annina.sparkstrength.tablet.TabletShopService;
 import annina.sparkstrength.tablet.TabletStateService;
 import dev.doctor4t.wathe.api.event.GameEvents;
@@ -35,13 +39,16 @@ public final class SparkStrengthEvents {
         RoleEconomyService.register();
         ToxicologistCapsuleShop.register();
         TabletShopService.register();
+        VeteranShopService.register();
         ServerTickEvents.END_WORLD_TICK.register(TabletStateService::tick);
+        ServerTickEvents.END_WORLD_TICK.register(VeteranBlackoutService::tick);
 
         RoleAssigned.EVENT.register((player, role) -> {
             if (player instanceof ServerPlayerEntity serverPlayer) {
                 RoleEconomyService.assignForRole(serverPlayer, role);
                 AttendantFlashlightService.assignForRole(serverPlayer, role);
                 CriminologistService.assignForRole(serverPlayer, role);
+                VeteranKnifeService.assignForRole(serverPlayer, role);
             }
         });
 
@@ -51,20 +58,26 @@ public final class SparkStrengthEvents {
             NoisemakerGlowUserComponent.KEY.get(player).reset();
             NoisemakerGlowTargetComponent.KEY.get(player).reset();
             CriminologistPlayerComponent.KEY.get(player).clearAll();
+            if (player instanceof ServerPlayerEntity serverPlayer) {
+                VeteranKnifeService.reset(serverPlayer);
+            }
         });
 
         KillPlayer.AFTER.register((victim, killer, deathReason) -> {
             // 大嗓门死亡后的“杀手发光 15 秒”是被动效果，不写入回放。
             NoisemakerGlowService.glowKillerWhenNoisemakerDies(victim, killer);
             CriminologistService.afterKill(victim, killer, deathReason);
+            VeteranEconomyService.afterKill(victim, killer, deathReason);
         });
 
         GameEvents.ON_FINISH_FINALIZE.register((world, gameComponent) -> {
             if (world instanceof ServerWorld serverWorld) {
                 CriminologistWorldComponent.KEY.get(serverWorld).clearRoundState();
                 TabletStateService.clearRoundState(serverWorld);
+                VeteranBlackoutService.clear(serverWorld);
                 for (ServerPlayerEntity player : serverWorld.getPlayers()) {
                     CriminologistPlayerComponent.KEY.get(player).clearAll();
+                    VeteranKnifeService.reset(player);
                 }
             }
         });

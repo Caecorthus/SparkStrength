@@ -4,7 +4,9 @@
   "package": "annina.sparkstrength.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "noellesroles.HiddenEquipmentHelperMixin"
+    "noellesroles.HiddenEquipmentHelperMixin",
+    "veteran.VeteranKnifeStabPayloadMixin",
+    "veteran.VeteranServerKnifeUseMixin"
   ],
   "injectors": {
     "defaultRequire": 1
