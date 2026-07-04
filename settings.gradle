@@ -10,15 +10,3 @@ pluginManagement {
 }
 
 rootProject.name = "sparkstrength"
-
-def sparkFactionApiDir = file("../SparkFactionAPI")
-if (sparkFactionApiDir.isDirectory() && new File(sparkFactionApiDir, "settings.gradle").isFile()) {
-    include "SparkFactionAPI"
-    project(":SparkFactionAPI").projectDir = sparkFactionApiDir
-}
-
-def sparkTraitsDir = file("../SparkTraits")
-if (sparkTraitsDir.isDirectory() && new File(sparkTraitsDir, "settings.gradle").isFile()) {
-    include "SparkTraits"
-    project(":SparkTraits").projectDir = sparkTraitsDir
-}

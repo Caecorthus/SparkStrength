@@ -5,7 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "noisemaker.NoisemakerInventoryScreenMixin",
-    "role.CriminologistHudMixin"
+    "detective.CriminologistHudMixin"
   ],
   "injectors": {
     "defaultRequire": 1

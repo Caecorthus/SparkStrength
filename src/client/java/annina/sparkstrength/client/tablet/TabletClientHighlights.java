@@ -2,9 +2,9 @@ package annina.sparkstrength.client.tablet;
 
 import annina.sparkstrength.client.screen.tablet.TabletClientState;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
-import annina.sparkstrength.role.NoellesRoleEnhancementRules;
 import annina.sparkstrength.tablet.TabletAccess;
 import annina.sparkstrength.tablet.TabletRules;
+import annina.sparkstrength.tablet.TabletShopRules;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.client.MinecraftClient;
@@ -50,7 +50,7 @@ public final class TabletClientHighlights {
         // 嫌疑人的周期透视不受墙体视线阻挡。
         if (targetSuspect && isSuspectRevealWindow(viewer)) {
             return GetInstinctHighlight.HighlightResult.always(
-                    NoellesRoleEnhancementRules.SUSPECT_HIGHLIGHT_COLOR,
+                    TabletShopRules.SUSPECT_HIGHLIGHT_COLOR,
                     SUSPECT_PRIORITY
             );
         }
@@ -59,13 +59,13 @@ public final class TabletClientHighlights {
         }
         if (targetSuspect && targetHasTablet) {
             return GetInstinctHighlight.HighlightResult.always(
-                    NoellesRoleEnhancementRules.SUSPECT_HIGHLIGHT_COLOR,
+                    TabletShopRules.SUSPECT_HIGHLIGHT_COLOR,
                     SUSPECT_PRIORITY
             );
         }
         if (targetHasTablet) {
             return GetInstinctHighlight.HighlightResult.always(
-                    NoellesRoleEnhancementRules.TABLET_HIGHLIGHT_COLOR,
+                    TabletShopRules.TABLET_HIGHLIGHT_COLOR,
                     TABLET_PRIORITY
             );
         }

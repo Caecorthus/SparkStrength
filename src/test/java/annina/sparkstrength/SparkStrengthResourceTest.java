@@ -14,22 +14,22 @@ class SparkStrengthResourceTest {
     void fabricMetadataDeclaresMigratedSupport() throws IOException {
         String metadata = Files.readString(Path.of("src/main/resources/fabric.mod.json"));
 
-        assertTrue(metadata.contains("\"sparkstrength:role_enhancements\""));
-        assertTrue(metadata.contains("\"sparkstrength:role_enhancement_world\""));
+        assertTrue(metadata.contains("\"sparkstrength:criminologist_player\""));
+        assertTrue(metadata.contains("\"sparkstrength:criminologist_world\""));
         assertTrue(metadata.contains("\"sparkstrength:tablet_world\""));
         assertTrue(metadata.contains("\"sparkstrength.mixins.json\""));
         assertTrue(metadata.contains("\"cardinal-components-world\""));
-        assertTrue(metadata.contains("\"sparkfactionapi\""));
-        assertTrue(metadata.contains("\"sparktraits\""));
+        assertFalse(metadata.contains("\"sparkfactionapi\""));
+        assertFalse(metadata.contains("\"sparktraits\""));
         assertTrue(metadata.contains("\"lambdynlights:initializer\""));
-        assertTrue(metadata.contains("annina.sparkstrength.client.role.FlashlightDynamicLightsInitializer"));
+        assertTrue(metadata.contains("annina.sparkstrength.client.role.attendant.FlashlightDynamicLightsInitializer"));
     }
 
     @Test
     void clientMixinRegistersCriminologistHud() throws IOException {
         String mixin = Files.readString(Path.of("src/client/resources/sparkstrength.client.mixins.json"));
 
-        assertTrue(mixin.contains("\"role.CriminologistHudMixin\""));
+        assertTrue(mixin.contains("\"detective.CriminologistHudMixin\""));
     }
 
     @Test

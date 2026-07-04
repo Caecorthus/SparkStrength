@@ -12,7 +12,7 @@ import annina.sparkstrength.network.tablet.RequestTabletSnapshotC2SPacket;
 import annina.sparkstrength.network.tablet.SendTabletChatC2SPacket;
 import annina.sparkstrength.network.tablet.SyncTabletSnapshotS2CPacket;
 import annina.sparkstrength.noisemaker.NoisemakerGlowService;
-import annina.sparkstrength.role.NoellesRoleEnhancementService;
+import annina.sparkstrength.role.detective.CriminologistService;
 import annina.sparkstrength.tablet.TabletStateService;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -40,7 +40,7 @@ public final class SparkStrengthPackets {
                 NoisemakerGlowService.tryUseBackpackGlow(context.player(), payload.targetPlayer())
         );
         ServerPlayNetworking.registerGlobalReceiver(SelectCriminologistTargetC2SPacket.ID,
-                (payload, context) -> NoellesRoleEnhancementService.handleCriminologistSelection(
+                (payload, context) -> CriminologistService.handleSelection(
                         context.player(),
                         payload.victimUuid(),
                         payload.suspectUuid()

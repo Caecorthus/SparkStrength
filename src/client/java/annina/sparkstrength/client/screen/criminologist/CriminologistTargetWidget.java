@@ -1,7 +1,7 @@
 package annina.sparkstrength.client.screen.criminologist;
 
+import annina.sparkstrength.client.ui.common.PlayerNameResolver;
 import com.mojang.authlib.GameProfile;
-import annina.sparkstrength.client.role.NoellesRoleEnhancementClientHooks;
 import annina.sparkstrength.network.criminologist.SelectCriminologistTargetC2SPacket;
 import dev.doctor4t.wathe.client.WatheClient;
 import dev.doctor4t.wathe.util.ShopEntry;
@@ -31,7 +31,7 @@ final class CriminologistTargetWidget extends ButtonWidget {
                 y,
                 WIDGET_SIZE,
                 WIDGET_SIZE,
-                Text.literal(NoellesRoleEnhancementClientHooks.playerName(targetUuid)),
+                Text.literal(PlayerNameResolver.playerName(targetUuid)),
                 button -> {
                     ClientPlayNetworking.send(new SelectCriminologistTargetC2SPacket(victimUuid, targetUuid));
                     MinecraftClient.getInstance().setScreen(null);
@@ -56,7 +56,7 @@ final class CriminologistTargetWidget extends ButtonWidget {
             drawSlotHighlight(context, getX(), getY(), 0);
             context.drawTooltip(
                     MinecraftClient.getInstance().textRenderer,
-                    Text.literal(NoellesRoleEnhancementClientHooks.playerName(targetUuid)),
+                    Text.literal(PlayerNameResolver.playerName(targetUuid)),
                     mouseX,
                     mouseY
             );

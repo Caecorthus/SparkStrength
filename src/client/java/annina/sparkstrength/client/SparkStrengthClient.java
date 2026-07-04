@@ -1,6 +1,9 @@
 package annina.sparkstrength.client;
 
-import annina.sparkstrength.client.role.NoellesRoleEnhancementClientHooks;
+import annina.sparkstrength.client.item.CapsuleClient;
+import annina.sparkstrength.client.role.corruptcop.CorruptCopClientHooks;
+import annina.sparkstrength.client.role.detective.CriminologistClientHooks;
+import annina.sparkstrength.client.role.economy.RoleEconomyClientHooks;
 import annina.sparkstrength.client.screen.criminologist.CriminologistScreen;
 import annina.sparkstrength.client.screen.tablet.TabletClientState;
 import annina.sparkstrength.client.screen.tablet.TabletScreen;
@@ -14,7 +17,10 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 public final class SparkStrengthClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
-        NoellesRoleEnhancementClientHooks.register();
+        CapsuleClient.register();
+        CorruptCopClientHooks.register();
+        CriminologistClientHooks.register();
+        RoleEconomyClientHooks.register();
         TabletClientHighlights.register();
 
         ClientPlayNetworking.registerGlobalReceiver(OpenCriminologistScreenS2CPacket.ID,

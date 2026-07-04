@@ -61,9 +61,6 @@ repositories {
 }
 
 dependencies {
-    def siblingSparkFactionApi = findProject(":SparkFactionAPI")
-    def siblingSparkTraits = findProject(":SparkTraits")
-
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
@@ -72,24 +69,6 @@ dependencies {
 
     modApi files("libs/wathe-${project.wathe_version}.jar")
     modApi files("libs/noellesroles-${project.noellesroles_version}.jar")
-    if (siblingSparkFactionApi != null) {
-        implementation project(path: ":SparkFactionAPI", configuration: "namedElements")
-    } else {
-        def bundledSparkFactionApiJars = fileTree(dir: "libs", include: "sparkfactionapi-*.jar")
-        if (bundledSparkFactionApiJars.files.isEmpty()) {
-            throw new GradleException("Missing bundled SparkFactionAPI jar under libs/.")
-        }
-        modImplementation bundledSparkFactionApiJars
-    }
-    if (siblingSparkTraits != null) {
-        implementation project(path: ":SparkTraits", configuration: "namedElements")
-    } else {
-        def bundledSparkTraitsJars = fileTree(dir: "libs", include: "sparktraits-*.jar")
-        if (bundledSparkTraitsJars.files.isEmpty()) {
-            throw new GradleException("Missing bundled SparkTraits jar under libs/.")
-        }
-        modImplementation bundledSparkTraitsJars
-    }
 
     modImplementation "org.ladysnake.cardinal-components-api:cardinal-components-base:${project.cca_version}"
     modImplementation "org.ladysnake.cardinal-components-api:cardinal-components-entity:${project.cca_version}"
@@ -117,8 +96,6 @@ processResources {
     inputs.property "loader_version", project.loader_version
     inputs.property "wathe_version", project.wathe_version
     inputs.property "noellesroles_version", project.noellesroles_version
-    inputs.property "sparkfactionapi_version", project.sparkfactionapi_version
-    inputs.property "sparktraits_version", project.sparktraits_version
     inputs.property "cca_version", project.cca_version
 
     filteringCharset "UTF-8"
@@ -129,8 +106,6 @@ processResources {
                 "loader_version": project.loader_version,
                 "wathe_version": project.wathe_version,
                 "noellesroles_version": project.noellesroles_version,
-                "sparkfactionapi_version": project.sparkfactionapi_version,
-                "sparktraits_version": project.sparktraits_version,
                 "cca_version": project.cca_version
     }
 }
@@ -141,8 +116,35 @@ tasks.withType(JavaCompile).configureEach {
     it.options.release.set(targetJavaVersion)
 }
 
+def isWindows = System.getProperty("os.name").toLowerCase().contains("windows")
+def testPathingJarDirectory = new File(
+        System.getProperty("java.io.tmpdir"),
+        "sparkstrength-test-classpath-" + Integer.toHexString(projectDir.absolutePath.hashCode())
+)
+
+def testClasspathJarProvider = tasks.register("testClasspathJar", Jar) {
+    archiveFileName = "test-classpath.jar"
+    destinationDirectory.fileValue(testPathingJarDirectory)
+    inputs.files(sourceSets.test.runtimeClasspath)
+
+    manifest {
+        // Keep the Gradle test worker argfile ASCII-only on Windows; the Java launcher can misread non-ASCII project paths there.
+        attributes("Class-Path": provider {
+            sourceSets.test.runtimeClasspath.files.collect { it.toURI().toASCIIString() }.join(" ")
+        })
+    }
+}
+
 tasks.test {
     useJUnitPlatform()
+
+    if (isWindows) {
+        dependsOn(testClasspathJarProvider)
+
+        doFirst {
+            classpath = files(testClasspathJarProvider.flatMap { it.archiveFile })
+        }
+    }
 }
 
 java {

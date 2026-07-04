@@ -1,6 +1,6 @@
 package annina.sparkstrength.client.screen.criminologist;
 
-import annina.sparkstrength.client.role.NoellesRoleEnhancementClientHooks;
+import annina.sparkstrength.client.ui.common.PlayerNameResolver;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
@@ -36,7 +36,7 @@ public final class CriminologistScreen extends Screen {
 
         GameWorldComponent gameComponent = GameWorldComponent.KEY.get(player.getWorld());
         List<UUID> targets = new ArrayList<>(gameComponent.getAllPlayers());
-        targets.sort(Comparator.comparing(NoellesRoleEnhancementClientHooks::playerName, String.CASE_INSENSITIVE_ORDER));
+        targets.sort(Comparator.comparing(PlayerNameResolver::playerName, String.CASE_INSENSITIVE_ORDER));
 
         int visibleColumns = Math.min(COLUMNS, Math.max(1, targets.size()));
         int rows = (int) Math.ceil(targets.size() / (double) COLUMNS);

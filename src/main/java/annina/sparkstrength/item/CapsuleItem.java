@@ -1,7 +1,7 @@
 package annina.sparkstrength.item;
 
 import annina.sparkstrength.entity.CapsuleEntity;
-import annina.sparkstrength.role.NoellesRoleEnhancementRules;
+import annina.sparkstrength.role.toxicologist.ToxicologistCapsuleRules;
 import dev.doctor4t.wathe.cca.PlayerMoodComponent;
 import dev.doctor4t.wathe.index.WatheDataComponentTypes;
 import dev.doctor4t.wathe.util.PoisonUtils;
@@ -223,11 +223,11 @@ public final class CapsuleItem extends Item {
     }
 
     private static boolean hasBluePoison(ItemStack stack) {
-        if (!Registries.DATA_COMPONENT_TYPE.containsId(NoellesRoleEnhancementRules.BLUE_POISON_COMPONENT_ID)) {
+        if (!Registries.DATA_COMPONENT_TYPE.containsId(ToxicologistCapsuleRules.BLUE_POISON_COMPONENT_ID)) {
             return false;
         }
         ComponentType<?> componentType = Registries.DATA_COMPONENT_TYPE.get(
-                NoellesRoleEnhancementRules.BLUE_POISON_COMPONENT_ID
+                ToxicologistCapsuleRules.BLUE_POISON_COMPONENT_ID
         );
         return componentType != null && stack.contains(componentType);
     }
@@ -260,7 +260,7 @@ public final class CapsuleItem extends Item {
             return contentText;
         }
 
-        int color = NoellesRoleEnhancementRules.poisonNameColor(normalPoisoned, bluePoisoned);
+        int color = ToxicologistCapsuleRules.poisonNameColor(normalPoisoned, bluePoisoned);
         return Text.translatable("item.sparkstrength.capsule.poisoned_content", contentText)
                 .styled(style -> style.withColor(color).withItalic(false));
     }

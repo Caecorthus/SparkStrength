@@ -1,6 +1,6 @@
 package annina.sparkstrength.item;
 
-import annina.sparkstrength.role.FlashlightBlackoutService;
+import annina.sparkstrength.role.attendant.FlashlightBlackoutService;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.CustomModelDataComponent;
 import net.minecraft.entity.player.PlayerEntity;

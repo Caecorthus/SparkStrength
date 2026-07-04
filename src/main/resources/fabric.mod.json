@@ -16,10 +16,10 @@
       "annina.sparkstrength.client.SparkStrengthClient"
     ],
     "lambdynlights:initializer": [
-      "annina.sparkstrength.client.role.FlashlightDynamicLightsInitializer"
+      "annina.sparkstrength.client.role.attendant.FlashlightDynamicLightsInitializer"
     ],
     "dynamiclights": [
-      "annina.sparkstrength.client.role.FlashlightDynamicLightsInitializer"
+      "annina.sparkstrength.client.role.attendant.FlashlightDynamicLightsInitializer"
     ],
     "cardinal-components": [
       "annina.sparkstrength.component.SparkStrengthComponents"
@@ -29,8 +29,8 @@
     "cardinal-components": [
       "sparkstrength:noisemaker_glow_user",
       "sparkstrength:noisemaker_glow_target",
-      "sparkstrength:role_enhancements",
-      "sparkstrength:role_enhancement_world",
+      "sparkstrength:criminologist_player",
+      "sparkstrength:criminologist_world",
       "sparkstrength:tablet_world"
     ]
   },
@@ -48,8 +48,6 @@
     "java": ">=21",
     "wathe": "${wathe_version}",
     "noellesroles": "${noellesroles_version}",
-    "sparkfactionapi": ">=${sparkfactionapi_version}",
-    "sparktraits": ">=${sparktraits_version}",
     "cardinal-components-base": ">=${cca_version}",
     "cardinal-components-entity": ">=${cca_version}",
     "cardinal-components-world": ">=${cca_version}"
