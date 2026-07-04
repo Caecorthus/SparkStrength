@@ -4,6 +4,7 @@ import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.component.role.RoleEnhancementPlayerComponent;
 import annina.sparkstrength.component.role.RoleEnhancementWorldComponent;
 import annina.sparkstrength.network.criminologist.OpenCriminologistScreenS2CPacket;
+import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.BuildShopEntries;
 import dev.doctor4t.wathe.api.event.CanSeeMoney;
@@ -69,7 +70,7 @@ public final class NoellesRoleEnhancementService {
 
     public static void onTaskComplete(ServerPlayerEntity player) {
         Role role = GameWorldComponent.KEY.get(player.getServerWorld()).getRole(player);
-        if (NoellesRoleEnhancementRules.earnsTaskMoney(role)) {
+        if (NoellesRoleEnhancementRules.earnsTaskMoney(role) && !EffectiveTraitService.hasImpostor(player)) {
             PlayerShopComponent.KEY.get(player).addToBalance(NoellesRoleEnhancementRules.TASK_MONEY_REWARD);
         }
     }
@@ -141,27 +142,46 @@ public final class NoellesRoleEnhancementService {
 
     private static void buildShopEntries(PlayerEntity player, BuildShopEntries.ShopContext context) {
         Role role = GameWorldComponent.KEY.get(player.getWorld()).getRole(player);
-        if (!NoellesRoleEnhancementRules.canBuyCapsules(role)) {
-            return;
+        if (NoellesRoleEnhancementRules.canBuyCapsules(role)) {
+            context.addEntry(new ShopEntry.Builder(
+                    NoellesRoleEnhancementRules.CAPSULE_ENTRY_ID,
+                    capsuleDisplayStack(),
+                    NoellesRoleEnhancementRules.CAPSULE_PRICE,
+                    ShopEntry.Type.TOOL
+            ).actualStack(SparkStrengthItems.capsule().getDefaultStack()).build());
         }
-        context.addEntry(new ShopEntry.Builder(
-                NoellesRoleEnhancementRules.CAPSULE_ENTRY_ID,
-                capsuleDisplayStack(),
-                NoellesRoleEnhancementRules.CAPSULE_PRICE,
-                ShopEntry.Type.TOOL
-        ).build());
+        if (isTabletEconomyEligible(player)) {
+            context.addEntry(new ShopEntry.Builder(
+                    NoellesRoleEnhancementRules.TABLET_ENTRY_ID,
+                    tabletDisplayStack(),
+                    NoellesRoleEnhancementRules.TABLET_PRICE,
+                    ShopEntry.Type.TOOL
+            ).actualStack(SparkStrengthItems.tablet().getDefaultStack()).stock(1).build());
+        }
     }
 
     private static CanSeeMoney.Result canSeeMoney(PlayerEntity player) {
         if (player == null || !GameFunctions.isPlayerPlayingAndAlive(player)) {
             return null;
         }
-        Role role = GameWorldComponent.KEY.get(player.getWorld()).getRole(player);
-        return moneyVisibilityResult(role);
+        return isMoneyVisible(player) ? CanSeeMoney.Result.ALLOW : null;
     }
 
     static CanSeeMoney.Result moneyVisibilityResult(@Nullable Role role) {
         return NoellesRoleEnhancementRules.isGoodMoneyRole(role) ? CanSeeMoney.Result.ALLOW : null;
+    }
+
+    public static boolean isTabletEconomyEligible(PlayerEntity player) {
+        if (player == null) {
+            return false;
+        }
+        Role role = GameWorldComponent.KEY.get(player.getWorld()).getRole(player);
+        return NoellesRoleEnhancementRules.canBuyTabletRole(role) || EffectiveTraitService.hasImpostor(player);
+    }
+
+    private static boolean isMoneyVisible(PlayerEntity player) {
+        Role role = GameWorldComponent.KEY.get(player.getWorld()).getRole(player);
+        return NoellesRoleEnhancementRules.isGoodMoneyRole(role) || EffectiveTraitService.hasImpostor(player);
     }
 
     private static ActionResult useEntity(
@@ -222,6 +242,16 @@ public final class NoellesRoleEnhancementService {
         stack.set(DataComponentTypes.ITEM_NAME, Text.translatable("shop.sparkstrength.capsule"));
         stack.set(DataComponentTypes.LORE, new LoreComponent(List.of(
                 Text.translatable("shop.sparkstrength.capsule.description")
+                        .styled(style -> style.withColor(0x808080).withItalic(false))
+        )));
+        return stack;
+    }
+
+    private static ItemStack tabletDisplayStack() {
+        ItemStack stack = SparkStrengthItems.tablet().getDefaultStack();
+        stack.set(DataComponentTypes.ITEM_NAME, Text.translatable("shop.sparkstrength.tablet"));
+        stack.set(DataComponentTypes.LORE, new LoreComponent(List.of(
+                Text.translatable("shop.sparkstrength.tablet.description")
                         .styled(style -> style.withColor(0x808080).withItalic(false))
         )));
         return stack;

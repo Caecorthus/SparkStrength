@@ -16,8 +16,11 @@ class SparkStrengthResourceTest {
 
         assertTrue(metadata.contains("\"sparkstrength:role_enhancements\""));
         assertTrue(metadata.contains("\"sparkstrength:role_enhancement_world\""));
+        assertTrue(metadata.contains("\"sparkstrength:tablet_world\""));
+        assertTrue(metadata.contains("\"sparkstrength.mixins.json\""));
         assertTrue(metadata.contains("\"cardinal-components-world\""));
         assertTrue(metadata.contains("\"sparkfactionapi\""));
+        assertTrue(metadata.contains("\"sparktraits\""));
         assertTrue(metadata.contains("\"lambdynlights:initializer\""));
         assertTrue(metadata.contains("annina.sparkstrength.client.role.FlashlightDynamicLightsInitializer"));
     }
@@ -30,11 +33,25 @@ class SparkStrengthResourceTest {
     }
 
     @Test
+    void commonMixinRegistersTabletEquipmentHiding() throws IOException {
+        String mixin = Files.readString(Path.of("src/main/resources/sparkstrength.mixins.json"));
+
+        assertTrue(mixin.contains("\"noellesroles.HiddenEquipmentHelperMixin\""));
+    }
+
+    @Test
     void flashlightModelUsesSparkStrengthOnModel() throws IOException {
         String model = Files.readString(Path.of("src/main/resources/assets/sparkstrength/models/item/flashlight.json"));
 
         assertTrue(model.contains("\"sparkstrength:item/flashlight_on\""));
         assertFalse(model.contains("sparkwitch"));
+    }
+
+    @Test
+    void tabletModelExists() throws IOException {
+        String model = Files.readString(Path.of("src/main/resources/assets/sparkstrength/models/item/tablet.json"));
+
+        assertTrue(model.contains("\"minecraft:item/filled_map\""));
     }
 
     @Test
@@ -45,7 +62,20 @@ class SparkStrengthResourceTest {
         for (String key : new String[]{
                 "item.sparkstrength.capsule",
                 "item.sparkstrength.flashlight",
+                "item.sparkstrength.tablet",
                 "shop.sparkstrength.capsule",
+                "shop.sparkstrength.tablet",
+                "screen.sparkstrength.tablet.title",
+                "screen.sparkstrength.tablet.tab.connections",
+                "screen.sparkstrength.tablet.tab.chat",
+                "screen.sparkstrength.tablet.tab.meeting",
+                "screen.sparkstrength.tablet.tab.suspects",
+                "screen.sparkstrength.tablet.meeting.chances",
+                "message.sparkstrength.tablet.meeting_chances_empty",
+                "message.sparkstrength.tablet.meeting_started",
+                "message.sparkstrength.tablet.suspect_removed",
+                "commands.sparkstrength.emergency_meeting_chances.success",
+                "commands.sparkstrength.vote_time.success",
                 "hud.sparkstrength.criminologist.ready",
                 "screen.sparkstrength.criminologist.title",
                 "message.sparkstrength.criminologist.correct",

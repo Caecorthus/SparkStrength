@@ -2,6 +2,7 @@ package annina.sparkstrength.component;
 
 import annina.sparkstrength.component.role.RoleEnhancementPlayerComponent;
 import annina.sparkstrength.component.role.RoleEnhancementWorldComponent;
+import annina.sparkstrength.component.tablet.TabletWorldComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowTargetComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
 import net.minecraft.entity.player.PlayerEntity;
@@ -35,5 +36,6 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
     @Override
     public void registerWorldComponentFactories(@NotNull WorldComponentFactoryRegistry registry) {
         registry.register(RoleEnhancementWorldComponent.KEY, RoleEnhancementWorldComponent::new);
+        registry.register(TabletWorldComponent.KEY, TabletWorldComponent::new);
     }
 }

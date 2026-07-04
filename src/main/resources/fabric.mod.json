@@ -30,10 +30,12 @@
       "sparkstrength:noisemaker_glow_user",
       "sparkstrength:noisemaker_glow_target",
       "sparkstrength:role_enhancements",
-      "sparkstrength:role_enhancement_world"
+      "sparkstrength:role_enhancement_world",
+      "sparkstrength:tablet_world"
     ]
   },
   "mixins": [
+    "sparkstrength.mixins.json",
     {
       "config": "sparkstrength.client.mixins.json",
       "environment": "client"
@@ -47,6 +49,7 @@
     "wathe": "${wathe_version}",
     "noellesroles": "${noellesroles_version}",
     "sparkfactionapi": ">=${sparkfactionapi_version}",
+    "sparktraits": ">=${sparktraits_version}",
     "cardinal-components-base": ">=${cca_version}",
     "cardinal-components-entity": ">=${cca_version}",
     "cardinal-components-world": ">=${cca_version}"

@@ -1,314 +1,192 @@
-# Tablet Network Design
+# 平板网络设计规格
 
-Date: 2026-07-03
-Project: SparkStrength
+日期：2026-07-03
+项目：SparkStrength
 
-## Goal
+## 目标
 
-Add a tablet network feature for three eligible good-side audiences:
+为以下三类玩家新增金币/商店入口和平板购买资格：
 
-- Wathe Vigilante (`wathe:vigilante`)
-- NoellesRoles Corrupt Cop (`noellesroles:corrupt_cop`)
-- SparkTraits active Impostor trait holders (`sparktraits:impostor`) who are treated as the requested "impostor-trait good players"
+- Wathe 义警（`wathe:vigilante`）
+- NoellesRoles 黑警（`noellesroles:corrupt_cop`）
+- 拥有 active 内鬼词条的好人（`sparktraits:impostor`）
 
-The feature gives these audiences access to money visibility, shop access, and the ability to buy the tablet item for 150 coins. Tablet runtime features are then based on actually holding the tablet in hotbar slots 0-8.
+这些资格只负责经济和购买入口。平板运行时功能以玩家 hotbar 0-8 是否实际持有 `sparkstrength:tablet` 为准。
 
-## Hard Requirements
+## 硬规则
 
-- Money, shop access, and tablet purchase are granted only to the three eligible audiences above.
-- Holding a tablet does not grant money visibility, shop access, or purchase rights by itself.
-- Tablet possession is checked only in hotbar slots 0-8, matching Wathe shop insertion behavior.
-- Player IDs shown in tablet UI are Minecraft in-game names, not UUIDs.
-- The tablet clock shows each player's own client-local time, not server time.
-- Connection status must not leak death state. It only distinguishes in-game players from non-game/admin/spectator players.
-- Tablet highlights must not use the instinct key.
-- Tablet highlights match NoellesRoles Toxicologist behavior: automatic outline, gated by `localPlayer.canSee(target)`, so it does not highlight through walls.
-- Suspect color has priority over tablet-holder color when the same visible living player is both a tablet holder and a suspect.
-- Suspect highlights are visible only to tablet holders, not global glowing state.
-- Implementation must not change unrelated roles, unrelated traits, SparkTraits trait distribution, or existing NoellesRoles role logic.
-- Any nontrivial code comment added for this feature is bilingual: English and Chinese.
+- 金钱显示、商店访问、购买平板只给义警、黑警、active 内鬼词条好人。
+- 单纯持有平板不会获得金钱显示、商店访问或购买资格。
+- 平板检测只检查 hotbar 0-8。
+- 平板 UI 显示 Minecraft 游戏名，不显示 UUID。
+- 平板顶部时钟显示客户端本地时间，不使用服务器时间。
+- 连接页只显示“局内/局外”，不暴露死亡状态。
+- 平板高亮不使用本能键，不使用全局 glowing。
+- 普通平板持有人高亮需要 `localPlayer.canSee(target)`。
+- 嫌疑人周期高亮每 45 秒亮 5 秒，橙色，且不受墙体阻挡。
+- 存活平板持有人若也是嫌疑人，橙色嫌疑人高亮优先于义警蓝色平板高亮。
+- 会议和嫌疑人移除投票只计算“Wathe 局内、存活、hotbar 持有平板”的玩家。
+- 聊天记录保留一局，局结束后自动清理。
+- 新增非平凡代码注释使用中英双语。
 
-## Dependencies
+## 经济资格
 
-SparkStrength will explicitly depend on:
+满足以下任一条件的玩家获得金钱显示、商店入口和平板购买资格：
 
-- TrainMurderMystery / Wathe
-- NoellesRoles
-- SparkFactionAPI
-- SparkTraits
+- 角色是 `wathe:vigilante`
+- 角色是 `noellesroles:corrupt_cop`
+- 当前 active traits 包含 `sparktraits:impostor`
 
-SparkTraits is required so SparkStrength can authoritatively check active `sparktraits:impostor` state. The dependency is narrow: SparkStrength reads the active trait state for eligibility only and does not alter SparkTraits rules.
+平板价格为 150 金币，购买数量限制为 1。
 
-## Eligibility Model
+## 平板物品
 
-There are two separate concepts:
+新增 `sparkstrength:tablet`。
 
-1. Purchase eligibility
-2. Tablet feature authority
+- 右键请求服务端打开平板 GUI。
+- 对其他玩家不可见，沿用 NoellesRoles 隐藏装备过滤路径。
+- 所有 C2S 动作都由服务端重新校验平板持有、局内状态、存活状态、冷却和投票锁定。
 
-Purchase eligibility is role/trait based. A player is eligible if they are one of:
+## GUI
 
-- Vigilante
-- Corrupt Cop
-- Active Impostor trait holder
+平板 GUI 包含顶部本地时钟和左侧四个页签：
 
-Eligible players get:
+- 连接人数
+- 聊天室
+- 紧急会议
+- 嫌疑人
 
-- `CanSeeMoney` allowance
-- shop entry access
-- the 150 coin tablet shop item
-- existing good-role style task money behavior: initial 0 coins and +50 coins per completed task
+### 连接人数
 
-Tablet feature authority is item based. A player can use tablet features only if they physically hold the tablet in hotbar slots 0-8, with additional feature-specific checks below.
+列出 hotbar 0-8 持有平板的玩家。
 
-## Tablet Item
+- 显示头像和游戏名。
+- 局内玩家为绿色边框。
+- 局外玩家为灰色边框。
+- 不显示死亡状态。
 
-Register a new `sparkstrength:tablet` item.
+### 聊天室
 
-Behavior:
+- 只要持有平板即可发送聊天，不要求局内或存活。
+- 空消息忽略。
+- 消息裁剪到 120 字符。
+- 聊天记录保留一局，回合结束清理。
+- 客户端聊天输入框保留未发送草稿。
+- 聊天输入框聚焦时拦截移动键，避免 WASD 等按键移动玩家。
+- Enter / 小键盘 Enter 发送消息。
 
-- Right-click opens the tablet GUI.
-- The item itself does not grant money/shop privileges.
-- The server validates all privileged actions. Client UI state is treated as display only.
+### 紧急会议
 
-## GUI Structure
+会议参与者必须同时满足：
 
-The tablet GUI has:
+- Wathe 局内
+- 存活
+- hotbar 0-8 持有平板
 
-- top local clock, rendered from that player's own client-local system time and timezone
-- left tab list with four options:
-  - Connections
-  - Chat
-  - Emergency Meeting
-  - Suspects
+会议规则：
 
-The UI follows existing SparkStrength/Wathe screen patterns: compact game UI, player heads via existing skin drawing helpers, and no forced full-screen meeting takeover.
+- 默认每人每局可召开 1 次。
+- `/sparkstrength:emergencyMeetingChances <num>` 设置每人每局可召开次数。
+- 会议全局冷却 60 秒。
+- 默认投票时间 100 秒。
+- `/sparkstrength:voteTime <sec>` 设置之后会议的投票时间。
+- `/sparkstength:voteTime <sec>` 也注册为兼容别名。
+- 会议进行中不能再次召开会议。
+- 可投票、改票、弃票、确认。
+- 确认后本次会议不可再改票。
+- 会议在时间结束或所有当前合格参与者确认后结束。
 
-## Tab 1: Connections
+结果规则：
 
-Shows players who currently have a tablet in hotbar slots 0-8.
+- 全弃票、无有效票或最高票并列时不新增嫌疑人。
+- 唯一最高票玩家被加入嫌疑人列表。
+- 已在嫌疑人列表的玩家不会成为后续会议可选目标，直到被移除。
 
-For each row:
+### 嫌疑人
 
-- player avatar
-- Minecraft in-game name
-- border color:
-  - green if the player is in the Wathe game
-  - gray if the player is not in the Wathe game
+- 列出所有当前嫌疑人。
+- 显示头像、游戏名和建议撤销票数。
+- 移除投票是持续状态，不是限时会议。
+- 当前合格投票人的 2/3 建议撤销后，嫌疑人被移除。
+- 移除后清空该嫌疑人的移除票，并允许未来再次成为会议目标。
 
-Important privacy rule:
+## 高亮
 
-- Do not show alive/dead state here.
-- A dead in-game player and an alive in-game player both use the in-game border.
+### 平板持有人高亮
 
-## Tab 2: Chat
+观看者：
 
-All tablet holders can participate in tablet chat, including players who are not alive or not in the current Wathe game.
+- 本地玩家 hotbar 0-8 持有平板。
 
-Server rules:
+目标：
 
-- A message is accepted only if the sender has the tablet in hotbar slots 0-8.
-- Blank messages are ignored.
-- Messages are trimmed and capped at 120 characters.
-- The most recent 50 chat messages are stored in world tablet state and synced to tablet clients.
+- 存活且局内。
+- hotbar 0-8 持有平板。
+- 本地玩家能看见目标。
 
-## Tab 3: Emergency Meeting
+渲染：
 
-Meeting controls are available only to eligible meeting participants.
+- 义警蓝 `0x1B8AE5`。
+- 若目标也是嫌疑人，则改用嫌疑人橙色。
+- 不使用本能键。
 
-A meeting participant is:
+### 嫌疑人周期高亮
 
-- in the Wathe game
-- alive
-- holding the tablet in hotbar slots 0-8
+观看者：
 
-Calling a meeting:
+- 本地玩家 hotbar 0-8 持有平板。
 
-- Any meeting participant can call a meeting.
-- There is one global meeting cooldown.
-- Cooldown is 60 seconds.
-- A new meeting cannot start while another meeting is active.
-- After a meeting ends, the global cooldown starts.
+目标：
 
-During a meeting:
+- 存活且局内。
+- 当前在嫌疑人列表中。
 
-- The meeting lasts up to 100 seconds.
-- Voting happens inside the tablet UI only.
-- Players are not teleported, frozen, or forced into a separate screen.
-- Eligible meeting participants can vote, change vote, abstain, and confirm.
-- Before confirming, a participant may change vote or abstain.
-- Confirming locks that participant's final choice.
-- The meeting ends when the timer expires or all current meeting participants have confirmed.
+渲染：
 
-Vote targets:
+- 每 45 秒亮 5 秒。
+- 橙色 `0xFF8C00`。
+- 不受墙体阻挡。
+- 不使用本能键。
+- 不设置全局 glowing。
 
-- All current Wathe in-game participants are shown as meeting rows.
-- Players already on the suspect list are not selectable as vote targets.
-- Abstain is always available.
+## 数据所有权
 
-Meeting result:
+服务端世界组件持有：
 
-- If all votes are abstain or no valid votes exist, no suspect is added.
-- If the highest valid vote count is tied, no suspect is added.
-- If exactly one player has the highest valid vote count, that player becomes a suspect.
-- A suspect cannot be selected in later emergency meetings while they remain on the suspect list.
+- 聊天记录
+- 当前会议状态
+- 全局会议冷却
+- 每人本局召开会议次数
+- 当前嫌疑人列表
+- 嫌疑人移除建议票
+- 可配置会议投票时长
 
-## Tab 4: Suspects
+客户端只持有：
 
-Shows all current suspects.
+- 当前快照
+- 未发送聊天草稿
+- GUI 页签状态
 
-For each row:
+局结束时清理聊天、会议、冷却、嫌疑人、移除票和本局会议次数；配置项不随局清理。
 
-- avatar
-- Minecraft in-game name
-- current continuous removal approval count
-- whether the local player has approved removal
+## 网络包
 
-Removal voting:
+C2S：
 
-- This is not a formal timed meeting vote.
-- It is continuous and can happen at any time from the suspects tab.
-- The electorate is the current set of alive Wathe in-game players who hold the tablet in hotbar slots 0-8.
-- Each electorate member may approve removal for a suspect or cancel their approval.
-- When approvals reach at least two thirds of the current electorate, the suspect is removed.
+- 请求快照
+- 发送聊天
+- 召开会议
+- 投票/改票/弃票
+- 确认投票
+- 建议撤销/取消建议撤销嫌疑人
 
-After removal:
+S2C：
 
-- The player stops receiving suspect orange highlights.
-- The player becomes selectable in future emergency meetings again.
-- Existing removal votes for that suspect are cleared.
+- 打开平板屏幕
+- 同步平板快照
 
-## Highlights
+## 验证
 
-There are two tablet-related highlights.
-
-### Tablet Holder Highlight
-
-Viewers:
-
-- clients whose local player holds the tablet in hotbar slots 0-8
-
-Targets:
-
-- players who hold the tablet in hotbar slots 0-8
-- are alive in the Wathe game
-
-Rendering:
-
-- use Vigilante role color (`0x1B8AE5`)
-- if the visible living tablet holder is also a suspect, use the suspect orange color instead of Vigilante blue
-- no instinct key
-- automatic outline result
-- only if the local player can see the target, matching NoellesRoles Toxicologist behavior
-
-### Suspect Highlight
-
-Viewers:
-
-- clients whose local player holds the tablet in hotbar slots 0-8
-
-Targets:
-
-- current suspects who are alive in the Wathe game
-
-Rendering:
-
-- orange highlight
-- 5 seconds on every 45 seconds
-- this orange suspect color overrides the tablet-holder blue color for living tablet holders who are also suspects
-- no instinct key
-- automatic outline result
-- only if the local player can see the target
-- not implemented as global glowing, so non-tablet players do not see it
-
-## Data Ownership
-
-Add tablet-specific components instead of expanding existing Criminologist or general role-enhancement state.
-
-Server-owned world state:
-
-- chat history
-- active meeting state
-- global meeting cooldown end time
-- suspect list
-- suspect removal approvals
-
-Player state:
-
-- no new persistent tablet player component is required for the initial implementation
-- meeting votes, confirmations, chat records, suspect lists, and removal approvals are keyed in world state
-- role/trait eligibility is evaluated from Wathe, NoellesRoles, and SparkTraits sources instead of cached as a tablet-specific fact
-
-Server state is authoritative. Client packets request actions; server validates tablet possession, game membership, alive state, cooldowns, vote locks, and thresholds.
-
-## Network Packets
-
-Add dedicated tablet packets under a tablet namespace/package.
-
-C2S:
-
-- request tablet state refresh
-- send chat message
-- call meeting
-- cast/change meeting vote
-- confirm meeting vote
-- approve/cancel suspect removal
-
-S2C:
-
-- open tablet screen
-- sync tablet snapshot
-- append chat message or resync chat history
-- meeting state update
-- suspect list update
-
-Packets use compact IDs and preserve existing SparkStrength packet style.
-
-## Reset And Lifecycle
-
-Tablet world state resets when the Wathe game/round lifecycle resets or finalizes:
-
-- active meeting cleared
-- suspect list cleared
-- removal approvals cleared
-- meeting cooldown cleared
-- chat history cleared
-
-Item possession itself follows normal inventory rules and is not forcibly removed by this feature unless existing shop/round cleanup already removes role items.
-
-## Testing Plan
-
-Unit or game-test coverage focuses on server rules:
-
-- only Vigilante, Corrupt Cop, and active Impostor trait holders get money/shop/tablet purchase access
-- generic tablet holders do not get money/shop access
-- hotbar-only tablet possession check
-- connection tab does not expose death state
-- meeting cannot start during an active meeting
-- global cooldown blocks meeting calls for 60 seconds after a meeting ends
-- vote change before confirm works
-- confirm locks the vote
-- tied highest vote produces no suspect
-- all-abstain vote produces no suspect
-- unique highest vote adds one suspect
-- current suspects are excluded from future meeting target choices
-- continuous removal reaches two-thirds threshold and removes the suspect
-- removed suspects can become future suspects again
-
-Manual verification covers:
-
-- GUI tabs and local clock
-- avatar/name rendering
-- tablet chat across multiple tablet holders
-- disabled UI for dead/non-game players in meeting and suspect removal controls
-- automatic non-keybind highlights in line of sight only
-- non-tablet clients do not see suspect highlights
-
-## Non-Goals
-
-- Do not add a new instinct keybind.
-- Do not create forced meeting teleport/freeze behavior.
-- Do not show death state in the connections tab.
-- Do not give tablet holders money/shop access merely because they hold a tablet.
-- Do not broaden tablet purchase eligibility to unrelated good roles.
-- Do not rewrite existing Criminologist, Toxicologist, Attendant, or Corrupt Cop features unless a narrow integration point requires it.
+- `JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home sh ./gradlew clean compileClientJava --no-daemon --no-parallel`
+- `JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home sh ./gradlew :test --no-daemon --no-parallel`
+- `JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home sh ./gradlew :build --no-daemon --no-parallel`

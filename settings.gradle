@@ -16,3 +16,9 @@ if (sparkFactionApiDir.isDirectory() && new File(sparkFactionApiDir, "settings.g
     include "SparkFactionAPI"
     project(":SparkFactionAPI").projectDir = sparkFactionApiDir
 }
+
+def sparkTraitsDir = file("../SparkTraits")
+if (sparkTraitsDir.isDirectory() && new File(sparkTraitsDir, "settings.gradle").isFile()) {
+    include "SparkTraits"
+    project(":SparkTraits").projectDir = sparkTraitsDir
+}

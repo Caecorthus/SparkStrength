@@ -11,6 +11,8 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
 
+import java.util.Objects;
+
 /**
  * Moonlight-lamp style directional light that follows a lit held flashlight.
  * 跟随已开启手电筒的月光灯风格方向性光源。
@@ -29,6 +31,7 @@ public final class FlashlightLineLightBehavior implements DynamicLightBehavior {
     private Vec3d eyePos;
     private Vec3d direction;
     private double effectiveRangeBlocks;
+    private BlockPos blockingBlockPos;
     private long lastBeamRefreshWorldTime;
 
     public FlashlightLineLightBehavior(PlayerEntity player) {
@@ -54,7 +57,8 @@ public final class FlashlightLineLightBehavior implements DynamicLightBehavior {
                 pos.getX(),
                 pos.getY(),
                 pos.getZ(),
-                effectiveRangeBlocks
+                effectiveRangeBlocks,
+                pos.equals(blockingBlockPos)
         );
         return light;
     }
@@ -91,8 +95,11 @@ public final class FlashlightLineLightBehavior implements DynamicLightBehavior {
             lastPos = pos;
         }
         double previousRange = effectiveRangeBlocks;
+        BlockPos previousBlockingBlockPos = blockingBlockPos;
         updateSnapshot();
-        return changed || Math.abs(effectiveRangeBlocks - previousRange) > RANGE_EPSILON_BLOCKS;
+        return changed
+                || Math.abs(effectiveRangeBlocks - previousRange) > RANGE_EPSILON_BLOCKS
+                || !Objects.equals(blockingBlockPos, previousBlockingBlockPos);
     }
 
     @Override
@@ -103,11 +110,13 @@ public final class FlashlightLineLightBehavior implements DynamicLightBehavior {
     private void updateSnapshot() {
         eyePos = player.getEyePos();
         direction = player.getRotationVector().normalize();
-        effectiveRangeBlocks = computeEffectiveRange();
+        BeamSnapshot snapshot = computeBeamSnapshot();
+        effectiveRangeBlocks = snapshot.effectiveRangeBlocks();
+        blockingBlockPos = snapshot.blockingBlockPos();
         lastBeamRefreshWorldTime = player.getWorld().getTime();
     }
 
-    private double computeEffectiveRange() {
+    private BeamSnapshot computeBeamSnapshot() {
         // Match a handheld beam without raycasting every queried block.
         // 用一次中心线检测模拟手持光束，避免对每个被查询方块都做 raycast。
         Vec3d end = eyePos.add(direction.multiply(FlashlightLineLightRules.RANGE_BLOCKS));
@@ -119,8 +128,15 @@ public final class FlashlightLineLightBehavior implements DynamicLightBehavior {
                 player
         ));
         if (hit.getType() != HitResult.Type.BLOCK || !(hit instanceof BlockHitResult)) {
-            return FlashlightLineLightRules.RANGE_BLOCKS;
+            return new BeamSnapshot(FlashlightLineLightRules.RANGE_BLOCKS, null);
         }
-        return FlashlightLineLightRules.effectiveRangeAfterHit(eyePos.distanceTo(hit.getPos()));
+        BlockHitResult blockHit = (BlockHitResult) hit;
+        return new BeamSnapshot(
+                FlashlightLineLightRules.effectiveRangeAfterHit(eyePos.distanceTo(hit.getPos())),
+                blockHit.getBlockPos()
+        );
+    }
+
+    private record BeamSnapshot(double effectiveRangeBlocks, BlockPos blockingBlockPos) {
     }
 }

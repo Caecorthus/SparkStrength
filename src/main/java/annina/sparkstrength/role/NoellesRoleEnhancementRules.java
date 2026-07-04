@@ -21,6 +21,10 @@ public final class NoellesRoleEnhancementRules {
 
     public static final String CAPSULE_ENTRY_ID = "sparkstrength_capsule";
     public static final int CAPSULE_PRICE = 100;
+    public static final String TABLET_ENTRY_ID = "sparkstrength_tablet";
+    public static final int TABLET_PRICE = 150;
+    public static final int TABLET_HIGHLIGHT_COLOR = 0x1B8AE5;
+    public static final int SUSPECT_HIGHLIGHT_COLOR = 0xFF8C00;
     public static final int NORMAL_POISON_COLOR = 0x1E5014;
     public static final int BLUE_POISON_COLOR = 0x00BFFF;
     public static final Identifier BLUE_POISON_COMPONENT_ID = Identifier.of("sparktraits", "conscience_poisoner");
@@ -42,6 +46,10 @@ public final class NoellesRoleEnhancementRules {
 
     public static boolean canBuyCapsules(Role role) {
         return NoellesRoleIds.isToxicologist(role);
+    }
+
+    public static boolean canBuyTabletRole(Role role) {
+        return NoellesRoleIds.isTabletEconomyRole(role);
     }
 
     public static boolean startsWithFlashlight(Role role) {

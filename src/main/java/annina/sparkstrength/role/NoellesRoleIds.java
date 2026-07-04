@@ -10,15 +10,21 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class NoellesRoleIds {
     public static final String NAMESPACE = "noellesroles";
+    public static final Identifier VIGILANTE = Identifier.of("wathe", "vigilante");
     public static final Identifier DETECTIVE = Identifier.of(NAMESPACE, "detective");
     public static final Identifier TOXICOLOGIST = Identifier.of(NAMESPACE, "toxicologist");
     public static final Identifier ATTENDANT = Identifier.of(NAMESPACE, "attendant");
+    public static final Identifier CORRUPT_COP = Identifier.of(NAMESPACE, "corrupt_cop");
 
     private NoellesRoleIds() {
     }
 
     public static boolean isDetective(@Nullable Role role) {
         return hasId(role, DETECTIVE);
+    }
+
+    public static boolean isVigilante(@Nullable Role role) {
+        return hasId(role, VIGILANTE);
     }
 
     public static boolean isToxicologist(@Nullable Role role) {
@@ -29,8 +35,16 @@ public final class NoellesRoleIds {
         return hasId(role, ATTENDANT);
     }
 
+    public static boolean isCorruptCop(@Nullable Role role) {
+        return hasId(role, CORRUPT_COP);
+    }
+
     public static boolean isEnhancedMoneyRole(@Nullable Role role) {
-        return isDetective(role) || isToxicologist(role);
+        return isDetective(role) || isToxicologist(role) || isTabletEconomyRole(role);
+    }
+
+    public static boolean isTabletEconomyRole(@Nullable Role role) {
+        return isVigilante(role) || isCorruptCop(role);
     }
 
     public static boolean hasId(@Nullable Role role, Identifier id) {

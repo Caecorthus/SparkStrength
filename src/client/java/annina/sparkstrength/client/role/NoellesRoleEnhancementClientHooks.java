@@ -4,6 +4,7 @@ import annina.sparkstrength.SparkStrengthEntities;
 import annina.sparkstrength.component.role.RoleEnhancementPlayerComponent;
 import annina.sparkstrength.role.NoellesRoleEnhancementRules;
 import annina.sparkstrength.role.NoellesRoleIds;
+import dev.caecorthus.sparktraits.impl.EffectiveTraitService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.CanSeeMoney;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
@@ -60,7 +61,9 @@ public final class NoellesRoleEnhancementClientHooks {
             return null;
         }
         Role role = GameWorldComponent.KEY.get(player.getWorld()).getRole(player);
-        return NoellesRoleEnhancementRules.isGoodMoneyRole(role) ? CanSeeMoney.Result.ALLOW : null;
+        return NoellesRoleEnhancementRules.isGoodMoneyRole(role) || EffectiveTraitService.hasImpostor(player)
+                ? CanSeeMoney.Result.ALLOW
+                : null;
     }
 
     public static String playerName(java.util.UUID uuid) {

@@ -1,9 +1,11 @@
 package annina.sparkstrength;
 
+import annina.sparkstrength.command.SparkStrengthCommands;
 import annina.sparkstrength.event.SparkStrengthEvents;
 import annina.sparkstrength.network.SparkStrengthPackets;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.util.Identifier;
 
 public final class SparkStrength implements ModInitializer {
@@ -20,5 +22,7 @@ public final class SparkStrength implements ModInitializer {
         SparkStrengthPackets.registerServer();
         SparkStrengthEvents.register();
         SparkStrengthReplayFormatters.register();
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
+                SparkStrengthCommands.register(dispatcher));
     }
 }

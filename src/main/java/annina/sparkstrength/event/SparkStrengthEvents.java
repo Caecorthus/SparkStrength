@@ -8,11 +8,13 @@ import annina.sparkstrength.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.CorruptCopFeatureService;
 import annina.sparkstrength.role.FlashlightBlackoutService;
 import annina.sparkstrength.role.NoellesRoleEnhancementService;
+import annina.sparkstrength.tablet.TabletStateService;
 import dev.doctor4t.wathe.api.event.GameEvents;
 import dev.doctor4t.wathe.api.event.KillPlayer;
 import dev.doctor4t.wathe.api.event.ResetPlayer;
 import dev.doctor4t.wathe.api.event.RoleAssigned;
 import dev.doctor4t.wathe.api.event.TaskComplete;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 
@@ -27,6 +29,7 @@ public final class SparkStrengthEvents {
         CorruptCopFeatureService.register();
         FlashlightBlackoutService.register();
         NoellesRoleEnhancementService.register();
+        ServerTickEvents.END_WORLD_TICK.register(TabletStateService::tick);
 
         RoleAssigned.EVENT.register((player, role) -> {
             if (player instanceof ServerPlayerEntity serverPlayer) {
@@ -52,6 +55,7 @@ public final class SparkStrengthEvents {
         GameEvents.ON_FINISH_FINALIZE.register((world, gameComponent) -> {
             if (world instanceof ServerWorld serverWorld) {
                 RoleEnhancementWorldComponent.KEY.get(serverWorld).clearRoundState();
+                TabletStateService.clearRoundState(serverWorld);
                 for (ServerPlayerEntity player : serverWorld.getPlayers()) {
                     RoleEnhancementPlayerComponent.KEY.get(player).clearAll();
                 }

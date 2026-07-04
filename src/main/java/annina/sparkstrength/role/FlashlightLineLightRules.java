@@ -7,6 +7,7 @@ package annina.sparkstrength.role;
 public final class FlashlightLineLightRules {
     public static final double RANGE_BLOCKS = 32.0;
     public static final double LUMINANCE = 15.0;
+    public static final double DIRECT_BLOCKER_LUMINANCE = 15.0;
     public static final double INNER_CONE_RADIANS = 0.5;
     public static final double OUTER_CONE_RADIANS = 0.7;
     public static final double WALL_PADDING_BLOCKS = 0.75;
@@ -40,6 +41,34 @@ public final class FlashlightLineLightRules {
                 OUTER_CONE_RADIANS,
                 LUMINANCE
         );
+    }
+
+    public static double lightAt(
+            double sourceX,
+            double sourceY,
+            double sourceZ,
+            double directionX,
+            double directionY,
+            double directionZ,
+            int blockX,
+            int blockY,
+            int blockZ,
+            double rangeBlocks,
+            boolean directBlockerHit
+    ) {
+        double light = lightAt(
+                sourceX,
+                sourceY,
+                sourceZ,
+                directionX,
+                directionY,
+                directionZ,
+                blockX,
+                blockY,
+                blockZ,
+                rangeBlocks
+        );
+        return directBlockerHit ? Math.max(light, DIRECT_BLOCKER_LUMINANCE) : light;
     }
 
     public static double lightAt(
