@@ -3,6 +3,7 @@ package annina.sparkstrength.network;
 import annina.sparkstrength.network.criminologist.OpenCriminologistScreenS2CPacket;
 import annina.sparkstrength.network.criminologist.SelectCriminologistTargetC2SPacket;
 import annina.sparkstrength.network.noisemaker.NoisemakerGlowC2SPacket;
+import annina.sparkstrength.network.professor.ProfessorRemoteFeedC2SPacket;
 import annina.sparkstrength.network.tablet.ApproveSuspectRemovalC2SPacket;
 import annina.sparkstrength.network.tablet.CallTabletMeetingC2SPacket;
 import annina.sparkstrength.network.tablet.CastTabletVoteC2SPacket;
@@ -13,6 +14,7 @@ import annina.sparkstrength.network.tablet.SendTabletChatC2SPacket;
 import annina.sparkstrength.network.tablet.SyncTabletSnapshotS2CPacket;
 import annina.sparkstrength.network.veteran.SyncVeteranBlackoutS2CPacket;
 import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
+import annina.sparkstrength.role.professor.ProfessorSerumService;
 import annina.sparkstrength.role.detective.CriminologistService;
 import annina.sparkstrength.tablet.TabletStateService;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -27,6 +29,7 @@ public final class SparkStrengthPackets {
 
     public static void registerServer() {
         PayloadTypeRegistry.playC2S().register(NoisemakerGlowC2SPacket.ID, NoisemakerGlowC2SPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(ProfessorRemoteFeedC2SPacket.ID, ProfessorRemoteFeedC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(SelectCriminologistTargetC2SPacket.ID, SelectCriminologistTargetC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(RequestTabletSnapshotC2SPacket.ID, RequestTabletSnapshotC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(SendTabletChatC2SPacket.ID, SendTabletChatC2SPacket.CODEC);
@@ -40,6 +43,9 @@ public final class SparkStrengthPackets {
         PayloadTypeRegistry.playS2C().register(SyncVeteranBlackoutS2CPacket.ID, SyncVeteranBlackoutS2CPacket.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(NoisemakerGlowC2SPacket.ID, (payload, context) ->
                 NoisemakerGlowService.tryUseBackpackGlow(context.player(), payload.targetPlayer())
+        );
+        ServerPlayNetworking.registerGlobalReceiver(ProfessorRemoteFeedC2SPacket.ID, (payload, context) ->
+                ProfessorSerumService.tryRemoteFeed(context.player(), payload.targetPlayer(), payload.serumType())
         );
         ServerPlayNetworking.registerGlobalReceiver(SelectCriminologistTargetC2SPacket.ID,
                 (payload, context) -> CriminologistService.handleSelection(

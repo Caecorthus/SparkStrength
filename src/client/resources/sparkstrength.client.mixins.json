@@ -5,6 +5,8 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "noisemaker.NoisemakerInventoryScreenMixin",
+    "professor.ProfessorInventoryScreenMixin",
+    "professor.ProfessorSerumCrosshairMixin",
     "detective.CriminologistHudMixin",
     "veteran.VeteranInstantKnifeMixin"
   ],

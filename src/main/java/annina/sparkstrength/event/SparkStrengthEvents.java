@@ -4,11 +4,14 @@ import annina.sparkstrength.component.detective.CriminologistPlayerComponent;
 import annina.sparkstrength.component.detective.CriminologistWorldComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowTargetComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
+import annina.sparkstrength.component.professor.ProfessorSerumTargetComponent;
+import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
 import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.attendant.AttendantFlashlightService;
 import annina.sparkstrength.role.corruptcop.CorruptCopFeatureService;
 import annina.sparkstrength.role.detective.CriminologistService;
 import annina.sparkstrength.role.economy.RoleEconomyService;
+import annina.sparkstrength.role.professor.ProfessorSerumShopService;
 import annina.sparkstrength.role.toxicologist.ToxicologistCapsuleShop;
 import annina.sparkstrength.role.attendant.FlashlightBlackoutService;
 import annina.sparkstrength.role.veteran.VeteranBlackoutService;
@@ -37,6 +40,7 @@ public final class SparkStrengthEvents {
         CriminologistService.register();
         FlashlightBlackoutService.register();
         RoleEconomyService.register();
+        ProfessorSerumShopService.register();
         ToxicologistCapsuleShop.register();
         TabletShopService.register();
         VeteranShopService.register();
@@ -57,6 +61,8 @@ public final class SparkStrengthEvents {
             // 这里把点亮冷却和目标倒计时都清掉，避免跨局残留。
             NoisemakerGlowUserComponent.KEY.get(player).reset();
             NoisemakerGlowTargetComponent.KEY.get(player).reset();
+            ProfessorSerumUserComponent.KEY.get(player).reset();
+            ProfessorSerumTargetComponent.KEY.get(player).reset();
             CriminologistPlayerComponent.KEY.get(player).clearAll();
             if (player instanceof ServerPlayerEntity serverPlayer) {
                 VeteranKnifeService.reset(serverPlayer);
@@ -77,6 +83,8 @@ public final class SparkStrengthEvents {
                 VeteranBlackoutService.clear(serverWorld);
                 for (ServerPlayerEntity player : serverWorld.getPlayers()) {
                     CriminologistPlayerComponent.KEY.get(player).clearAll();
+                    ProfessorSerumUserComponent.KEY.get(player).reset();
+                    ProfessorSerumTargetComponent.KEY.get(player).reset();
                     VeteranKnifeService.reset(player);
                 }
             }

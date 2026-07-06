@@ -2,6 +2,8 @@ package annina.sparkstrength.component;
 
 import annina.sparkstrength.component.detective.CriminologistPlayerComponent;
 import annina.sparkstrength.component.detective.CriminologistWorldComponent;
+import annina.sparkstrength.component.professor.ProfessorSerumTargetComponent;
+import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
 import annina.sparkstrength.component.tablet.TabletWorldComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowTargetComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
@@ -29,6 +31,12 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.beginRegistration(PlayerEntity.class, NoisemakerGlowTargetComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(NoisemakerGlowTargetComponent::new);
+        registry.beginRegistration(PlayerEntity.class, ProfessorSerumUserComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(ProfessorSerumUserComponent::new);
+        registry.beginRegistration(PlayerEntity.class, ProfessorSerumTargetComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(ProfessorSerumTargetComponent::new);
         registry.beginRegistration(PlayerEntity.class, CriminologistPlayerComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(CriminologistPlayerComponent::new);

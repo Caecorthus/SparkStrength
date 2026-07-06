@@ -2,7 +2,9 @@ package annina.sparkstrength;
 
 import annina.sparkstrength.item.CapsuleItem;
 import annina.sparkstrength.item.FlashlightItem;
+import annina.sparkstrength.item.ProfessorSerumItem;
 import annina.sparkstrength.item.TabletItem;
+import annina.sparkstrength.role.professor.ProfessorSerumType;
 import net.minecraft.item.Item;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
@@ -12,9 +14,17 @@ public final class SparkStrengthItems {
     public static final Identifier CAPSULE_ID = SparkStrength.id("capsule");
     public static final Identifier FLASHLIGHT_ID = SparkStrength.id("flashlight");
     public static final Identifier TABLET_ID = SparkStrength.id("tablet");
+    public static final Identifier INVISIBILITY_SERUM_ID = SparkStrength.id("invisibility_serum");
+    public static final Identifier DOORPASSING_POTION_ID = SparkStrength.id("doorpassing_potion");
+    public static final Identifier SEDATIVE_ID = SparkStrength.id("sedative");
+    public static final Identifier TRUTH_SERUM_ID = SparkStrength.id("truth_serum");
     private static Item capsule;
     private static Item flashlight;
     private static Item tablet;
+    private static Item invisibilitySerum;
+    private static Item doorpassingPotion;
+    private static Item sedative;
+    private static Item truthSerum;
     private static boolean registered;
 
     private SparkStrengthItems() {
@@ -39,6 +49,26 @@ public final class SparkStrengthItems {
                 TABLET_ID,
                 new TabletItem(new Item.Settings().maxCount(1))
         );
+        invisibilitySerum = Registry.register(
+                Registries.ITEM,
+                INVISIBILITY_SERUM_ID,
+                new ProfessorSerumItem(new Item.Settings().maxCount(1), ProfessorSerumType.INVISIBILITY)
+        );
+        doorpassingPotion = Registry.register(
+                Registries.ITEM,
+                DOORPASSING_POTION_ID,
+                new ProfessorSerumItem(new Item.Settings().maxCount(1), ProfessorSerumType.DOORPASSING)
+        );
+        sedative = Registry.register(
+                Registries.ITEM,
+                SEDATIVE_ID,
+                new ProfessorSerumItem(new Item.Settings().maxCount(1), ProfessorSerumType.SEDATIVE)
+        );
+        truthSerum = Registry.register(
+                Registries.ITEM,
+                TRUTH_SERUM_ID,
+                new ProfessorSerumItem(new Item.Settings().maxCount(1), ProfessorSerumType.TRUTH)
+        );
         registered = true;
     }
 
@@ -61,5 +91,33 @@ public final class SparkStrengthItems {
             throw new IllegalStateException("SparkStrength items are not registered yet");
         }
         return tablet;
+    }
+
+    public static Item invisibilitySerum() {
+        if (invisibilitySerum == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return invisibilitySerum;
+    }
+
+    public static Item doorpassingPotion() {
+        if (doorpassingPotion == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return doorpassingPotion;
+    }
+
+    public static Item sedative() {
+        if (sedative == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return sedative;
+    }
+
+    public static Item truthSerum() {
+        if (truthSerum == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return truthSerum;
     }
 }
