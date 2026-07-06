@@ -32,7 +32,7 @@ public final class SparkTraitsCompat {
             return null;
         }
         try {
-            Class<?> service = Class.forName("dev.caecorthus.sparktraits.impl.EffectiveTraitService");
+            Class<?> service = Class.forName("dev.caecorthus.sparktraits.impl.effective.EffectiveTraitService");
             return service.getMethod("hasImpostor", PlayerEntity.class);
         } catch (ClassNotFoundException | NoSuchMethodException | LinkageError ignored) {
             return null;
