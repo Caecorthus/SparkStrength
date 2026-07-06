@@ -19,7 +19,7 @@ class VeteranRulesTest {
     @Test
     void veteranKnifeUsesAndShopConstantsMatchDesign() {
         assertEquals("sparkstrength_veteran_knife", VeteranRules.KNIFE_ENTRY_ID);
-        assertEquals(200, VeteranRules.KNIFE_PRICE);
+        assertEquals(300, VeteranRules.KNIFE_PRICE);
         assertEquals(2, VeteranRules.STAB_USES_PER_KNIFE);
         assertTrue(VeteranRules.shouldRemoveKnifeAfterUse(0));
         assertFalse(VeteranRules.shouldRemoveKnifeAfterUse(1));
@@ -28,7 +28,7 @@ class VeteranRulesTest {
 
     @Test
     void veteranKnifeRewardsGoodAndNonGoodFactionsDifferently() {
-        assertEquals(25, VeteranRules.killRewardForVictim(CIVILIAN));
+        assertEquals(0, VeteranRules.killRewardForVictim(CIVILIAN));
         assertEquals(100, VeteranRules.killRewardForVictim(KILLER));
         assertEquals(100, VeteranRules.killRewardForVictim(NEUTRAL));
         assertEquals(100, VeteranRules.killRewardForVictim(null));

@@ -16,13 +16,13 @@ public final class VeteranRules {
     public static final String KNIFE_ENTRY_ID = "sparkstrength_veteran_knife";
 
     /** 老兵商店中每把匕首的价格。 */
-    public static final int KNIFE_PRICE = 200;
+    public static final int KNIFE_PRICE = 300;
     /** 你已确认：每把老兵匕首默认拥有 2 次刺杀次数。 */
     public static final int STAB_USES_PER_KNIFE = 2;
     /** 刀到非好人阵营角色时获得的金币。 */
     public static final int NON_INNOCENT_KILL_REWARD = 100;
     /** 刀到好人阵营角色时获得的金币。 */
-    public static final int INNOCENT_KILL_REWARD = 25;
+    public static final int INNOCENT_KILL_REWARD = 0;
     /** 停电期间老兵自动本能透视的半径，单位为格。 */
     public static final double BLACKOUT_HIGHLIGHT_RANGE = 10.0D;
     public static final double BLACKOUT_HIGHLIGHT_RANGE_SQUARED =
