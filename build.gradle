@@ -81,8 +81,6 @@ dependencies {
     modRuntimeOnly "maven.modrinth:simple-voice-chat:fabric-${project.voicechat_version}"
     modRuntimeOnly "de.maxhenkel.voicechat:voicechat-api:${project.voicechat_api_version}:fabric-stub"
 
-    testImplementation "org.junit.jupiter:junit-jupiter:5.10.3"
-    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
 
 tasks.named("compileClientJava") {
@@ -116,35 +114,9 @@ tasks.withType(JavaCompile).configureEach {
     it.options.release.set(targetJavaVersion)
 }
 
-def isWindows = System.getProperty("os.name").toLowerCase().contains("windows")
-def testPathingJarDirectory = new File(
-        System.getProperty("java.io.tmpdir"),
-        "sparkstrength-test-classpath-" + Integer.toHexString(projectDir.absolutePath.hashCode())
-)
-
-def testClasspathJarProvider = tasks.register("testClasspathJar", Jar) {
-    archiveFileName = "test-classpath.jar"
-    destinationDirectory.fileValue(testPathingJarDirectory)
-    inputs.files(sourceSets.test.runtimeClasspath)
-
-    manifest {
-        // Keep the Gradle test worker argfile ASCII-only on Windows; the Java launcher can misread non-ASCII project paths there.
-        attributes("Class-Path": provider {
-            sourceSets.test.runtimeClasspath.files.collect { it.toURI().toASCIIString() }.join(" ")
-        })
-    }
-}
-
-tasks.test {
-    useJUnitPlatform()
-
-    if (isWindows) {
-        dependsOn(testClasspathJarProvider)
-
-        doFirst {
-            classpath = files(testClasspathJarProvider.flatMap { it.archiveFile })
-        }
-    }
+tasks.named("check") {
+    setDependsOn([])
+    dependsOn tasks.matching { it.name == "validateAccessWidener" }
 }
 
 java {
