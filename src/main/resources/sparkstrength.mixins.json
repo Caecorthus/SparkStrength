@@ -8,7 +8,8 @@
     "professor.ProfessorDoorPassingMixin",
     "professor.ProfessorSedativeMoodMixin",
     "veteran.VeteranKnifeStabPayloadMixin",
-    "veteran.VeteranServerKnifeUseMixin"
+    "veteran.VeteranServerKnifeUseMixin",
+    "wathe.PlayerShopComponentAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

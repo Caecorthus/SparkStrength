@@ -11,6 +11,9 @@ import annina.sparkstrength.role.attendant.AttendantFlashlightService;
 import annina.sparkstrength.role.corruptcop.CorruptCopFeatureService;
 import annina.sparkstrength.role.detective.CriminologistService;
 import annina.sparkstrength.role.economy.RoleEconomyService;
+import annina.sparkstrength.role.engineer.EngineerCaptureDeviceService;
+import annina.sparkstrength.role.engineer.EngineerPowerRestorationService;
+import annina.sparkstrength.role.engineer.EngineerShopService;
 import annina.sparkstrength.role.professor.ProfessorSerumShopService;
 import annina.sparkstrength.role.toxicologist.ToxicologistCapsuleShop;
 import annina.sparkstrength.role.attendant.FlashlightBlackoutService;
@@ -40,6 +43,8 @@ public final class SparkStrengthEvents {
         CriminologistService.register();
         FlashlightBlackoutService.register();
         RoleEconomyService.register();
+        EngineerPowerRestorationService.register();
+        EngineerShopService.register();
         ProfessorSerumShopService.register();
         ToxicologistCapsuleShop.register();
         TabletShopService.register();
@@ -65,6 +70,7 @@ public final class SparkStrengthEvents {
             ProfessorSerumTargetComponent.KEY.get(player).reset();
             CriminologistPlayerComponent.KEY.get(player).clearAll();
             if (player instanceof ServerPlayerEntity serverPlayer) {
+                EngineerCaptureDeviceService.clearPlayer(serverPlayer);
                 VeteranKnifeService.reset(serverPlayer);
             }
         });
@@ -79,14 +85,22 @@ public final class SparkStrengthEvents {
         GameEvents.ON_FINISH_FINALIZE.register((world, gameComponent) -> {
             if (world instanceof ServerWorld serverWorld) {
                 CriminologistWorldComponent.KEY.get(serverWorld).clearRoundState();
+                EngineerCaptureDeviceService.clearRoundState(serverWorld);
                 TabletStateService.clearRoundState(serverWorld);
                 VeteranBlackoutService.clear(serverWorld);
                 for (ServerPlayerEntity player : serverWorld.getPlayers()) {
                     CriminologistPlayerComponent.KEY.get(player).clearAll();
+                    EngineerCaptureDeviceService.clearPlayer(player);
                     ProfessorSerumUserComponent.KEY.get(player).reset();
                     ProfessorSerumTargetComponent.KEY.get(player).reset();
                     VeteranKnifeService.reset(player);
                 }
+            }
+        });
+
+        GameEvents.ON_FINISH_INITIALIZE.register((world, gameComponent) -> {
+            if (world instanceof ServerWorld serverWorld) {
+                EngineerCaptureDeviceService.clearRoundState(serverWorld);
             }
         });
     }

@@ -20,6 +20,10 @@ public final class SparkStrengthReplayFormatters {
     public static final Identifier PROFESSOR_DOORPASSING_ENDED = SparkStrength.id("professor_doorpassing_ended");
     public static final Identifier PROFESSOR_SEDATIVE_ENDED = SparkStrength.id("professor_sedative_ended");
     public static final Identifier PROFESSOR_TRUTH_REVEALED = SparkStrength.id("professor_truth_revealed");
+    public static final Identifier CAPTURE_DEVICE_PLACED = SparkStrength.id("capture_device_placed");
+    public static final Identifier CAPTURE_DEVICE_TRIGGERED = SparkStrength.id("capture_device_triggered");
+    public static final Identifier CAPTURE_DEVICE_RELEASED = SparkStrength.id("capture_device_released");
+    public static final Identifier CAPTURE_DEVICE_EXPIRED = SparkStrength.id("capture_device_expired");
 
     private SparkStrengthReplayFormatters() {
     }
@@ -95,6 +99,30 @@ public final class SparkStrengthReplayFormatters {
                         event.data(),
                         match,
                         "replay.global.sparkstrength.professor_truth_revealed"
+                ));
+        ReplayRegistry.registerGlobalEventFormatter(CAPTURE_DEVICE_PLACED,
+                (event, match, world) -> onePlayerEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.capture_device_placed"
+                ));
+        ReplayRegistry.registerGlobalEventFormatter(CAPTURE_DEVICE_TRIGGERED,
+                (event, match, world) -> onePlayerEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.capture_device_triggered"
+                ));
+        ReplayRegistry.registerGlobalEventFormatter(CAPTURE_DEVICE_RELEASED,
+                (event, match, world) -> onePlayerEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.capture_device_released"
+                ));
+        ReplayRegistry.registerGlobalEventFormatter(CAPTURE_DEVICE_EXPIRED,
+                (event, match, world) -> onePlayerEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.capture_device_expired"
                 ));
     }
 

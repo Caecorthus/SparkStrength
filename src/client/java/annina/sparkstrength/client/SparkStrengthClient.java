@@ -4,6 +4,7 @@ import annina.sparkstrength.client.item.CapsuleClient;
 import annina.sparkstrength.client.role.corruptcop.CorruptCopClientHooks;
 import annina.sparkstrength.client.role.detective.CriminologistClientHooks;
 import annina.sparkstrength.client.role.economy.RoleEconomyClientHooks;
+import annina.sparkstrength.client.role.engineer.EngineerClientHooks;
 import annina.sparkstrength.client.role.professor.ProfessorSerumClientHooks;
 import annina.sparkstrength.client.role.veteran.VeteranClientHooks;
 import annina.sparkstrength.client.screen.criminologist.CriminologistScreen;
@@ -24,6 +25,7 @@ public final class SparkStrengthClient implements ClientModInitializer {
         CapsuleClient.register();
         CorruptCopClientHooks.register();
         CriminologistClientHooks.register();
+        EngineerClientHooks.register();
         ProfessorSerumClientHooks.register();
         RoleEconomyClientHooks.register();
         TabletClientHighlights.register();

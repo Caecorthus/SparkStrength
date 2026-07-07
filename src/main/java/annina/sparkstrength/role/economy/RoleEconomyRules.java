@@ -1,6 +1,7 @@
 package annina.sparkstrength.role.economy;
 
 import annina.sparkstrength.role.detective.CriminologistRules;
+import annina.sparkstrength.role.engineer.EngineerRules;
 import annina.sparkstrength.role.professor.ProfessorSerumRules;
 import annina.sparkstrength.role.toxicologist.ToxicologistCapsuleRules;
 import annina.sparkstrength.role.veteran.VeteranRules;
@@ -26,6 +27,7 @@ public final class RoleEconomyRules {
         return CriminologistRules.isDetective(role)
                 || ToxicologistCapsuleRules.isToxicologist(role)
                 || ProfessorSerumRules.isProfessor(role)
+                || EngineerRules.isEngineer(role)
                 || VeteranRules.isVeteran(role)
                 || TabletShopRules.canBuyTabletRole(role);
     }

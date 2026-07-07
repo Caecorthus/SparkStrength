@@ -1,6 +1,8 @@
 package annina.sparkstrength.mixin.noellesroles;
 
 import annina.sparkstrength.SparkStrengthItems;
+import annina.sparkstrength.role.engineer.EngineerCaptureReport;
+import annina.sparkstrength.role.engineer.EngineerRules;
 import annina.sparkstrength.role.professor.ProfessorSerumRules;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import net.minecraft.entity.player.PlayerEntity;
@@ -13,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * Adds SparkStrength hidden items to NoellesRoles' hidden-equipment filter.
- * 将 SparkStrength 平板和教授试剂加入 NoellesRoles 的隐藏装备过滤器。
+ * 将 SparkStrength 平板、工程师捕捉装置和教授试剂加入 NoellesRoles 的隐藏装备过滤器。
  */
 @Mixin(value = HiddenEquipmentHelper.class, remap = false)
 public abstract class HiddenEquipmentHelperMixin {
@@ -24,6 +26,19 @@ public abstract class HiddenEquipmentHelperMixin {
             CallbackInfoReturnable<Boolean> cir
     ) {
         if (stack.isOf(SparkStrengthItems.tablet())) {
+            cir.setReturnValue(true);
+            return;
+        }
+
+        if (EngineerCaptureReport.isCaptureReport(stack)) {
+            // 捕捉报告属于工程师私有信息；NoellesRoles 的装备包过滤会让其他存活玩家看不到手持报告。
+            cir.setReturnValue(true);
+            return;
+        }
+
+        if (stack.isOf(SparkStrengthItems.captureDevice())
+                && EngineerRules.isEngineer(GameWorldComponent.KEY.get(holder.getWorld()).getRole(holder))) {
+            // 捕捉装置手持时只对别人隐藏；放置后的实体可见性由实体渲染器按观察者身份判断。
             cir.setReturnValue(true);
             return;
         }

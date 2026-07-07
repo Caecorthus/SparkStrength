@@ -8,6 +8,9 @@
     "professor.ProfessorInventoryScreenMixin",
     "professor.ProfessorSerumCrosshairMixin",
     "detective.CriminologistHudMixin",
+    "engineer.EngineerCaptureReportItemEntityRendererMixin",
+    "engineer.EngineerStunnedKeyBindingMixin",
+    "engineer.EngineerStunnedMouseMixin",
     "veteran.VeteranInstantKnifeMixin"
   ],
   "injectors": {

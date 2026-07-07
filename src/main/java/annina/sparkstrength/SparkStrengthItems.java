@@ -1,7 +1,9 @@
 package annina.sparkstrength;
 
+import annina.sparkstrength.item.CaptureDeviceItem;
 import annina.sparkstrength.item.CapsuleItem;
 import annina.sparkstrength.item.FlashlightItem;
+import annina.sparkstrength.item.PowerRestorationItem;
 import annina.sparkstrength.item.ProfessorSerumItem;
 import annina.sparkstrength.item.TabletItem;
 import annina.sparkstrength.role.professor.ProfessorSerumType;
@@ -18,6 +20,8 @@ public final class SparkStrengthItems {
     public static final Identifier DOORPASSING_POTION_ID = SparkStrength.id("doorpassing_potion");
     public static final Identifier SEDATIVE_ID = SparkStrength.id("sedative");
     public static final Identifier TRUTH_SERUM_ID = SparkStrength.id("truth_serum");
+    public static final Identifier CAPTURE_DEVICE_ID = SparkStrength.id("capture_device");
+    public static final Identifier POWER_RESTORATION_ID = SparkStrength.id("power_restoration");
     private static Item capsule;
     private static Item flashlight;
     private static Item tablet;
@@ -25,6 +29,8 @@ public final class SparkStrengthItems {
     private static Item doorpassingPotion;
     private static Item sedative;
     private static Item truthSerum;
+    private static Item captureDevice;
+    private static Item powerRestoration;
     private static boolean registered;
 
     private SparkStrengthItems() {
@@ -68,6 +74,16 @@ public final class SparkStrengthItems {
                 Registries.ITEM,
                 TRUTH_SERUM_ID,
                 new ProfessorSerumItem(new Item.Settings().maxCount(1), ProfessorSerumType.TRUTH)
+        );
+        captureDevice = Registry.register(
+                Registries.ITEM,
+                CAPTURE_DEVICE_ID,
+                new CaptureDeviceItem(new Item.Settings().maxCount(1))
+        );
+        powerRestoration = Registry.register(
+                Registries.ITEM,
+                POWER_RESTORATION_ID,
+                new PowerRestorationItem(new Item.Settings().maxCount(1))
         );
         registered = true;
     }
@@ -119,5 +135,19 @@ public final class SparkStrengthItems {
             throw new IllegalStateException("SparkStrength items are not registered yet");
         }
         return truthSerum;
+    }
+
+    public static Item captureDevice() {
+        if (captureDevice == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return captureDevice;
+    }
+
+    public static Item powerRestoration() {
+        if (powerRestoration == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return powerRestoration;
     }
 }
