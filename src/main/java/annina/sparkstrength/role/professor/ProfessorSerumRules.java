@@ -22,10 +22,10 @@ public final class ProfessorSerumRules {
     public static final int DOORPASSING_DURATION_TICKS = GameConstants.getInTicks(0, 20);
     public static final int SEDATIVE_DURATION_TICKS = GameConstants.getInTicks(0, 45);
 
-    public static final int SEDATIVE_PRICE = 100;
-    public static final int DOORPASSING_PRICE = 100;
-    public static final int INVISIBILITY_PRICE = 150;
-    public static final int TRUTH_PRICE = 150;
+    public static final int SEDATIVE_PRICE = 50;
+    public static final int DOORPASSING_PRICE = 75;
+    public static final int INVISIBILITY_PRICE = 125;
+    public static final int TRUTH_PRICE = 125;
     public static final int REFRESH_COOLDOWN_PRICE = 50;
 
     public static final String SEDATIVE_ENTRY_ID = "sparkstrength_professor_sedative";
