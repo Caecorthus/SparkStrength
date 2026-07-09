@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Adds SparkStrength hidden items to NoellesRoles' hidden-equipment filter.
+ *
  * 将 SparkStrength 平板、工程师捕捉装置和教授试剂加入 NoellesRoles 的隐藏装备过滤器。
  */
 @Mixin(value = HiddenEquipmentHelper.class, remap = false)
