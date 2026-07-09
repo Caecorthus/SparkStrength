@@ -2,6 +2,7 @@ package annina.sparkstrength.component;
 
 import annina.sparkstrength.component.detective.CriminologistPlayerComponent;
 import annina.sparkstrength.component.detective.CriminologistWorldComponent;
+import annina.sparkstrength.component.demonhunter.DemonHunterSniffPlayerComponent;
 import annina.sparkstrength.component.engineer.EngineerStunnedPlayerComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumTargetComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
@@ -47,6 +48,9 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.beginRegistration(PlayerEntity.class, EngineerStunnedPlayerComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(EngineerStunnedPlayerComponent::new);
+        registry.beginRegistration(PlayerEntity.class, DemonHunterSniffPlayerComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(DemonHunterSniffPlayerComponent::new);
     }
 
     @Override

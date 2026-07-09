@@ -24,6 +24,9 @@ public final class SparkStrengthReplayFormatters {
     public static final Identifier CAPTURE_DEVICE_TRIGGERED = SparkStrength.id("capture_device_triggered");
     public static final Identifier CAPTURE_DEVICE_RELEASED = SparkStrength.id("capture_device_released");
     public static final Identifier CAPTURE_DEVICE_EXPIRED = SparkStrength.id("capture_device_expired");
+    public static final Identifier DEMON_HUNTER_SNIFF_FOUND = SparkStrength.id("demon_hunter_sniff_found");
+    public static final Identifier DEMON_HUNTER_SNIFF_NONE = SparkStrength.id("demon_hunter_sniff_none");
+    public static final Identifier DEMON_HUNTER_SNIFF_REVEALED = SparkStrength.id("demon_hunter_sniff_revealed");
 
     private SparkStrengthReplayFormatters() {
     }
@@ -124,6 +127,41 @@ public final class SparkStrengthReplayFormatters {
                         match,
                         "replay.global.sparkstrength.capture_device_expired"
                 ));
+        ReplayRegistry.registerGlobalEventFormatter(DEMON_HUNTER_SNIFF_FOUND, (event, match, world) -> {
+            var playerInfoCache = ReplayGenerator.getPlayerInfoCache(match);
+            NbtCompound data = event.data();
+            UUID actorUuid = data.containsUuid("actor") ? data.getUuid("actor") : null;
+            if (actorUuid == null) {
+                return null;
+            }
+
+            return Text.translatable(
+                    "replay.global.sparkstrength.demon_hunter_sniff_found",
+                    ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache),
+                    data.getInt("count")
+            );
+        });
+        ReplayRegistry.registerGlobalEventFormatter(DEMON_HUNTER_SNIFF_NONE,
+                (event, match, world) -> onePlayerEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.demon_hunter_sniff_none"
+                ));
+        ReplayRegistry.registerGlobalEventFormatter(DEMON_HUNTER_SNIFF_REVEALED, (event, match, world) -> {
+            var playerInfoCache = ReplayGenerator.getPlayerInfoCache(match);
+            NbtCompound data = event.data();
+            UUID actorUuid = data.containsUuid("actor") ? data.getUuid("actor") : null;
+            UUID targetUuid = data.containsUuid("target") ? data.getUuid("target") : null;
+            if (actorUuid == null || targetUuid == null) {
+                return null;
+            }
+
+            return Text.translatable(
+                    "replay.global.sparkstrength.demon_hunter_sniff_revealed",
+                    ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache),
+                    ReplayGenerator.formatPlayerName(targetUuid, playerInfoCache)
+            );
+        });
     }
 
     private static Text onePlayerEvent(NbtCompound data, dev.doctor4t.wathe.record.GameRecordManager.MatchRecord match, String key) {

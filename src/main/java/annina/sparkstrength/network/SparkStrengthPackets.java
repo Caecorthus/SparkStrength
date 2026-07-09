@@ -2,6 +2,7 @@ package annina.sparkstrength.network;
 
 import annina.sparkstrength.network.criminologist.OpenCriminologistScreenS2CPacket;
 import annina.sparkstrength.network.criminologist.SelectCriminologistTargetC2SPacket;
+import annina.sparkstrength.network.demonhunter.DemonHunterSniffC2SPacket;
 import annina.sparkstrength.network.noisemaker.NoisemakerGlowC2SPacket;
 import annina.sparkstrength.network.professor.ProfessorRemoteFeedC2SPacket;
 import annina.sparkstrength.network.tablet.ApproveSuspectRemovalC2SPacket;
@@ -16,6 +17,7 @@ import annina.sparkstrength.network.veteran.SyncVeteranBlackoutS2CPacket;
 import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.professor.ProfessorSerumService;
 import annina.sparkstrength.role.detective.CriminologistService;
+import annina.sparkstrength.role.demonhunter.DemonHunterSniffService;
 import annina.sparkstrength.tablet.TabletStateService;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -31,6 +33,7 @@ public final class SparkStrengthPackets {
         PayloadTypeRegistry.playC2S().register(NoisemakerGlowC2SPacket.ID, NoisemakerGlowC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(ProfessorRemoteFeedC2SPacket.ID, ProfessorRemoteFeedC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(SelectCriminologistTargetC2SPacket.ID, SelectCriminologistTargetC2SPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(DemonHunterSniffC2SPacket.ID, DemonHunterSniffC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(RequestTabletSnapshotC2SPacket.ID, RequestTabletSnapshotC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(SendTabletChatC2SPacket.ID, SendTabletChatC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(CallTabletMeetingC2SPacket.ID, CallTabletMeetingC2SPacket.CODEC);
@@ -53,6 +56,8 @@ public final class SparkStrengthPackets {
                         payload.victimUuid(),
                         payload.suspectUuid()
                 ));
+        ServerPlayNetworking.registerGlobalReceiver(DemonHunterSniffC2SPacket.ID,
+                (payload, context) -> DemonHunterSniffService.trySniff(context.player()));
         ServerPlayNetworking.registerGlobalReceiver(RequestTabletSnapshotC2SPacket.ID,
                 (payload, context) -> TabletStateService.syncTo(context.player()));
         ServerPlayNetworking.registerGlobalReceiver(SendTabletChatC2SPacket.ID,

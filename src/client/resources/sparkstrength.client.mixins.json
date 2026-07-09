@@ -8,6 +8,7 @@
     "professor.ProfessorInventoryScreenMixin",
     "professor.ProfessorSerumCrosshairMixin",
     "detective.CriminologistHudMixin",
+    "demonhunter.DemonHunterSniffHudMixin",
     "engineer.EngineerCaptureReportItemEntityRendererMixin",
     "engineer.EngineerStunnedKeyBindingMixin",
     "engineer.EngineerStunnedMouseMixin",

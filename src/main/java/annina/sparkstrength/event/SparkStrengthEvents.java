@@ -2,6 +2,7 @@ package annina.sparkstrength.event;
 
 import annina.sparkstrength.component.detective.CriminologistPlayerComponent;
 import annina.sparkstrength.component.detective.CriminologistWorldComponent;
+import annina.sparkstrength.component.demonhunter.DemonHunterSniffPlayerComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowTargetComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumTargetComponent;
@@ -10,6 +11,7 @@ import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.attendant.AttendantFlashlightService;
 import annina.sparkstrength.role.corruptcop.CorruptCopFeatureService;
 import annina.sparkstrength.role.detective.CriminologistService;
+import annina.sparkstrength.role.demonhunter.DemonHunterSniffService;
 import annina.sparkstrength.role.economy.RoleEconomyService;
 import annina.sparkstrength.role.engineer.EngineerCaptureDeviceService;
 import annina.sparkstrength.role.engineer.EngineerPowerRestorationService;
@@ -57,6 +59,7 @@ public final class SparkStrengthEvents {
                 RoleEconomyService.assignForRole(serverPlayer, role);
                 AttendantFlashlightService.assignForRole(serverPlayer, role);
                 CriminologistService.assignForRole(serverPlayer, role);
+                DemonHunterSniffService.assignForRole(serverPlayer, role);
                 VeteranKnifeService.assignForRole(serverPlayer, role);
             }
         });
@@ -69,6 +72,7 @@ public final class SparkStrengthEvents {
             ProfessorSerumUserComponent.KEY.get(player).reset();
             ProfessorSerumTargetComponent.KEY.get(player).reset();
             CriminologistPlayerComponent.KEY.get(player).clearAll();
+            DemonHunterSniffPlayerComponent.KEY.get(player).clearSniff();
             if (player instanceof ServerPlayerEntity serverPlayer) {
                 EngineerCaptureDeviceService.clearPlayer(serverPlayer);
                 VeteranKnifeService.reset(serverPlayer);
@@ -93,6 +97,7 @@ public final class SparkStrengthEvents {
                     EngineerCaptureDeviceService.clearPlayer(player);
                     ProfessorSerumUserComponent.KEY.get(player).reset();
                     ProfessorSerumTargetComponent.KEY.get(player).reset();
+                    DemonHunterSniffService.clearPlayer(player);
                     VeteranKnifeService.reset(player);
                 }
             }
