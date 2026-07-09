@@ -16,6 +16,7 @@ import annina.sparkstrength.role.economy.RoleEconomyService;
 import annina.sparkstrength.role.engineer.EngineerCaptureDeviceService;
 import annina.sparkstrength.role.engineer.EngineerPowerRestorationService;
 import annina.sparkstrength.role.engineer.EngineerShopService;
+import annina.sparkstrength.role.poisoner.PoisonerEconomyService;
 import annina.sparkstrength.role.professor.ProfessorSerumShopService;
 import annina.sparkstrength.role.toxicologist.ToxicologistCapsuleShop;
 import annina.sparkstrength.role.attendant.FlashlightBlackoutService;
@@ -47,6 +48,7 @@ public final class SparkStrengthEvents {
         RoleEconomyService.register();
         EngineerPowerRestorationService.register();
         EngineerShopService.register();
+        PoisonerEconomyService.register();
         ProfessorSerumShopService.register();
         ToxicologistCapsuleShop.register();
         TabletShopService.register();
