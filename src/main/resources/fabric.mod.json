@@ -21,6 +21,9 @@
     "dynamiclights": [
       "annina.sparkstrength.client.role.attendant.FlashlightDynamicLightsInitializer"
     ],
+    "voicechat": [
+      "annina.sparkstrength.voice.SparkStrengthVoiceChatPlugin"
+    ],
     "cardinal-components": [
       "annina.sparkstrength.component.SparkStrengthComponents"
     ]
@@ -35,8 +38,10 @@
       "sparkstrength:demon_hunter_sniff",
       "sparkstrength:veteran_knife",
       "sparkstrength:engineer_stunned",
+      "sparkstrength:morph_mark_player",
       "sparkstrength:criminologist_world",
-      "sparkstrength:tablet_world"
+      "sparkstrength:tablet_world",
+      "sparkstrength:morph_body_disguise_world"
     ]
   },
   "mixins": [

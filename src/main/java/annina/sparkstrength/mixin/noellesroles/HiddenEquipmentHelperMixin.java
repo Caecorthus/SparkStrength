@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  *
- * 将 SparkStrength 平板、工程师捕捉装置和教授试剂加入 NoellesRoles 的隐藏装备过滤器。
+ * 将 SparkStrength 平板、工程师捕捉装置、教授试剂和变形怪道具加入 NoellesRoles 的隐藏装备过滤器。
  */
 @Mixin(value = HiddenEquipmentHelper.class, remap = false)
 public abstract class HiddenEquipmentHelperMixin {
@@ -49,6 +49,12 @@ public abstract class HiddenEquipmentHelperMixin {
                 || stack.isOf(SparkStrengthItems.truthSerum()))
                 && ProfessorSerumRules.isProfessor(GameWorldComponent.KEY.get(holder.getWorld()).getRole(holder))) {
             // 用户需求是“教授手持四种试剂时不可见”，所以这里额外校验持有者确实是教授。
+            cir.setReturnValue(true);
+            return;
+        }
+
+        if (stack.isOf(SparkStrengthItems.morphReagent()) || stack.isOf(SparkStrengthItems.morphDevice())) {
+            // 变形试剂和遥控器是 Morphling 的核心情报道具；只要被装备隐藏系统扫描到就不展示给其他存活玩家。
             cir.setReturnValue(true);
         }
     }

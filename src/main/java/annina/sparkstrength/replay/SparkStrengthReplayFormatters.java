@@ -7,6 +7,7 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -27,6 +28,10 @@ public final class SparkStrengthReplayFormatters {
     public static final Identifier DEMON_HUNTER_SNIFF_FOUND = SparkStrength.id("demon_hunter_sniff_found");
     public static final Identifier DEMON_HUNTER_SNIFF_NONE = SparkStrength.id("demon_hunter_sniff_none");
     public static final Identifier DEMON_HUNTER_SNIFF_REVEALED = SparkStrength.id("demon_hunter_sniff_revealed");
+    public static final Identifier MORPH_REAGENT_SAMPLED = SparkStrength.id("morph_reagent_sampled");
+    public static final Identifier MORPH_REAGENT_MARKED = SparkStrength.id("morph_reagent_marked");
+    public static final Identifier MORPH_MARK_TRIGGERED = SparkStrength.id("morph_mark_triggered");
+    public static final Identifier MORPH_MARK_ENDED = SparkStrength.id("morph_mark_ended");
 
     private SparkStrengthReplayFormatters() {
     }
@@ -162,6 +167,60 @@ public final class SparkStrengthReplayFormatters {
                     ReplayGenerator.formatPlayerName(targetUuid, playerInfoCache)
             );
         });
+
+        ReplayRegistry.registerGlobalEventFormatter(MORPH_REAGENT_SAMPLED, (event, match, world) -> {
+            var playerInfoCache = ReplayGenerator.getPlayerInfoCache(match);
+            NbtCompound data = event.data();
+            UUID actorUuid = data.containsUuid("actor") ? data.getUuid("actor") : null;
+            UUID sampleUuid = data.containsUuid("sample") ? data.getUuid("sample") : null;
+            if (actorUuid == null || sampleUuid == null) {
+                return null;
+            }
+
+            return Text.translatable(
+                    "replay.global.sparkstrength.morph_reagent_sampled",
+                    ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache),
+                    formatPlayerNameWithFallback(sampleUuid, data.getString("sample_name"), playerInfoCache)
+            );
+        });
+        ReplayRegistry.registerGlobalEventFormatter(MORPH_REAGENT_MARKED, (event, match, world) -> {
+            var playerInfoCache = ReplayGenerator.getPlayerInfoCache(match);
+            NbtCompound data = event.data();
+            UUID actorUuid = data.containsUuid("actor") ? data.getUuid("actor") : null;
+            UUID sampleUuid = data.containsUuid("sample") ? data.getUuid("sample") : null;
+            UUID targetUuid = data.containsUuid("target") ? data.getUuid("target") : null;
+            if (actorUuid == null || sampleUuid == null || targetUuid == null) {
+                return null;
+            }
+
+            return Text.translatable(
+                    "replay.global.sparkstrength.morph_reagent_marked",
+                    ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache),
+                    formatPlayerNameWithFallback(sampleUuid, data.getString("sample_name"), playerInfoCache),
+                    ReplayGenerator.formatPlayerName(targetUuid, playerInfoCache)
+            );
+        });
+        ReplayRegistry.registerGlobalEventFormatter(MORPH_MARK_TRIGGERED, (event, match, world) -> {
+            var playerInfoCache = ReplayGenerator.getPlayerInfoCache(match);
+            NbtCompound data = event.data();
+            UUID actorUuid = data.containsUuid("actor") ? data.getUuid("actor") : null;
+            UUID sampleUuid = data.containsUuid("sample") ? data.getUuid("sample") : null;
+            if (actorUuid == null || sampleUuid == null) {
+                return null;
+            }
+
+            return Text.translatable(
+                    "replay.global.sparkstrength.morph_mark_triggered",
+                    ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache),
+                    formatPlayerNameWithFallback(sampleUuid, data.getString("sample_name"), playerInfoCache)
+            );
+        });
+        ReplayRegistry.registerGlobalEventFormatter(MORPH_MARK_ENDED,
+                (event, match, world) -> onePlayerEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.morph_mark_ended"
+                ));
     }
 
     private static Text onePlayerEvent(NbtCompound data, dev.doctor4t.wathe.record.GameRecordManager.MatchRecord match, String key) {
@@ -171,5 +230,19 @@ public final class SparkStrengthReplayFormatters {
             return null;
         }
         return Text.translatable(key, ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache));
+    }
+
+    private static Text formatPlayerNameWithFallback(
+            UUID uuid,
+            String fallbackName,
+            Map<UUID, ReplayGenerator.PlayerInfo> playerInfoCache
+    ) {
+        if (playerInfoCache.containsKey(uuid)) {
+            return ReplayGenerator.formatPlayerName(uuid, playerInfoCache);
+        }
+        if (fallbackName != null && !fallbackName.isBlank()) {
+            return Text.literal(fallbackName);
+        }
+        return ReplayGenerator.formatPlayerName(uuid, playerInfoCache);
     }
 }

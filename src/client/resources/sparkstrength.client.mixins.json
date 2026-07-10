@@ -12,6 +12,13 @@
     "engineer.EngineerCaptureReportItemEntityRendererMixin",
     "engineer.EngineerStunnedKeyBindingMixin",
     "engineer.EngineerStunnedMouseMixin",
+    "morphling.MorphlingCapeRendererMixin",
+    "morphling.MorphlingElytraRendererMixin",
+    "morphling.MorphlingPlayerAppearanceMixin",
+    "morphling.MorphlingPlayerBodyRendererMixin",
+    "morphling.MorphlingReagentCrosshairMixin",
+    "morphling.MorphlingRendererDispatchMixin",
+    "morphling.MorphlingRoleNameRendererMixin",
     "veteran.VeteranInstantKnifeMixin"
   ],
   "injectors": {

@@ -3,6 +3,8 @@ package annina.sparkstrength;
 import annina.sparkstrength.item.CaptureDeviceItem;
 import annina.sparkstrength.item.CapsuleItem;
 import annina.sparkstrength.item.FlashlightItem;
+import annina.sparkstrength.item.MorphDeviceItem;
+import annina.sparkstrength.item.MorphReagentItem;
 import annina.sparkstrength.item.PowerRestorationItem;
 import annina.sparkstrength.item.ProfessorSerumItem;
 import annina.sparkstrength.item.TabletItem;
@@ -22,6 +24,8 @@ public final class SparkStrengthItems {
     public static final Identifier TRUTH_SERUM_ID = SparkStrength.id("truth_serum");
     public static final Identifier CAPTURE_DEVICE_ID = SparkStrength.id("capture_device");
     public static final Identifier POWER_RESTORATION_ID = SparkStrength.id("power_restoration");
+    public static final Identifier MORPH_REAGENT_ID = SparkStrength.id("morph_reagent");
+    public static final Identifier MORPH_DEVICE_ID = SparkStrength.id("morph_device");
     private static Item capsule;
     private static Item flashlight;
     private static Item tablet;
@@ -31,6 +35,8 @@ public final class SparkStrengthItems {
     private static Item truthSerum;
     private static Item captureDevice;
     private static Item powerRestoration;
+    private static Item morphReagent;
+    private static Item morphDevice;
     private static boolean registered;
 
     private SparkStrengthItems() {
@@ -84,6 +90,16 @@ public final class SparkStrengthItems {
                 Registries.ITEM,
                 POWER_RESTORATION_ID,
                 new PowerRestorationItem(new Item.Settings().maxCount(1))
+        );
+        morphReagent = Registry.register(
+                Registries.ITEM,
+                MORPH_REAGENT_ID,
+                new MorphReagentItem(new Item.Settings().maxCount(1))
+        );
+        morphDevice = Registry.register(
+                Registries.ITEM,
+                MORPH_DEVICE_ID,
+                new MorphDeviceItem(new Item.Settings().maxCount(1))
         );
         registered = true;
     }
@@ -149,5 +165,19 @@ public final class SparkStrengthItems {
             throw new IllegalStateException("SparkStrength items are not registered yet");
         }
         return powerRestoration;
+    }
+
+    public static Item morphReagent() {
+        if (morphReagent == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return morphReagent;
+    }
+
+    public static Item morphDevice() {
+        if (morphDevice == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return morphDevice;
     }
 }
