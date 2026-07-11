@@ -1,9 +1,8 @@
 package annina.sparkstrength.component.engineer;
 
 import annina.sparkstrength.SparkStrength;
-import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
+import annina.sparkstrength.role.engineer.EngineerCaptureDeviceService;
 import dev.doctor4t.wathe.game.GameFunctions;
-import dev.doctor4t.wathe.record.GameRecordManager;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.RegistryWrapper;
@@ -70,6 +69,7 @@ public final class EngineerStunnedPlayerComponent implements AutoSyncedComponent
             return;
         }
 
+        // Server authority keeps clearing velocity and restoring the lock point despite late movement packets.
         // 服务端是最终权威：即使客户端还有输入或移动包到达，也持续清速度并把位置拉回捕捉点。
         player.setVelocity(Vec3d.ZERO);
         player.velocityModified = true;
@@ -82,12 +82,7 @@ public final class EngineerStunnedPlayerComponent implements AutoSyncedComponent
         if (stunTicks <= 0) {
             stunTicks = 0;
             if (player instanceof ServerPlayerEntity serverPlayer) {
-                GameRecordManager.recordGlobalEvent(
-                        serverPlayer.getServerWorld(),
-                        SparkStrengthReplayFormatters.CAPTURE_DEVICE_RELEASED,
-                        serverPlayer,
-                        null
-                );
+                EngineerCaptureDeviceService.recordReleased(serverPlayer);
             }
         }
         sync();

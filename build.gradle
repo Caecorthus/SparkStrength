@@ -81,6 +81,9 @@ dependencies {
     modRuntimeOnly "maven.modrinth:simple-voice-chat:fabric-${project.voicechat_version}"
     modRuntimeOnly "de.maxhenkel.voicechat:voicechat-api:${project.voicechat_api_version}:fabric-stub"
 
+    testImplementation "org.junit.jupiter:junit-jupiter:5.10.3"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+
 }
 
 tasks.named("compileClientJava") {
@@ -114,9 +117,93 @@ tasks.withType(JavaCompile).configureEach {
     it.options.release.set(targetJavaVersion)
 }
 
+tasks.test {
+    useJUnitPlatform()
+}
+
+tasks.register("verifyArchitecture") {
+    group = "verification"
+    description = "Checks architecture docs, compatibility targets, and stable Engineer metadata."
+
+    inputs.files(
+            "ARCHITECTURE.md",
+            "ARCHITECTURE_LOGS.md",
+            "CONTEXT.md",
+            "src/main/resources/fabric.mod.json",
+            "src/main/java/annina/sparkstrength/compat/SparkTraitsCompat.java",
+            "src/main/java/annina/sparkstrength/SparkStrengthItems.java",
+            "src/main/java/annina/sparkstrength/SparkStrengthEntities.java",
+            "src/main/java/annina/sparkstrength/replay/SparkStrengthReplayFormatters.java",
+            "src/test/java/annina/sparkstrength/role/engineer/EngineerRulesTest.java"
+    )
+
+    doLast {
+        def requireFile = { String path ->
+            if (!file(path).isFile()) {
+                throw new GradleException("Missing required architecture file: ${path}")
+            }
+        }
+        def requireText = { String path, String snippet ->
+            requireFile(path)
+            if (!file(path).getText("UTF-8").contains(snippet)) {
+                throw new GradleException("Missing architecture contract '${snippet}' in ${path}")
+            }
+        }
+
+        ["ARCHITECTURE.md", "ARCHITECTURE_LOGS.md", "CONTEXT.md"].each(requireFile)
+        requireFile("src/test/java/annina/sparkstrength/role/engineer/EngineerRulesTest.java")
+        if (file("AGENTS.md").isFile()) {
+            requireText("AGENTS.md", "Before changing code, read [ARCHITECTURE.md](ARCHITECTURE.md)")
+        }
+        requireText(
+                "src/main/java/annina/sparkstrength/compat/SparkTraitsCompat.java",
+                "dev.caecorthus.sparktraits.api.SparkTraitsApi"
+        )
+        requireText(
+                "src/main/java/annina/sparkstrength/compat/SparkTraitsCompat.java",
+                "getMethod(\"hasActiveTrait\", PlayerEntity.class, Identifier.class)"
+        )
+
+        def forbiddenSparkTraitsPackages = [
+                "dev.caecorthus.sparktraits.SparkTraits",
+                "dev.caecorthus.sparktraits.client.",
+                "dev.caecorthus.sparktraits.command.",
+                "dev.caecorthus.sparktraits.component.",
+                "dev.caecorthus.sparktraits.impl.",
+                "dev.caecorthus.sparktraits.mixin.",
+                "dev.caecorthus.sparktraits.net.",
+                "dev.caecorthus.sparktraits.voice."
+        ]
+        def internalTraitReferences = fileTree("src") {
+            include "**/*.java"
+        }.findAll { sourceFile ->
+            def sourceText = sourceFile.getText("UTF-8")
+            forbiddenSparkTraitsPackages.any { sourceText.contains(it) }
+        }
+        if (!internalTraitReferences.isEmpty()) {
+            throw new GradleException("Internal SparkTraits references are forbidden: ${internalTraitReferences}")
+        }
+
+        requireText("src/main/resources/fabric.mod.json", "sparkstrength:engineer_stunned")
+        requireText("src/main/java/annina/sparkstrength/SparkStrengthItems.java", "SparkStrength.id(\"capture_device\")")
+        requireText("src/main/java/annina/sparkstrength/SparkStrengthItems.java", "SparkStrength.id(\"power_restoration\")")
+        requireText("src/main/java/annina/sparkstrength/SparkStrengthEntities.java", "SparkStrength.id(\"capture_device\")")
+        [
+                "capture_device_placed",
+                "capture_device_triggered",
+                "capture_device_released",
+                "capture_device_expired"
+        ].each { replayId ->
+            requireText(
+                    "src/main/java/annina/sparkstrength/replay/SparkStrengthReplayFormatters.java",
+                    "SparkStrength.id(\"${replayId}\")"
+            )
+        }
+    }
+}
+
 tasks.named("check") {
-    setDependsOn([])
-    dependsOn tasks.matching { it.name == "validateAccessWidener" }
+    dependsOn tasks.named("verifyArchitecture")
 }
 
 java {

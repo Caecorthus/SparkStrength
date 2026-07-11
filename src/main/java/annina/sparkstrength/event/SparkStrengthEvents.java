@@ -10,6 +10,7 @@ import annina.sparkstrength.component.professor.ProfessorSerumTargetComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
 import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.attendant.AttendantFlashlightService;
+import annina.sparkstrength.role.corruptcop.CorruptCopAbilityService;
 import annina.sparkstrength.role.corruptcop.CorruptCopFeatureService;
 import annina.sparkstrength.role.detective.CriminologistService;
 import annina.sparkstrength.role.demonhunter.DemonHunterSniffService;
@@ -63,6 +64,7 @@ public final class SparkStrengthEvents {
 
         RoleAssigned.EVENT.register((player, role) -> {
             if (player instanceof ServerPlayerEntity serverPlayer) {
+                CorruptCopAbilityService.reset(serverPlayer);
                 RoleEconomyService.assignForRole(serverPlayer, role);
                 AttendantFlashlightService.assignForRole(serverPlayer, role);
                 CriminologistService.assignForRole(serverPlayer, role);
@@ -82,6 +84,7 @@ public final class SparkStrengthEvents {
             CriminologistPlayerComponent.KEY.get(player).clearAll();
             DemonHunterSniffPlayerComponent.KEY.get(player).clearSniff();
             if (player instanceof ServerPlayerEntity serverPlayer) {
+                CorruptCopAbilityService.reset(serverPlayer);
                 EngineerCaptureDeviceService.clearPlayer(serverPlayer);
                 MorphlingService.reset(serverPlayer);
                 VeteranKnifeService.reset(serverPlayer);
@@ -104,6 +107,7 @@ public final class SparkStrengthEvents {
                 TabletStateService.clearRoundState(serverWorld);
                 VeteranBlackoutService.clear(serverWorld);
                 for (ServerPlayerEntity player : serverWorld.getPlayers()) {
+                    CorruptCopAbilityService.reset(player);
                     CriminologistPlayerComponent.KEY.get(player).clearAll();
                     EngineerCaptureDeviceService.clearPlayer(player);
                     MorphlingService.reset(player);

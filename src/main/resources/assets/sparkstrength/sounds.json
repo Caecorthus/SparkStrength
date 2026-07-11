@@ -1,0 +1,12 @@
+{
+  "music.takediskrush": {
+    "sounds": [
+      {
+        "name": "sparkstrength:music/takediskrush",
+        "stream": true,
+        "volume": 0.9
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.music.takediskrush"
+  }
+}

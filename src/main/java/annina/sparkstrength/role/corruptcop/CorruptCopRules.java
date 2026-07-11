@@ -4,6 +4,8 @@ import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.DoorInteraction;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -13,8 +15,11 @@ import org.jetbrains.annotations.Nullable;
 public final class CorruptCopRules {
     public static final Identifier CORRUPT_COP_ID = Identifier.of("noellesroles", "corrupt_cop");
     public static final Identifier NEUTRAL_MASTER_KEY_ID = Identifier.of("noellesroles", "neutral_master_key");
+    public static final int ABILITY_COLOR = 0x193264;
+    public static final float LATERAL_SPEED_MULTIPLIER = 1.75F;
     public static final int INSTINCT_PRIORITY = 90;
     public static final int NEUTRAL_MASTER_KEY_COOLDOWN_TICKS = 200;
+    private static final double NORMALIZED_MOVEMENT_INPUT_EPSILON = 1.0E-7D;
 
     private CorruptCopRules() {
     }
@@ -66,6 +71,44 @@ public final class CorruptCopRules {
 
     public static boolean isCorruptCop(Role role) {
         return role != null && CORRUPT_COP_ID.equals(role.identifier());
+    }
+
+    public static boolean nextAbilityActive(boolean isCorruptCop, boolean currentlyActive) {
+        return isCorruptCop && !currentlyActive;
+    }
+
+    public static Vec3d lateralVelocityBonus(
+            Vec3d movementInput,
+            float speed,
+            float yaw,
+            boolean isCorruptCop,
+            boolean abilityActive,
+            boolean aliveSurvival
+    ) {
+        if (!isCorruptCop || !abilityActive || !aliveSurvival || movementInput == null) {
+            return Vec3d.ZERO;
+        }
+
+        double lengthSquared = movementInput.lengthSquared();
+        if (lengthSquared < NORMALIZED_MOVEMENT_INPUT_EPSILON) {
+            return Vec3d.ZERO;
+        }
+
+        Vec3d normalizedInput = lengthSquared > 1.0D ? movementInput.normalize() : movementInput;
+        double lateralInput = normalizedInput.x;
+        if (Math.abs(lateralInput) < NORMALIZED_MOVEMENT_INPUT_EPSILON) {
+            return Vec3d.ZERO;
+        }
+
+        // Vanilla already applied one lateral share; add only the remaining multiplier after normalization.
+        // 原版已经应用了一份横移速度；归一化之后只补上剩余倍率。
+        double bonusSpeed = lateralInput * speed * (LATERAL_SPEED_MULTIPLIER - 1.0D);
+        float radians = yaw * MathHelper.RADIANS_PER_DEGREE;
+        return new Vec3d(
+                bonusSpeed * MathHelper.cos(radians),
+                0.0D,
+                bonusSpeed * MathHelper.sin(radians)
+        );
     }
 
     private static boolean canNeutralMasterKeyOpen(DoorInteraction.DoorType doorType, boolean requiresKey) {

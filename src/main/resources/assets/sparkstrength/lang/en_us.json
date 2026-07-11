@@ -1,4 +1,8 @@
 {
+  "tip.sparkstrength.corrupt_cop.active": "Arrogant ASF: ON (%s to turn off)",
+  "tip.sparkstrength.corrupt_cop.inactive": "Arrogant ASF: OFF (%s to turn on)",
+  "tip.sparkstrength.corrupt_cop.music_resume_remaining": "Music resume remaining: %s s",
+  "subtitle.sparkstrength.music.takediskrush": "TAKEDISKRUSH plays.",
   "item.sparkstrength.capsule": "Capsule",
   "item.sparkstrength.capsule.filled": "Capsule (%s)",
   "item.sparkstrength.capsule.poisoned_content": "poisoned %s",

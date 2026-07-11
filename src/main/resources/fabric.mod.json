@@ -30,6 +30,7 @@
   },
   "custom": {
     "cardinal-components": [
+      "sparkstrength:corrupt_cop_ability",
       "sparkstrength:noisemaker_glow_user",
       "sparkstrength:noisemaker_glow_target",
       "sparkstrength:professor_serum_user",

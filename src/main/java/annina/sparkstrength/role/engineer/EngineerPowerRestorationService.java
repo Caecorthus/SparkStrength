@@ -103,6 +103,8 @@ public final class EngineerPowerRestorationService {
     private static void applyShortBlackoutCooldown(List<ServerPlayerEntity> aliveKillers) {
         for (ServerPlayerEntity killer : aliveKillers) {
             PlayerShopComponent shop = PlayerShopComponent.KEY.get(killer);
+            // Wathe has no public cooldown setter; the approved Adapter targets only its exact cooldown map.
+            // Wathe 没有公开冷却写入接口；获批 Adapter 只访问其精确 cooldown map。
             ((PlayerShopComponentAccessor) shop).sparkstrength$getCooldowns().put(
                     EngineerRules.WATHE_BLACKOUT_ENTRY_ID,
                     EngineerRules.BLACKOUT_COOLDOWN_AFTER_RESTORATION_TICKS

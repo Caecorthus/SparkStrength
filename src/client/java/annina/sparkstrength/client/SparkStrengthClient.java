@@ -2,6 +2,7 @@ package annina.sparkstrength.client;
 
 import annina.sparkstrength.client.item.CapsuleClient;
 import annina.sparkstrength.client.role.corruptcop.CorruptCopClientHooks;
+import annina.sparkstrength.client.role.corruptcop.CorruptCopMusicController;
 import annina.sparkstrength.client.role.demonhunter.DemonHunterSniffClientHooks;
 import annina.sparkstrength.client.role.detective.CriminologistClientHooks;
 import annina.sparkstrength.client.role.economy.RoleEconomyClientHooks;
@@ -20,6 +21,7 @@ import annina.sparkstrength.network.veteran.SyncVeteranBlackoutS2CPacket;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
 public final class SparkStrengthClient implements ClientModInitializer {
     @Override
@@ -34,6 +36,7 @@ public final class SparkStrengthClient implements ClientModInitializer {
         RoleEconomyClientHooks.register();
         TabletClientHighlights.register();
         VeteranClientHooks.register();
+        ClientTickEvents.END_CLIENT_TICK.register(CorruptCopMusicController::tick);
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
                 VeteranClientHooks.resetBlackoutState());

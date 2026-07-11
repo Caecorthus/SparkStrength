@@ -1,4 +1,8 @@
 {
+  "tip.sparkstrength.corrupt_cop.active": "展示豪度：开启（按 %s 关闭）",
+  "tip.sparkstrength.corrupt_cop.inactive": "展示豪度：关闭（按 %s 开启）",
+  "tip.sparkstrength.corrupt_cop.music_resume_remaining": "音乐续播剩余时间：%s 秒",
+  "subtitle.sparkstrength.music.takediskrush": "TAKEDISKRUSH 响起。",
   "item.sparkstrength.capsule": "胶囊",
   "item.sparkstrength.capsule.filled": "胶囊（%s）",
   "item.sparkstrength.capsule.poisoned_content": "有毒的%s",

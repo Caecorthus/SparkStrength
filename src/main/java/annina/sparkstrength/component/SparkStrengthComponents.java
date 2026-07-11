@@ -1,5 +1,6 @@
 package annina.sparkstrength.component;
 
+import annina.sparkstrength.component.corruptcop.CorruptCopAbilityComponent;
 import annina.sparkstrength.component.detective.CriminologistPlayerComponent;
 import annina.sparkstrength.component.detective.CriminologistWorldComponent;
 import annina.sparkstrength.component.demonhunter.DemonHunterSniffPlayerComponent;
@@ -29,6 +30,9 @@ import org.ladysnake.cca.api.v3.world.WorldComponentInitializer;
 public class SparkStrengthComponents implements EntityComponentInitializer, WorldComponentInitializer {
     @Override
     public void registerEntityComponentFactories(@NotNull EntityComponentFactoryRegistry registry) {
+        registry.beginRegistration(PlayerEntity.class, CorruptCopAbilityComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(CorruptCopAbilityComponent::new);
         registry.beginRegistration(PlayerEntity.class, NoisemakerGlowUserComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(NoisemakerGlowUserComponent::new);
