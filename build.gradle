@@ -131,8 +131,7 @@ tasks.register("verifyArchitecture") {
             "src/main/java/annina/sparkstrength/compat/SparkTraitsCompat.java",
             "src/main/java/annina/sparkstrength/SparkStrengthItems.java",
             "src/main/java/annina/sparkstrength/SparkStrengthEntities.java",
-            "src/main/java/annina/sparkstrength/replay/SparkStrengthReplayFormatters.java",
-            "src/test/java/annina/sparkstrength/role/engineer/EngineerRulesTest.java"
+            "src/main/java/annina/sparkstrength/replay/SparkStrengthReplayFormatters.java"
     )
 
     doLast {
@@ -149,7 +148,6 @@ tasks.register("verifyArchitecture") {
         }
 
         requireFile("CONTEXT.md")
-        requireFile("src/test/java/annina/sparkstrength/role/engineer/EngineerRulesTest.java")
         requireText(
                 "src/main/java/annina/sparkstrength/compat/SparkTraitsCompat.java",
                 "dev.caecorthus.sparktraits.api.SparkTraitsApi"

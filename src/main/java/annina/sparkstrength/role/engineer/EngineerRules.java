@@ -12,12 +12,6 @@ import org.jetbrains.annotations.Nullable;
  * 其它物品、实体、商店和回放逻辑都读取这些常量。</p>
  */
 public final class EngineerRules {
-    public enum CaptureTickDecision {
-        WAIT,
-        TRIGGER,
-        EXPIRE
-    }
-
     public static final Identifier ENGINEER_ID = Identifier.of("noellesroles", "engineer");
 
     public static final String CAPTURE_DEVICE_ENTRY_ID = "sparkstrength_capture_device";
@@ -38,32 +32,5 @@ public final class EngineerRules {
 
     public static boolean isEngineer(@Nullable Role role) {
         return role != null && ENGINEER_ID.equals(role.identifier());
-    }
-
-    /**
-     * Applies the complete capture-candidate policy to Minecraft facts supplied by the Adapter.
-     * 对 Adapter 提供的 Minecraft 状态应用完整的捕捉候选规则。
-     */
-    public static boolean isCaptureCandidate(
-            boolean isOwner,
-            boolean playingAndAlive,
-            boolean aliveAndSurvival,
-            double squaredDistance
-    ) {
-        return !isOwner
-                && playingAndAlive
-                && aliveAndSurvival
-                && squaredDistance <= CAPTURE_RADIUS_SQUARED;
-    }
-
-    /**
-     * Keeps expiry authoritative when a player enters on the same tick as the lifetime boundary.
-     * 当玩家恰好在寿命边界 tick 进入时，仍以装置过期为优先。
-     */
-    public static CaptureTickDecision decideCaptureTick(int lifetimeTicks, boolean hasCaptureCandidates) {
-        if (lifetimeTicks >= CAPTURE_MAX_LIFETIME_TICKS) {
-            return CaptureTickDecision.EXPIRE;
-        }
-        return hasCaptureCandidates ? CaptureTickDecision.TRIGGER : CaptureTickDecision.WAIT;
     }
 }

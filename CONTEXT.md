@@ -6,24 +6,21 @@ Use this file as a short handoff for the current code and verified contracts.
 
 - Repository baseline: `b223d98` (`Release 1.0.3`).
 - Published Engineer feature commit: `85969bf` (`engineer strength`).
-- The 2026-07-09 architecture and Engineer deepening described below is a
-  working-tree slice until it receives its own commit; do not attribute it to
-  `b223d98`.
 - Current architecture includes role-owned Detective, Toxicologist, Attendant,
   Corrupt Cop, Noisemaker, Professor, Veteran, Engineer, shared economy, and
   tablet Modules.
 - SparkFactionAPI is not a build, metadata, import, or runtime dependency.
 
-## Engineer Ownership
+## Engineer Responsibility Split
 
-- `role/engineer/EngineerRules`: ids, prices, radius/timing, candidate policy,
-  and capture tick decisions.
-- `role/engineer/EngineerCaptureDeviceService`: placement, spawn, candidate
-  lookup, stun/report effects, sounds, replay, and round cleanup.
-- `entity/CaptureDeviceEntity`: DataTracker/NBT/tick Adapter only.
-- `item/CaptureDeviceItem`: block-use Adapter only.
+- `role/engineer/EngineerRules`: ids, prices, radius, and timing values.
+- `item/CaptureDeviceItem`: placement, spawn, placement sound/replay, and item
+  consumption.
+- `entity/CaptureDeviceEntity`: tracked/NBT state, capture lifecycle and
+  candidate lookup, stun/report effects, sounds, and trigger/expiry replay.
 - `component/engineer/EngineerStunnedPlayerComponent`: synced lock state,
-  persistence, and server lock enforcement.
+  persistence, server lock enforcement, and release replay.
+- `role/engineer/EngineerCaptureDeviceService`: player and round cleanup only.
 - `role/engineer/EngineerPowerRestorationService`: blackout reset, killer payout,
   and Wathe `blackout` cooldown update.
 - `mixin/wathe/PlayerShopComponentAccessor`: exact private
@@ -54,11 +51,9 @@ Use this file as a short handoff for the current code and verified contracts.
 
 ## Verification
 
-Use Java 21 and run focused rules first, then the architecture gate, then the
-sequential clean build:
+Use Java 21 and run the architecture gate, then the sequential clean build:
 
 ```bash
-./gradlew test --tests annina.sparkstrength.role.engineer.EngineerRulesTest --no-daemon --no-watch-fs --console=plain --no-parallel --max-workers=1
 ./gradlew verifyArchitecture --no-daemon --no-watch-fs --console=plain
 ./gradlew clean build --no-daemon --no-watch-fs --console=plain --no-parallel --max-workers=1
 git diff --check

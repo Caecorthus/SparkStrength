@@ -1,22 +1,33 @@
 package annina.sparkstrength.item;
 
-import annina.sparkstrength.role.engineer.EngineerCaptureDeviceService;
+import annina.sparkstrength.SparkStrengthEntities;
+import annina.sparkstrength.entity.CaptureDeviceEntity;
+import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
+import dev.doctor4t.wathe.record.GameRecordManager;
 import dev.doctor4t.wathe.util.AdventureUsable;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemUsageContext;
 import net.minecraft.item.tooltip.TooltipType;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.World;
 
 import java.util.List;
 
 /**
- * Minecraft item Adapter for the Engineer capture-device domain service.
- * 工程师捕捉装置领域服务的 Minecraft 物品 Adapter。
+ * Engineer capture-device item and placement entrypoint.
+ * 工程师捕捉装置物品。
  *
- * <p>The service owns placement policy, spawning, sounds, replay, detection, stun, and reports.
- * 服务拥有放置规则、生成、声音、回放、检测、定身与报告。</p>
+ * <p>The item owns placement and spawning; the placed entity owns subsequent detection and effects.
+ * <p>物品只负责“能否放置”和“生成实体”；后续检测、定身、报告与回放都交给
+ * {@link CaptureDeviceEntity}，这样地板/天花板放置出来的装置使用同一套服务器权威逻辑。</p>
  */
 public final class CaptureDeviceItem extends Item implements AdventureUsable {
     public CaptureDeviceItem(Settings settings) {
@@ -25,7 +36,51 @@ public final class CaptureDeviceItem extends Item implements AdventureUsable {
 
     @Override
     public ActionResult useOnBlock(ItemUsageContext context) {
-        return EngineerCaptureDeviceService.place(context);
+        Direction side = context.getSide();
+        if (side != Direction.UP && side != Direction.DOWN) {
+            return ActionResult.PASS;
+        }
+
+        PlayerEntity player = context.getPlayer();
+        if (player == null) {
+            return ActionResult.PASS;
+        }
+
+        World world = player.getWorld();
+        if (!world.isClient()) {
+            CaptureDeviceEntity entity = SparkStrengthEntities.captureDevice().create(world);
+            if (entity == null) {
+                return ActionResult.FAIL;
+            }
+
+            Vec3d hitPos = context.getHitPos();
+            entity.setPosition(hitPos.x, hitPos.y, hitPos.z);
+            entity.setYaw(player.getHeadYaw());
+            entity.setOwnerUuid(player.getUuid());
+            entity.setCeilingMounted(side == Direction.DOWN);
+            world.spawnEntity(entity);
+
+            if (player instanceof ServerPlayerEntity serverPlayer) {
+                GameRecordManager.recordGlobalEvent(
+                        serverPlayer.getServerWorld(),
+                        SparkStrengthReplayFormatters.CAPTURE_DEVICE_PLACED,
+                        serverPlayer,
+                        null
+                );
+                serverPlayer.playSoundToPlayer(
+                        SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP,
+                        SoundCategory.PLAYERS,
+                        1.0F,
+                        1.0F
+                );
+            }
+
+            if (!player.isCreative()) {
+                player.getStackInHand(context.getHand()).decrement(1);
+            }
+        }
+
+        return ActionResult.SUCCESS;
     }
 
     @Override
