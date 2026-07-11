@@ -5,3 +5,6 @@ run/
 logs/
 bin/
 *.iml
+/ARCHITECTURE.md
+/ARCHITECTURE_LOGS.md
+/ARCHITECTURE LOGS.md

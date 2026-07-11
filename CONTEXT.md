@@ -1,7 +1,6 @@
 # SparkStrength Working Context
 
-Use this file as a short handoff. `ARCHITECTURE.md` remains the binding
-constitution and `ARCHITECTURE_LOGS.md` remains the history/closure register.
+Use this file as a short handoff for the current code and verified contracts.
 
 ## Current Baseline
 

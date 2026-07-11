@@ -123,11 +123,9 @@ tasks.test {
 
 tasks.register("verifyArchitecture") {
     group = "verification"
-    description = "Checks architecture docs, compatibility targets, and stable Engineer metadata."
+    description = "Checks compatibility targets and stable Engineer metadata."
 
     inputs.files(
-            "ARCHITECTURE.md",
-            "ARCHITECTURE_LOGS.md",
             "CONTEXT.md",
             "src/main/resources/fabric.mod.json",
             "src/main/java/annina/sparkstrength/compat/SparkTraitsCompat.java",
@@ -140,21 +138,18 @@ tasks.register("verifyArchitecture") {
     doLast {
         def requireFile = { String path ->
             if (!file(path).isFile()) {
-                throw new GradleException("Missing required architecture file: ${path}")
+                throw new GradleException("Missing required verification file: ${path}")
             }
         }
         def requireText = { String path, String snippet ->
             requireFile(path)
             if (!file(path).getText("UTF-8").contains(snippet)) {
-                throw new GradleException("Missing architecture contract '${snippet}' in ${path}")
+                throw new GradleException("Missing required contract '${snippet}' in ${path}")
             }
         }
 
-        ["ARCHITECTURE.md", "ARCHITECTURE_LOGS.md", "CONTEXT.md"].each(requireFile)
+        requireFile("CONTEXT.md")
         requireFile("src/test/java/annina/sparkstrength/role/engineer/EngineerRulesTest.java")
-        if (file("AGENTS.md").isFile()) {
-            requireText("AGENTS.md", "Before changing code, read [ARCHITECTURE.md](ARCHITECTURE.md)")
-        }
         requireText(
                 "src/main/java/annina/sparkstrength/compat/SparkTraitsCompat.java",
                 "dev.caecorthus.sparktraits.api.SparkTraitsApi"

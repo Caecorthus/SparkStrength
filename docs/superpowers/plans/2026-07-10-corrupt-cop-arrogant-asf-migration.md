@@ -129,7 +129,7 @@
 ### Task 6: Coordinated Verification
 
 **Files:**
-- Modify: `ARCHITECTURE.md`, `ARCHITECTURE_LOGS.md`, and verification inputs only where the new/retired contracts require it.
+- Modify: verification inputs only where the new/retired contracts require it. Root architecture documents remain untracked.
 
 - [ ] Run `git diff --check` separately in SparkStrength, SparkTraits, SparkAssist, and SparkFactionAPI.
 - [ ] Run Java 21 `clean test verifyArchitecture build` in SparkStrength.
