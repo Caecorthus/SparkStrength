@@ -4,6 +4,7 @@ import annina.sparkstrength.role.corruptcop.CorruptCopRules;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
+import dev.doctor4t.wathe.client.WatheClient;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -11,8 +12,8 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 
 /**
- * Client-side highlight hook for Corrupt Cop.
- * 黑警本能高亮的客户端挂钩。
+ * Client-side instinct presentation hooks for Corrupt Cop.
+ * 黑警本能视觉表现的客户端挂钩。
  */
 public final class CorruptCopClientHooks {
     private CorruptCopClientHooks() {
@@ -20,6 +21,20 @@ public final class CorruptCopClientHooks {
 
     public static void register() {
         GetInstinctHighlight.EVENT.register(CorruptCopClientHooks::highlight);
+    }
+
+    public static boolean usesKillerStyleInstinctLight() {
+        ClientPlayerEntity viewer = MinecraftClient.getInstance().player;
+        if (viewer == null) {
+            return false;
+        }
+
+        Role role = GameWorldComponent.KEY.get(viewer.getWorld()).getRole(viewer);
+        return CorruptCopRules.usesKillerStyleInstinctLight(
+                role,
+                WatheClient.isInstinctEnabled(),
+                GameFunctions.isPlayerPlayingAndAlive(viewer)
+        );
     }
 
     private static GetInstinctHighlight.HighlightResult highlight(Entity target) {

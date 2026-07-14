@@ -73,6 +73,14 @@ public final class CorruptCopRules {
         return role != null && CORRUPT_COP_ID.equals(role.identifier());
     }
 
+    public static boolean usesKillerStyleInstinctLight(
+            Role viewerRole,
+            boolean instinctKeyPressed,
+            boolean viewerPlayingAndAlive
+    ) {
+        return isCorruptCop(viewerRole) && instinctKeyPressed && viewerPlayingAndAlive;
+    }
+
     public static boolean nextAbilityActive(boolean isCorruptCop, boolean currentlyActive) {
         return isCorruptCop && !currentlyActive;
     }
