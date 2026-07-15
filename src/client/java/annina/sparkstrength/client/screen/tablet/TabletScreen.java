@@ -7,6 +7,7 @@ import annina.sparkstrength.network.tablet.ConfirmTabletVoteC2SPacket;
 import annina.sparkstrength.network.tablet.RequestTabletSnapshotC2SPacket;
 import annina.sparkstrength.network.tablet.SendTabletChatC2SPacket;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
+import annina.sparkstrength.tablet.TabletMeetingScrollRules;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
@@ -31,6 +32,8 @@ public final class TabletScreen extends Screen {
     private static final int CONTENT_X_OFFSET = 146;
     private static final int TAB_WIDTH = 106;
     private static final int ROW_HEIGHT = 24;
+    private static final int MEETING_LIST_Y_OFFSET = 102;
+    private static final int MEETING_VISIBLE_ROWS = 7;
     private static final int COLOR_PANEL = 0xF20D1218;
     private static final int COLOR_PANEL_EDGE = 0xFF31485A;
     private static final int COLOR_HEADER = 0xFF132331;
@@ -48,6 +51,7 @@ public final class TabletScreen extends Screen {
     private String pendingChat = TabletClientState.chatDraft();
     private TextFieldWidget chatField;
     private int snapshotRequestTicks;
+    private int meetingFirstRow;
     private boolean requestedInitialSnapshot;
 
     public TabletScreen() {
@@ -97,6 +101,13 @@ public final class TabletScreen extends Screen {
     }
 
     public void handleSnapshotUpdate() {
+        TabletSnapshot.Meeting meeting = TabletClientState.snapshot().meeting();
+        meetingFirstRow = TabletMeetingScrollRules.firstRowAfterSnapshot(
+                meetingFirstRow,
+                meeting.active(),
+                meeting.targets().size(),
+                MEETING_VISIBLE_ROWS
+        );
         if (tab == TabletTab.MEETING || tab == TabletTab.SUSPECTS) {
             refresh();
         }
@@ -123,6 +134,25 @@ public final class TabletScreen extends Screen {
             return true;
         }
         return handled;
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        TabletSnapshot snapshot = TabletClientState.snapshot();
+        if (tab == TabletTab.MEETING && snapshot.meeting().active() && isInsideMeetingList(mouseX, mouseY)) {
+            int nextFirstRow = TabletMeetingScrollRules.scrollFirstRow(
+                    meetingFirstRow,
+                    verticalAmount,
+                    snapshot.meeting().targets().size(),
+                    MEETING_VISIBLE_ROWS
+            );
+            if (nextFirstRow != meetingFirstRow) {
+                meetingFirstRow = nextFirstRow;
+                refresh();
+            }
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
     @Override
@@ -192,6 +222,7 @@ public final class TabletScreen extends Screen {
         int contentX = contentX(panelX) + 10;
         int y = panelY + 72;
         if (!snapshot.meeting().active()) {
+            meetingFirstRow = 0;
             ButtonWidget call = ButtonWidget.builder(Text.translatable("screen.sparkstrength.tablet.meeting.call"),
                             button -> ClientPlayNetworking.send(new CallTabletMeetingC2SPacket()))
                     .dimensions(contentX, y, 130, 20)
@@ -219,8 +250,16 @@ public final class TabletScreen extends Screen {
         confirm.active = snapshot.localMeetingParticipant() && !snapshot.meeting().localConfirmed();
         addDrawableChild(confirm);
 
-        int rowY = y + 30;
-        for (TabletSnapshot.VoteTarget target : snapshot.meeting().targets()) {
+        var targets = snapshot.meeting().targets();
+        meetingFirstRow = TabletMeetingScrollRules.clampFirstRow(
+                meetingFirstRow,
+                targets.size(),
+                MEETING_VISIBLE_ROWS
+        );
+        int lastRow = Math.min(meetingFirstRow + MEETING_VISIBLE_ROWS, targets.size());
+        int rowY = panelY + MEETING_LIST_Y_OFFSET;
+        for (int index = meetingFirstRow; index < lastRow; index++) {
+            TabletSnapshot.VoteTarget target = targets.get(index);
             int voteButtonX = meetingVoteButtonX(panelX);
             ButtonWidget vote = ButtonWidget.builder(Text.translatable("screen.sparkstrength.tablet.meeting.vote"),
                             button -> ClientPlayNetworking.send(new CastTabletVoteC2SPacket(target.uuid())))
@@ -229,9 +268,6 @@ public final class TabletScreen extends Screen {
             vote.active = snapshot.localMeetingParticipant() && target.selectable() && !snapshot.meeting().localConfirmed();
             addDrawableChild(vote);
             rowY += ROW_HEIGHT;
-            if (rowY > panelY + PANEL_HEIGHT - 34) {
-                break;
-            }
         }
     }
 
@@ -324,11 +360,19 @@ public final class TabletScreen extends Screen {
             return;
         }
 
-        int y = panelY + 102;
+        var targets = snapshot.meeting().targets();
+        meetingFirstRow = TabletMeetingScrollRules.clampFirstRow(
+                meetingFirstRow,
+                targets.size(),
+                MEETING_VISIBLE_ROWS
+        );
+        int lastRow = Math.min(meetingFirstRow + MEETING_VISIBLE_ROWS, targets.size());
+        int y = panelY + MEETING_LIST_Y_OFFSET;
         int rowX = contentX + 8;
         int rowWidth = meetingVoteButtonX(panelX) - rowX - 8;
         int votesX = meetingVoteButtonX(panelX) - 42;
-        for (TabletSnapshot.VoteTarget target : snapshot.meeting().targets()) {
+        for (int index = meetingFirstRow; index < lastRow; index++) {
+            TabletSnapshot.VoteTarget target = targets.get(index);
             boolean selected = target.uuid().equals(snapshot.meeting().localVoteTarget());
             drawPlayerRow(context, renderer, target.uuid(), target.name(), target.selectable() ? COLOR_ACCENT : 0xFF666666, rowX, y, rowWidth, 60);
             if (selected) {
@@ -336,9 +380,6 @@ public final class TabletScreen extends Screen {
             }
             context.drawText(renderer, String.valueOf(target.votes()), votesX, y + 7, COLOR_TEXT, false);
             y += ROW_HEIGHT;
-            if (y > panelY + PANEL_HEIGHT - 24) {
-                break;
-            }
         }
     }
 
@@ -461,6 +502,15 @@ public final class TabletScreen extends Screen {
 
     private int meetingVoteButtonX(int panelX) {
         return panelX + PANEL_WIDTH - 116;
+    }
+
+    private boolean isInsideMeetingList(double mouseX, double mouseY) {
+        int listX = contentX(panelX()) + 8;
+        int listY = panelY() + MEETING_LIST_Y_OFFSET;
+        return mouseX >= listX
+                && mouseX < listX + contentWidth() - 16
+                && mouseY >= listY
+                && mouseY < listY + MEETING_VISIBLE_ROWS * ROW_HEIGHT;
     }
 
     private String trim(TextRenderer renderer, String value, int width) {
