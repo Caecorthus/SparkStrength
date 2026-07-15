@@ -9,14 +9,11 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Routes Veteran payloads into the custom server-authoritative knife service.
- * 在 Wathe 服务端刀人包入口将老兵分流至自定义权威服务。
+ * 在 Wathe 服务端刀人包入口接管老兵。
  *
- * <p>Wathe's Veteran component stores only 0/1/2 uses, so the custom path preserves cumulative
- * multi-knife uses and applies the fixed Veteran cooldown. Normal wind-up and sounds are preserved;
- * non-Veterans continue through Wathe/NoellesRoles unchanged.</p>
- * <p>Wathe 的老兵组件只能保存 0/1/2 次，因此自定义路径负责累计多把匕首次数并应用老兵固定冷却。
- * 常规蓄力与音效均保留；非老兵仍完整走 Wathe/NoellesRoles 原有流程。</p>
+ * <p>老兵需求和原版刀人流程冲突较多：原版会扣 {@code PlayerVeteranComponent} 的 0/1/2 次、
+ * 次数归零时删刀、播放刺杀音效并设置刀 CD。这里在 HEAD 分流，只有老兵会被取消原逻辑；
+ * 其他角色仍然完整走 Wathe/NoellesRoles 的原有流程。</p>
  */
 @Mixin(KnifeStabPayload.Receiver.class)
 public abstract class VeteranKnifeStabPayloadMixin {

@@ -22,7 +22,8 @@
     "morphling.MorphlingPlayerBodyRendererMixin",
     "morphling.MorphlingReagentCrosshairMixin",
     "morphling.MorphlingRendererDispatchMixin",
-    "morphling.MorphlingRoleNameRendererMixin"
+    "morphling.MorphlingRoleNameRendererMixin",
+    "veteran.VeteranInstantKnifeMixin"
   ],
   "injectors": {
     "defaultRequire": 1

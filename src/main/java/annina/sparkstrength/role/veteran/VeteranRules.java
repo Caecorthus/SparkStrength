@@ -6,12 +6,10 @@ import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Pure rules and stable values for the strengthened Veteran.
- * 老兵加强的纯规则与稳定数值集中处。
+ * 老兵加强的纯规则集中处。
  *
- * <p>This class does not own world, player, or inventory state. Keep Veteran knife prices,
- * uses, cooldowns, rewards, and blackout highlight values here.</p>
- * <p>这里不碰世界、玩家或背包运行态；老兵匕首的价格、次数、冷却、奖励与停电透视数值统一保存在这里。</p>
+ * <p>这里不碰世界、玩家、背包等运行态，只保存稳定 ID 和可以单元测试的判定。
+ * 后续如果要调价格、次数、奖励或透视范围，优先改这个类。</p>
  */
 public final class VeteranRules {
     public static final Identifier VETERAN_ID = Identifier.of("wathe", "veteran");
@@ -21,11 +19,6 @@ public final class VeteranRules {
     public static final int KNIFE_PRICE = 300;
     /** 你已确认：每把老兵匕首默认拥有 2 次刺杀次数。 */
     public static final int STAB_USES_PER_KNIFE = 2;
-    /**
-     * Fixed Veteran knife cooldown: 45 seconds at 20 ticks per second.
-     * 老兵匕首固定冷却：45 秒，共 900 tick。
-     */
-    public static final int KNIFE_COOLDOWN_TICKS = 900;
     /** 刀到非好人阵营角色时获得的金币。 */
     public static final int NON_INNOCENT_KILL_REWARD = 100;
     /** 刀到好人阵营角色时获得的金币。 */

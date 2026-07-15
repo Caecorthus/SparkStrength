@@ -43,7 +43,7 @@
   "shop.sparkstrength.tablet": "平板电脑",
   "shop.sparkstrength.tablet.description": "连接平板持有人，用于聊天、会议和嫌疑人追踪。",
   "shop.sparkstrength.veteran_knife": "老兵匕首",
-  "shop.sparkstrength.veteran_knife.description": "可刺杀2次，使用常规蓄力与音效，每次刺杀后冷却45秒。",
+  "shop.sparkstrength.veteran_knife.description": "可刺杀2次，老兵使用时无蓄力、无声音、无冷却。",
   "shop.sparkstrength.engineer.capture_device": "捕捉装置",
   "shop.sparkstrength.engineer.capture_device.description": "放置后捕捉半径内玩家并生成报告。",
   "shop.sparkstrength.engineer.power_restoration": "电力恢复系统",
