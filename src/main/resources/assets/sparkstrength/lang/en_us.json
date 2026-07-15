@@ -43,7 +43,7 @@
   "shop.sparkstrength.tablet": "Tablet",
   "shop.sparkstrength.tablet.description": "Connects tablet holders for chat, meetings, and suspect tracking.",
   "shop.sparkstrength.veteran_knife": "Veteran Dagger",
-  "shop.sparkstrength.veteran_knife.description": "Has 2 stabs. Veterans use it instantly, silently, and without cooldown.",
+  "shop.sparkstrength.veteran_knife.description": "Has 2 stabs. Uses the normal wind-up and sounds, with a 45-second cooldown after each stab.",
   "shop.sparkstrength.engineer.capture_device": "Capture Device",
   "shop.sparkstrength.engineer.capture_device.description": "Captures players in range and generates a report.",
   "shop.sparkstrength.engineer.power_restoration": "Power Restoration System",

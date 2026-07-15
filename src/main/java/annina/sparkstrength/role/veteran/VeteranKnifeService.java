@@ -7,6 +7,7 @@ import dev.doctor4t.wathe.cca.PlayerVeteranComponent;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheItems;
+import dev.doctor4t.wathe.index.WatheSounds;
 import dev.doctor4t.wathe.record.GameRecordManager;
 import dev.doctor4t.wathe.util.KnifeStabPayload;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -17,11 +18,14 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Hand;
 
 /**
- * 老兵匕首的服务端规则。
+ * Server-authoritative Veteran knife rules.
+ * 老兵匕首的服务端权威规则。
  *
- * <p>这个服务由 mixin 在 {@link KnifeStabPayload.Receiver#receive} 开头调用。
- * 如果发包者是老兵，就由这里完整接管刺杀并取消 Wathe 原逻辑，从而同时做到：
- * 无刺杀音效、刺杀后无刀 CD、支持多把商店匕首累计次数，以及避免原版 0/1/2 次组件吞掉新买的刀。</p>
+ * <p>A mixin calls this service at the start of {@link KnifeStabPayload.Receiver#receive}.
+ * Veterans keep Wathe's normal wind-up, prepare sound, and stab-impact sound, while this service
+ * owns cumulative multi-knife uses and the fixed Veteran cooldown.</p>
+ * <p>Mixin 在 {@link KnifeStabPayload.Receiver#receive} 开头调用本服务。老兵保留 Wathe 原有的蓄力、
+ * 举刀准备声与刺杀命中声；累计多把匕首次数和老兵固定冷却仍由本服务负责。</p>
  */
 public final class VeteranKnifeService {
     private VeteranKnifeService() {
@@ -44,7 +48,8 @@ public final class VeteranKnifeService {
     }
 
     /**
-     * @return true 表示本次 payload 已由老兵逻辑处理，原 Wathe 刀人逻辑必须取消。
+     * @return {@code true} when the Veteran path handled this payload and Wathe's receiver must stop;
+     *         {@code true} 表示本次 payload 已由老兵逻辑处理，原 Wathe 刀人逻辑必须取消。
      */
     public static boolean handleKnifeStab(KnifeStabPayload payload, ServerPlayNetworking.Context context) {
         ServerPlayerEntity player = context.player();
@@ -54,7 +59,12 @@ public final class VeteranKnifeService {
             return false;
         }
 
-        // 只要是老兵的刀包，就不再放回原逻辑；无效目标直接整刀无效，避免原版播放声音/设置 CD。
+        if (player.getItemCooldownManager().isCoolingDown(WatheItems.KNIFE)) {
+            return true;
+        }
+
+        // Veteran payloads stay on the custom path so cumulative uses remain authoritative.
+        // 老兵刀包继续由自定义路径处理，确保累计次数组件保持服务端权威。
         if (player.isSpectator()) {
             return true;
         }
@@ -91,9 +101,9 @@ public final class VeteranKnifeService {
         );
 
         GameFunctions.killPlayer(target, true, player, GameConstants.DeathReasons.KNIFE);
+        target.playSound(WatheSounds.ITEM_KNIFE_STAB, 1.0F, 1.0F);
         player.swingHand(usedHand);
-        // 老兵加强要求刺杀后没有刀 CD；这里显式清掉，防止其他逻辑在同 tick 写入冷却。
-        player.getItemCooldownManager().remove(WatheItems.KNIFE);
+        player.getItemCooldownManager().set(WatheItems.KNIFE, VeteranRules.KNIFE_COOLDOWN_TICKS);
         return true;
     }
 
