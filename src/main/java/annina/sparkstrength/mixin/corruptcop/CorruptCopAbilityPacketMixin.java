@@ -5,7 +5,9 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import org.agmas.noellesroles.Noellesroles;
 import org.agmas.noellesroles.packet.AbilityC2SPacket;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Group;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
@@ -15,16 +17,44 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(value = Noellesroles.class, remap = false)
 public abstract class CorruptCopAbilityPacketMixin {
-    // The bundled 1.7.6 jar uses lambda 36; the alternate local 1.7.6 build uses lambda 5.
-    // 当前打包的 1.7.6 jar 使用 lambda 36；本地另一份 1.7.6 构建使用 lambda 5。
+    // Two authorized NoellesRoles 1.7.6 builds exist: SparkStrength's historical jar uses $36,
+    // while the shared SparkTraits/SparkWitch runtime baseline uses $5 for the same packet handler.
+    // The group requires exactly one binary-specific seam to resolve at runtime.
+    // 两个已授权的 NoellesRoles 1.7.6 构建分别在 $36 与 $5 处理同一个技能包；运行时必须且只能命中一个。
+    @Group(name = "sparkstrength$corruptCopAbility", min = 1, max = 1)
     @Inject(
-            method = {"lambda$registerPackets$36", "lambda$registerPackets$5"},
+            method = "lambda$registerPackets$36(Lorg/agmas/noellesroles/packet/AbilityC2SPacket;Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking$Context;)V",
             at = @At("HEAD"),
             cancellable = true,
+            require = 0,
             remap = false
     )
-    private static void sparkstrength$toggleCorruptCopAbility(
+    private static void sparkstrength$toggleCorruptCopAbilityHistorical(
             AbilityC2SPacket payload,
+            ServerPlayNetworking.Context context,
+            CallbackInfo ci
+    ) {
+        sparkstrength$toggleCorruptCopAbility(context, ci);
+    }
+
+    @Group(name = "sparkstrength$corruptCopAbility", min = 1, max = 1)
+    @Inject(
+            method = "lambda$registerPackets$5(Lorg/agmas/noellesroles/packet/AbilityC2SPacket;Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking$Context;)V",
+            at = @At("HEAD"),
+            cancellable = true,
+            require = 0,
+            remap = false
+    )
+    private static void sparkstrength$toggleCorruptCopAbilityShared(
+            AbilityC2SPacket payload,
+            ServerPlayNetworking.Context context,
+            CallbackInfo ci
+    ) {
+        sparkstrength$toggleCorruptCopAbility(context, ci);
+    }
+
+    @Unique
+    private static void sparkstrength$toggleCorruptCopAbility(
             ServerPlayNetworking.Context context,
             CallbackInfo ci
     ) {
