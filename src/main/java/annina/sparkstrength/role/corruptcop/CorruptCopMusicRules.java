@@ -18,6 +18,14 @@ public final class CorruptCopMusicRules {
         return !shouldRetainPausedTrack(inactiveTicks);
     }
 
+    public static boolean shouldReassertRetainedPause(boolean retainedPausedTrack, boolean soundPlaying) {
+        return retainedPausedTrack && soundPlaying;
+    }
+
+    public static int remainingResumeSeconds(boolean retainedTrack, int inactiveTicks) {
+        return retainedTrack ? remainingResumeSeconds(inactiveTicks) : 0;
+    }
+
     public static int remainingResumeSeconds(int inactiveTicks) {
         int remainingTicks = Math.max(0, RESUME_WINDOW_TICKS - inactiveTicks);
         return (remainingTicks + 19) / 20;

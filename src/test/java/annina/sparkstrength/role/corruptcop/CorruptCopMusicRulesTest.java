@@ -20,6 +20,16 @@ final class CorruptCopMusicRulesTest {
     }
 
     @Test
+    void pauseMenuKeepsCountdownWhileRetainedTrackStaysPaused() {
+        assertTrue(CorruptCopMusicRules.shouldReassertRetainedPause(true, true));
+        assertFalse(CorruptCopMusicRules.shouldReassertRetainedPause(false, true));
+        assertFalse(CorruptCopMusicRules.shouldReassertRetainedPause(true, false));
+        assertEquals(10, CorruptCopMusicRules.remainingResumeSeconds(true, 1));
+        assertEquals(1, CorruptCopMusicRules.remainingResumeSeconds(true, 199));
+        assertEquals(0, CorruptCopMusicRules.remainingResumeSeconds(false, 1));
+    }
+
+    @Test
     void remainingSecondsUseCeilingDivision() {
         assertEquals(10, CorruptCopMusicRules.remainingResumeSeconds(0));
         assertEquals(10, CorruptCopMusicRules.remainingResumeSeconds(1));

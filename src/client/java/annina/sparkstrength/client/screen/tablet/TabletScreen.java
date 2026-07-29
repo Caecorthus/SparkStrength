@@ -7,7 +7,8 @@ import annina.sparkstrength.network.tablet.ConfirmTabletVoteC2SPacket;
 import annina.sparkstrength.network.tablet.RequestTabletSnapshotC2SPacket;
 import annina.sparkstrength.network.tablet.SendTabletChatC2SPacket;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
-import annina.sparkstrength.tablet.TabletMeetingScrollRules;
+import annina.sparkstrength.tablet.TabletLayout;
+import annina.sparkstrength.tablet.TabletUiSession;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
@@ -21,37 +22,36 @@ import org.lwjgl.glfw.GLFW;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
+import java.util.Locale;
 import java.util.UUID;
 
 public final class TabletScreen extends Screen {
     private static final DateTimeFormatter CLOCK_FORMAT = DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM);
-    private static final int PANEL_WIDTH = 486;
-    private static final int PANEL_HEIGHT = 292;
-    private static final int HEADER_HEIGHT = 34;
-    private static final int SIDEBAR_WIDTH = 128;
-    private static final int CONTENT_X_OFFSET = 146;
-    private static final int TAB_WIDTH = 106;
     private static final int ROW_HEIGHT = 24;
-    private static final int MEETING_LIST_Y_OFFSET = 102;
-    private static final int MEETING_VISIBLE_ROWS = 7;
-    private static final int COLOR_PANEL = 0xF20D1218;
-    private static final int COLOR_PANEL_EDGE = 0xFF31485A;
-    private static final int COLOR_HEADER = 0xFF132331;
-    private static final int COLOR_SIDEBAR = 0xFF121A22;
-    private static final int COLOR_CONTENT = 0xA80A0F14;
-    private static final int COLOR_DIVIDER = 0xFF243341;
-    private static final int COLOR_ACCENT = 0xFF4DB7E8;
-    private static final int COLOR_TEXT = 0xFFE8F3FA;
-    private static final int COLOR_MUTED = 0xFFA5B1BA;
-    private static final int COLOR_ROW = 0xB914202A;
-    private static final int COLOR_ROW_ALT = 0x9C182631;
+    private static final int COLOR_SHELL = 0xF20A0D10;
+    private static final int COLOR_SHELL_SHADOW = 0x8A000000;
+    private static final int COLOR_METAL_EDGE = 0xFFA87A43;
+    private static final int COLOR_METAL_DARK = 0xFF4B3928;
+    private static final int COLOR_STATUS = 0xFF151D24;
+    private static final int COLOR_NAVIGATION = 0xFF10161C;
+    private static final int COLOR_BODY = 0xF20C1217;
+    private static final int COLOR_FOOTER = 0xFF111920;
+    private static final int COLOR_DIVIDER = 0xFF2A3944;
+    private static final int COLOR_SIGNAL = 0xFF3AA8E8;
+    private static final int COLOR_SIGNAL_PALE = 0xFF9EDFFF;
+    private static final int COLOR_SIGNAL_SOFT = 0x553087B8;
+    private static final int COLOR_TEXT = 0xFFEAF2F6;
+    private static final int COLOR_MUTED = 0xFF94A1A9;
+    private static final int COLOR_ROW = 0xE6162027;
+    private static final int COLOR_ROW_ALT = 0xD719252D;
     private static final int COLOR_GREEN = 0xFF46D878;
     private static final int COLOR_ORANGE = 0xFFFF8C00;
-    private TabletTab tab = TabletTab.CONNECTIONS;
-    private String pendingChat = TabletClientState.chatDraft();
+    private static final int COLOR_ORANGE_PALE = 0xFFFFC062;
+
+    private final TabletUiSession session = new TabletUiSession(TabletClientState.chatDraft());
+    private TabletLayout layout;
     private TextFieldWidget chatField;
     private int snapshotRequestTicks;
-    private int meetingFirstRow;
     private boolean requestedInitialSnapshot;
 
     public TabletScreen() {
@@ -61,32 +61,22 @@ public final class TabletScreen extends Screen {
     @Override
     protected void init() {
         super.init();
+        layout = TabletLayout.forViewport(width, height);
+        chatField = null;
+
         if (!requestedInitialSnapshot) {
             requestedInitialSnapshot = true;
             requestSnapshot();
         }
 
-        int panelX = panelX();
-        int panelY = panelY();
-        int tabY = panelY + HEADER_HEIGHT + 14;
-        for (TabletTab value : TabletTab.values()) {
-            TabletTab selected = value;
-            addDrawableChild(ButtonWidget.builder(value.label(), button -> {
-                        rememberChatDraft();
-                        tab = selected;
-                        refresh();
-                    })
-                    .dimensions(panelX + 12, tabY, TAB_WIDTH, 20)
-                    .build());
-            tabY += 26;
-        }
-
-        if (tab == TabletTab.CHAT) {
-            initChat(panelX, panelY);
-        } else if (tab == TabletTab.MEETING) {
-            initMeeting(panelX, panelY);
-        } else if (tab == TabletTab.SUSPECTS) {
-            initSuspects(panelX, panelY);
+        initCloseButton();
+        initNavigation();
+        if (session.section() == TabletUiSession.Section.CHAT) {
+            initChat();
+        } else if (session.section() == TabletUiSession.Section.MEETING) {
+            initMeeting();
+        } else if (session.section() == TabletUiSession.Section.SUSPECTS) {
+            initSuspects();
         }
     }
 
@@ -102,13 +92,17 @@ public final class TabletScreen extends Screen {
 
     public void handleSnapshotUpdate() {
         TabletSnapshot.Meeting meeting = TabletClientState.snapshot().meeting();
-        meetingFirstRow = TabletMeetingScrollRules.firstRowAfterSnapshot(
-                meetingFirstRow,
+        session.applyMeetingSnapshot(
                 meeting.active(),
                 meeting.targets().size(),
-                MEETING_VISIBLE_ROWS
+                visibleRows()
         );
-        if (tab == TabletTab.MEETING || tab == TabletTab.SUSPECTS) {
+        session.applySuspectSnapshot(
+                TabletClientState.snapshot().suspects().size(),
+                visibleRows()
+        );
+        if (session.section() == TabletUiSession.Section.MEETING
+                || session.section() == TabletUiSession.Section.SUSPECTS) {
             refresh();
         }
     }
@@ -125,12 +119,16 @@ public final class TabletScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (tab == TabletTab.CHAT && (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER)) {
+        if (session.section() == TabletUiSession.Section.CHAT
+                && (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER)) {
             sendChat();
             return true;
         }
         boolean handled = super.keyPressed(keyCode, scanCode, modifiers);
-        if (tab == TabletTab.CHAT && chatField != null && chatField.isFocused() && isMovementKey(keyCode, scanCode)) {
+        if (session.section() == TabletUiSession.Section.CHAT
+                && chatField != null
+                && chatField.isFocused()
+                && isMovementKey(keyCode, scanCode)) {
             return true;
         }
         return handled;
@@ -139,15 +137,29 @@ public final class TabletScreen extends Screen {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         TabletSnapshot snapshot = TabletClientState.snapshot();
-        if (tab == TabletTab.MEETING && snapshot.meeting().active() && isInsideMeetingList(mouseX, mouseY)) {
-            int nextFirstRow = TabletMeetingScrollRules.scrollFirstRow(
-                    meetingFirstRow,
+        if (session.section() == TabletUiSession.Section.MEETING
+                && snapshot.meeting().active()
+                && layout.list().contains(mouseX, mouseY)) {
+            int previousFirstRow = session.meetingFirstRow();
+            session.scrollMeeting(
                     verticalAmount,
                     snapshot.meeting().targets().size(),
-                    MEETING_VISIBLE_ROWS
+                    layout.visibleRows()
             );
-            if (nextFirstRow != meetingFirstRow) {
-                meetingFirstRow = nextFirstRow;
+            if (session.meetingFirstRow() != previousFirstRow) {
+                refresh();
+            }
+            return true;
+        }
+        if (session.section() == TabletUiSession.Section.SUSPECTS
+                && layout.list().contains(mouseX, mouseY)) {
+            int previousFirstRow = session.suspectFirstRow();
+            session.scrollSuspects(
+                    verticalAmount,
+                    snapshot.suspects().size(),
+                    layout.visibleRows()
+            );
+            if (session.suspectFirstRow() != previousFirstRow) {
                 refresh();
             }
             return true;
@@ -158,20 +170,17 @@ public final class TabletScreen extends Screen {
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         context.fill(0, 0, width, height, 0xB8000000);
-        int panelX = panelX();
-        int panelY = panelY();
-
         TextRenderer renderer = MinecraftClient.getInstance().textRenderer;
-        drawTabletFrame(context, renderer, panelX, panelY);
+        drawTabletFrame(context, renderer);
 
-        if (tab == TabletTab.CONNECTIONS) {
-            renderConnections(context, renderer, panelX, panelY);
-        } else if (tab == TabletTab.CHAT) {
-            renderChat(context, renderer, panelX, panelY);
-        } else if (tab == TabletTab.MEETING) {
-            renderMeeting(context, renderer, panelX, panelY);
-        } else if (tab == TabletTab.SUSPECTS) {
-            renderSuspects(context, renderer, panelX, panelY);
+        if (session.section() == TabletUiSession.Section.CONNECTIONS) {
+            renderConnections(context, renderer);
+        } else if (session.section() == TabletUiSession.Section.CHAT) {
+            renderChat(context, renderer);
+        } else if (session.section() == TabletUiSession.Section.MEETING) {
+            renderMeeting(context, renderer);
+        } else if (session.section() == TabletUiSession.Section.SUSPECTS) {
+            renderSuspects(context, renderer);
         }
 
         super.render(context, mouseX, mouseY, delta);
@@ -188,11 +197,40 @@ public final class TabletScreen extends Screen {
         return false;
     }
 
-    private void initChat(int panelX, int panelY) {
-        int contentX = contentX(panelX);
-        int inputY = panelY + PANEL_HEIGHT - 34;
-        int fieldX = contentX + 10;
-        int fieldWidth = contentWidth() - 86;
+    private void initCloseButton() {
+        TabletLayout.Rect close = layout.closeButton();
+        addDrawableChild(ButtonWidget.builder(Text.literal("×"), button -> close())
+                .dimensions(close.x(), close.y(), close.width(), close.height())
+                .build());
+    }
+
+    private void initNavigation() {
+        TabletUiSession.Section[] sections = TabletUiSession.Section.values();
+        TextRenderer renderer = MinecraftClient.getInstance().textRenderer;
+        for (int index = 0; index < sections.length; index++) {
+            TabletUiSession.Section section = sections[index];
+            TabletLayout.Rect tab = layout.tabs().get(index);
+            Text label = Text.translatable(section.translationKey());
+            Text visibleLabel = Text.literal(trim(renderer, label.getString(), Math.max(0, tab.width() - 10)));
+            ButtonWidget button = ButtonWidget.builder(visibleLabel, ignored -> {
+                        rememberChatDraft();
+                        session.select(section);
+                        refresh();
+                    })
+                    .dimensions(tab.x(), tab.y(), tab.width(), tab.height())
+                    .build();
+            button.active = section != session.section();
+            addDrawableChild(button);
+        }
+    }
+
+    private void initChat() {
+        TabletLayout.Rect footer = layout.footer();
+        int fieldX = footer.x() + 10;
+        int inputY = footer.y() + Math.max(0, (footer.height() - 20) / 2);
+        int availableWidth = Math.max(0, footer.width() - 20);
+        int sendWidth = Math.min(62, Math.max(44, availableWidth / 4));
+        int fieldWidth = Math.max(1, availableWidth - sendWidth - 6);
         TextFieldWidget field = new TextFieldWidget(
                 MinecraftClient.getInstance().textRenderer,
                 fieldX,
@@ -202,30 +240,40 @@ public final class TabletScreen extends Screen {
                 Text.translatable("screen.sparkstrength.tablet.chat.placeholder")
         );
         field.setMaxLength(120);
-        pendingChat = TabletClientState.chatDraft();
-        field.setText(pendingChat);
+        field.setText(session.draft());
         field.setPlaceholder(Text.translatable("screen.sparkstrength.tablet.chat.placeholder"));
         field.setChangedListener(value -> {
-            pendingChat = value;
+            session.updateDraft(value);
             TabletClientState.setChatDraft(value);
         });
         chatField = field;
         addDrawableChild(field);
         setInitialFocus(field);
-        addDrawableChild(ButtonWidget.builder(Text.translatable("screen.sparkstrength.tablet.chat.send"), button -> sendChat())
-                .dimensions(fieldX + fieldWidth + 6, inputY, 62, 20)
+
+        Text sendLabel = Text.translatable("screen.sparkstrength.tablet.chat.send");
+        addDrawableChild(ButtonWidget.builder(
+                        Text.literal(trim(MinecraftClient.getInstance().textRenderer, sendLabel.getString(), sendWidth - 8)),
+                        button -> sendChat())
+                .dimensions(fieldX + fieldWidth + 6, inputY, sendWidth, 20)
                 .build());
     }
 
-    private void initMeeting(int panelX, int panelY) {
+    private void initMeeting() {
         TabletSnapshot snapshot = TabletClientState.snapshot();
-        int contentX = contentX(panelX) + 10;
-        int y = panelY + 72;
+        TabletLayout.Rect footer = layout.footer();
+        int controlX = footer.x() + 10;
+        int controlY = footer.y() + Math.max(0, (footer.height() - 20) / 2);
+        session.applyMeetingSnapshot(
+                snapshot.meeting().active(),
+                snapshot.meeting().targets().size(),
+                layout.visibleRows()
+        );
+
         if (!snapshot.meeting().active()) {
-            meetingFirstRow = 0;
-            ButtonWidget call = ButtonWidget.builder(Text.translatable("screen.sparkstrength.tablet.meeting.call"),
+            ButtonWidget call = ButtonWidget.builder(
+                            Text.translatable("screen.sparkstrength.tablet.meeting.call"),
                             button -> ClientPlayNetworking.send(new CallTabletMeetingC2SPacket()))
-                    .dimensions(contentX, y, 130, 20)
+                    .dimensions(controlX, controlY, Math.min(130, Math.max(1, footer.width() - 20)), 20)
                     .build();
             call.active = snapshot.localMeetingParticipant()
                     && snapshot.cooldownSeconds() <= 0
@@ -234,9 +282,10 @@ public final class TabletScreen extends Screen {
             return;
         }
 
-        ButtonWidget abstain = ButtonWidget.builder(Text.translatable("screen.sparkstrength.tablet.meeting.abstain"),
+        ButtonWidget abstain = ButtonWidget.builder(
+                        Text.translatable("screen.sparkstrength.tablet.meeting.abstain"),
                         button -> ClientPlayNetworking.send(new CastTabletVoteC2SPacket(null)))
-                .dimensions(contentX, y, 74, 20)
+                .dimensions(controlX, controlY, 74, 20)
                 .build();
         abstain.active = snapshot.localMeetingParticipant() && !snapshot.meeting().localConfirmed();
         addDrawableChild(abstain);
@@ -245,170 +294,207 @@ public final class TabletScreen extends Screen {
                                 ? "screen.sparkstrength.tablet.meeting.locked"
                                 : "screen.sparkstrength.tablet.meeting.confirm"
                 ), button -> ClientPlayNetworking.send(new ConfirmTabletVoteC2SPacket()))
-                .dimensions(contentX + 82, y, 74, 20)
+                .dimensions(controlX + 82, controlY, 74, 20)
                 .build();
         confirm.active = snapshot.localMeetingParticipant() && !snapshot.meeting().localConfirmed();
         addDrawableChild(confirm);
 
         var targets = snapshot.meeting().targets();
-        meetingFirstRow = TabletMeetingScrollRules.clampFirstRow(
-                meetingFirstRow,
-                targets.size(),
-                MEETING_VISIBLE_ROWS
-        );
-        int lastRow = Math.min(meetingFirstRow + MEETING_VISIBLE_ROWS, targets.size());
-        int rowY = panelY + MEETING_LIST_Y_OFFSET;
-        for (int index = meetingFirstRow; index < lastRow; index++) {
+        int lastRow = Math.min(session.meetingFirstRow() + layout.visibleRows(), targets.size());
+        int rowY = layout.list().y();
+        int voteButtonX = layout.list().right() - 68;
+        for (int index = session.meetingFirstRow(); index < lastRow; index++) {
             TabletSnapshot.VoteTarget target = targets.get(index);
-            int voteButtonX = meetingVoteButtonX(panelX);
-            ButtonWidget vote = ButtonWidget.builder(Text.translatable("screen.sparkstrength.tablet.meeting.vote"),
+            ButtonWidget vote = ButtonWidget.builder(
+                            Text.translatable("screen.sparkstrength.tablet.meeting.vote"),
                             button -> ClientPlayNetworking.send(new CastTabletVoteC2SPacket(target.uuid())))
                     .dimensions(voteButtonX, rowY + 2, 64, 18)
                     .build();
-            vote.active = snapshot.localMeetingParticipant() && target.selectable() && !snapshot.meeting().localConfirmed();
+            vote.active = snapshot.localMeetingParticipant()
+                    && target.selectable()
+                    && !snapshot.meeting().localConfirmed();
             addDrawableChild(vote);
             rowY += ROW_HEIGHT;
         }
     }
 
-    private void initSuspects(int panelX, int panelY) {
-        int rowY = panelY + 78;
-        for (TabletSnapshot.SuspectRow suspect : TabletClientState.snapshot().suspects()) {
+    private void initSuspects() {
+        TabletSnapshot snapshot = TabletClientState.snapshot();
+        int rowY = layout.list().y();
+        int buttonX = layout.list().right() - 82;
+        int lastRow = Math.min(session.suspectFirstRow() + layout.visibleRows(), snapshot.suspects().size());
+        TextRenderer renderer = MinecraftClient.getInstance().textRenderer;
+        for (int index = session.suspectFirstRow(); index < lastRow; index++) {
+            TabletSnapshot.SuspectRow suspect = snapshot.suspects().get(index);
             Text label = Text.translatable(suspect.localApproved()
                     ? "screen.sparkstrength.tablet.suspects.cancel"
                     : "screen.sparkstrength.tablet.suspects.approve");
-            ButtonWidget button = ButtonWidget.builder(label, ignored ->
-                            ClientPlayNetworking.send(new ApproveSuspectRemovalC2SPacket(suspect.uuid(), !suspect.localApproved())))
-                    .dimensions(panelX + PANEL_WIDTH - 96, rowY + 2, 78, 18)
+            ButtonWidget button = ButtonWidget.builder(
+                            Text.literal(trim(renderer, label.getString(), 70)),
+                            ignored -> ClientPlayNetworking.send(new ApproveSuspectRemovalC2SPacket(
+                                    suspect.uuid(),
+                                    !suspect.localApproved()
+                            )))
+                    .dimensions(buttonX, rowY + 2, 78, 18)
                     .build();
-            button.active = TabletClientState.snapshot().localMeetingParticipant();
+            button.active = snapshot.localMeetingParticipant();
             addDrawableChild(button);
             rowY += ROW_HEIGHT;
-            if (rowY > panelY + PANEL_HEIGHT - 24) {
-                break;
-            }
         }
     }
 
-    private void renderConnections(DrawContext context, TextRenderer renderer, int panelX, int panelY) {
+    private void renderConnections(DrawContext context, TextRenderer renderer) {
         TabletSnapshot snapshot = TabletClientState.snapshot();
-        int contentX = contentX(panelX);
-        drawSectionHeader(context, renderer, contentX, panelY + 48, tab.label(), String.valueOf(snapshot.connections().size()));
+        drawSectionHeader(context, renderer, String.valueOf(snapshot.connections().size()));
         if (snapshot.connections().isEmpty()) {
-            drawEmptyState(context, renderer, contentX, panelY + 100, Text.translatable("screen.sparkstrength.tablet.connections.empty"));
+            drawEmptyState(context, renderer, Text.translatable("screen.sparkstrength.tablet.connections.empty"));
             return;
         }
 
-        int y = panelY + 78;
-        int rowWidth = contentWidth() - 16;
-        for (TabletSnapshot.PlayerRow row : snapshot.connections()) {
-            drawPlayerRow(context, renderer, row.uuid(), row.name(), row.inGame() ? COLOR_GREEN : 0xFF777777, contentX + 8, y, rowWidth, 86);
+        TabletLayout.Rect list = layout.list();
+        context.enableScissor(list.x(), list.y(), list.right(), list.bottom());
+        int rows = Math.min(layout.visibleRows(), snapshot.connections().size());
+        int y = list.y();
+        for (int index = 0; index < rows; index++) {
+            TabletSnapshot.PlayerRow row = snapshot.connections().get(index);
+            drawPlayerRow(
+                    context,
+                    renderer,
+                    row.uuid(),
+                    row.name(),
+                    row.inGame() ? COLOR_GREEN : 0xFF6F787D,
+                    list.x(),
+                    y,
+                    list.width(),
+                    92
+            );
             drawPill(
                     context,
                     renderer,
                     Text.translatable(row.inGame()
                             ? "screen.sparkstrength.tablet.status.ingame"
                             : "screen.sparkstrength.tablet.status.outside"),
-                    contentX + 8 + rowWidth - 8,
-                    y + 5,
+                    list.right() - 6,
+                    y + 4,
                     row.inGame() ? COLOR_GREEN : COLOR_MUTED,
                     row.inGame() ? 0x2736D36B : 0x24777777
             );
             y += ROW_HEIGHT;
-            if (y > panelY + PANEL_HEIGHT - 20) {
-                break;
-            }
         }
+        context.disableScissor();
     }
 
-    private void renderChat(DrawContext context, TextRenderer renderer, int panelX, int panelY) {
-        int contentX = contentX(panelX);
+    private void renderChat(DrawContext context, TextRenderer renderer) {
         var messages = TabletClientState.snapshot().chat();
-        drawSectionHeader(context, renderer, contentX, panelY + 48, tab.label(), String.valueOf(messages.size()));
+        drawSectionHeader(context, renderer, String.valueOf(messages.size()));
         if (messages.isEmpty()) {
-            drawEmptyState(context, renderer, contentX, panelY + 100, Text.translatable("screen.sparkstrength.tablet.chat.empty"));
+            drawEmptyState(context, renderer, Text.translatable("screen.sparkstrength.tablet.chat.empty"));
             return;
         }
 
-        int y = panelY + 78;
-        int rowWidth = contentWidth() - 16;
-        int start = Math.max(0, messages.size() - 7);
-        for (int i = start; i < messages.size(); i++) {
-            TabletSnapshot.ChatRow row = messages.get(i);
-            context.fill(contentX + 8, y, contentX + 8 + rowWidth, y + 20, i % 2 == 0 ? COLOR_ROW : COLOR_ROW_ALT);
-            context.fill(contentX + 8, y, contentX + 11, y + 20, COLOR_ACCENT);
-            String sender = trim(renderer, row.senderName(), 78);
+        TabletLayout.Rect list = layout.list();
+        context.enableScissor(list.x(), list.y(), list.right(), list.bottom());
+        int rows = Math.min(layout.visibleRows(), messages.size());
+        int start = messages.size() - rows;
+        int y = list.y();
+        for (int index = start; index < messages.size(); index++) {
+            TabletSnapshot.ChatRow row = messages.get(index);
+            context.fill(list.x(), y, list.right(), y + ROW_HEIGHT - 3, index % 2 == 0 ? COLOR_ROW : COLOR_ROW_ALT);
+            context.fill(list.x(), y, list.x() + 3, y + ROW_HEIGHT - 3, COLOR_SIGNAL);
+            String sender = trim(renderer, row.senderName(), Math.min(78, Math.max(0, list.width() / 3)));
             int senderWidth = Math.min(82, renderer.getWidth(sender) + 8);
-            context.drawText(renderer, sender, contentX + 16, y + 6, COLOR_ACCENT, false);
-            context.drawText(renderer, trim(renderer, row.message(), rowWidth - senderWidth - 22), contentX + 16 + senderWidth, y + 6, COLOR_TEXT, false);
-            y += 22;
+            context.drawText(renderer, sender, list.x() + 9, y + 7, COLOR_SIGNAL_PALE, false);
+            context.drawText(
+                    renderer,
+                    trim(renderer, row.message(), Math.max(0, list.width() - senderWidth - 20)),
+                    list.x() + 9 + senderWidth,
+                    y + 7,
+                    COLOR_TEXT,
+                    false
+            );
+            y += ROW_HEIGHT;
         }
+        context.disableScissor();
     }
 
-    private void renderMeeting(DrawContext context, TextRenderer renderer, int panelX, int panelY) {
+    private void renderMeeting(DrawContext context, TextRenderer renderer) {
         TabletSnapshot snapshot = TabletClientState.snapshot();
-        int contentX = contentX(panelX);
         String detail = snapshot.meeting().active()
                 ? Text.translatable("screen.sparkstrength.tablet.meeting.timer", snapshot.meeting().remainingSeconds()).getString()
                 : Text.translatable("screen.sparkstrength.tablet.meeting.chances", snapshot.localMeetingCallsRemaining()).getString();
-        drawSectionHeader(context, renderer, contentX, panelY + 48, tab.label(), detail);
+        drawSectionHeader(context, renderer, detail);
         if (!snapshot.meeting().active()) {
             String key = snapshot.cooldownSeconds() > 0
                     ? "screen.sparkstrength.tablet.meeting.cooldown"
                     : "screen.sparkstrength.tablet.meeting.disabled";
-            drawInfoLine(context, renderer, contentX + 10, panelY + 104, Text.translatable(key, snapshot.cooldownSeconds()), COLOR_MUTED);
+            drawInfoLine(context, renderer, Text.translatable(key, snapshot.cooldownSeconds()), COLOR_MUTED);
             return;
         }
 
         var targets = snapshot.meeting().targets();
-        meetingFirstRow = TabletMeetingScrollRules.clampFirstRow(
-                meetingFirstRow,
-                targets.size(),
-                MEETING_VISIBLE_ROWS
-        );
-        int lastRow = Math.min(meetingFirstRow + MEETING_VISIBLE_ROWS, targets.size());
-        int y = panelY + MEETING_LIST_Y_OFFSET;
-        int rowX = contentX + 8;
-        int rowWidth = meetingVoteButtonX(panelX) - rowX - 8;
-        int votesX = meetingVoteButtonX(panelX) - 42;
-        for (int index = meetingFirstRow; index < lastRow; index++) {
+        TabletLayout.Rect list = layout.list();
+        context.enableScissor(list.x(), list.y(), list.right(), list.bottom());
+        int lastRow = Math.min(session.meetingFirstRow() + layout.visibleRows(), targets.size());
+        int y = list.y();
+        int voteButtonX = list.right() - 68;
+        int votesX = voteButtonX - 28;
+        for (int index = session.meetingFirstRow(); index < lastRow; index++) {
             TabletSnapshot.VoteTarget target = targets.get(index);
             boolean selected = target.uuid().equals(snapshot.meeting().localVoteTarget());
-            drawPlayerRow(context, renderer, target.uuid(), target.name(), target.selectable() ? COLOR_ACCENT : 0xFF666666, rowX, y, rowWidth, 60);
+            drawPlayerRow(
+                    context,
+                    renderer,
+                    target.uuid(),
+                    target.name(),
+                    target.selectable() ? COLOR_SIGNAL : 0xFF626C72,
+                    list.x(),
+                    y,
+                    list.width(),
+                    118
+            );
             if (selected) {
-                context.drawBorder(rowX, y + 3, rowWidth, ROW_HEIGHT - 4, COLOR_ACCENT);
+                context.drawBorder(list.x(), y + 2, list.width(), ROW_HEIGHT - 3, COLOR_SIGNAL);
+                context.fill(list.x(), y + 2, list.x() + 4, y + ROW_HEIGHT - 1, COLOR_SIGNAL);
             }
             context.drawText(renderer, String.valueOf(target.votes()), votesX, y + 7, COLOR_TEXT, false);
             y += ROW_HEIGHT;
         }
+        context.disableScissor();
     }
 
-    private void renderSuspects(DrawContext context, TextRenderer renderer, int panelX, int panelY) {
+    private void renderSuspects(DrawContext context, TextRenderer renderer) {
         TabletSnapshot snapshot = TabletClientState.snapshot();
-        int contentX = contentX(panelX);
-        drawSectionHeader(context, renderer, contentX, panelY + 48, tab.label(), String.valueOf(snapshot.suspects().size()));
+        drawSectionHeader(context, renderer, String.valueOf(snapshot.suspects().size()));
         if (snapshot.suspects().isEmpty()) {
-            drawEmptyState(context, renderer, contentX, panelY + 100, Text.translatable("screen.sparkstrength.tablet.suspects.none"));
+            drawEmptyState(context, renderer, Text.translatable("screen.sparkstrength.tablet.suspects.none"));
             return;
         }
 
-        int y = panelY + 78;
-        int rowWidth = contentWidth() - 16;
-        for (TabletSnapshot.SuspectRow suspect : snapshot.suspects()) {
-            drawPlayerRow(context, renderer, suspect.uuid(), suspect.name(), COLOR_ORANGE, contentX + 8, y, rowWidth, 110);
+        TabletLayout.Rect list = layout.list();
+        context.enableScissor(list.x(), list.y(), list.right(), list.bottom());
+        int lastRow = Math.min(session.suspectFirstRow() + layout.visibleRows(), snapshot.suspects().size());
+        int y = list.y();
+        int buttonX = list.right() - 82;
+        for (int index = session.suspectFirstRow(); index < lastRow; index++) {
+            TabletSnapshot.SuspectRow suspect = snapshot.suspects().get(index);
+            drawPlayerRow(context, renderer, suspect.uuid(), suspect.name(), COLOR_ORANGE, list.x(), y, list.width(), 158);
+            Text votes = Text.translatable(
+                    "screen.sparkstrength.tablet.suspects.votes",
+                    suspect.approvals(),
+                    suspect.requiredApprovals()
+            );
+            String visibleVotes = trim(renderer, votes.getString(), 70);
             context.drawText(
                     renderer,
-                    Text.translatable("screen.sparkstrength.tablet.suspects.votes", suspect.approvals(), suspect.requiredApprovals()),
-                    panelX + PANEL_WIDTH - 174,
+                    visibleVotes,
+                    buttonX - 8 - renderer.getWidth(visibleVotes),
                     y + 7,
-                    0xFFFFC062,
+                    COLOR_ORANGE_PALE,
                     false
             );
             y += ROW_HEIGHT;
-            if (y > panelY + PANEL_HEIGHT - 24) {
-                break;
-            }
         }
+        context.disableScissor();
     }
 
     private void drawPlayerRow(
@@ -423,68 +509,148 @@ public final class TabletScreen extends Screen {
             int reservedRightWidth
     ) {
         context.fill(x, y, x + width, y + ROW_HEIGHT - 3, COLOR_ROW);
-        context.fill(x, y + 3, x + 4, y + 23, borderColor);
+        context.fill(x, y + 2, x + 4, y + ROW_HEIGHT - 1, borderColor);
         context.fill(x + 8, y + 3, x + 28, y + 23, borderColor);
         context.fill(x + 10, y + 5, x + 26, y + 21, 0xFF05080B);
         TabletPlayerRow.drawAvatar(context, uuid, name, x + 10, y + 5);
-        context.drawText(renderer, trim(renderer, name, width - reservedRightWidth - 42), x + 36, y + 8, COLOR_TEXT, false);
+        context.drawText(
+                renderer,
+                trim(renderer, name, Math.max(0, width - reservedRightWidth - 42)),
+                x + 36,
+                y + 7,
+                COLOR_TEXT,
+                false
+        );
     }
 
-    private void drawTabletFrame(DrawContext context, TextRenderer renderer, int panelX, int panelY) {
-        context.fill(panelX - 3, panelY - 3, panelX + PANEL_WIDTH + 3, panelY + PANEL_HEIGHT + 3, 0x76000000);
-        context.fill(panelX, panelY, panelX + PANEL_WIDTH, panelY + PANEL_HEIGHT, COLOR_PANEL);
-        context.drawBorder(panelX, panelY, PANEL_WIDTH, PANEL_HEIGHT, COLOR_PANEL_EDGE);
-        context.fill(panelX + 1, panelY + 1, panelX + PANEL_WIDTH - 1, panelY + HEADER_HEIGHT, COLOR_HEADER);
-        context.fill(panelX + 1, panelY + HEADER_HEIGHT, panelX + SIDEBAR_WIDTH, panelY + PANEL_HEIGHT - 1, COLOR_SIDEBAR);
-        context.fill(panelX + SIDEBAR_WIDTH, panelY + HEADER_HEIGHT, panelX + SIDEBAR_WIDTH + 1, panelY + PANEL_HEIGHT - 1, COLOR_DIVIDER);
+    private void drawTabletFrame(DrawContext context, TextRenderer renderer) {
+        TabletLayout.Rect panel = layout.panel();
+        TabletLayout.Rect status = layout.statusBar();
+        TabletLayout.Rect navigation = layout.navigation();
+        TabletLayout.Rect body = layout.body();
+        TabletLayout.Rect footer = layout.footer();
 
-        context.drawText(renderer, Text.translatable("screen.sparkstrength.tablet.title"), panelX + 12, panelY + 12, COLOR_TEXT, false);
+        context.fill(panel.x() - 4, panel.y() - 4, panel.right() + 4, panel.bottom() + 4, COLOR_SHELL_SHADOW);
+        context.fill(panel.x(), panel.y(), panel.right(), panel.bottom(), COLOR_SHELL);
+        context.drawBorder(panel.x(), panel.y(), panel.width(), panel.height(), COLOR_METAL_EDGE);
+        context.drawBorder(panel.x() + 2, panel.y() + 2, Math.max(0, panel.width() - 4), Math.max(0, panel.height() - 4), COLOR_METAL_DARK);
+        context.fill(status.x() + 3, status.y() + 3, status.right() - 3, status.bottom(), COLOR_STATUS);
+        context.fill(navigation.x() + 3, navigation.y(), navigation.right() - 3, navigation.bottom(), COLOR_NAVIGATION);
+        context.fill(body.x(), body.y(), body.right(), body.bottom(), COLOR_BODY);
+        context.fill(footer.x(), footer.y(), footer.right(), footer.bottom() - 3, COLOR_FOOTER);
+        context.fill(footer.x(), footer.y(), footer.right(), footer.y() + 1, COLOR_DIVIDER);
+
+        if (layout.mode() == TabletLayout.Mode.WIDE) {
+            context.fill(navigation.right() - 1, navigation.y(), navigation.right(), navigation.bottom(), COLOR_DIVIDER);
+        } else {
+            context.fill(navigation.x(), navigation.bottom() - 1, navigation.right(), navigation.bottom(), COLOR_DIVIDER);
+        }
+
+        drawStatus(context, renderer);
+        drawSignalSpine(context);
+    }
+
+    private void drawStatus(DrawContext context, TextRenderer renderer) {
+        TabletLayout.Rect status = layout.statusBar();
+        TabletLayout.Rect close = layout.closeButton();
+        int glyphX = status.x() + 12;
+        int glyphBottom = status.y() + 22;
+        context.fill(glyphX, glyphBottom - 4, glyphX + 2, glyphBottom, COLOR_SIGNAL);
+        context.fill(glyphX + 4, glyphBottom - 8, glyphX + 6, glyphBottom, COLOR_SIGNAL);
+        context.fill(glyphX + 8, glyphBottom - 12, glyphX + 10, glyphBottom, COLOR_SIGNAL_PALE);
+
         String clock = LocalTime.now().format(CLOCK_FORMAT);
-        context.drawText(renderer, clock, panelX + PANEL_WIDTH - 12 - renderer.getWidth(clock), panelY + 12, 0xFF9DEBFF, false);
-        drawTabHighlights(context, panelX, panelY);
-        drawContentPanel(context, panelX, panelY);
+        int clockX = close.x() - 8 - renderer.getWidth(clock);
+        context.drawText(renderer, clock, clockX, status.y() + 13, COLOR_SIGNAL_PALE, false);
+
+        String titleValue = Text.translatable("screen.sparkstrength.tablet.title")
+                .getString()
+                .toUpperCase(Locale.ROOT);
+        int titleX = glyphX + 18;
+        context.drawText(
+                renderer,
+                trim(renderer, titleValue, Math.max(0, clockX - titleX - 8)),
+                titleX,
+                status.y() + 13,
+                COLOR_TEXT,
+                false
+        );
     }
 
-    private void drawTabHighlights(DrawContext context, int panelX, int panelY) {
-        int tabY = panelY + HEADER_HEIGHT + 14;
-        for (TabletTab value : TabletTab.values()) {
-            if (value == tab) {
-                context.fill(panelX + 8, tabY - 2, panelX + 122, tabY + 22, 0x332E6F9E);
-                context.fill(panelX + 8, tabY - 2, panelX + 11, tabY + 22, COLOR_ACCENT);
-            }
-            tabY += 26;
+    private void drawSignalSpine(DrawContext context) {
+        int selectedIndex = session.section().ordinal();
+        TabletLayout.Rect selectedTab = layout.tabs().get(selectedIndex);
+        TabletLayout.Rect body = layout.body();
+        TabletLayout.Rect footer = layout.footer();
+        context.fill(
+                selectedTab.x() - 2,
+                selectedTab.y() - 2,
+                selectedTab.right() + 2,
+                selectedTab.bottom() + 2,
+                COLOR_SIGNAL_SOFT
+        );
+
+        if (layout.mode() == TabletLayout.Mode.WIDE) {
+            int centerY = selectedTab.y() + selectedTab.height() / 2;
+            context.fill(selectedTab.x() - 4, selectedTab.y() - 2, selectedTab.x() - 1, selectedTab.bottom() + 2, COLOR_SIGNAL);
+            context.fill(selectedTab.right(), centerY - 1, body.x() + 5, centerY + 1, COLOR_SIGNAL);
+        } else {
+            int centerX = selectedTab.x() + selectedTab.width() / 2;
+            context.fill(selectedTab.x(), selectedTab.bottom(), selectedTab.right(), selectedTab.bottom() + 2, COLOR_SIGNAL);
+            context.fill(centerX - 1, selectedTab.bottom(), centerX + 1, layout.navigation().bottom(), COLOR_SIGNAL);
+            fillHorizontal(context, centerX, body.x() + 5, layout.navigation().bottom() - 2, layout.navigation().bottom(), COLOR_SIGNAL);
         }
+        context.fill(body.x() + 3, body.y(), body.x() + 6, footer.y(), COLOR_SIGNAL);
     }
 
-    private void drawContentPanel(DrawContext context, int panelX, int panelY) {
-        int contentX = contentX(panelX);
-        int contentY = panelY + HEADER_HEIGHT + 10;
-        context.fill(contentX - 4, contentY - 4, contentX + contentWidth() + 4, panelY + PANEL_HEIGHT - 12, COLOR_CONTENT);
-        context.drawBorder(contentX - 4, contentY - 4, contentWidth() + 8, PANEL_HEIGHT - HEADER_HEIGHT - 18, COLOR_DIVIDER);
-    }
-
-    private void drawSectionHeader(DrawContext context, TextRenderer renderer, int x, int y, Text title, String detail) {
-        context.drawText(renderer, title, x + 8, y, COLOR_TEXT, false);
-        if (!detail.isBlank()) {
-            context.drawText(renderer, detail, x + contentWidth() - 8 - renderer.getWidth(detail), y, 0xFFFFC062, false);
+    private void drawSectionHeader(DrawContext context, TextRenderer renderer, String detail) {
+        TabletLayout.Rect body = layout.body();
+        Text title = Text.translatable(session.section().translationKey());
+        int left = body.x() + 12;
+        int right = body.right() - 12;
+        String visibleDetail = trim(renderer, detail, Math.max(0, body.width() / 3));
+        int detailWidth = renderer.getWidth(visibleDetail);
+        String visibleTitle = trim(renderer, title.getString(), Math.max(0, right - left - detailWidth - 12));
+        context.drawText(renderer, visibleTitle, left, body.y() + 10, COLOR_TEXT, false);
+        if (!visibleDetail.isBlank()) {
+            context.drawText(renderer, visibleDetail, right - detailWidth, body.y() + 10, COLOR_ORANGE_PALE, false);
         }
-        context.fill(x + 8, y + 16, x + contentWidth() - 8, y + 17, COLOR_DIVIDER);
+        context.fill(left, body.y() + 25, right, body.y() + 26, COLOR_DIVIDER);
+        context.fill(left, body.y() + 25, Math.min(right, left + 24), body.y() + 26, COLOR_SIGNAL);
     }
 
-    private void drawEmptyState(DrawContext context, TextRenderer renderer, int x, int y, Text text) {
-        int width = contentWidth() - 16;
-        context.fill(x + 8, y, x + 8 + width, y + 42, 0x7A121A22);
-        context.drawBorder(x + 8, y, width, 42, COLOR_DIVIDER);
-        String value = trim(renderer, text.getString(), width - 24);
-        context.drawText(renderer, value, x + 20, y + 17, COLOR_MUTED, false);
+    private void drawEmptyState(DrawContext context, TextRenderer renderer, Text text) {
+        TabletLayout.Rect list = layout.list();
+        int boxHeight = Math.min(42, list.height());
+        context.fill(list.x(), list.y(), list.right(), list.y() + boxHeight, 0xA1121A20);
+        context.drawBorder(list.x(), list.y(), list.width(), boxHeight, COLOR_DIVIDER);
+        String value = trim(renderer, text.getString(), Math.max(0, list.width() - 24));
+        context.drawText(renderer, value, list.x() + 12, list.y() + Math.max(4, (boxHeight - 8) / 2), COLOR_MUTED, false);
     }
 
-    private void drawInfoLine(DrawContext context, TextRenderer renderer, int x, int y, Text text, int color) {
-        context.fill(x - 8, y - 8, x + contentWidth() - 20, y + 20, 0x7A121A22);
-        context.drawText(renderer, trim(renderer, text.getString(), contentWidth() - 44), x, y + 2, color, false);
+    private void drawInfoLine(DrawContext context, TextRenderer renderer, Text text, int color) {
+        TabletLayout.Rect list = layout.list();
+        int boxHeight = Math.min(30, list.height());
+        context.fill(list.x(), list.y(), list.right(), list.y() + boxHeight, 0xA1121A20);
+        context.drawText(
+                renderer,
+                trim(renderer, text.getString(), Math.max(0, list.width() - 24)),
+                list.x() + 12,
+                list.y() + Math.max(4, (boxHeight - 8) / 2),
+                color,
+                false
+        );
     }
 
-    private void drawPill(DrawContext context, TextRenderer renderer, Text text, int right, int y, int color, int backgroundColor) {
+    private void drawPill(
+            DrawContext context,
+            TextRenderer renderer,
+            Text text,
+            int right,
+            int y,
+            int color,
+            int backgroundColor
+    ) {
         String value = trim(renderer, text.getString(), 70);
         int width = Math.min(78, renderer.getWidth(value) + 10);
         context.fill(right - width, y, right, y + 14, backgroundColor);
@@ -492,25 +658,12 @@ public final class TabletScreen extends Screen {
         context.drawText(renderer, value, right - width + 5, y + 3, color, false);
     }
 
-    private int contentX(int panelX) {
-        return panelX + CONTENT_X_OFFSET;
+    private void fillHorizontal(DrawContext context, int firstX, int secondX, int y, int bottom, int color) {
+        context.fill(Math.min(firstX, secondX), y, Math.max(firstX, secondX), bottom, color);
     }
 
-    private int contentWidth() {
-        return PANEL_WIDTH - CONTENT_X_OFFSET - 18;
-    }
-
-    private int meetingVoteButtonX(int panelX) {
-        return panelX + PANEL_WIDTH - 116;
-    }
-
-    private boolean isInsideMeetingList(double mouseX, double mouseY) {
-        int listX = contentX(panelX()) + 8;
-        int listY = panelY() + MEETING_LIST_Y_OFFSET;
-        return mouseX >= listX
-                && mouseX < listX + contentWidth() - 16
-                && mouseY >= listY
-                && mouseY < listY + MEETING_VISIBLE_ROWS * ROW_HEIGHT;
+    private int visibleRows() {
+        return layout == null ? 0 : layout.visibleRows();
     }
 
     private String trim(TextRenderer renderer, String value, int width) {
@@ -523,29 +676,19 @@ public final class TabletScreen extends Screen {
 
     private void sendChat() {
         rememberChatDraft();
-        String message = pendingChat.trim();
-        if (message.isEmpty()) {
-            pendingChat = "";
-            TabletClientState.clearChatDraft();
-            if (chatField != null) {
-                chatField.setText("");
-            }
-            refresh();
-            return;
-        }
-        ClientPlayNetworking.send(new SendTabletChatC2SPacket(message));
-        pendingChat = "";
-        TabletClientState.clearChatDraft();
+        session.submitDraft().ifPresent(message ->
+                ClientPlayNetworking.send(new SendTabletChatC2SPacket(message)));
+        TabletClientState.setChatDraft(session.draft());
         if (chatField != null) {
-            chatField.setText("");
+            chatField.setText(session.draft());
         }
         refresh();
     }
 
     private void rememberChatDraft() {
         if (chatField != null) {
-            pendingChat = chatField.getText();
-            TabletClientState.setChatDraft(pendingChat);
+            session.updateDraft(chatField.getText());
+            TabletClientState.setChatDraft(session.draft());
         }
     }
 
@@ -560,14 +703,6 @@ public final class TabletScreen extends Screen {
                 || client.options.jumpKey.matchesKey(keyCode, scanCode)
                 || client.options.sneakKey.matchesKey(keyCode, scanCode)
                 || client.options.sprintKey.matchesKey(keyCode, scanCode);
-    }
-
-    private int panelX() {
-        return (width - PANEL_WIDTH) / 2;
-    }
-
-    private int panelY() {
-        return (height - PANEL_HEIGHT) / 2;
     }
 
     private void requestSnapshot() {

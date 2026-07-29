@@ -47,10 +47,7 @@ public final class CorruptCopMusicController {
     }
 
     public static int remainingResumeSeconds() {
-        if (!paused || music == null) {
-            return 0;
-        }
-        return CorruptCopMusicRules.remainingResumeSeconds(pausedTicks);
+        return CorruptCopMusicRules.remainingResumeSeconds(paused && music != null, pausedTicks);
     }
 
     private static boolean isEligiblePlayer(ClientPlayerEntity player) {
@@ -109,11 +106,13 @@ public final class CorruptCopMusicController {
         }
 
         if (!paused) {
-            CorruptCopSoundAccess.pause(soundManager, music);
             paused = true;
             pausedTicks = 1;
         } else {
             pausedTicks++;
+        }
+        if (CorruptCopMusicRules.shouldReassertRetainedPause(paused, soundManager.isPlaying(music))) {
+            CorruptCopSoundAccess.pause(soundManager, music);
         }
 
         if (CorruptCopMusicRules.shouldDiscardPausedTrack(pausedTicks)) {
