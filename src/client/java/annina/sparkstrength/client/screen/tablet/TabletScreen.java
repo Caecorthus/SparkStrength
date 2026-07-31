@@ -532,8 +532,6 @@ public final class TabletScreen extends Screen {
 
         context.fill(panel.x() - 4, panel.y() - 4, panel.right() + 4, panel.bottom() + 4, COLOR_SHELL_SHADOW);
         context.fill(panel.x(), panel.y(), panel.right(), panel.bottom(), COLOR_SHELL);
-        context.drawBorder(panel.x(), panel.y(), panel.width(), panel.height(), COLOR_METAL_EDGE);
-        context.drawBorder(panel.x() + 2, panel.y() + 2, Math.max(0, panel.width() - 4), Math.max(0, panel.height() - 4), COLOR_METAL_DARK);
         context.fill(status.x() + 3, status.y() + 3, status.right() - 3, status.bottom(), COLOR_STATUS);
         context.fill(navigation.x() + 3, navigation.y(), navigation.right() - 3, navigation.bottom(), COLOR_NAVIGATION);
         context.fill(body.x(), body.y(), body.right(), body.bottom(), COLOR_BODY);
@@ -548,6 +546,8 @@ public final class TabletScreen extends Screen {
 
         drawStatus(context, renderer);
         drawSignalSpine(context);
+        context.drawBorder(panel.x(), panel.y(), panel.width(), panel.height(), COLOR_METAL_EDGE);
+        context.drawBorder(panel.x() + 2, panel.y() + 2, Math.max(0, panel.width() - 4), Math.max(0, panel.height() - 4), COLOR_METAL_DARK);
     }
 
     private void drawStatus(DrawContext context, TextRenderer renderer) {
