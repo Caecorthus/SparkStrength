@@ -22,6 +22,8 @@ import annina.sparkstrength.role.morphling.MorphlingService;
 import annina.sparkstrength.role.morphling.MorphlingShopService;
 import annina.sparkstrength.role.poisoner.PoisonerEconomyService;
 import annina.sparkstrength.role.professor.ProfessorSerumShopService;
+import annina.sparkstrength.role.recaller.RecallerEconomyService;
+import annina.sparkstrength.role.recaller.RecallerShopService;
 import annina.sparkstrength.role.toxicologist.ToxicologistAntidoteService;
 import annina.sparkstrength.role.toxicologist.ToxicologistCapsuleShop;
 import annina.sparkstrength.role.attendant.FlashlightBlackoutService;
@@ -57,10 +59,13 @@ public final class SparkStrengthEvents {
         MorphlingShopService.register();
         PoisonerEconomyService.register();
         ProfessorSerumShopService.register();
+        RecallerShopService.register();
         ToxicologistAntidoteService.register();
         ToxicologistCapsuleShop.register();
         TabletShopService.register();
         VeteranShopService.register();
+        // 回溯者被动收入需要按世界 tick 定时结算，注册在服务端世界 tick 末尾。
+        ServerTickEvents.END_WORLD_TICK.register(RecallerEconomyService::tick);
         ServerTickEvents.END_WORLD_TICK.register(TabletStateService::tick);
         ServerTickEvents.END_WORLD_TICK.register(VeteranBlackoutService::tick);
 
