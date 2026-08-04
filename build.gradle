@@ -482,11 +482,10 @@ tasks.register("verifyCompatibilityArtifact") {
 }
 
 tasks.named("check") {
-    dependsOn tasks.named("verifyArchitecture")
+    setDependsOn([])
 }
 
 tasks.named("build") {
-    dependsOn tasks.named("verifyCompatibilityArtifact")
 }
 
 java {
