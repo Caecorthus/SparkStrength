@@ -81,9 +81,6 @@ dependencies {
     modRuntimeOnly "maven.modrinth:simple-voice-chat:fabric-${project.voicechat_version}"
     modRuntimeOnly "de.maxhenkel.voicechat:voicechat-api:${project.voicechat_api_version}:fabric-stub"
 
-    testImplementation "org.junit.jupiter:junit-jupiter:5.10.3"
-    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
-
 }
 
 tasks.named("compileClientJava") {
@@ -159,10 +156,6 @@ def targetJavaVersion = 21
 tasks.withType(JavaCompile).configureEach {
     it.options.encoding = "UTF-8"
     it.options.release.set(targetJavaVersion)
-}
-
-tasks.test {
-    useJUnitPlatform()
 }
 
 tasks.register("verifyArchitecture") {
