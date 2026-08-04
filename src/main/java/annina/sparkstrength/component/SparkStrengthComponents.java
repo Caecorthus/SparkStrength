@@ -12,6 +12,7 @@ import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
 import annina.sparkstrength.component.tablet.TabletWorldComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowTargetComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
+import annina.sparkstrength.component.toxicologist.ToxicologistAntidoteComponent;
 import annina.sparkstrength.component.veteran.VeteranKnifeComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import org.jetbrains.annotations.NotNull;
@@ -60,6 +61,9 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.beginRegistration(PlayerEntity.class, MorphMarkPlayerComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(MorphMarkPlayerComponent::new);
+        registry.beginRegistration(PlayerEntity.class, ToxicologistAntidoteComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(ToxicologistAntidoteComponent::new);
     }
 
     @Override

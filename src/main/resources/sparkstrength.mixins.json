@@ -6,7 +6,10 @@
   "mixins": [
     "corruptcop.CorruptCopAbilityPacketMixin",
     "corruptcop.CorruptCopLateralVelocityMixin",
+    "minecraft.ItemCooldownEntryAccessor",
+    "minecraft.ItemCooldownManagerAccessor",
     "noellesroles.HiddenEquipmentHelperMixin",
+    "noellesroles.ToxicologistAntidoteItemMixin",
     "professor.ProfessorDoorPassingMixin",
     "professor.ProfessorSedativeMoodMixin",
     "veteran.VeteranKnifeStabPayloadMixin",

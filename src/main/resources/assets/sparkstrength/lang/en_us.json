@@ -40,6 +40,8 @@
   "item.sparkstrength.morph_device.tooltip": "When there are marked players on the field, right-click this remote to trigger the morph effect.",
   "shop.sparkstrength.capsule": "Capsule",
   "shop.sparkstrength.capsule.description": "Stores one food or drink, then forces the hit target to consume it.",
+  "shop.sparkstrength.toxicologist.refresh_antidote_cooldown": "Refresh Antidote Cooldown",
+  "shop.sparkstrength.toxicologist.refresh_antidote_cooldown.description": "Refreshes the antidote cooldown after purchase",
   "shop.sparkstrength.tablet": "Tablet",
   "shop.sparkstrength.tablet.description": "Connects tablet holders for chat, meetings, and suspect tracking.",
   "shop.sparkstrength.veteran_knife": "Veteran Dagger",

@@ -91,6 +91,7 @@ public final class VeteranKnifeService {
         );
 
         GameFunctions.killPlayer(target, true, player, GameConstants.DeathReasons.KNIFE);
+        punishVeteranForStabbingInnocent(game, player, target);
         player.swingHand(usedHand);
         // 老兵加强要求刺杀后没有刀 CD；这里显式清掉，防止其他逻辑在同 tick 写入冷却。
         player.getItemCooldownManager().remove(WatheItems.KNIFE);
@@ -101,6 +102,23 @@ public final class VeteranKnifeService {
         VeteranKnifeComponent knife = VeteranKnifeComponent.KEY.get(player);
         knife.addKnife();
         syncWatheVeteranGuard(player, knife);
+    }
+
+    private static void punishVeteranForStabbingInnocent(
+            GameWorldComponent game,
+            ServerPlayerEntity veteran,
+            ServerPlayerEntity target
+    ) {
+        if (!game.isPlayerDead(target.getUuid())
+                || !game.isInnocent(target)
+                || !GameFunctions.isPlayerPlayingAndAlive(veteran)) {
+            return;
+        }
+
+        // 需求指定“使用匕首 knife 杀到好人阵营时老兵小脑死亡”。
+        // 先确认目标已死亡，避免疯魔盾或其它 KillPlayer.BEFORE 取消死亡时误罚老兵。
+        // 此服务只接管 Wathe knife 的刺杀包，所以这里天然只覆盖明确使用匕首的成功击杀。
+        GameFunctions.killPlayer(veteran, true, null, GameConstants.DeathReasons.SHOT_INNOCENT);
     }
 
     private static void adoptExistingWatheUsesIfNeeded(ServerPlayerEntity player, VeteranKnifeComponent knife) {

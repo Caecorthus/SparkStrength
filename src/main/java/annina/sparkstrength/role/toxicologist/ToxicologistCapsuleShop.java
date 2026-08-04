@@ -9,6 +9,7 @@ import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.LoreComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.text.Text;
 
 import java.util.List;
@@ -42,6 +43,12 @@ public final class ToxicologistCapsuleShop {
                 ToxicologistCapsuleRules.CAPSULE_PRICE,
                 ShopEntry.Type.TOOL
         ).actualStack(SparkStrengthItems.capsule().getDefaultStack()).build());
+        context.addEntry(new ShopEntry.Builder(
+                ToxicologistCapsuleRules.REFRESH_ANTIDOTE_COOLDOWN_ENTRY_ID,
+                refreshAntidoteCooldownDisplayStack(),
+                ToxicologistCapsuleRules.REFRESH_ANTIDOTE_COOLDOWN_PRICE,
+                ShopEntry.Type.TOOL
+        ).onBuy(ToxicologistAntidoteService::refreshAntidoteCooldown).build());
     }
 
     private static ItemStack capsuleDisplayStack() {
@@ -49,6 +56,17 @@ public final class ToxicologistCapsuleShop {
         stack.set(DataComponentTypes.ITEM_NAME, Text.translatable("shop.sparkstrength.capsule"));
         stack.set(DataComponentTypes.LORE, new LoreComponent(List.of(
                 Text.translatable("shop.sparkstrength.capsule.description")
+                        .styled(style -> style.withColor(0x808080).withItalic(false))
+        )));
+        return stack;
+    }
+
+    private static ItemStack refreshAntidoteCooldownDisplayStack() {
+        ItemStack stack = Items.CLOCK.getDefaultStack();
+        stack.set(DataComponentTypes.ITEM_NAME,
+                Text.translatable("shop.sparkstrength.toxicologist.refresh_antidote_cooldown"));
+        stack.set(DataComponentTypes.LORE, new LoreComponent(List.of(
+                Text.translatable("shop.sparkstrength.toxicologist.refresh_antidote_cooldown.description")
                         .styled(style -> style.withColor(0x808080).withItalic(false))
         )));
         return stack;

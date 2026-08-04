@@ -40,6 +40,8 @@
   "item.sparkstrength.morph_device.tooltip": "当场上有被标记变形的玩家后，右键该遥控器触发变形效果。",
   "shop.sparkstrength.capsule": "胶囊",
   "shop.sparkstrength.capsule.description": "可装入一份食物/饮品，投掷命中后强制目标食用。",
+  "shop.sparkstrength.toxicologist.refresh_antidote_cooldown": "解毒剂冷却刷新",
+  "shop.sparkstrength.toxicologist.refresh_antidote_cooldown.description": "购买后刷新解毒剂冷却时间",
   "shop.sparkstrength.tablet": "平板电脑",
   "shop.sparkstrength.tablet.description": "连接平板持有人，用于聊天、会议和嫌疑人追踪。",
   "shop.sparkstrength.veteran_knife": "老兵匕首",
