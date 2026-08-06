@@ -24,6 +24,7 @@
     "veteran.VeteranKnifeStabPayloadMixin",
     "veteran.VeteranServerKnifeUseMixin",
     "wathe.GameFunctionsMixin",
+    "wathe.KillerPassiveMoneyCapMixin",
     "wathe.PlayerShopComponentAccessor"
   ],
   "injectors": {
