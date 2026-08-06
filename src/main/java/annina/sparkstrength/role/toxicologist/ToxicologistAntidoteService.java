@@ -3,6 +3,7 @@ package annina.sparkstrength.role.toxicologist;
 import annina.sparkstrength.component.toxicologist.ToxicologistAntidoteComponent;
 import annina.sparkstrength.mixin.minecraft.ItemCooldownEntryAccessor;
 import annina.sparkstrength.mixin.minecraft.ItemCooldownManagerAccessor;
+import annina.sparkstrength.role.coroner.CoronerService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.PlayerPoisoned;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -123,7 +124,9 @@ public final class ToxicologistAntidoteService {
     private static void grantReductionToAliveToxicologists(ServerWorld world) {
         GameWorldComponent game = GameWorldComponent.KEY.get(world);
         for (ServerPlayerEntity player : world.getPlayers()) {
-            if (!isAliveGamePlayer(player) || !ToxicologistCapsuleRules.isToxicologist(game.getRole(player))) {
+            if (!isAliveGamePlayer(player)
+                    || !(ToxicologistCapsuleRules.isToxicologist(game.getRole(player))
+                    || CoronerService.hasToxicologistDisguise(player))) {
                 continue;
             }
 
@@ -141,7 +144,7 @@ public final class ToxicologistAntidoteService {
 
         GameWorldComponent game = GameWorldComponent.KEY.get(player.getWorld());
         Role role = game.getRole(player);
-        return ToxicologistCapsuleRules.isToxicologist(role);
+        return ToxicologistCapsuleRules.isToxicologist(role) || CoronerService.hasToxicologistDisguise(player);
     }
 
     private static boolean isAliveGamePlayer(PlayerEntity player) {

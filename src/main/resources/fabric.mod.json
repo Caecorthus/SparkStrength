@@ -36,6 +36,8 @@
       "sparkstrength:professor_serum_user",
       "sparkstrength:professor_serum_target",
       "sparkstrength:criminologist_player",
+      "sparkstrength:coroner_player",
+      "sparkstrength:coroner_body_snapshot",
       "sparkstrength:demon_hunter_sniff",
       "sparkstrength:veteran_knife",
       "sparkstrength:engineer_stunned",

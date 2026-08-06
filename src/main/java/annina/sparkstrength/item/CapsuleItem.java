@@ -1,6 +1,7 @@
 package annina.sparkstrength.item;
 
 import annina.sparkstrength.entity.CapsuleEntity;
+import annina.sparkstrength.role.coroner.CoronerService;
 import annina.sparkstrength.role.toxicologist.ToxicologistCapsuleRules;
 import dev.doctor4t.wathe.cca.PlayerMoodComponent;
 import dev.doctor4t.wathe.index.WatheDataComponentTypes;
@@ -59,6 +60,13 @@ public final class CapsuleItem extends Item {
         if (clickType != ClickType.RIGHT || hasContents(stack) || !isFoodOrDrink(otherStack)) {
             return false;
         }
+        if (!CoronerService.canUseToxicologistDisguiseItem(player)) {
+            /*
+             * 验尸官从毒理学家伪装商店买到的胶囊会保留在背包里，
+             * 但只有当前仍处于毒理学家尸体伪装时才允许继续填装/使用。
+             */
+            return false;
+        }
 
         ItemStack contents = otherStack.copyWithCount(1);
         setContents(stack, contents, player.getRegistryManager());
@@ -72,6 +80,9 @@ public final class CapsuleItem extends Item {
     @Override
     public TypedActionResult<ItemStack> use(World world, PlayerEntity user, Hand hand) {
         ItemStack stack = user.getStackInHand(hand);
+        if (!CoronerService.canUseToxicologistDisguiseItem(user)) {
+            return TypedActionResult.pass(stack);
+        }
         if (!hasContents(stack)) {
             if (!world.isClient()) {
                 user.sendMessage(Text.translatable("message.sparkstrength.capsule.empty"), true);

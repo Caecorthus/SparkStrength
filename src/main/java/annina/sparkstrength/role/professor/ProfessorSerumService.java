@@ -3,6 +3,7 @@ package annina.sparkstrength.role.professor;
 import annina.sparkstrength.component.professor.ProfessorSerumTargetComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
+import annina.sparkstrength.role.coroner.CoronerService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheSounds;
@@ -117,7 +118,7 @@ public final class ProfessorSerumService {
 
     public static boolean canUseSerum(ServerPlayerEntity player) {
         GameWorldComponent gameWorld = GameWorldComponent.KEY.get(player.getWorld());
-        return ProfessorSerumRules.isProfessor(gameWorld.getRole(player))
+        return (ProfessorSerumRules.isProfessor(gameWorld.getRole(player)) || CoronerService.hasProfessorDisguise(player))
                 && GameFunctions.isPlayerPlayingAndAlive(player)
                 && GameFunctions.isPlayerAliveAndSurvival(player)
                 && !SwallowedPlayerComponent.isPlayerSwallowed(player);

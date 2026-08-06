@@ -57,7 +57,7 @@ public final class ProfessorSerumShopService {
         ).onBuy(ProfessorSerumShopService::refreshCooldown).build());
     }
 
-    private static boolean refreshCooldown(PlayerEntity buyer) {
+    public static boolean refreshCooldown(PlayerEntity buyer) {
         ProfessorSerumUserComponent component = ProfessorSerumUserComponent.KEY.get(buyer);
         if (!component.isOnCooldown()) {
             return false;

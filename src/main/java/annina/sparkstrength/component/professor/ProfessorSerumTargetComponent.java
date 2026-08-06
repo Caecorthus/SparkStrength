@@ -2,6 +2,7 @@ package annina.sparkstrength.component.professor;
 
 import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
+import annina.sparkstrength.role.coroner.CoronerService;
 import annina.sparkstrength.role.professor.ProfessorSerumRules;
 import annina.sparkstrength.role.professor.ProfessorSerumType;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -206,7 +207,9 @@ public class ProfessorSerumTargetComponent implements AutoSyncedComponent, Serve
     @Override
     public void writeSyncPacket(RegistryByteBuf buf, ServerPlayerEntity recipient) {
         GameWorldComponent gameWorld = GameWorldComponent.KEY.get(recipient.getWorld());
-        boolean fullSync = recipient == this.player || gameWorld.isRole(recipient, Noellesroles.PROFESSOR);
+        boolean fullSync = recipient == this.player
+                || gameWorld.isRole(recipient, Noellesroles.PROFESSOR)
+                || CoronerService.hasProfessorDisguise(recipient);
         buf.writeVarInt(invisibilityTicks);
         buf.writeVarInt(fullSync ? doorpassingTicks : 0);
         buf.writeVarInt(fullSync ? sedativeTicks : 0);

@@ -55,13 +55,41 @@ public final class CorruptCopRules {
             boolean requiresKey,
             boolean coolingDown
     ) {
-        if (!NEUTRAL_MASTER_KEY_ID.equals(handItemId) || !isCorruptCop(playerRole)) {
+        return neutralMasterKeyDoorResult(
+                handItemId,
+                playerRole != null && playerRole.isNeutral(),
+                isCorruptCop(playerRole),
+                doorType,
+                blasted,
+                jammed,
+                open,
+                requiresKey,
+                coolingDown
+        );
+    }
+
+    public static DoorInteraction.DoorInteractionResult neutralMasterKeyDoorResult(
+            Identifier handItemId,
+            boolean neutralKeyUser,
+            boolean corruptCopKeyUser,
+            DoorInteraction.DoorType doorType,
+            boolean blasted,
+            boolean jammed,
+            boolean open,
+            boolean requiresKey,
+            boolean coolingDown
+    ) {
+        /*
+         * 中立万能钥匙现在对所有中立身份生效；验尸官伪装中立尸体时，
+         * 调用方会把 neutralKeyUser 置为 true，让临时获得的钥匙同样能开列车门。
+         */
+        if (!NEUTRAL_MASTER_KEY_ID.equals(handItemId) || !neutralKeyUser) {
             return DoorInteraction.DoorInteractionResult.PASS;
         }
         if (blasted || jammed || open) {
             return DoorInteraction.DoorInteractionResult.PASS;
         }
-        if (!canNeutralMasterKeyOpen(doorType, requiresKey)) {
+        if (!canNeutralMasterKeyOpen(doorType, requiresKey, corruptCopKeyUser)) {
             return DoorInteraction.DoorInteractionResult.PASS;
         }
         return coolingDown
@@ -119,8 +147,13 @@ public final class CorruptCopRules {
         );
     }
 
-    private static boolean canNeutralMasterKeyOpen(DoorInteraction.DoorType doorType, boolean requiresKey) {
+    private static boolean canNeutralMasterKeyOpen(
+            DoorInteraction.DoorType doorType,
+            boolean requiresKey,
+            boolean corruptCop
+    ) {
         return doorType == DoorInteraction.DoorType.TRAIN_DOOR
-                || (doorType == DoorInteraction.DoorType.SMALL_DOOR && requiresKey);
+                // 仍保留 SparkStrength 黑警增强里原本的小门行为；其它中立角色只吃“中立万能钥匙”的列车门能力。
+                || (corruptCop && doorType == DoorInteraction.DoorType.SMALL_DOOR && requiresKey);
     }
 }

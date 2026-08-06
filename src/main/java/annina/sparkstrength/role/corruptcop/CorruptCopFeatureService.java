@@ -1,5 +1,6 @@
 package annina.sparkstrength.role.corruptcop;
 
+import annina.sparkstrength.role.coroner.CoronerService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.DoorInteraction;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -35,9 +36,14 @@ public final class CorruptCopFeatureService {
         Item item = handItem.getItem();
         Identifier handItemId = Registries.ITEM.getId(item);
         Role playerRole = GameWorldComponent.KEY.get(context.getWorld()).getRole(player);
+        /*
+         * 中立万能钥匙的“有效身份”同时看真实职业和验尸官尸体伪装：
+         * 验尸官从中立尸体获得 neutral_master_key 后，应当能按该尸体身份使用列车门能力。
+         */
         DoorInteraction.DoorInteractionResult result = CorruptCopRules.neutralMasterKeyDoorResult(
                 handItemId,
-                playerRole,
+                (playerRole != null && playerRole.isNeutral()) || CoronerService.hasNeutralDisguise(player),
+                CorruptCopRules.isCorruptCop(playerRole) || CoronerService.hasCorruptCopDisguise(player),
                 context.getDoorType(),
                 context.isBlasted(),
                 context.isJammed(),

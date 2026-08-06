@@ -3,6 +3,7 @@ package annina.sparkstrength.role.noisemaker;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowTargetComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
+import annina.sparkstrength.role.coroner.CoronerService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.record.GameRecordManager;
@@ -95,7 +96,7 @@ public final class NoisemakerGlowService {
         }
 
         GameWorldComponent gameWorld = GameWorldComponent.KEY.get(victim.getWorld());
-        if (!gameWorld.isRole(victim, Noellesroles.NOISEMAKER)) {
+        if (!gameWorld.isRole(victim, Noellesroles.NOISEMAKER) && !CoronerService.hasNoisemakerDisguise(victim)) {
             return;
         }
         if (!GameFunctions.isPlayerPlayingAndAlive(killer)) {

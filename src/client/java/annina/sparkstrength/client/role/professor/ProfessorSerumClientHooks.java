@@ -1,6 +1,7 @@
 package annina.sparkstrength.client.role.professor;
 
 import annina.sparkstrength.component.professor.ProfessorSerumTargetComponent;
+import annina.sparkstrength.role.coroner.CoronerService;
 import annina.sparkstrength.role.professor.ProfessorSerumRules;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -40,7 +41,8 @@ public final class ProfessorSerumClientHooks {
 
         ProfessorSerumTargetComponent targetComponent = ProfessorSerumTargetComponent.KEY.get(target);
         GameWorldComponent gameWorld = GameWorldComponent.KEY.get(localPlayer.getWorld());
-        boolean localProfessor = gameWorld.isRole(localPlayer, Noellesroles.PROFESSOR);
+        boolean localProfessor = gameWorld.isRole(localPlayer, Noellesroles.PROFESSOR)
+                || CoronerService.hasProfessorDisguise(localPlayer);
 
         if (localProfessor) {
             int color = targetComponent.highestPriorityHighlightColor();

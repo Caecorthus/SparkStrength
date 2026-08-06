@@ -2,6 +2,7 @@ package annina.sparkstrength.client.role.morphling;
 
 import annina.sparkstrength.component.morphling.MorphBodyDisguiseWorldComponent;
 import annina.sparkstrength.component.morphling.MorphMarkPlayerComponent;
+import annina.sparkstrength.role.coroner.CoronerService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.client.WatheClient;
 import dev.doctor4t.wathe.client.model.WatheModelLayers;
@@ -93,10 +94,19 @@ public final class MorphlingAppearanceClientHelper {
 
         MorphMarkPlayerComponent component = MorphMarkPlayerComponent.KEY.get(player);
         UUID sampleUuid = component.sampleUuid();
-        if (!component.isActive() || sampleUuid == null) {
-            return null;
+        if (component.isActive() && sampleUuid != null) {
+            return resolveOriginalSkinTextures(sampleUuid);
         }
-        return resolveOriginalSkinTextures(sampleUuid);
+
+        /*
+         * 验尸官的尸体身份变形优先级最低：只有原 Morphling 和 SparkStrength 变形试剂都没生效，
+         * 才使用验尸官自己的长期变形，满足“低于变形怪增强机制”的需求。
+         */
+        UUID coronerDisguiseUuid = CoronerService.activeDisguiseUuid(player);
+        if (coronerDisguiseUuid != null) {
+            return resolveOriginalSkinTextures(coronerDisguiseUuid);
+        }
+        return null;
     }
 
     public static @Nullable Text resolveActiveDisplayName(PlayerEntity player) {
@@ -110,10 +120,15 @@ public final class MorphlingAppearanceClientHelper {
 
         MorphMarkPlayerComponent component = MorphMarkPlayerComponent.KEY.get(player);
         UUID sampleUuid = component.sampleUuid();
-        if (!component.isActive() || sampleUuid == null) {
-            return null;
+        if (component.isActive() && sampleUuid != null) {
+            return resolveDisplayName(sampleUuid, component.sampleName());
         }
-        return resolveDisplayName(sampleUuid, component.sampleName());
+
+        UUID coronerDisguiseUuid = CoronerService.activeDisguiseUuid(player);
+        if (coronerDisguiseUuid != null) {
+            return resolveDisplayName(coronerDisguiseUuid, "");
+        }
+        return null;
     }
 
     public static SkinTextures resolveBodySkinTextures(PlayerBodyEntity body) {

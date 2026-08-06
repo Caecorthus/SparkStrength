@@ -1,6 +1,7 @@
 package annina.sparkstrength.role.veteran;
 
 import annina.sparkstrength.component.veteran.VeteranKnifeComponent;
+import annina.sparkstrength.role.coroner.CoronerService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerVeteranComponent;
@@ -50,6 +51,9 @@ public final class VeteranKnifeService {
         ServerPlayerEntity player = context.player();
         GameWorldComponent game = GameWorldComponent.KEY.get(player.getWorld());
         Role role = game.getRole(player);
+        if (!VeteranRules.isVeteran(role) && CoronerService.hasInstantSilentKnifeDisguise(player)) {
+            return handleCoronerInstantSilentKnifeDisguise(payload, player, game);
+        }
         if (!VeteranRules.isVeteran(role)) {
             return false;
         }
@@ -94,6 +98,46 @@ public final class VeteranKnifeService {
         punishVeteranForStabbingInnocent(game, player, target);
         player.swingHand(usedHand);
         // 老兵加强要求刺杀后没有刀 CD；这里显式清掉，防止其他逻辑在同 tick 写入冷却。
+        player.getItemCooldownManager().remove(WatheItems.KNIFE);
+        return true;
+    }
+
+    private static boolean handleCoronerInstantSilentKnifeDisguise(
+            KnifeStabPayload payload,
+            ServerPlayerEntity player,
+            GameWorldComponent game
+    ) {
+        if (player.isSpectator()) {
+            return true;
+        }
+        Entity targetEntity = player.getServerWorld().getEntityById(payload.target());
+        if (!(targetEntity instanceof ServerPlayerEntity target)
+                || target.isSpectator()
+                || target.distanceTo(player) > 3.0D) {
+            return true;
+        }
+        if (!isHoldingKnife(player)) {
+            return true;
+        }
+
+        /*
+         * 验尸官只从“老兵/清道夫尸体身份”借到无蓄力、无声音出刀，
+         * 不接入老兵 2 次次数池；但老兵尸体身份仍继承老兵“小脑惩罚”，
+         * 清道夫尸体身份只继承无蓄力无声音出刀，不继承老兵惩罚；
+         * 临时匕首会在解除/切换变形时统一回收。
+         */
+        Hand usedHand = heldKnifeHand(player);
+        GameRecordManager.recordItemUse(
+                player,
+                Registries.ITEM.getId(WatheItems.KNIFE),
+                target,
+                null
+        );
+        GameFunctions.killPlayer(target, true, player, GameConstants.DeathReasons.KNIFE);
+        if (CoronerService.hasVeteranDisguise(player)) {
+            punishVeteranForStabbingInnocent(game, player, target);
+        }
+        player.swingHand(usedHand);
         player.getItemCooldownManager().remove(WatheItems.KNIFE);
         return true;
     }

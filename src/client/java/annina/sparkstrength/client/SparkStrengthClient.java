@@ -1,6 +1,7 @@
 package annina.sparkstrength.client;
 
 import annina.sparkstrength.client.item.CapsuleClient;
+import annina.sparkstrength.client.role.coroner.CoronerClientHooks;
 import annina.sparkstrength.client.role.corruptcop.CorruptCopClientHooks;
 import annina.sparkstrength.client.role.corruptcop.CorruptCopMusicController;
 import annina.sparkstrength.client.role.demonhunter.DemonHunterSniffClientHooks;
@@ -27,6 +28,7 @@ public final class SparkStrengthClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         CapsuleClient.register();
+        CoronerClientHooks.register();
         CorruptCopClientHooks.register();
         CriminologistClientHooks.register();
         DemonHunterSniffClientHooks.register();

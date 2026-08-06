@@ -4,6 +4,15 @@
   "package": "annina.sparkstrength.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "coroner.CoronerBaseSpiritItemMixin",
+    "coroner.CoronerBartenderComponentSyncMixin",
+    "coroner.CoronerBomberComponentSyncMixin",
+    "coroner.CoronerIronManComponentSyncMixin",
+    "coroner.CoronerIronManVialItemMixin",
+    "coroner.CoronerPoisonNeedleItemMixin",
+    "coroner.CoronerPoisonComponentSyncMixin",
+    "coroner.CoronerTimedBombItemMixin",
+    "coroner.CoronerWaiterPlatterMixin",
     "corruptcop.CorruptCopAbilityPacketMixin",
     "corruptcop.CorruptCopLateralVelocityMixin",
     "minecraft.ItemCooldownEntryAccessor",
@@ -14,6 +23,7 @@
     "professor.ProfessorSedativeMoodMixin",
     "veteran.VeteranKnifeStabPayloadMixin",
     "veteran.VeteranServerKnifeUseMixin",
+    "wathe.GameFunctionsMixin",
     "wathe.PlayerShopComponentAccessor"
   ],
   "injectors": {

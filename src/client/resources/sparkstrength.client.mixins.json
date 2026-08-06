@@ -5,6 +5,8 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "corruptcop.CorruptCopHudMixin",
+    "coroner.CoronerInventoryScreenMixin",
+    "coroner.CoronerTimeRendererMixin",
     "corruptcop.SoundManagerAccessor",
     "corruptcop.SoundSystemAccessor",
     "corruptcop.WatheClientInstinctLightMixin",

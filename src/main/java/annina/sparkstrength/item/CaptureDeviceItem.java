@@ -3,6 +3,7 @@ package annina.sparkstrength.item;
 import annina.sparkstrength.SparkStrengthEntities;
 import annina.sparkstrength.entity.CaptureDeviceEntity;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
+import annina.sparkstrength.role.coroner.CoronerService;
 import dev.doctor4t.wathe.record.GameRecordManager;
 import dev.doctor4t.wathe.util.AdventureUsable;
 import net.minecraft.entity.player.PlayerEntity;
@@ -43,6 +44,13 @@ public final class CaptureDeviceItem extends Item implements AdventureUsable {
 
         PlayerEntity player = context.getPlayer();
         if (player == null) {
+            return ActionResult.PASS;
+        }
+        if (!CoronerService.canUseEngineerDisguiseItem(player)) {
+            /*
+             * 验尸官从工程师伪装商店购买的捕捉装置不跨伪装生效；
+             * 物品保留在背包，但离开工程师伪装后不能继续放置。
+             */
             return ActionResult.PASS;
         }
 
