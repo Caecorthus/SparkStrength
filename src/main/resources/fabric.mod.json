@@ -67,5 +67,8 @@
     "cardinal-components-base": ">=${cca_version}",
     "cardinal-components-entity": ">=${cca_version}",
     "cardinal-components-world": ">=${cca_version}"
+  },
+  "suggests": {
+    "sparkwitch": "*"
   }
 }

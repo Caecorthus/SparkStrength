@@ -1,6 +1,7 @@
 package annina.sparkstrength.role.coroner;
 
 import annina.sparkstrength.SparkStrengthItems;
+import annina.sparkstrength.compat.SparkWitchCompat;
 import annina.sparkstrength.component.coroner.CoronerBodySnapshotComponent;
 import annina.sparkstrength.component.coroner.CoronerPlayerComponent;
 import annina.sparkstrength.component.morphling.MorphBodyDisguiseWorldComponent;
@@ -270,6 +271,10 @@ public final class CoronerService {
         return CoronerRules.isBomber(activeDisguiseRole(player));
     }
 
+    public static boolean hasKidnapperDisguise(PlayerEntity player) {
+        return CoronerRules.isSparkWitchKidnapper(activeDisguiseRole(player));
+    }
+
     public static boolean hasRoleDisguise(PlayerEntity player, Identifier roleId) {
         Role role = activeDisguiseRole(player);
         return role != null && roleId != null && roleId.equals(role.identifier());
@@ -457,6 +462,16 @@ public final class CoronerService {
         }
         if (CoronerRules.grantsTimedBomb(role)) {
             giveTemporaryItem(player, ModItems.TIMED_BOMB, disguiseUuid, snapshot.roleId(), "timed_bomb");
+        }
+        if (CoronerRules.isSparkWitchKidnapper(role)) {
+            /*
+             * 验尸官伪装 SparkWitch 绑架者时，通过软兼容拿 1 个临时迷药。
+             * SparkWitch 未安装或版本过旧时 createKidnapperDrugStack 会返回 null，验尸官其它伪装不受影响。
+             */
+            ItemStack knockoutDrug = SparkWitchCompat.createKidnapperDrugStack();
+            if (knockoutDrug != null) {
+                giveTemporaryStack(player, knockoutDrug, disguiseUuid, snapshot.roleId(), "sparkwitch_knockout_drug");
+            }
         }
         if (CoronerRules.isDemonHunter(role)) {
             refreshDemonHunterState(player);
