@@ -33,6 +33,8 @@
       "sparkstrength:corrupt_cop_ability",
       "sparkstrength:noisemaker_glow_user",
       "sparkstrength:noisemaker_glow_target",
+      "sparkstrength:phantom_backpack_user",
+      "sparkstrength:phantom_backpack_target",
       "sparkstrength:professor_serum_user",
       "sparkstrength:professor_serum_target",
       "sparkstrength:criminologist_player",

@@ -33,6 +33,7 @@ public final class CoronerRules {
     public static final Identifier NOELLES_TIMEKEEPER_ID = Identifier.of("noellesroles", "time_keeper");
     public static final Identifier NOELLES_UNDERCOVER_ID = Identifier.of("noellesroles", "undercover");
     public static final Identifier NOELLES_NOISEMAKER_ID = Identifier.of("noellesroles", "noisemaker");
+    public static final Identifier NOELLES_SILENCER_ID = Identifier.of("noellesroles", "silencer");
     public static final Identifier NOELLES_RECALLER_ID = Identifier.of("noellesroles", "recaller");
     public static final Identifier NOELLES_BARTENDER_ID = Identifier.of("noellesroles", "bartender");
     public static final Identifier NOELLES_DEMON_HUNTER_ID = Identifier.of("noellesroles", "demon_hunter");
@@ -148,6 +149,10 @@ public final class CoronerRules {
 
     public static boolean isNoisemaker(@Nullable Role role) {
         return hasRoleId(role, NOELLES_NOISEMAKER_ID);
+    }
+
+    public static boolean isSilencer(@Nullable Role role) {
+        return hasRoleId(role, NOELLES_SILENCER_ID);
     }
 
     public static boolean isRecaller(@Nullable Role role) {

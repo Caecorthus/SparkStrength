@@ -114,6 +114,8 @@
   "message.sparkstrength.tablet.suspect_removed": "%s 已从嫌疑人名单移除。",
   "replay.global.sparkstrength.noisemaker_glow_started": "%s点亮了%s",
   "replay.global.sparkstrength.noisemaker_glow_ended": "%s 的发光时间结束",
+  "replay.global.sparkstrength.phantom_backpack_invisibility_started": "%s隐身了%s",
+  "replay.global.sparkstrength.phantom_backpack_invisibility_ended": "%s隐身时间结束",
   "replay.global.sparkstrength.professor_serum_fed": "%s将%s投喂给了%s",
   "replay.global.sparkstrength.professor_invisibility_ended": "%s的隐身效果结束",
   "replay.global.sparkstrength.professor_doorpassing_ended": "%s的穿门效果结束",

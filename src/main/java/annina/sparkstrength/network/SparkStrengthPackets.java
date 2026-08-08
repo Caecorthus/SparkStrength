@@ -5,6 +5,7 @@ import annina.sparkstrength.network.criminologist.SelectCriminologistTargetC2SPa
 import annina.sparkstrength.network.coroner.CoronerMorphC2SPacket;
 import annina.sparkstrength.network.demonhunter.DemonHunterSniffC2SPacket;
 import annina.sparkstrength.network.noisemaker.NoisemakerGlowC2SPacket;
+import annina.sparkstrength.network.phantom.PhantomBackpackInvisibilityC2SPacket;
 import annina.sparkstrength.network.professor.ProfessorRemoteFeedC2SPacket;
 import annina.sparkstrength.network.tablet.ApproveSuspectRemovalC2SPacket;
 import annina.sparkstrength.network.tablet.CallTabletMeetingC2SPacket;
@@ -16,6 +17,7 @@ import annina.sparkstrength.network.tablet.SendTabletChatC2SPacket;
 import annina.sparkstrength.network.tablet.SyncTabletSnapshotS2CPacket;
 import annina.sparkstrength.network.veteran.SyncVeteranBlackoutS2CPacket;
 import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
+import annina.sparkstrength.role.phantom.PhantomBackpackService;
 import annina.sparkstrength.role.coroner.CoronerService;
 import annina.sparkstrength.role.professor.ProfessorSerumService;
 import annina.sparkstrength.role.detective.CriminologistService;
@@ -33,6 +35,7 @@ public final class SparkStrengthPackets {
 
     public static void registerServer() {
         PayloadTypeRegistry.playC2S().register(NoisemakerGlowC2SPacket.ID, NoisemakerGlowC2SPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(PhantomBackpackInvisibilityC2SPacket.ID, PhantomBackpackInvisibilityC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(CoronerMorphC2SPacket.ID, CoronerMorphC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(ProfessorRemoteFeedC2SPacket.ID, ProfessorRemoteFeedC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(SelectCriminologistTargetC2SPacket.ID, SelectCriminologistTargetC2SPacket.CODEC);
@@ -49,6 +52,9 @@ public final class SparkStrengthPackets {
         PayloadTypeRegistry.playS2C().register(SyncVeteranBlackoutS2CPacket.ID, SyncVeteranBlackoutS2CPacket.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(NoisemakerGlowC2SPacket.ID, (payload, context) ->
                 NoisemakerGlowService.tryUseBackpackGlow(context.player(), payload.targetPlayer())
+        );
+        ServerPlayNetworking.registerGlobalReceiver(PhantomBackpackInvisibilityC2SPacket.ID, (payload, context) ->
+                PhantomBackpackService.tryUseBackpackInvisibility(context.player(), payload.targetPlayer())
         );
         ServerPlayNetworking.registerGlobalReceiver(CoronerMorphC2SPacket.ID, (payload, context) ->
                 CoronerService.selectDisguise(context.player(), payload.targetPlayer())

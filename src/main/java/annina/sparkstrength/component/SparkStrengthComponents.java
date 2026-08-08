@@ -9,6 +9,8 @@ import annina.sparkstrength.component.demonhunter.DemonHunterSniffPlayerComponen
 import annina.sparkstrength.component.engineer.EngineerStunnedPlayerComponent;
 import annina.sparkstrength.component.morphling.MorphBodyDisguiseWorldComponent;
 import annina.sparkstrength.component.morphling.MorphMarkPlayerComponent;
+import annina.sparkstrength.component.phantom.PhantomBackpackTargetComponent;
+import annina.sparkstrength.component.phantom.PhantomBackpackUserComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumTargetComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
 import annina.sparkstrength.component.tablet.TabletWorldComponent;
@@ -43,6 +45,12 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.beginRegistration(PlayerEntity.class, NoisemakerGlowTargetComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(NoisemakerGlowTargetComponent::new);
+        registry.beginRegistration(PlayerEntity.class, PhantomBackpackUserComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(PhantomBackpackUserComponent::new);
+        registry.beginRegistration(PlayerEntity.class, PhantomBackpackTargetComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(PhantomBackpackTargetComponent::new);
         registry.beginRegistration(PlayerEntity.class, ProfessorSerumUserComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(ProfessorSerumUserComponent::new);

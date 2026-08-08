@@ -246,6 +246,10 @@ public final class CoronerService {
         return CoronerRules.isNoisemaker(activeDisguiseRole(player));
     }
 
+    public static boolean hasSilencerDisguise(PlayerEntity player) {
+        return CoronerRules.isSilencer(activeDisguiseRole(player));
+    }
+
     public static boolean hasRecallerDisguise(PlayerEntity player) {
         return CoronerRules.isRecaller(activeDisguiseRole(player));
     }

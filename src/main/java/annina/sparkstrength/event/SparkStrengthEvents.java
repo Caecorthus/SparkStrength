@@ -6,9 +6,12 @@ import annina.sparkstrength.component.demonhunter.DemonHunterSniffPlayerComponen
 import annina.sparkstrength.component.morphling.MorphBodyDisguiseWorldComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowTargetComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
+import annina.sparkstrength.component.phantom.PhantomBackpackTargetComponent;
+import annina.sparkstrength.component.phantom.PhantomBackpackUserComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumTargetComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
 import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
+import annina.sparkstrength.role.phantom.PhantomBackpackService;
 import annina.sparkstrength.role.attendant.AttendantFlashlightService;
 import annina.sparkstrength.role.coroner.CoronerEconomyService;
 import annina.sparkstrength.role.coroner.CoronerEngineerService;
@@ -88,6 +91,7 @@ public final class SparkStrengthEvents {
                 CriminologistService.assignForRole(serverPlayer, role);
                 DemonHunterSniffService.assignForRole(serverPlayer, role);
                 MorphlingService.assignForRole(serverPlayer, role);
+                PhantomBackpackService.assignForRole(serverPlayer, role);
                 ToxicologistAntidoteService.clearPlayer(serverPlayer);
                 VeteranKnifeService.assignForRole(serverPlayer, role);
             }
@@ -98,6 +102,8 @@ public final class SparkStrengthEvents {
             // 这里把点亮冷却和目标倒计时都清掉，避免跨局残留。
             NoisemakerGlowUserComponent.KEY.get(player).reset();
             NoisemakerGlowTargetComponent.KEY.get(player).reset();
+            PhantomBackpackUserComponent.KEY.get(player).reset();
+            PhantomBackpackTargetComponent.KEY.get(player).reset();
             ProfessorSerumUserComponent.KEY.get(player).reset();
             ProfessorSerumTargetComponent.KEY.get(player).reset();
             CriminologistPlayerComponent.KEY.get(player).clearAll();
@@ -134,6 +140,7 @@ public final class SparkStrengthEvents {
                     CriminologistPlayerComponent.KEY.get(player).clearAll();
                     EngineerCaptureDeviceService.clearPlayer(player);
                     MorphlingService.reset(player);
+                    PhantomBackpackService.clearPlayer(player);
                     ToxicologistAntidoteService.clearPlayer(player);
                     ProfessorSerumUserComponent.KEY.get(player).reset();
                     ProfessorSerumTargetComponent.KEY.get(player).reset();

@@ -16,6 +16,8 @@ import java.util.UUID;
 public final class SparkStrengthReplayFormatters {
     public static final Identifier NOISEMAKER_GLOW_STARTED = SparkStrength.id("noisemaker_glow_started");
     public static final Identifier NOISEMAKER_GLOW_ENDED = SparkStrength.id("noisemaker_glow_ended");
+    public static final Identifier PHANTOM_BACKPACK_INVISIBILITY_STARTED = SparkStrength.id("phantom_backpack_invisibility_started");
+    public static final Identifier PHANTOM_BACKPACK_INVISIBILITY_ENDED = SparkStrength.id("phantom_backpack_invisibility_ended");
     public static final Identifier PROFESSOR_SERUM_FED = SparkStrength.id("professor_serum_fed");
     public static final Identifier PROFESSOR_INVISIBILITY_ENDED = SparkStrength.id("professor_invisibility_ended");
     public static final Identifier PROFESSOR_DOORPASSING_ENDED = SparkStrength.id("professor_doorpassing_ended");
@@ -66,6 +68,29 @@ public final class SparkStrengthReplayFormatters {
                     ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache)
             );
         });
+
+        ReplayRegistry.registerGlobalEventFormatter(PHANTOM_BACKPACK_INVISIBILITY_STARTED, (event, match, world) -> {
+            var playerInfoCache = ReplayGenerator.getPlayerInfoCache(match);
+            NbtCompound data = event.data();
+            UUID actorUuid = data.containsUuid("actor") ? data.getUuid("actor") : null;
+            UUID targetUuid = data.containsUuid("target") ? data.getUuid("target") : null;
+            if (actorUuid == null || targetUuid == null) {
+                return null;
+            }
+
+            return Text.translatable(
+                    "replay.global.sparkstrength.phantom_backpack_invisibility_started",
+                    ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache),
+                    ReplayGenerator.formatPlayerName(targetUuid, playerInfoCache)
+            );
+        });
+
+        ReplayRegistry.registerGlobalEventFormatter(PHANTOM_BACKPACK_INVISIBILITY_ENDED,
+                (event, match, world) -> onePlayerEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.phantom_backpack_invisibility_ended"
+                ));
 
         ReplayRegistry.registerGlobalEventFormatter(PROFESSOR_SERUM_FED, (event, match, world) -> {
             var playerInfoCache = ReplayGenerator.getPlayerInfoCache(match);

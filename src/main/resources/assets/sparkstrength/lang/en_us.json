@@ -114,6 +114,8 @@
   "message.sparkstrength.tablet.suspect_removed": "%s was removed from suspects.",
   "replay.global.sparkstrength.noisemaker_glow_started": "%s lit up %s",
   "replay.global.sparkstrength.noisemaker_glow_ended": "%s's glowing time ended",
+  "replay.global.sparkstrength.phantom_backpack_invisibility_started": "%s made %s invisible",
+  "replay.global.sparkstrength.phantom_backpack_invisibility_ended": "%s's invisibility time ended",
   "replay.global.sparkstrength.professor_serum_fed": "%s fed %s to %s",
   "replay.global.sparkstrength.professor_invisibility_ended": "%s's invisibility ended",
   "replay.global.sparkstrength.professor_doorpassing_ended": "%s's doorpassing ended",

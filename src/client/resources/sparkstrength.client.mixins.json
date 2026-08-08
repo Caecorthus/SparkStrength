@@ -11,6 +11,7 @@
     "corruptcop.SoundSystemAccessor",
     "corruptcop.WatheClientInstinctLightMixin",
     "noisemaker.NoisemakerInventoryScreenMixin",
+    "phantom.PhantomBackpackInventoryScreenMixin",
     "professor.ProfessorInventoryScreenMixin",
     "professor.ProfessorSerumCrosshairMixin",
     "detective.CriminologistHudMixin",
