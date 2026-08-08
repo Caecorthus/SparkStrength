@@ -13,6 +13,7 @@ import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
 import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.phantom.PhantomBackpackService;
 import annina.sparkstrength.role.attendant.AttendantFlashlightService;
+import annina.sparkstrength.role.bomber.BomberTrapService;
 import annina.sparkstrength.role.coroner.CoronerEconomyService;
 import annina.sparkstrength.role.coroner.CoronerEngineerService;
 import annina.sparkstrength.role.coroner.CoronerService;
@@ -131,6 +132,7 @@ public final class SparkStrengthEvents {
             if (world instanceof ServerWorld serverWorld) {
                 CriminologistWorldComponent.KEY.get(serverWorld).clearRoundState();
                 MorphBodyDisguiseWorldComponent.KEY.get(serverWorld).clearRoundState();
+                BomberTrapService.clearRoundState(serverWorld);
                 EngineerCaptureDeviceService.clearRoundState(serverWorld);
                 TabletStateService.clearRoundState(serverWorld);
                 VeteranBlackoutService.clear(serverWorld);
@@ -153,6 +155,7 @@ public final class SparkStrengthEvents {
         GameEvents.ON_FINISH_INITIALIZE.register((world, gameComponent) -> {
             if (world instanceof ServerWorld serverWorld) {
                 MorphBodyDisguiseWorldComponent.KEY.get(serverWorld).clearRoundState();
+                BomberTrapService.clearRoundState(serverWorld);
                 EngineerCaptureDeviceService.clearRoundState(serverWorld);
             }
         });

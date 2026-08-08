@@ -4,6 +4,8 @@
   "package": "annina.sparkstrength.client.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "bomber.TimedBombBedViewMixin",
+    "bomber.TimedBombTrayViewMixin",
     "corruptcop.CorruptCopHudMixin",
     "coroner.CoronerInventoryScreenMixin",
     "coroner.CoronerTimeRendererMixin",

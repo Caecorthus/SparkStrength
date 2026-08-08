@@ -27,6 +27,10 @@ public final class SparkStrengthReplayFormatters {
     public static final Identifier CAPTURE_DEVICE_TRIGGERED = SparkStrength.id("capture_device_triggered");
     public static final Identifier CAPTURE_DEVICE_RELEASED = SparkStrength.id("capture_device_released");
     public static final Identifier CAPTURE_DEVICE_EXPIRED = SparkStrength.id("capture_device_expired");
+    public static final Identifier TIMED_BOMB_TRAY_EMBEDDED = SparkStrength.id("timed_bomb_tray_embedded");
+    public static final Identifier TIMED_BOMB_BED_EMBEDDED = SparkStrength.id("timed_bomb_bed_embedded");
+    public static final Identifier TIMED_BOMB_TRAY_TRIGGERED = SparkStrength.id("timed_bomb_tray_triggered");
+    public static final Identifier TIMED_BOMB_BED_TRIGGERED = SparkStrength.id("timed_bomb_bed_triggered");
     public static final Identifier DEMON_HUNTER_SNIFF_FOUND = SparkStrength.id("demon_hunter_sniff_found");
     public static final Identifier DEMON_HUNTER_SNIFF_NONE = SparkStrength.id("demon_hunter_sniff_none");
     public static final Identifier DEMON_HUNTER_SNIFF_REVEALED = SparkStrength.id("demon_hunter_sniff_revealed");
@@ -157,6 +161,30 @@ public final class SparkStrengthReplayFormatters {
                         match,
                         "replay.global.sparkstrength.capture_device_expired"
                 ));
+        ReplayRegistry.registerGlobalEventFormatter(TIMED_BOMB_TRAY_EMBEDDED,
+                (event, match, world) -> onePlayerEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.timed_bomb_tray_embedded"
+                ));
+        ReplayRegistry.registerGlobalEventFormatter(TIMED_BOMB_BED_EMBEDDED,
+                (event, match, world) -> onePlayerEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.timed_bomb_bed_embedded"
+                ));
+        ReplayRegistry.registerGlobalEventFormatter(TIMED_BOMB_TRAY_TRIGGERED,
+                (event, match, world) -> actorAndBomberEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.timed_bomb_tray_triggered"
+                ));
+        ReplayRegistry.registerGlobalEventFormatter(TIMED_BOMB_BED_TRIGGERED,
+                (event, match, world) -> actorAndBomberEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.timed_bomb_bed_triggered"
+                ));
         ReplayRegistry.registerGlobalEventFormatter(DEMON_HUNTER_SNIFF_FOUND, (event, match, world) -> {
             var playerInfoCache = ReplayGenerator.getPlayerInfoCache(match);
             NbtCompound data = event.data();
@@ -255,6 +283,20 @@ public final class SparkStrengthReplayFormatters {
             return null;
         }
         return Text.translatable(key, ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache));
+    }
+
+    private static Text actorAndBomberEvent(NbtCompound data, dev.doctor4t.wathe.record.GameRecordManager.MatchRecord match, String key) {
+        var playerInfoCache = ReplayGenerator.getPlayerInfoCache(match);
+        UUID actorUuid = data.containsUuid("actor") ? data.getUuid("actor") : null;
+        UUID bomberUuid = data.containsUuid("bomber") ? data.getUuid("bomber") : null;
+        if (actorUuid == null || bomberUuid == null) {
+            return null;
+        }
+        return Text.translatable(
+                key,
+                ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache),
+                ReplayGenerator.formatPlayerName(bomberUuid, playerInfoCache)
+        );
     }
 
     private static Text formatPlayerNameWithFallback(

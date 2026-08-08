@@ -4,6 +4,11 @@
   "package": "annina.sparkstrength.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "bomber.BomberPlayerComponentAccessor",
+    "bomber.TimedBombBedStateMixin",
+    "bomber.TimedBombBedUseMixin",
+    "bomber.TimedBombTrayStateMixin",
+    "bomber.TimedBombTrayUseMixin",
     "coroner.CoronerBaseSpiritItemMixin",
     "coroner.CoronerBartenderComponentSyncMixin",
     "coroner.CoronerBomberComponentSyncMixin",
