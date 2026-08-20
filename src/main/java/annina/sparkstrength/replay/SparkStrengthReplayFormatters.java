@@ -38,6 +38,15 @@ public final class SparkStrengthReplayFormatters {
     public static final Identifier MORPH_REAGENT_MARKED = SparkStrength.id("morph_reagent_marked");
     public static final Identifier MORPH_MARK_TRIGGERED = SparkStrength.id("morph_mark_triggered");
     public static final Identifier MORPH_MARK_ENDED = SparkStrength.id("morph_mark_ended");
+    public static final Identifier REPORTER_CONNECTION_STARTED = SparkStrength.id("reporter_connection_started");
+    public static final Identifier REPORTER_CONNECTION_FAILED_ONE_DEAD = SparkStrength.id("reporter_connection_failed_one_dead");
+    public static final Identifier REPORTER_CONNECTION_FAILED_BOTH_DEAD = SparkStrength.id("reporter_connection_failed_both_dead");
+    public static final Identifier REPORTER_BROADCAST_STARTED = SparkStrength.id("reporter_broadcast_started");
+    public static final Identifier REPORTER_BROADCAST_FAILED = SparkStrength.id("reporter_broadcast_failed");
+    public static final Identifier REPORTER_CONNECTION_ENDED = SparkStrength.id("reporter_connection_ended");
+    public static final Identifier REPORTER_BROADCAST_ENDED = SparkStrength.id("reporter_broadcast_ended");
+    public static final Identifier REPORTER_CONNECTION_INTERRUPTED = SparkStrength.id("reporter_connection_interrupted");
+    public static final Identifier REPORTER_BROADCAST_INTERRUPTED = SparkStrength.id("reporter_broadcast_interrupted");
 
     private SparkStrengthReplayFormatters() {
     }
@@ -274,6 +283,65 @@ public final class SparkStrengthReplayFormatters {
                         match,
                         "replay.global.sparkstrength.morph_mark_ended"
                 ));
+        ReplayRegistry.registerGlobalEventFormatter(REPORTER_CONNECTION_STARTED,
+                (event, match, world) -> reporterConnectionWithActorEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.reporter_connection_started",
+                        false
+                ));
+        ReplayRegistry.registerGlobalEventFormatter(REPORTER_CONNECTION_FAILED_ONE_DEAD,
+                (event, match, world) -> reporterConnectionWithActorEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.reporter_connection_failed_one_dead",
+                        true
+                ));
+        ReplayRegistry.registerGlobalEventFormatter(REPORTER_CONNECTION_FAILED_BOTH_DEAD,
+                (event, match, world) -> reporterConnectionWithActorEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.reporter_connection_failed_both_dead",
+                        false
+                ));
+        ReplayRegistry.registerGlobalEventFormatter(REPORTER_BROADCAST_STARTED,
+                (event, match, world) -> reporterBroadcastWithActorEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.reporter_broadcast_started",
+                        false
+                ));
+        ReplayRegistry.registerGlobalEventFormatter(REPORTER_BROADCAST_FAILED,
+                (event, match, world) -> reporterBroadcastWithActorEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.reporter_broadcast_failed",
+                        true
+                ));
+        ReplayRegistry.registerGlobalEventFormatter(REPORTER_CONNECTION_ENDED,
+                (event, match, world) -> reporterConnectionEndedEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.reporter_connection_ended"
+                ));
+        ReplayRegistry.registerGlobalEventFormatter(REPORTER_BROADCAST_ENDED,
+                (event, match, world) -> reporterBroadcastEndedEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.reporter_broadcast_ended"
+                ));
+        ReplayRegistry.registerGlobalEventFormatter(REPORTER_CONNECTION_INTERRUPTED,
+                (event, match, world) -> reporterConnectionInterruptedEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.reporter_connection_interrupted"
+                ));
+        ReplayRegistry.registerGlobalEventFormatter(REPORTER_BROADCAST_INTERRUPTED,
+                (event, match, world) -> reporterBroadcastInterruptedEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.reporter_broadcast_interrupted"
+                ));
     }
 
     private static Text onePlayerEvent(NbtCompound data, dev.doctor4t.wathe.record.GameRecordManager.MatchRecord match, String key) {
@@ -297,6 +365,111 @@ public final class SparkStrengthReplayFormatters {
                 ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache),
                 ReplayGenerator.formatPlayerName(bomberUuid, playerInfoCache)
         );
+    }
+
+    private static Text reporterConnectionWithActorEvent(
+            NbtCompound data,
+            dev.doctor4t.wathe.record.GameRecordManager.MatchRecord match,
+            String key,
+            boolean includeDeadPlayer
+    ) {
+        var playerInfoCache = ReplayGenerator.getPlayerInfoCache(match);
+        UUID actorUuid = data.containsUuid("actor") ? data.getUuid("actor") : null;
+        Text first = playerFromUuidOrName(data, match, "player_one", "player_one_name");
+        Text second = playerFromUuidOrName(data, match, "player_two", "player_two_name");
+        if (actorUuid == null || first == null || second == null) {
+            return null;
+        }
+
+        Text actor = ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache);
+        if (includeDeadPlayer) {
+            Text dead = playerFromUuidOrName(data, match, "dead_player", "dead_player_name");
+            return dead == null ? null : Text.translatable(key, actor, first, second, dead);
+        }
+        return Text.translatable(key, actor, first, second);
+    }
+
+    private static Text reporterBroadcastWithActorEvent(
+            NbtCompound data,
+            dev.doctor4t.wathe.record.GameRecordManager.MatchRecord match,
+            String key,
+            boolean includeDeadPlayer
+    ) {
+        var playerInfoCache = ReplayGenerator.getPlayerInfoCache(match);
+        UUID actorUuid = data.containsUuid("actor") ? data.getUuid("actor") : null;
+        Text target = playerFromUuidOrName(data, match, "target_player", "target_player_name");
+        if (actorUuid == null || target == null) {
+            return null;
+        }
+
+        Text actor = ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache);
+        if (includeDeadPlayer) {
+            Text dead = playerFromUuidOrName(data, match, "dead_player", "dead_player_name");
+            return dead == null ? null : Text.translatable(key, actor, target, dead);
+        }
+        return Text.translatable(key, actor, target);
+    }
+
+    private static Text reporterConnectionEndedEvent(
+            NbtCompound data,
+            dev.doctor4t.wathe.record.GameRecordManager.MatchRecord match,
+            String key
+    ) {
+        Text first = playerFromUuidOrName(data, match, "player_one", "player_one_name");
+        Text second = playerFromUuidOrName(data, match, "player_two", "player_two_name");
+        if (first == null || second == null) {
+            return null;
+        }
+        return Text.translatable(key, first, second);
+    }
+
+    private static Text reporterBroadcastEndedEvent(
+            NbtCompound data,
+            dev.doctor4t.wathe.record.GameRecordManager.MatchRecord match,
+            String key
+    ) {
+        Text target = playerFromUuidOrName(data, match, "target_player", "target_player_name");
+        return target == null ? null : Text.translatable(key, target);
+    }
+
+    private static Text reporterConnectionInterruptedEvent(
+            NbtCompound data,
+            dev.doctor4t.wathe.record.GameRecordManager.MatchRecord match,
+            String key
+    ) {
+        Text first = playerFromUuidOrName(data, match, "player_one", "player_one_name");
+        Text second = playerFromUuidOrName(data, match, "player_two", "player_two_name");
+        Text dead = playerFromUuidOrName(data, match, "dead_player", "dead_player_name");
+        if (first == null || second == null || dead == null) {
+            return null;
+        }
+        return Text.translatable(key, first, second, dead);
+    }
+
+    private static Text reporterBroadcastInterruptedEvent(
+            NbtCompound data,
+            dev.doctor4t.wathe.record.GameRecordManager.MatchRecord match,
+            String key
+    ) {
+        Text dead = playerFromUuidOrName(data, match, "dead_player", "dead_player_name");
+        return dead == null ? null : Text.translatable(key, dead);
+    }
+
+    private static Text playerFromUuidOrName(
+            NbtCompound data,
+            dev.doctor4t.wathe.record.GameRecordManager.MatchRecord match,
+            String uuidKey,
+            String nameKey
+    ) {
+        var playerInfoCache = ReplayGenerator.getPlayerInfoCache(match);
+        String fallbackName = data.getString(nameKey);
+        if (data.containsUuid(uuidKey)) {
+            return formatPlayerNameWithFallback(data.getUuid(uuidKey), fallbackName, playerInfoCache);
+        }
+        if (fallbackName != null && !fallbackName.isBlank()) {
+            return Text.literal(fallbackName);
+        }
+        return null;
     }
 
     private static Text formatPlayerNameWithFallback(

@@ -2,7 +2,10 @@ package annina.sparkstrength.voice;
 
 import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.component.morphling.MorphMarkPlayerComponent;
+import annina.sparkstrength.component.reporter.ReporterCommunicationComponent;
 import annina.sparkstrength.role.morphling.MorphlingService;
+import annina.sparkstrength.role.reporter.ReporterCommunicationManager;
+import annina.sparkstrength.role.reporter.ReporterCommunicationService;
 import de.maxhenkel.voicechat.api.VoicechatApi;
 import de.maxhenkel.voicechat.api.VoicechatConnection;
 import de.maxhenkel.voicechat.api.VoicechatPlugin;
@@ -10,6 +13,7 @@ import de.maxhenkel.voicechat.api.VoicechatServerApi;
 import de.maxhenkel.voicechat.api.events.EventRegistration;
 import de.maxhenkel.voicechat.api.events.MicrophonePacketEvent;
 import de.maxhenkel.voicechat.api.packets.EntitySoundPacket;
+import de.maxhenkel.voicechat.api.packets.StaticSoundPacket;
 import net.minecraft.server.network.ServerPlayerEntity;
 import org.jetbrains.annotations.Nullable;
 
@@ -57,11 +61,13 @@ public final class SparkStrengthVoiceChatPlugin implements VoicechatPlugin {
             return;
         }
 
-        List<ServerPlayerEntity> disguisedPlayers = MorphlingService.findActivePlayersDisguisedAs(sender);
-        if (disguisedPlayers.isEmpty()) {
-            return;
-        }
+        /*
+         * 记者通讯是“额外复制一份语音”的能力，不能被变形怪的伪装列表早退挡住。
+         * 因此先无条件尝试记者转发，再继续处理可能存在的变形伪装转发。
+         */
+        relayReporterCommunicationVoice(api, event, sender);
 
+        List<ServerPlayerEntity> disguisedPlayers = MorphlingService.findActivePlayersDisguisedAs(sender);
         for (ServerPlayerEntity disguisedPlayer : disguisedPlayers) {
             relayVoiceAsDisguisedPlayer(api, event, sender, disguisedPlayer);
         }
@@ -107,6 +113,90 @@ public final class SparkStrengthVoiceChatPlugin implements VoicechatPlugin {
                 (SparkStrength.MOD_ID + ":morph_voice:" + originalSpeaker.getUuid() + ":" + disguisedPlayer.getUuid())
                         .getBytes(StandardCharsets.UTF_8)
         );
+    }
+
+    private void relayReporterCommunicationVoice(
+            VoicechatServerApi api,
+            MicrophonePacketEvent event,
+            ServerPlayerEntity sender
+    ) {
+        if (!ReporterCommunicationService.isCommunicableEndpoint(sender)) {
+            return;
+        }
+
+        /*
+         * 记者通讯的语音要求是“远距离也能直接听到”，并且需要让饕餮肚子里的人
+         * 在被接线/广播时越过胃部语音隔离。StaticSoundPacket 不绑定世界位置，
+         * 手动发给目标连接即可，正好复刻自改版接线员的无距离衰减效果。
+         */
+        StaticSoundPacket redirectedPacket = event.getPacket().staticSoundPacketBuilder().build();
+        relayReporterConnectionVoice(api, sender, redirectedPacket);
+        relayReporterBroadcastVoice(api, sender, redirectedPacket);
+    }
+
+    private void relayReporterConnectionVoice(
+            VoicechatServerApi api,
+            ServerPlayerEntity sender,
+            StaticSoundPacket redirectedPacket
+    ) {
+        for (ServerPlayerEntity possibleReporter : sender.getServer().getPlayerManager().getPlayerList()) {
+            ReporterCommunicationComponent component = ReporterCommunicationComponent.KEY.get(possibleReporter);
+            ReporterCommunicationManager.UUIDPair pair = ReporterCommunicationManager.getConnectionPair(component);
+            if (pair == null) {
+                continue;
+            }
+
+            UUID recipientUuid = null;
+            if (sender.getUuid().equals(pair.first())) {
+                recipientUuid = pair.second();
+            } else if (sender.getUuid().equals(pair.second())) {
+                recipientUuid = pair.first();
+            }
+
+            if (recipientUuid == null) {
+                continue;
+            }
+
+            ServerPlayerEntity recipient = sender.getServer().getPlayerManager().getPlayer(recipientUuid);
+            if (!ReporterCommunicationService.isCommunicableEndpoint(recipient)) {
+                continue;
+            }
+
+            VoicechatConnection connection = api.getConnectionOf(recipientUuid);
+            if (connection != null) {
+                api.sendStaticSoundPacketTo(connection, redirectedPacket);
+            }
+        }
+    }
+
+    private void relayReporterBroadcastVoice(
+            VoicechatServerApi api,
+            ServerPlayerEntity sender,
+            StaticSoundPacket redirectedPacket
+    ) {
+        for (ServerPlayerEntity possibleReporter : sender.getServer().getPlayerManager().getPlayerList()) {
+            ReporterCommunicationComponent component = ReporterCommunicationComponent.KEY.get(possibleReporter);
+            if (!component.hasActiveBroadcast() || component.getBroadcastTarget() == null) {
+                continue;
+            }
+            if (!sender.getUuid().equals(component.getBroadcastTarget())) {
+                continue;
+            }
+
+            for (ServerPlayerEntity recipient : sender.getServer().getPlayerManager().getPlayerList()) {
+                if (recipient.getUuid().equals(sender.getUuid())) {
+                    continue;
+                }
+                // 广播采访按需求覆盖所有本局在线玩家，不按存活状态过滤。
+                if (!ReporterCommunicationService.isInGameOnlinePlayer(sender, recipient)) {
+                    continue;
+                }
+                VoicechatConnection connection = api.getConnectionOf(recipient.getUuid());
+                if (connection != null) {
+                    api.sendStaticSoundPacketTo(connection, redirectedPacket);
+                }
+            }
+        }
     }
 
     private boolean retargetEntitySoundBuilder(

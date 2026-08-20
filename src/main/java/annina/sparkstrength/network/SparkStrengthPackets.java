@@ -7,6 +7,7 @@ import annina.sparkstrength.network.demonhunter.DemonHunterSniffC2SPacket;
 import annina.sparkstrength.network.noisemaker.NoisemakerGlowC2SPacket;
 import annina.sparkstrength.network.phantom.PhantomBackpackInvisibilityC2SPacket;
 import annina.sparkstrength.network.professor.ProfessorRemoteFeedC2SPacket;
+import annina.sparkstrength.network.reporter.ReporterCommunicationC2SPacket;
 import annina.sparkstrength.network.tablet.ApproveSuspectRemovalC2SPacket;
 import annina.sparkstrength.network.tablet.CallTabletMeetingC2SPacket;
 import annina.sparkstrength.network.tablet.CastTabletVoteC2SPacket;
@@ -20,6 +21,7 @@ import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.phantom.PhantomBackpackService;
 import annina.sparkstrength.role.coroner.CoronerService;
 import annina.sparkstrength.role.professor.ProfessorSerumService;
+import annina.sparkstrength.role.reporter.ReporterCommunicationService;
 import annina.sparkstrength.role.detective.CriminologistService;
 import annina.sparkstrength.role.demonhunter.DemonHunterSniffService;
 import annina.sparkstrength.tablet.TabletStateService;
@@ -38,6 +40,7 @@ public final class SparkStrengthPackets {
         PayloadTypeRegistry.playC2S().register(PhantomBackpackInvisibilityC2SPacket.ID, PhantomBackpackInvisibilityC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(CoronerMorphC2SPacket.ID, CoronerMorphC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(ProfessorRemoteFeedC2SPacket.ID, ProfessorRemoteFeedC2SPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(ReporterCommunicationC2SPacket.ID, ReporterCommunicationC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(SelectCriminologistTargetC2SPacket.ID, SelectCriminologistTargetC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(DemonHunterSniffC2SPacket.ID, DemonHunterSniffC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(RequestTabletSnapshotC2SPacket.ID, RequestTabletSnapshotC2SPacket.CODEC);
@@ -61,6 +64,9 @@ public final class SparkStrengthPackets {
         );
         ServerPlayNetworking.registerGlobalReceiver(ProfessorRemoteFeedC2SPacket.ID, (payload, context) ->
                 ProfessorSerumService.tryRemoteFeed(context.player(), payload.targetPlayer(), payload.serumType())
+        );
+        ServerPlayNetworking.registerGlobalReceiver(ReporterCommunicationC2SPacket.ID, (payload, context) ->
+                ReporterCommunicationService.handle(payload, context.player())
         );
         ServerPlayNetworking.registerGlobalReceiver(SelectCriminologistTargetC2SPacket.ID,
                 (payload, context) -> CriminologistService.handleSelection(

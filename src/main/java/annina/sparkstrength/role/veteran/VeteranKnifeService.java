@@ -154,12 +154,14 @@ public final class VeteranKnifeService {
             ServerPlayerEntity target
     ) {
         if (!game.isPlayerDead(target.getUuid())
-                || !game.isInnocent(target)
+                || !VeteranRules.isEffectiveCivilian(game.getRole(target), target)
                 || !GameFunctions.isPlayerPlayingAndAlive(veteran)) {
             return;
         }
 
         // 需求指定“使用匕首 knife 杀到好人阵营时老兵小脑死亡”。
+        // 这里把“好人阵营”严格按有效阵营处理：善良词条仍算好人，会触发惩罚；
+        // 内鬼词条虽然原始职业是好人，但有效阵营已是杀手，因此不会误罚老兵。
         // 先确认目标已死亡，避免疯魔盾或其它 KillPlayer.BEFORE 取消死亡时误罚老兵。
         // 此服务只接管 Wathe knife 的刺杀包，所以这里天然只覆盖明确使用匕首的成功击杀。
         GameFunctions.killPlayer(veteran, true, null, GameConstants.DeathReasons.SHOT_INNOCENT);

@@ -16,6 +16,7 @@
     "phantom.PhantomBackpackInventoryScreenMixin",
     "professor.ProfessorInventoryScreenMixin",
     "professor.ProfessorSerumCrosshairMixin",
+    "reporter.ReporterInventoryScreenMixin",
     "detective.CriminologistHudMixin",
     "demonhunter.DemonHunterSniffHudMixin",
     "engineer.EngineerCaptureReportItemEntityRendererMixin",

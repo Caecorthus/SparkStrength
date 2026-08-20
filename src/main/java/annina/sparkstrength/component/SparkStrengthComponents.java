@@ -13,6 +13,7 @@ import annina.sparkstrength.component.phantom.PhantomBackpackTargetComponent;
 import annina.sparkstrength.component.phantom.PhantomBackpackUserComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumTargetComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
+import annina.sparkstrength.component.reporter.ReporterCommunicationComponent;
 import annina.sparkstrength.component.tablet.TabletWorldComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowTargetComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
@@ -78,6 +79,9 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.beginRegistration(PlayerEntity.class, ToxicologistAntidoteComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(ToxicologistAntidoteComponent::new);
+        registry.beginRegistration(PlayerEntity.class, ReporterCommunicationComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(ReporterCommunicationComponent::new);
         registry.registerFor(PlayerBodyEntity.class, CoronerBodySnapshotComponent.KEY, CoronerBodySnapshotComponent::new);
     }
 

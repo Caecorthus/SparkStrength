@@ -34,7 +34,7 @@ public final class VeteranEconomyService {
         }
 
         Role victimRole = game.getRole(victim);
-        int reward = VeteranRules.killRewardForVictim(victimRole);
+        int reward = VeteranRules.killRewardForVictim(victimRole, victim);
         PlayerShopComponent.KEY.get(killer).addToBalance(reward);
     }
 }

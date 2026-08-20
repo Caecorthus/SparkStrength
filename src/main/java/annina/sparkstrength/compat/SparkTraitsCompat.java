@@ -1,5 +1,6 @@
 package annina.sparkstrength.compat;
 
+import dev.doctor4t.wathe.api.Role;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
@@ -13,6 +14,7 @@ import java.lang.reflect.Method;
  */
 public final class SparkTraitsCompat {
     private static final String MOD_ID = "sparktraits";
+    private static final Identifier CONSCIENCE_ID = Identifier.of("sparktraits", "conscience");
     private static final Identifier IMPOSTOR_ID = Identifier.of("sparktraits", "impostor");
     private static final Method HAS_ACTIVE_TRAIT = findHasActiveTraitMethod();
 
@@ -20,14 +22,49 @@ public final class SparkTraitsCompat {
     }
 
     public static boolean hasImpostor(PlayerEntity player) {
-        if (player == null || HAS_ACTIVE_TRAIT == null) {
+        return hasTrait(player, IMPOSTOR_ID);
+    }
+
+    /**
+     * 判断玩家是否持有指定的 SparkTraits 词条。
+     *
+     * <p>这里通过 SparkTraits 公开门面反射调用，避免 SparkStrength 直接依赖
+     * SparkTraits 的内部实现包。mod 不存在、API 不兼容或反射失败时都返回 false。</p>
+     */
+    public static boolean hasTrait(PlayerEntity player, Identifier traitId) {
+        if (player == null || traitId == null || HAS_ACTIVE_TRAIT == null) {
             return false;
         }
         try {
-            return Boolean.TRUE.equals(HAS_ACTIVE_TRAIT.invoke(null, player, IMPOSTOR_ID));
+            return Boolean.TRUE.equals(HAS_ACTIVE_TRAIT.invoke(null, player, traitId));
         } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException | LinkageError ignored) {
             return false;
         }
+    }
+
+    /** 软兼容判断玩家是否持有善良词条。 */
+    public static boolean hasConscience(PlayerEntity player) {
+        return hasTrait(player, CONSCIENCE_ID);
+    }
+
+    /**
+     * 判断玩家是否属于“有效好人阵营”。
+     *
+     * <p>规则优先级和 SparkTraits 保持一致：
+     * 善良词条优先视作好人；内鬼词条优先视作杀手；没有 SparkTraits 或
+     * 没有相关词条时回退到 Wathe 原始角色阵营。</p>
+     */
+    public static boolean isEffectiveCivilian(Role role, PlayerEntity player) {
+        if (role == null) {
+            return false;
+        }
+        if (hasConscience(player)) {
+            return true;
+        }
+        if (hasImpostor(player)) {
+            return false;
+        }
+        return role.isInnocent();
     }
 
     private static Method findHasActiveTraitMethod() {
