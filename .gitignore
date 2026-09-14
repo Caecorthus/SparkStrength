@@ -2,6 +2,7 @@
 .idea/
 build/
 /src/test/
+/docs/
 run/
 logs/
 bin/
