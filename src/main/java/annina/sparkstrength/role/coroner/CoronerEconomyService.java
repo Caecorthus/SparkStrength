@@ -1,5 +1,6 @@
 package annina.sparkstrength.role.coroner;
 
+import annina.sparkstrength.role.economy.KillerTeamIncomeScope;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerShopComponent;
@@ -38,7 +39,7 @@ public final class CoronerEconomyService {
             PlayerShopComponent shop = PlayerShopComponent.KEY.get(player);
             int amountToAdd = CoronerRules.passiveIncomeToAdd(shop.getBalance());
             if (amountToAdd > 0) {
-                shop.addToBalance(amountToAdd);
+                KillerTeamIncomeScope.withoutContribution(() -> shop.addToBalance(amountToAdd));
             }
         }
     }

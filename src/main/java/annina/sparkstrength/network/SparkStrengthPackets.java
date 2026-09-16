@@ -4,6 +4,8 @@ import annina.sparkstrength.network.criminologist.OpenCriminologistScreenS2CPack
 import annina.sparkstrength.network.criminologist.SelectCriminologistTargetC2SPacket;
 import annina.sparkstrength.network.coroner.CoronerMorphC2SPacket;
 import annina.sparkstrength.network.demonhunter.DemonHunterSniffC2SPacket;
+import annina.sparkstrength.network.economy.SyncKillerTeamEconomyS2CPacket;
+import annina.sparkstrength.network.m67.M67Packets;
 import annina.sparkstrength.network.noisemaker.NoisemakerGlowC2SPacket;
 import annina.sparkstrength.network.phantom.PhantomBackpackInvisibilityC2SPacket;
 import annina.sparkstrength.network.professor.ProfessorRemoteFeedC2SPacket;
@@ -34,6 +36,7 @@ public final class SparkStrengthPackets {
     }
 
     public static void registerServer() {
+        M67Packets.initialize();
         PayloadTypeRegistry.playC2S().register(NoisemakerGlowC2SPacket.ID, NoisemakerGlowC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(PhantomBackpackInvisibilityC2SPacket.ID, PhantomBackpackInvisibilityC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(CoronerMorphC2SPacket.ID, CoronerMorphC2SPacket.CODEC);
@@ -50,6 +53,7 @@ public final class SparkStrengthPackets {
         PayloadTypeRegistry.playS2C().register(OpenTabletScreenS2CPacket.ID, OpenTabletScreenS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncTabletSnapshotS2CPacket.ID, SyncTabletSnapshotS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncVeteranBlackoutS2CPacket.ID, SyncVeteranBlackoutS2CPacket.CODEC);
+        PayloadTypeRegistry.playS2C().register(SyncKillerTeamEconomyS2CPacket.ID, SyncKillerTeamEconomyS2CPacket.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(NoisemakerGlowC2SPacket.ID, (payload, context) ->
                 NoisemakerGlowService.tryUseBackpackGlow(context.player(), payload.targetPlayer())
         );

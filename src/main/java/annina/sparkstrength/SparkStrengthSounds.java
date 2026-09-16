@@ -14,6 +14,11 @@ public final class SparkStrengthSounds {
 
     public static final Identifier MUSIC_TAKEDISKRUSH_ID = SparkStrength.id("music.takediskrush");
     public static final SoundEvent MUSIC_TAKEDISKRUSH = REGISTRAR.create("music.takediskrush");
+    public static final SoundEvent M67_EQUIP = REGISTRAR.create("item.m67.equip");
+    public static final SoundEvent M67_PULL = REGISTRAR.create("item.m67.pull");
+    public static final SoundEvent M67_THROW = REGISTRAR.create("item.m67.throw");
+    public static final SoundEvent M67_LAND = REGISTRAR.create("item.m67.land");
+    public static final SoundEvent M67_EXPLODE = REGISTRAR.create("item.m67.explode");
 
     private SparkStrengthSounds() {
     }

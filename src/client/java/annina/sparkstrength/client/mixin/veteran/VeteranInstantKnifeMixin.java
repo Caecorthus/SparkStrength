@@ -1,5 +1,6 @@
 package annina.sparkstrength.client.mixin.veteran;
 
+import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.role.coroner.CoronerService;
 import annina.sparkstrength.role.veteran.VeteranRules;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -49,6 +50,10 @@ public abstract class VeteranInstantKnifeMixin {
         }
 
         ItemStack itemStack = user.getStackInHand(hand);
+        if (SparkTraitsCompat.isMeleeActionBlocked(user, itemStack)) {
+            cir.setReturnValue(TypedActionResult.fail(itemStack));
+            return;
+        }
         HitResult collision = KnifeItem.getKnifeTarget(user);
         if (collision instanceof EntityHitResult entityHitResult) {
             ClientPlayNetworking.send(new KnifeStabPayload(entityHitResult.getEntity().getId()));

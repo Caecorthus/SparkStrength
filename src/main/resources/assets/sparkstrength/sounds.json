@@ -1,4 +1,45 @@
 {
+  "item.m67.equip": {
+    "sounds": [
+      {
+        "name": "sparkstrength:item/m67_equip"
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.item.m67.equip"
+  },
+  "item.m67.pull": {
+    "sounds": [
+      {
+        "name": "sparkstrength:item/m67_pull"
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.item.m67.pull"
+  },
+  "item.m67.land": {
+    "sounds": [
+      {
+        "name": "sparkstrength:item/m67_land",
+        "volume": 0.65
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.item.m67.land"
+  },
+  "item.m67.throw": {
+    "sounds": [
+      {
+        "name": "sparkstrength:item/m67_throw"
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.item.m67.throw"
+  },
+  "item.m67.explode": {
+    "sounds": [
+      {
+        "name": "sparkstrength:item/m67_explode"
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.item.m67.explode"
+  },
   "music.takediskrush": {
     "sounds": [
       {

@@ -6,6 +6,7 @@ import annina.sparkstrength.component.coroner.CoronerPlayerComponent;
 import annina.sparkstrength.component.detective.CriminologistPlayerComponent;
 import annina.sparkstrength.component.detective.CriminologistWorldComponent;
 import annina.sparkstrength.component.demonhunter.DemonHunterSniffPlayerComponent;
+import annina.sparkstrength.component.economy.KillerTeamEconomyWorldComponent;
 import annina.sparkstrength.component.engineer.EngineerStunnedPlayerComponent;
 import annina.sparkstrength.component.morphling.MorphBodyDisguiseWorldComponent;
 import annina.sparkstrength.component.morphling.MorphMarkPlayerComponent;
@@ -83,6 +84,7 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
 
     @Override
     public void registerWorldComponentFactories(@NotNull WorldComponentFactoryRegistry registry) {
+        registry.register(KillerTeamEconomyWorldComponent.KEY, KillerTeamEconomyWorldComponent::new);
         registry.register(CriminologistWorldComponent.KEY, CriminologistWorldComponent::new);
         registry.register(TabletWorldComponent.KEY, TabletWorldComponent::new);
         registry.register(MorphBodyDisguiseWorldComponent.KEY, MorphBodyDisguiseWorldComponent::new);

@@ -1,5 +1,6 @@
 package annina.sparkstrength.mixin.silencer;
 
+import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.role.silencer.SilencerQuietService;
 import dev.doctor4t.wathe.item.KnifeItem;
 import net.minecraft.entity.player.PlayerEntity;
@@ -32,6 +33,10 @@ public abstract class SilencerKnifeUseMixin {
         }
 
         ItemStack itemStack = user.getStackInHand(hand);
+        if (SparkTraitsCompat.isMeleeActionBlocked(user, itemStack)) {
+            cir.setReturnValue(TypedActionResult.fail(itemStack));
+            return;
+        }
         user.setCurrentHand(hand);
         cir.setReturnValue(TypedActionResult.consume(itemStack));
     }

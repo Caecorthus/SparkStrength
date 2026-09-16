@@ -15,6 +15,9 @@
     "coroner.CoronerWaiterPlatterMixin",
     "corruptcop.CorruptCopAbilityPacketMixin",
     "corruptcop.CorruptCopLateralVelocityMixin",
+    "m67.M67LivingEntityMixin",
+    "m67.M67ServerPlayNetworkHandlerMixin",
+    "m67.M67ServerPlayerMixin",
     "minecraft.ItemCooldownEntryAccessor",
     "minecraft.ItemCooldownManagerAccessor",
     "noellesroles.HiddenEquipmentHelperMixin",
@@ -29,6 +32,9 @@
     "veteran.VeteranServerKnifeUseMixin",
     "wathe.GameFunctionsMixin",
     "wathe.KillerPassiveMoneyCapMixin",
+    "wathe.KillerTeamPassiveIncomeMixin",
+    "wathe.KillerTeamShopMixin",
+    "wathe.M67ShopEntriesMixin",
     "wathe.PlayerShopComponentAccessor"
   ],
   "injectors": {
