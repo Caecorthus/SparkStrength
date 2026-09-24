@@ -31,6 +31,7 @@
     "veteran.VeteranKnifeStabPayloadMixin",
     "veteran.VeteranServerKnifeUseMixin",
     "wathe.GameFunctionsMixin",
+    "wathe.GrenadeExplosionMixin",
     "wathe.KillerPassiveMoneyCapMixin",
     "wathe.KillerTeamPassiveIncomeMixin",
     "wathe.KillerTeamShopMixin",

@@ -20,6 +20,7 @@ import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Hand;
+import net.minecraft.util.math.Vec3d;
 import org.lwjgl.glfw.GLFW;
 
 public final class M67Client {
@@ -53,10 +54,11 @@ public final class M67Client {
                 || client.player.getWorld() != entity.getWorld()) {
             return -1;
         }
-        // Viewer position, not camera or hitbox; share the server's inclusive cube rule.
-        // 使用观察者位置而非镜头或碰撞箱；与服务端共用包含边界的立方体规则。
-        return M67Rules.warningColor(client.player.getX() - entity.getX(),
-                client.player.getY() - entity.getY(), client.player.getZ() - entity.getZ());
+        // Share the server's physical blast center; color indicates distance, not predicted damage.
+        // 与服务端共用物理爆点；颜色仅表示距离，不预测最终伤害。
+        Vec3d center = entity.getBoundingBox().getCenter();
+        return M67Rules.warningColor(client.player.getX() - center.x,
+                client.player.getY() - center.y, client.player.getZ() - center.z);
     }
 
     public static boolean isCharging() {

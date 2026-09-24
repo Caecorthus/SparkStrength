@@ -70,6 +70,7 @@
     "cardinal-components-world": ">=${cca_version}"
   },
   "suggests": {
-    "sparkwitch": "*"
+    "sparkwitch": "*",
+    "sparkfactionapi": ">=0.1.5.10"
   }
 }

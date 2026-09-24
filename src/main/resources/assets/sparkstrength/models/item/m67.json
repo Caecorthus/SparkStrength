@@ -1,6 +1,14 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "wathe:item/grenade"
-  }
+    "layer0": "sparkstrength:item/m67"
+  },
+  "overrides": [
+    {
+      "predicate": {
+        "custom_model_data": 1
+      },
+      "model": "sparkstrength:item/m67_thrown"
+    }
+  ]
 }

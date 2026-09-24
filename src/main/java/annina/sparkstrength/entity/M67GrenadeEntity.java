@@ -3,6 +3,7 @@ package annina.sparkstrength.entity;
 import annina.sparkstrength.SparkStrengthEntities;
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.SparkStrengthSounds;
+import annina.sparkstrength.item.grenade.GrenadeBlastService;
 import annina.sparkstrength.item.m67.M67Physics;
 import annina.sparkstrength.item.m67.M67RoundService;
 import annina.sparkstrength.item.m67.M67Rules;
@@ -167,8 +168,8 @@ public final class M67GrenadeEntity extends ThrownItemEntity {
         world.spawnParticles(new ItemStackParticleEffect(ParticleTypes.ITEM, getStack()),
                 getX(), getY() + 0.1, getZ(), 100, 0, 0, 0, 1.0);
 
-        for (ServerPlayerEntity victim : List.copyOf(world.getPlayers(player -> M67Rules.containsCube(
-                player.getX() - getX(), player.getY() - getY(), player.getZ() - getZ(), M67Rules.BLAST_HALF_EXTENT)))) {
+        List<ServerPlayerEntity> candidates = List.copyOf(world.getPlayers(GameFunctions::isPlayerAliveAndSurvival));
+        for (ServerPlayerEntity victim : GrenadeBlastService.filterVictims(world, this, candidates, M67Rules.BLAST_RADIUS)) {
             if (isRemoved() || !validRound(world)) {
                 break;
             }

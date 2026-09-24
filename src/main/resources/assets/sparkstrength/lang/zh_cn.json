@@ -1,8 +1,8 @@
 {
   "item.sparkstrength.m67": "M67 手雷",
   "item.sparkstrength.m67.tooltip.line1": "按住右键蓄力 1 秒，蓄满后松开投掷；扔出 7 秒后爆炸。",
-  "item.sparkstrength.m67.tooltip.line2": "开局前 90 秒不可使用；投掷后冷却 45 秒（炸弹客为 30 秒）。",
-  "item.sparkstrength.m67.tooltip.line3": "掏出冷却 1 秒，取消蓄力冷却 2 秒；红色轮廓表示位于爆炸区，黄色表示接近爆炸区。",
+  "item.sparkstrength.m67.tooltip.line2": "开局前 90 秒不可使用；投掷后冷却 15 秒（炸弹客为 10 秒）。",
+  "item.sparkstrength.m67.tooltip.line3": "掏出冷却 1 秒，取消蓄力冷却 2 秒；红色表示处于爆炸范围内，黄色表示接近。轮廓不计算掩体遮挡。",
   "shop.sparkstrength.m67": "M67 手雷",
   "shop.sparkstrength.m67.description": "会反弹的延时手雷。开局即可购买，90 秒后方可使用。",
   "subtitle.sparkstrength.item.m67.equip": "掏出 M67",

@@ -109,7 +109,7 @@ processResources {
 }
 
 def compatibilityBaseline = [
-        mod_version          : "1.0.6",
+        mod_version          : "1.0.7",
         wathe_version        : "1.5.6-spark-1.21.1",
         noellesroles_version : "1.7.6-h1.5.6-spark"
 ]
@@ -191,7 +191,6 @@ tasks.register("verifyArchitecture") {
             }
         }
 
-        requireFile("CONTEXT.md")
         requireText(
                 "src/main/java/annina/sparkstrength/compat/SparkTraitsCompat.java",
                 "dev.caecorthus.sparktraits.api.SparkTraitsApi"
@@ -483,9 +482,6 @@ tasks.register("verifyCompatibilityArtifact") {
 
 tasks.named("check") {
     setDependsOn([])
-}
-
-tasks.named("build") {
 }
 
 java {
