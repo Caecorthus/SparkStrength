@@ -1,8 +1,8 @@
 {
   "item.sparkstrength.m67": "M67 Grenade",
   "item.sparkstrength.m67.tooltip.line1": "Hold right-click for 1s, then release to throw. Explodes after 7s.",
-  "item.sparkstrength.m67.tooltip.line2": "Cannot use during the first 90s. Throw cooldown: 45s (Bomber: 30s).",
-  "item.sparkstrength.m67.tooltip.line3": "Equip cooldown: 1s; cancel cooldown: 2s. Red outline: blast zone; yellow: nearby.",
+  "item.sparkstrength.m67.tooltip.line2": "Cannot use during the first 90s. Throw cooldown: 15s (Bomber: 10s).",
+  "item.sparkstrength.m67.tooltip.line3": "Equip cooldown: 1s; cancel cooldown: 2s. Red: within blast range; yellow: nearby. Outlines do not account for cover.",
   "shop.sparkstrength.m67": "M67 Grenade",
   "shop.sparkstrength.m67.description": "A bouncing, timed grenade. Available to buy immediately; usable after the first 90s.",
   "subtitle.sparkstrength.item.m67.equip": "M67 equipped",

@@ -1,6 +1,7 @@
 package annina.sparkstrength.tablet;
 
 import annina.sparkstrength.SparkStrengthItems;
+import annina.sparkstrength.compat.SparkFactionCompat;
 import annina.sparkstrength.compat.SparkTraitsCompat;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.BuildShopEntries;
@@ -29,6 +30,9 @@ public final class TabletShopService {
             return;
         }
         registered = true;
+        SparkFactionCompat.registerCorruptCopPoliceRole();
+        // The same predicate builds client listings and server purchase validation entries.
+        // 客户端列表与服务端购买校验的条目使用同一资格判定。
         BuildShopEntries.EVENT.register(TabletShopService::buildShopEntries);
     }
 
@@ -37,7 +41,8 @@ public final class TabletShopService {
             return false;
         }
         Role role = GameWorldComponent.KEY.get(player.getWorld()).getRole(player);
-        // SparkTraits 是可选兼容：装了 impostor/叛徒词条时也能买平板；没装时自然返回 false。
+        // Impostor is an independent optional trait override, including for Veteran; no income is granted here.
+        // 叛徒是独立的可选天赋覆盖（包括老兵）；此处不授予任何收入。
         return TabletShopRules.canBuyTabletRole(role) || SparkTraitsCompat.hasImpostor(player);
     }
 

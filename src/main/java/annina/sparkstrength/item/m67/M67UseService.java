@@ -13,6 +13,8 @@ import annina.sparkstrength.role.coroner.CoronerService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.record.GameRecordManager;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.CustomModelDataComponent;
 import net.minecraft.entity.player.ItemCooldownManager;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -91,7 +93,11 @@ public final class M67UseService {
         ServerWorld world = player.getServerWorld();
         M67GrenadeEntity grenade = new M67GrenadeEntity(world, player, state.roundId());
         grenade.setVelocity(player.getRotationVec(1.0F).multiply(M67Physics.LAUNCH_SPEED));
-        grenade.setItem(stack.copyWithCount(1));
+        // Vanilla item data syncs the thrown model on the projectile copy only.
+        // 仅给投掷物副本设置模型数据，由原版同步；手中剩余物品保持原贴图。
+        ItemStack projectileStack = stack.copyWithCount(1);
+        projectileStack.set(DataComponentTypes.CUSTOM_MODEL_DATA, new CustomModelDataComponent(1));
+        grenade.setItem(projectileStack);
         if (!world.spawnEntity(grenade)) {
             grenade.discard();
             clearM67Use(player);
@@ -159,8 +165,7 @@ public final class M67UseService {
      *  比较引用而非数量：成功投掷扣除数量不视为重新装备。 */
     public static void refreshEquipment(ServerPlayerEntity player) {
         UUID round = M67RoundService.currentRoundId(player.getServerWorld());
-        if (round == null || !GameFunctions.isPlayerPlayingAndAlive(player)
-                || !GameFunctions.isPlayerAliveAndSurvival(player)) {
+        if (round == null || !eligiblePlayer(player)) {
             forgetPlayer(player);
             return;
         }
@@ -254,11 +259,23 @@ public final class M67UseService {
     private static boolean allowed(ServerPlayerEntity player) {
         return M67RoundService.currentRoundId(player.getServerWorld()) != null
                 && M67RoundService.openingRemaining(player.getServerWorld()) == 0
-                && GameFunctions.isPlayerPlayingAndAlive(player)
-                && GameFunctions.isPlayerAliveAndSurvival(player)
+                && eligiblePlayer(player)
                 && !player.getItemCooldownManager().isCoolingDown(SparkStrengthItems.m67())
                 && !EngineerStunnedPlayerComponent.KEY.get(player).isStunned()
                 && !SparkTraitsCompat.isKillerInteractionBlocked(player);
+    }
+
+    private static boolean eligiblePlayer(ServerPlayerEntity player) {
+        if (!player.isAlive() || player.isSpectator()) {
+            return false;
+        }
+        // Lobby use needs no assigned role; active matches keep their participant restrictions.
+        // 大厅使用不需要分配角色；正式对局仍保留参赛玩家限制。
+        GameWorldComponent.GameStatus status = GameWorldComponent.KEY.get(player.getWorld()).getGameStatus();
+        return status == GameWorldComponent.GameStatus.INACTIVE
+                || (status == GameWorldComponent.GameStatus.ACTIVE
+                && GameFunctions.isPlayerPlayingAndAlive(player)
+                && GameFunctions.isPlayerAliveAndSurvival(player));
     }
 
     private static void clearM67Use(ServerPlayerEntity player) {

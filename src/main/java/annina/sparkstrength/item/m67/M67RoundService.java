@@ -1,5 +1,6 @@
 package annina.sparkstrength.item.m67;
 
+import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.entity.M67GrenadeEntity;
 import dev.doctor4t.wathe.api.event.GameEvents;
 import dev.doctor4t.wathe.api.event.ResetPlayer;
@@ -18,7 +19,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/** Transient round identity and projectile ownership; nothing survives reload. / 临时回合标识和投掷物归属，不跨重载保留。 */
+/** Transient match/lobby identity and projectile ownership; nothing survives reload. / 临时对局或大厅标识和投掷物归属，不跨重载保留。 */
 public final class M67RoundService {
     private static final Map<ServerWorld, Round> ROUNDS = new IdentityHashMap<>();
     private static boolean initialized;
@@ -62,7 +63,13 @@ public final class M67RoundService {
     @Nullable
     public static UUID currentRoundId(ServerWorld world) {
         Round round = ROUNDS.get(world);
-        return round != null && active(world) ? round.clock.id() : null;
+        // Lobby grenades get a separate lifetime; match initialization must still come from Wathe.
+        // 大厅手雷使用独立生命周期；正式对局仍必须由 Wathe 初始化。
+        if (round == null && GameWorldComponent.KEY.get(world).getGameStatus() == GameWorldComponent.GameStatus.INACTIVE) {
+            round = new Round(new M67RoundClock(world.getTime()), false);
+            ROUNDS.put(world, round);
+        }
+        return round != null && matchesStatus(world, round) ? round.clock.id() : null;
     }
 
     public static boolean isCurrentRound(ServerWorld world, UUID roundId) {
@@ -80,13 +87,13 @@ public final class M67RoundService {
 
     static int openingRemaining(ServerWorld world) {
         Round round = ROUNDS.get(world);
-        return round == null || !active(world) ? 0 : round.clock.openingRemaining(world.getTime());
+        return round == null || !round.inGame || !active(world) ? 0 : round.clock.openingRemaining(world.getTime());
     }
 
     private static void startRound(ServerWorld world) {
         endRound(world);
         // This callback still sees STARTING; capture the origin before ACTIVE is set. / 此回调仍为 STARTING，必须先记录起点。
-        ROUNDS.put(world, new Round(new M67RoundClock(world.getTime())));
+        ROUNDS.put(world, new Round(new M67RoundClock(world.getTime()), true));
         for (ServerPlayerEntity player : world.getPlayers()) {
             M67UseService.preserveCooldown(player, M67Rules.OPENING_TICKS);
         }
@@ -98,13 +105,21 @@ public final class M67RoundService {
         if (round != null) {
             round.grenades.forEach(M67GrenadeEntity::discard);
             round.grenades.clear();
+            if (round.inGame && round.clock.openingRemaining(world.getTime()) > 0) {
+                // A canceled match's opening lock must not prevent subsequent lobby use.
+                // 提前结束对局时清除开局锁定，避免继续阻止大厅使用。
+                for (ServerPlayerEntity player : world.getPlayers()) {
+                    player.getItemCooldownManager().remove(SparkStrengthItems.m67());
+                }
+            }
         }
     }
 
     private static void tick(ServerWorld world) {
         Round round = ROUNDS.get(world);
-        if (round != null && !active(world)) {
-            // isRunning includes STOPPING, where no M67 may remain armed. / isRunning 包含 STOPPING，不能据此保留手雷。
+        if (round != null && !matchesStatus(world, round)) {
+            // Phase changes invalidate both lobby and match grenades, including STARTING/STOPPING.
+            // 阶段变化会使大厅和对局手雷失效，包括 STARTING/STOPPING 过渡阶段。
             endRound(world);
             return;
         }
@@ -143,12 +158,19 @@ public final class M67RoundService {
         return GameWorldComponent.KEY.get(world).getGameStatus() == GameWorldComponent.GameStatus.ACTIVE;
     }
 
+    private static boolean matchesStatus(ServerWorld world, Round round) {
+        return GameWorldComponent.KEY.get(world).getGameStatus()
+                == (round.inGame ? GameWorldComponent.GameStatus.ACTIVE : GameWorldComponent.GameStatus.INACTIVE);
+    }
+
     private static final class Round {
         private final M67RoundClock clock;
+        private final boolean inGame;
         private final Set<M67GrenadeEntity> grenades = new HashSet<>();
 
-        private Round(M67RoundClock clock) {
+        private Round(M67RoundClock clock, boolean inGame) {
             this.clock = clock;
+            this.inGame = inGame;
         }
     }
 }
