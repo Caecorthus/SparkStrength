@@ -96,6 +96,7 @@ public final class SparkStrengthEvents {
                 DemonHunterSniffService.assignForRole(serverPlayer, role);
                 MorphlingService.assignForRole(serverPlayer, role);
                 PhantomBackpackService.assignForRole(serverPlayer, role);
+                TabletShopService.assignForRole(serverPlayer, role);
                 ToxicologistAntidoteService.clearPlayer(serverPlayer);
                 VeteranKnifeService.assignForRole(serverPlayer, role);
             }
@@ -158,6 +159,10 @@ public final class SparkStrengthEvents {
             if (world instanceof ServerWorld serverWorld) {
                 MorphBodyDisguiseWorldComponent.KEY.get(serverWorld).clearRoundState();
                 EngineerCaptureDeviceService.clearRoundState(serverWorld);
+                // Also clear at round start: an aborted round or restart must not carry tablet chat/suspects forward.
+                // 开局时也清理：异常结束或重启的对局不能把平板聊天/嫌疑人带入下一局。
+                TabletStateService.clearRoundState(serverWorld);
+                TabletShopService.grantStarterTablets(serverWorld, gameComponent);
             }
         });
     }

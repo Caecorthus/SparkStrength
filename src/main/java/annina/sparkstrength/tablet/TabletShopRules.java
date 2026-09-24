@@ -13,8 +13,11 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class TabletShopRules {
     public static final Identifier VIGILANTE_ID = Identifier.of("wathe", "vigilante");
+    public static final Identifier UNDERCOVER_ID = Identifier.of("noellesroles", "undercover");
     public static final String TABLET_ENTRY_ID = "sparkstrength_tablet";
+    /** Police-network price; per-channel pricing is {@link TabletChannelRules#price}. / 义警网络价格；分频道定价见 TabletChannelRules#price。 */
     public static final int TABLET_PRICE = 150;
+    /** Police-network member outline; the only outlining channel ({@link TabletChannel#outlinesMembers()}). / 义警网络成员描边色；唯一描边的频道。 */
     public static final int TABLET_HIGHLIGHT_COLOR = 0x1B8AE5;
     public static final int SUSPECT_HIGHLIGHT_COLOR = 0xFF8C00;
 
@@ -33,5 +36,17 @@ public final class TabletShopRules {
 
     public static boolean isVigilante(@Nullable Role role) {
         return role != null && VIGILANTE_ID.equals(role.identifier());
+    }
+
+    public static boolean isUndercover(@Nullable Role role) {
+        return role != null && UNDERCOVER_ID.equals(role.identifier());
+    }
+
+    /**
+     * Undercover has no money or shop, so its killer-network tablet is granted once at role assignment instead.
+     * 卧底没有金钱与商店，因此其杀手网络平板在身份分配时发放一次，而非购买。
+     */
+    public static boolean shouldGrantStarterTablet(@Nullable Role role, boolean alreadyHasTablet) {
+        return isUndercover(role) && !alreadyHasTablet;
     }
 }

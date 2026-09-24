@@ -1,5 +1,6 @@
 package annina.sparkstrength.tablet;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public record TabletLayout(
@@ -27,8 +28,22 @@ public record TabletLayout(
     private static final int TOP_NAV_HEIGHT = 30;
     private static final int FOOTER_HEIGHT = 38;
     private static final int ROW_HEIGHT = 24;
+    private static final int DEFAULT_TAB_COUNT = 4;
+    private static final int RAIL_TAB_STEP = 28;
+    private static final int RAIL_TAB_HEIGHT = 22;
+    private static final int CHANNEL_CARD_HEIGHT = 40;
+    private static final int CHANNEL_CARD_BOTTOM_GAP = 12;
 
     public static TabletLayout forViewport(int viewportWidth, int viewportHeight) {
+        return forViewport(viewportWidth, viewportHeight, DEFAULT_TAB_COUNT);
+    }
+
+    /**
+     * Lays out the tablet for the channel's visible section count; 0 tabs is the no-signal screen.
+     * 按频道可见分区数量布局平板；0 个标签页即无信号界面。
+     */
+    public static TabletLayout forViewport(int viewportWidth, int viewportHeight, int tabCount) {
+        int tabs = Math.max(0, tabCount);
         Rect viewport = new Rect(0, 0, Math.max(0, viewportWidth), Math.max(0, viewportHeight));
         Mode mode = modeFor(viewport.width(), viewport.height());
         int inset = mode == Mode.NARROW ? NARROW_INSET : OUTER_INSET;
@@ -41,11 +56,32 @@ public record TabletLayout(
         Rect close = new Rect(Math.max(panel.x(), panel.right() - 28), panel.y() + 6, Math.min(22, panel.width()), Math.min(22, status.height()));
 
         return mode == Mode.WIDE
-                ? wideLayout(viewport, panel, status, close)
-                : topNavigationLayout(viewport, panel, status, close, mode);
+                ? wideLayout(viewport, panel, status, close, tabs)
+                : topNavigationLayout(viewport, panel, status, close, mode, tabs);
     }
 
-    private static TabletLayout wideLayout(Rect viewport, Rect panel, Rect status, Rect close) {
+    /**
+     * WIDE-only channel card pinned to the bottom of the rail; empty in other modes or when it would hit a tab.
+     * 仅 WIDE 模式在侧栏底部显示的频道卡片；其它模式或会与标签页重叠时为空。
+     */
+    public Rect channelCard() {
+        Rect empty = new Rect(navigation.x(), navigation.y(), 0, 0);
+        if (mode != Mode.WIDE) {
+            return empty;
+        }
+        Rect card = new Rect(
+                navigation.x() + 8,
+                navigation.bottom() - CHANNEL_CARD_BOTTOM_GAP - CHANNEL_CARD_HEIGHT,
+                Math.max(0, navigation.width() - 16),
+                CHANNEL_CARD_HEIGHT
+        );
+        int tabsBottom = tabs.isEmpty() ? navigation.y() : tabs.get(tabs.size() - 1).bottom();
+        // Leave room for the MUTED caption drawn above the card.
+        // 为卡片上方的说明文字预留空间。
+        return card.y() - 14 < tabsBottom || !navigation.contains(card) ? empty : card;
+    }
+
+    private static TabletLayout wideLayout(Rect viewport, Rect panel, Rect status, Rect close, int tabCount) {
         Rect navigation = new Rect(panel.x(), status.bottom(), Math.min(RAIL_WIDTH, panel.width()), Math.max(0, panel.height() - status.height()));
         int contentX = navigation.right();
         int contentWidth = Math.max(0, panel.right() - contentX);
@@ -53,17 +89,24 @@ public record TabletLayout(
         Rect body = new Rect(contentX, status.bottom(), contentWidth, Math.max(0, footer.y() - status.bottom()));
         Rect list = body.inset(10, 34, 10, 8);
         return new TabletLayout(viewport, panel, status, navigation, body, footer, list, close,
-                railTabs(navigation), Mode.WIDE, list.height() / ROW_HEIGHT);
+                railTabs(navigation, tabCount), Mode.WIDE, list.height() / ROW_HEIGHT);
     }
 
-    private static TabletLayout topNavigationLayout(Rect viewport, Rect panel, Rect status, Rect close, Mode mode) {
+    private static TabletLayout topNavigationLayout(
+            Rect viewport,
+            Rect panel,
+            Rect status,
+            Rect close,
+            Mode mode,
+            int tabCount
+    ) {
         Rect navigation = new Rect(panel.x(), status.bottom(), panel.width(), Math.min(TOP_NAV_HEIGHT, Math.max(0, panel.bottom() - status.bottom())));
         int contentTop = navigation.bottom();
         Rect footer = footer(panel.x(), panel.width(), contentTop, panel.bottom());
         Rect body = new Rect(panel.x(), contentTop, panel.width(), Math.max(0, footer.y() - contentTop));
         Rect list = body.inset(10, 30, 10, 6);
         return new TabletLayout(viewport, panel, status, navigation, body, footer, list, close,
-                topTabs(navigation), mode, list.height() / ROW_HEIGHT);
+                topTabs(navigation, tabCount), mode, list.height() / ROW_HEIGHT);
     }
 
     private static Rect footer(int x, int width, int minimumY, int panelBottom) {
@@ -78,32 +121,38 @@ public record TabletLayout(
         return width >= WIDE_MIN_WIDTH && height >= 310 ? Mode.WIDE : Mode.COMPACT;
     }
 
-    private static List<Rect> railTabs(Rect navigation) {
+    private static List<Rect> railTabs(Rect navigation, int tabCount) {
         int x = navigation.x() + 8;
         int width = Math.max(0, navigation.width() - 16);
         int firstY = navigation.y() + 14;
-        return List.of(
-                new Rect(x, firstY, width, 22),
-                new Rect(x, firstY + 28, width, 22),
-                new Rect(x, firstY + 56, width, 22),
-                new Rect(x, firstY + 84, width, 22)
-        );
+        ArrayList<Rect> tabs = new ArrayList<>(tabCount);
+        for (int index = 0; index < tabCount; index++) {
+            tabs.add(new Rect(x, firstY + index * RAIL_TAB_STEP, width, RAIL_TAB_HEIGHT));
+        }
+        return List.copyOf(tabs);
     }
 
-    private static List<Rect> topTabs(Rect navigation) {
+    private static List<Rect> topTabs(Rect navigation, int tabCount) {
+        if (tabCount <= 0) {
+            return List.of();
+        }
         int gap = 4;
         int horizontalInset = 8;
-        int availableWidth = Math.max(0, navigation.width() - horizontalInset * 2 - gap * 3);
-        int tabWidth = availableWidth / 4;
-        int remainder = availableWidth - tabWidth * 4;
+        int availableWidth = Math.max(0, navigation.width() - horizontalInset * 2 - gap * (tabCount - 1));
+        int tabWidth = availableWidth / tabCount;
+        int remainder = availableWidth - tabWidth * tabCount;
         int x = navigation.x() + horizontalInset;
         int y = navigation.y() + 4;
         int height = Math.max(0, navigation.height() - 8);
-        Rect first = new Rect(x, y, tabWidth, height);
-        Rect second = new Rect(first.right() + gap, y, tabWidth, height);
-        Rect third = new Rect(second.right() + gap, y, tabWidth, height);
-        Rect fourth = new Rect(third.right() + gap, y, tabWidth + remainder, height);
-        return List.of(first, second, third, fourth);
+        ArrayList<Rect> tabs = new ArrayList<>(tabCount);
+        for (int index = 0; index < tabCount; index++) {
+            // The last tab absorbs the rounding remainder so the row stays flush with the inset.
+            // 最后一个标签吸收取整余数，使整行与内边距对齐。
+            int width = index == tabCount - 1 ? tabWidth + remainder : tabWidth;
+            tabs.add(new Rect(x, y, width, height));
+            x += width + gap;
+        }
+        return List.copyOf(tabs);
     }
 
     public enum Mode {

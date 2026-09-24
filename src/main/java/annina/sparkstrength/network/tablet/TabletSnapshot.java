@@ -1,14 +1,32 @@
 package annina.sparkstrength.network.tablet;
 
+import annina.sparkstrength.tablet.TabletChannel;
 import net.minecraft.network.PacketByteBuf;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Per-viewer tablet state. The server redacts it to the viewer's selected channel before sending.
+ * 按观看者生成的平板状态；服务端发送前已按其所选频道裁剪。
+ *
+ * <p>In anonymous channels the server also redacts by the viewer's links: an unlinked sender's {@link ChatRow} carries
+ * no UUID or name, and unlinked members are left out of {@code connections}.
+ * 在匿名频道中，服务端还会按观看者的互认状态裁剪：未互认发送者的聊天行不含 UUID 与名字，未互认成员不会出现在 connections 中。</p>
+ *
+ * <p>Channel fields follow {@code localHasTablet}; changing this codec requires a new sync payload id.
+ * 频道字段紧跟 localHasTablet；修改此编解码必须更换同步包 id。</p>
+ */
 public record TabletSnapshot(
         boolean localHasTablet,
+        int channelWire,
+        int allowedChannelMask,
+        boolean canSend,
+        int channelSwitchCooldownSeconds,
+        boolean channelLocked,
         boolean localMeetingParticipant,
         int cooldownSeconds,
         int localMeetingCallsRemaining,
@@ -18,11 +36,38 @@ public record TabletSnapshot(
         List<SuspectRow> suspects
 ) {
     public static TabletSnapshot empty() {
-        return new TabletSnapshot(false, false, 0, 0, List.of(), List.of(), Meeting.inactive(), List.of());
+        return new TabletSnapshot(
+                false,
+                TabletChannel.NO_CHANNEL_WIRE,
+                0,
+                false,
+                0,
+                false,
+                false,
+                0,
+                0,
+                List.of(),
+                List.of(),
+                Meeting.inactive(),
+                List.of()
+        );
+    }
+
+    public @Nullable TabletChannel channel() {
+        return TabletChannel.fromWire(channelWire);
+    }
+
+    public EnumSet<TabletChannel> allowedChannels() {
+        return TabletChannel.fromMask(allowedChannelMask);
     }
 
     public void write(PacketByteBuf buf) {
         buf.writeBoolean(localHasTablet);
+        buf.writeVarInt(channelWire);
+        buf.writeVarInt(allowedChannelMask);
+        buf.writeBoolean(canSend);
+        buf.writeVarInt(channelSwitchCooldownSeconds);
+        buf.writeBoolean(channelLocked);
         buf.writeBoolean(localMeetingParticipant);
         buf.writeVarInt(cooldownSeconds);
         buf.writeVarInt(localMeetingCallsRemaining);
@@ -34,6 +79,11 @@ public record TabletSnapshot(
 
     public static TabletSnapshot read(PacketByteBuf buf) {
         return new TabletSnapshot(
+                buf.readBoolean(),
+                buf.readVarInt(),
+                buf.readVarInt(),
+                buf.readBoolean(),
+                buf.readVarInt(),
                 buf.readBoolean(),
                 buf.readBoolean(),
                 buf.readVarInt(),
@@ -92,16 +142,31 @@ public record TabletSnapshot(
         }
     }
 
-    public record ChatRow(UUID senderUuid, String senderName, String message, long timeMillis) {
+    /**
+     * A null {@code senderUuid} marks an anonymous row; it never carries a name, so the client shows "???".
+     * senderUuid 为 null 表示匿名行；匿名行绝不携带名字，客户端显示“???”。
+     */
+    public record ChatRow(@Nullable UUID senderUuid, String senderName, String message) {
+        public ChatRow {
+            senderName = senderUuid == null || senderName == null ? "" : senderName;
+        }
+
+        public static ChatRow hidden(String message) {
+            return new ChatRow(null, "", message);
+        }
+
+        public boolean isAnonymous() {
+            return senderUuid == null;
+        }
+
         private void write(PacketByteBuf buf) {
-            buf.writeUuid(senderUuid);
+            writeOptionalUuid(buf, senderUuid);
             buf.writeString(senderName);
             buf.writeString(message);
-            buf.writeLong(timeMillis);
         }
 
         private static ChatRow read(PacketByteBuf buf) {
-            return new ChatRow(buf.readUuid(), buf.readString(32767), buf.readString(32767), buf.readLong());
+            return new ChatRow(readOptionalUuid(buf), buf.readString(32767), buf.readString(32767));
         }
     }
 

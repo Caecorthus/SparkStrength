@@ -49,6 +49,19 @@ public final class SparkTraitsCompat {
         }
     }
 
+    /** Owner-synced like Impostor, so client shop listings and server validation agree.
+     *  与内鬼一样同步给本人，保证客户端商店列表与服务端校验一致。 */
+    public static boolean hasConscience(PlayerEntity player) {
+        if (player == null || HAS_ACTIVE_TRAIT == null) {
+            return false;
+        }
+        try {
+            return Boolean.TRUE.equals(HAS_ACTIVE_TRAIT.invoke(null, player, CONSCIENCE_ID));
+        } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException | LinkageError ignored) {
+            return false;
+        }
+    }
+
     /**
      * An installed but unreadable trait API disables only the shared economy, not existing bonuses.
      * 天赋已安装但公开 API 不可读时，仅关闭团队经济，不改变既有加成的查询行为。

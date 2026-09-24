@@ -36,7 +36,8 @@
     "morphling.MorphlingReagentCrosshairMixin",
     "morphling.MorphlingRendererDispatchMixin",
     "morphling.MorphlingRoleNameRendererMixin",
-    "veteran.VeteranInstantKnifeMixin"
+    "veteran.VeteranInstantKnifeMixin",
+    "wathe.ShopRowOverflowMixin"
   ],
   "injectors": {
     "defaultRequire": 1
