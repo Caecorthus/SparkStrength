@@ -10,6 +10,7 @@ import annina.sparkstrength.component.phantom.PhantomBackpackTargetComponent;
 import annina.sparkstrength.component.phantom.PhantomBackpackUserComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumTargetComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
+import annina.sparkstrength.item.m67.M67RoundService;
 import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.phantom.PhantomBackpackService;
 import annina.sparkstrength.role.attendant.AttendantFlashlightService;
@@ -22,6 +23,7 @@ import annina.sparkstrength.role.corruptcop.CorruptCopFeatureService;
 import annina.sparkstrength.role.detective.CriminologistService;
 import annina.sparkstrength.role.demonhunter.DemonHunterSniffService;
 import annina.sparkstrength.role.economy.RoleEconomyService;
+import annina.sparkstrength.role.economy.KillerTeamEconomyService;
 import annina.sparkstrength.role.engineer.EngineerCaptureDeviceService;
 import annina.sparkstrength.role.engineer.EngineerPowerRestorationService;
 import annina.sparkstrength.role.engineer.EngineerShopService;
@@ -56,6 +58,7 @@ public final class SparkStrengthEvents {
     }
 
     public static void register() {
+        M67RoundService.initialize();
         CorruptCopFeatureService.register();
         CoronerEngineerService.register();
         CoronerService.register();
@@ -64,6 +67,7 @@ public final class SparkStrengthEvents {
         FlashlightBlackoutService.register();
         VeteranBlackoutService.register();
         RoleEconomyService.register();
+        KillerTeamEconomyService.register();
         EngineerPowerRestorationService.register();
         EngineerShopService.register();
         MorphlingService.register();

@@ -1,5 +1,7 @@
 package annina.sparkstrength.role.silencer;
 
+import annina.sparkstrength.compat.SparkFactionCompat;
+import annina.sparkstrength.compat.SparkTraitsCompat;
 import dev.doctor4t.wathe.api.WatheGameModes;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameConstants;
@@ -33,7 +35,7 @@ public final class SilencerKnifeService {
             return false;
         }
 
-        if (player.isSpectator()) {
+        if (SparkTraitsCompat.isKillerInteractionBlocked(player) || player.isSpectator()) {
             return true;
         }
 
@@ -43,7 +45,13 @@ public final class SilencerKnifeService {
                 || target.distanceTo(player) > 3.0D) {
             return true;
         }
-        if (!SilencerQuietService.isHoldingWatheKnife(player)) {
+        if (!SilencerQuietService.isHoldingWatheKnife(player)
+                || player.getItemCooldownManager().isCoolingDown(WatheItems.KNIFE)) {
+            return true;
+        }
+
+        if (!SparkFactionCompat.canAffectPlayer(player, target, GameConstants.DeathReasons.KNIFE)
+                || SparkTraitsCompat.shouldCancelMeleeAttack(player, target, player.getStackInHand(heldKnifeHand(player)))) {
             return true;
         }
 

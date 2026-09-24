@@ -1,5 +1,7 @@
 package annina.sparkstrength.role.veteran;
 
+import annina.sparkstrength.compat.SparkFactionCompat;
+import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.component.veteran.VeteranKnifeComponent;
 import annina.sparkstrength.role.coroner.CoronerService;
 import dev.doctor4t.wathe.api.Role;
@@ -59,7 +61,7 @@ public final class VeteranKnifeService {
         }
 
         // 只要是老兵的刀包，就不再放回原逻辑；无效目标直接整刀无效，避免原版播放声音/设置 CD。
-        if (player.isSpectator()) {
+        if (SparkTraitsCompat.isKillerInteractionBlocked(player) || player.isSpectator()) {
             return true;
         }
         Entity targetEntity = player.getServerWorld().getEntityById(payload.target());
@@ -80,6 +82,10 @@ public final class VeteranKnifeService {
         }
 
         Hand usedHand = heldKnifeHand(player);
+        if (!SparkFactionCompat.canAffectPlayer(player, target, GameConstants.DeathReasons.KNIFE)
+                || SparkTraitsCompat.shouldCancelMeleeAttack(player, target, player.getStackInHand(usedHand))) {
+            return true;
+        }
         knife.useStab();
         if (VeteranRules.shouldRemoveKnifeAfterUse(knife.getStabUsesLeft())) {
             removeOneHeldOrInventoryKnife(player);
@@ -107,7 +113,7 @@ public final class VeteranKnifeService {
             ServerPlayerEntity player,
             GameWorldComponent game
     ) {
-        if (player.isSpectator()) {
+        if (SparkTraitsCompat.isKillerInteractionBlocked(player) || player.isSpectator()) {
             return true;
         }
         Entity targetEntity = player.getServerWorld().getEntityById(payload.target());
@@ -127,6 +133,10 @@ public final class VeteranKnifeService {
          * 临时匕首会在解除/切换变形时统一回收。
          */
         Hand usedHand = heldKnifeHand(player);
+        if (!SparkFactionCompat.canAffectPlayer(player, target, GameConstants.DeathReasons.KNIFE)
+                || SparkTraitsCompat.shouldCancelMeleeAttack(player, target, player.getStackInHand(usedHand))) {
+            return true;
+        }
         GameRecordManager.recordItemUse(
                 player,
                 Registries.ITEM.getId(WatheItems.KNIFE),

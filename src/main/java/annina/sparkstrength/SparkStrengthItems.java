@@ -4,6 +4,7 @@ import annina.sparkstrength.item.CaptureDeviceItem;
 import annina.sparkstrength.item.CapsuleItem;
 import annina.sparkstrength.item.CoronerBodyBagItem;
 import annina.sparkstrength.item.FlashlightItem;
+import annina.sparkstrength.item.M67Item;
 import annina.sparkstrength.item.MorphDeviceItem;
 import annina.sparkstrength.item.MorphReagentItem;
 import annina.sparkstrength.item.PowerRestorationItem;
@@ -28,6 +29,8 @@ public final class SparkStrengthItems {
     public static final Identifier MORPH_REAGENT_ID = SparkStrength.id("morph_reagent");
     public static final Identifier MORPH_DEVICE_ID = SparkStrength.id("morph_device");
     public static final Identifier CORONER_BODY_BAG_ID = SparkStrength.id("coroner_body_bag");
+    public static final Identifier M67_ID = SparkStrength.id("m67");
+    private static Item m67;
     private static Item capsule;
     private static Item flashlight;
     private static Item tablet;
@@ -109,7 +112,19 @@ public final class SparkStrengthItems {
                 CORONER_BODY_BAG_ID,
                 new CoronerBodyBagItem(new Item.Settings().maxCount(1))
         );
+        m67 = Registry.register(
+                Registries.ITEM,
+                M67_ID,
+                new M67Item(new Item.Settings().maxCount(1))
+        );
         registered = true;
+    }
+
+    public static Item m67() {
+        if (m67 == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return m67;
     }
 
     public static Item capsule() {
