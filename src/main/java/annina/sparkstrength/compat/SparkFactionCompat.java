@@ -18,6 +18,9 @@ public final class SparkFactionCompat {
     private static final Method CAN_AFFECT = findCanAffect();
     private static final Method REGISTER_POLICE_ROLE = findPoliceRoleMethod("register", void.class);
     private static final Method CONTAINS_POLICE_ROLE = findPoliceRoleMethod("contains", boolean.class);
+    private static final Method RESOLVE_BASE_FACTION = findResolveBaseFaction();
+    /** SparkWitch's witch faction id (Grand Witch, Accomplice, Curser). / SparkWitch 魔女阵营 id。 */
+    public static final Identifier WITCH_FACTION_ID = Identifier.of("sparkwitch", "witch");
 
     private SparkFactionCompat() {
     }
@@ -64,6 +67,39 @@ public final class SparkFactionCompat {
         try {
             return (Boolean) CONTAINS_POLICE_ROLE.invoke(null, role.identifier());
         } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException | LinkageError ignored) {
+            return null;
+        }
+    }
+
+    /** Role-only base faction, deterministic on client and server; null means the API is unavailable.
+     *  仅由身份决定的基础阵营，客户端与服务端结果一致；null 表示 API 不可用。 */
+    public static @Nullable Identifier baseFaction(@Nullable Role role) {
+        if (role == null || RESOLVE_BASE_FACTION == null) {
+            return null;
+        }
+        try {
+            Object result = RESOLVE_BASE_FACTION.invoke(null, role);
+            return result instanceof Identifier id ? id : null;
+        } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException | LinkageError ignored) {
+            return null;
+        }
+    }
+
+    /** SparkWitch hard-depends on SparkFactionAPI, so an unavailable API exactly means no witch roles exist.
+     *  SparkWitch 硬依赖 SparkFactionAPI，因此 API 不可用恰好意味着不存在魔女身份。 */
+    public static boolean isWitchFactionRole(@Nullable Role role) {
+        return WITCH_FACTION_ID.equals(baseFaction(role));
+    }
+
+    private static Method findResolveBaseFaction() {
+        if (!FabricLoader.getInstance().isModLoaded("sparkfactionapi")) {
+            return null;
+        }
+        try {
+            Method method = Class.forName("dev.caecorthus.sparkfactionapi.api.SparkFactionApi")
+                    .getMethod("resolveBaseFaction", Role.class);
+            return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == Identifier.class ? method : null;
+        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | LinkageError ignored) {
             return null;
         }
     }

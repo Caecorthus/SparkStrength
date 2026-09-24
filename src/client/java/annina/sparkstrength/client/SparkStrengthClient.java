@@ -49,6 +49,9 @@ public final class SparkStrengthClient implements ClientModInitializer {
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             VeteranClientHooks.resetBlackoutState();
             KillerTeamEconomyClientHooks.reset();
+            // A stale snapshot would otherwise drive tablet outlines on the next server.
+            // 否则过期快照会在下一个服务器上继续驱动平板描边。
+            TabletClientState.reset();
         });
         ClientPlayNetworking.registerGlobalReceiver(OpenCriminologistScreenS2CPacket.ID,
                 (payload, context) -> context.client().execute(() ->

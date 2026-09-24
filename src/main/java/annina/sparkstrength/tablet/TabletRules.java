@@ -1,6 +1,7 @@
 package annina.sparkstrength.tablet;
 
 import dev.doctor4t.wathe.game.GameConstants;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 import java.util.Optional;
@@ -20,6 +21,10 @@ public final class TabletRules {
     public static final int MEETING_COOLDOWN_TICKS = GameConstants.getInTicks(1, 0);
     public static final int SUSPECT_REVEAL_INTERVAL_TICKS = GameConstants.getInTicks(0, 45);
     public static final int SUSPECT_REVEAL_TICKS = GameConstants.getInTicks(0, 5);
+    public static final int SYNC_INTERVAL_TICKS = 20;
+    public static final int SNAPSHOT_REQUEST_INTERVAL_TICKS = 10;
+    private static final char SECTION_SIGN = '\u00A7';
+    private static final String FORMATTING_CODES = "0123456789abcdefklmnor";
 
     private TabletRules() {
     }
@@ -41,6 +46,40 @@ public final class TabletRules {
 
     public static int ticksFromSeconds(int seconds) {
         return GameConstants.getInTicks(seconds / 60, seconds % 60);
+    }
+
+    /**
+     * Server-side chat cleanup: drops section-sign formatting codes and control characters, trims, then caps length.
+     * Crafted packets are the only way to deliver these characters, so nothing a normal client types is lost.
+     * 服务端聊天清洗：去除 § 格式代码与控制字符，去除首尾空白后截断；只有伪造数据包才会携带这些字符。
+     */
+    public static String sanitizeChatMessage(@Nullable String raw) {
+        if (raw == null || raw.isEmpty()) {
+            return "";
+        }
+        StringBuilder cleaned = new StringBuilder(raw.length());
+        for (int index = 0; index < raw.length(); ) {
+            int codePoint = raw.codePointAt(index);
+            index += Character.charCount(codePoint);
+            if (codePoint == SECTION_SIGN) {
+                if (index < raw.length() && FORMATTING_CODES.indexOf(Character.toLowerCase(raw.charAt(index))) >= 0) {
+                    index++;
+                }
+                continue;
+            }
+            if (!Character.isISOControl(codePoint)) {
+                cleaned.appendCodePoint(codePoint);
+            }
+        }
+        String message = cleaned.toString().trim();
+        if (message.length() > CHAT_MESSAGE_MAX_LENGTH) {
+            int end = CHAT_MESSAGE_MAX_LENGTH;
+            if (Character.isHighSurrogate(message.charAt(end - 1))) {
+                end--;
+            }
+            message = message.substring(0, end).trim();
+        }
+        return message;
     }
 
     public static Optional<UUID> uniqueHighestVote(Map<UUID, Integer> voteCounts) {
