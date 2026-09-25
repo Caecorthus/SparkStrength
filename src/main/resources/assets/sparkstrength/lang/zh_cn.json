@@ -1,4 +1,5 @@
 {
+  "itemGroup.sparkstrength.items": "SparkStrength：物品",
   "item.sparkstrength.m67": "M67 手雷",
   "item.sparkstrength.m67.tooltip.line1": "按住右键蓄力 1 秒，蓄满后松开投掷；扔出 7 秒后爆炸。",
   "item.sparkstrength.m67.tooltip.line2": "开局前 90 秒不可使用；投掷后冷却 15 秒（炸弹客为 10 秒）。",

@@ -1,4 +1,5 @@
 {
+  "itemGroup.sparkstrength.items": "SparkStrength: Items",
   "item.sparkstrength.m67": "M67 Grenade",
   "item.sparkstrength.m67.tooltip.line1": "Hold right-click for 1s, then release to throw. Explodes after 7s.",
   "item.sparkstrength.m67.tooltip.line2": "Cannot use during the first 90s. Throw cooldown: 15s (Bomber: 10s).",
