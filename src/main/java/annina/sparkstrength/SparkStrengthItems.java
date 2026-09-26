@@ -2,9 +2,11 @@ package annina.sparkstrength;
 
 import annina.sparkstrength.item.CaptureDeviceItem;
 import annina.sparkstrength.item.CapsuleItem;
+import annina.sparkstrength.item.CaseFolderItem;
 import annina.sparkstrength.item.CoronerBodyBagItem;
 import annina.sparkstrength.item.FlashlightItem;
 import annina.sparkstrength.item.M67Item;
+import annina.sparkstrength.item.MagnifierItem;
 import annina.sparkstrength.item.MorphDeviceItem;
 import annina.sparkstrength.item.MorphReagentItem;
 import annina.sparkstrength.item.PowerRestorationItem;
@@ -30,6 +32,8 @@ public final class SparkStrengthItems {
     public static final Identifier MORPH_DEVICE_ID = SparkStrength.id("morph_device");
     public static final Identifier CORONER_BODY_BAG_ID = SparkStrength.id("coroner_body_bag");
     public static final Identifier M67_ID = SparkStrength.id("m67");
+    public static final Identifier MAGNIFIER_ID = SparkStrength.id("magnifier");
+    public static final Identifier CASE_FOLDER_ID = SparkStrength.id("case_folder");
     private static Item m67;
     private static Item capsule;
     private static Item flashlight;
@@ -43,6 +47,8 @@ public final class SparkStrengthItems {
     private static Item morphReagent;
     private static Item morphDevice;
     private static Item coronerBodyBag;
+    private static Item magnifier;
+    private static Item caseFolder;
     private static boolean registered;
 
     private SparkStrengthItems() {
@@ -116,6 +122,16 @@ public final class SparkStrengthItems {
                 Registries.ITEM,
                 M67_ID,
                 new M67Item(new Item.Settings().maxCount(1))
+        );
+        magnifier = Registry.register(
+                Registries.ITEM,
+                MAGNIFIER_ID,
+                new MagnifierItem(new Item.Settings().maxCount(1))
+        );
+        caseFolder = Registry.register(
+                Registries.ITEM,
+                CASE_FOLDER_ID,
+                new CaseFolderItem(new Item.Settings().maxCount(1))
         );
         registered = true;
     }
@@ -209,5 +225,19 @@ public final class SparkStrengthItems {
             throw new IllegalStateException("SparkStrength items are not registered yet");
         }
         return coronerBodyBag;
+    }
+
+    public static Item magnifier() {
+        if (magnifier == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return magnifier;
+    }
+
+    public static Item caseFolder() {
+        if (caseFolder == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return caseFolder;
     }
 }

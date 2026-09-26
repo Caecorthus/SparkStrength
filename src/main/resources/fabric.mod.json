@@ -37,7 +37,7 @@
       "sparkstrength:phantom_backpack_target",
       "sparkstrength:professor_serum_user",
       "sparkstrength:professor_serum_target",
-      "sparkstrength:criminologist_player",
+      "sparkstrength:detective_case_player",
       "sparkstrength:coroner_player",
       "sparkstrength:coroner_body_snapshot",
       "sparkstrength:demon_hunter_sniff",
@@ -45,7 +45,7 @@
       "sparkstrength:engineer_stunned",
       "sparkstrength:morph_mark_player",
       "sparkstrength:toxicologist_antidote",
-      "sparkstrength:criminologist_world",
+      "sparkstrength:detective_case_world",
       "sparkstrength:killer_team_economy",
       "sparkstrength:tablet_world",
       "sparkstrength:morph_body_disguise_world"

@@ -1,7 +1,6 @@
 package annina.sparkstrength.event;
 
-import annina.sparkstrength.component.detective.CriminologistPlayerComponent;
-import annina.sparkstrength.component.detective.CriminologistWorldComponent;
+import annina.sparkstrength.component.detective.DetectiveCasePlayerComponent;
 import annina.sparkstrength.component.demonhunter.DemonHunterSniffPlayerComponent;
 import annina.sparkstrength.component.morphling.MorphBodyDisguiseWorldComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowTargetComponent;
@@ -20,7 +19,7 @@ import annina.sparkstrength.role.coroner.CoronerService;
 import annina.sparkstrength.role.coroner.CoronerShopService;
 import annina.sparkstrength.role.corruptcop.CorruptCopAbilityService;
 import annina.sparkstrength.role.corruptcop.CorruptCopFeatureService;
-import annina.sparkstrength.role.detective.CriminologistService;
+import annina.sparkstrength.role.detective.DetectiveCaseService;
 import annina.sparkstrength.role.demonhunter.DemonHunterSniffService;
 import annina.sparkstrength.role.economy.RoleEconomyService;
 import annina.sparkstrength.role.economy.KillerTeamEconomyService;
@@ -63,7 +62,7 @@ public final class SparkStrengthEvents {
         CoronerEngineerService.register();
         CoronerService.register();
         CoronerShopService.register();
-        CriminologistService.register();
+        DetectiveCaseService.register();
         FlashlightBlackoutService.register();
         VeteranBlackoutService.register();
         RoleEconomyService.register();
@@ -92,7 +91,7 @@ public final class SparkStrengthEvents {
                 CoronerService.assignForRole(serverPlayer, role);
                 RoleEconomyService.assignForRole(serverPlayer, role);
                 AttendantFlashlightService.assignForRole(serverPlayer, role);
-                CriminologistService.assignForRole(serverPlayer, role);
+                DetectiveCaseService.assignForRole(serverPlayer, role);
                 DemonHunterSniffService.assignForRole(serverPlayer, role);
                 MorphlingService.assignForRole(serverPlayer, role);
                 PhantomBackpackService.assignForRole(serverPlayer, role);
@@ -103,7 +102,9 @@ public final class SparkStrengthEvents {
         });
 
         ResetPlayer.EVENT.register(player -> {
-            // Wathe 在死亡、重置玩家、新一局开始等场景会触发 ResetPlayer。
+            // Wathe fires ResetPlayer in baseInitialize (round start) and in resetPlayer, which serverTick runs while no
+            // game is running for players still inside the play area; never on death.
+            // Wathe 只在开局 baseInitialize，以及非对局期间 serverTick 对仍在游戏区域内玩家调用的 resetPlayer 中触发 ResetPlayer；死亡时不会触发。
             // 这里把点亮冷却和目标倒计时都清掉，避免跨局残留。
             NoisemakerGlowUserComponent.KEY.get(player).reset();
             NoisemakerGlowTargetComponent.KEY.get(player).reset();
@@ -111,7 +112,7 @@ public final class SparkStrengthEvents {
             PhantomBackpackTargetComponent.KEY.get(player).reset();
             ProfessorSerumUserComponent.KEY.get(player).reset();
             ProfessorSerumTargetComponent.KEY.get(player).reset();
-            CriminologistPlayerComponent.KEY.get(player).clearAll();
+            DetectiveCasePlayerComponent.KEY.get(player).clearAll();
             DemonHunterSniffPlayerComponent.KEY.get(player).clearSniff();
             if (player instanceof ServerPlayerEntity serverPlayer) {
                 CorruptCopAbilityService.reset(serverPlayer);
@@ -126,7 +127,6 @@ public final class SparkStrengthEvents {
         KillPlayer.AFTER.register((victim, killer, deathReason) -> {
             // 大嗓门死亡后的“杀手发光 15 秒”是被动效果，不写入回放。
             NoisemakerGlowService.glowKillerWhenNoisemakerDies(victim, killer);
-            CriminologistService.afterKill(victim, killer, deathReason);
             CoronerService.afterKill(victim);
             MorphlingService.afterKill(victim, killer, deathReason);
             VeteranEconomyService.afterKill(victim, killer, deathReason);
@@ -134,7 +134,7 @@ public final class SparkStrengthEvents {
 
         GameEvents.ON_FINISH_FINALIZE.register((world, gameComponent) -> {
             if (world instanceof ServerWorld serverWorld) {
-                CriminologistWorldComponent.KEY.get(serverWorld).clearRoundState();
+                DetectiveCaseService.clearRoundState(serverWorld);
                 MorphBodyDisguiseWorldComponent.KEY.get(serverWorld).clearRoundState();
                 EngineerCaptureDeviceService.clearRoundState(serverWorld);
                 TabletStateService.clearRoundState(serverWorld);
@@ -142,7 +142,7 @@ public final class SparkStrengthEvents {
                 for (ServerPlayerEntity player : serverWorld.getPlayers()) {
                     CorruptCopAbilityService.reset(player);
                     CoronerService.clearPlayer(player);
-                    CriminologistPlayerComponent.KEY.get(player).clearAll();
+                    DetectiveCasePlayerComponent.KEY.get(player).clearAll();
                     EngineerCaptureDeviceService.clearPlayer(player);
                     MorphlingService.reset(player);
                     PhantomBackpackService.clearPlayer(player);
@@ -163,6 +163,10 @@ public final class SparkStrengthEvents {
                 // 开局时也清理：异常结束或重启的对局不能把平板聊天/嫌疑人带入下一局。
                 TabletStateService.clearRoundState(serverWorld);
                 TabletShopService.grantStarterTablets(serverWorld, gameComponent);
+                // Crime-scene snapshots are round state; clear before granting kits so a new round starts empty.
+                // 案发快照属于单局状态；先清空再发放侦探道具，保证新一局从空白开始。
+                DetectiveCaseService.clearRoundState(serverWorld);
+                DetectiveCaseService.grantStarterKits(serverWorld);
             }
         });
     }

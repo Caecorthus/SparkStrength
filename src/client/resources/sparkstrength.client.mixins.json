@@ -14,7 +14,7 @@
     "phantom.PhantomBackpackInventoryScreenMixin",
     "professor.ProfessorInventoryScreenMixin",
     "professor.ProfessorSerumCrosshairMixin",
-    "detective.CriminologistHudMixin",
+    "detective.DetectiveMagnifierHudMixin",
     "demonhunter.DemonHunterSniffHudMixin",
     "economy.KillerTeamMoneyHudMixin",
     "engineer.EngineerCaptureReportItemEntityRendererMixin",
