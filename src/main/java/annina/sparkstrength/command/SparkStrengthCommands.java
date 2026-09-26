@@ -1,6 +1,8 @@
 package annina.sparkstrength.command;
 
 import annina.sparkstrength.component.tablet.TabletWorldComponent;
+import annina.sparkstrength.role.detective.DetectiveCaseRules;
+import annina.sparkstrength.role.detective.DetectiveCaseService;
 import annina.sparkstrength.tablet.TabletRules;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -31,6 +33,10 @@ public final class SparkStrengthCommands {
         // 保留需求中写出的拼写作为别名，同时提供正确拼写。
         registerVoteTimeCommand(dispatcher, "sparkstrength:voteTime");
         registerVoteTimeCommand(dispatcher, "sparkstength:voteTime");
+        // Brigadier literals are case-sensitive, so the camel-case namespace is registered as a separate alias.
+        // Brigadier 字面量区分大小写，因此驼峰写法的命名空间需单独注册为别名。
+        registerDetectiveCaseLimitCommand(dispatcher, "sparkstrength:detectiveCaseLimit");
+        registerDetectiveCaseLimitCommand(dispatcher, "sparkStrength:detectiveCaseLimit");
     }
 
     private static int setEmergencyMeetingChances(ServerCommandSource source, int chances) {
@@ -64,5 +70,37 @@ public final class SparkStrengthCommands {
                 true
         );
         return seconds;
+    }
+
+    private static void registerDetectiveCaseLimitCommand(CommandDispatcher<ServerCommandSource> dispatcher, String literal) {
+        dispatcher.register(CommandManager.literal(literal)
+                .requires(source -> source.hasPermissionLevel(DEFAULT_COMMAND_LEVEL))
+                .executes(context -> queryDetectiveCaseLimit(context.getSource()))
+                .then(CommandManager.argument("num", IntegerArgumentType.integer(
+                                DetectiveCaseRules.MIN_SUSPECT_LIMIT,
+                                DetectiveCaseRules.MAX_SUSPECT_LIMIT
+                        ))
+                        .executes(context -> setDetectiveCaseLimit(
+                                context.getSource(),
+                                IntegerArgumentType.getInteger(context, "num")
+                        ))));
+    }
+
+    private static int queryDetectiveCaseLimit(ServerCommandSource source) {
+        int limit = DetectiveCaseService.getSuspectLimit(source.getWorld());
+        source.sendFeedback(
+                () -> Text.translatable("commands.sparkstrength.detective_case_limit.query", limit),
+                false
+        );
+        return limit;
+    }
+
+    private static int setDetectiveCaseLimit(ServerCommandSource source, int limit) {
+        DetectiveCaseService.setSuspectLimit(source.getServer(), limit);
+        source.sendFeedback(
+                () -> Text.translatable("commands.sparkstrength.detective_case_limit.success", limit),
+                true
+        );
+        return limit;
     }
 }

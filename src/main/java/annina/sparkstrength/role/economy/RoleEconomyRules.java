@@ -1,7 +1,7 @@
 package annina.sparkstrength.role.economy;
 
 import annina.sparkstrength.role.corruptcop.CorruptCopRules;
-import annina.sparkstrength.role.detective.CriminologistRules;
+import annina.sparkstrength.role.detective.DetectiveRules;
 import annina.sparkstrength.role.coroner.CoronerRules;
 import annina.sparkstrength.role.engineer.EngineerRules;
 import annina.sparkstrength.role.professor.ProfessorSerumRules;
@@ -26,7 +26,7 @@ public final class RoleEconomyRules {
     }
 
     public static boolean isGoodMoneyRole(@Nullable Role role) {
-        return CriminologistRules.isDetective(role)
+        return DetectiveRules.isDetective(role)
                 || CoronerRules.isCoroner(role)
                 || ToxicologistCapsuleRules.isToxicologist(role)
                 || ProfessorSerumRules.isProfessor(role)

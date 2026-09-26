@@ -2,6 +2,7 @@ package annina.sparkstrength.mixin.noellesroles;
 
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.role.coroner.CoronerService;
+import annina.sparkstrength.role.detective.DetectiveRules;
 import annina.sparkstrength.role.engineer.EngineerCaptureReport;
 import annina.sparkstrength.role.engineer.EngineerRules;
 import annina.sparkstrength.role.professor.ProfessorSerumRules;
@@ -17,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  *
- * 将 SparkStrength 平板、工程师捕捉装置、教授试剂和变形怪道具加入 NoellesRoles 的隐藏装备过滤器。
+ * 将 SparkStrength 平板、工程师捕捉装置、教授试剂、变形怪道具和侦探道具加入 NoellesRoles 的隐藏装备过滤器。
  */
 @Mixin(value = HiddenEquipmentHelper.class, remap = false)
 public abstract class HiddenEquipmentHelperMixin {
@@ -59,6 +60,14 @@ public abstract class HiddenEquipmentHelperMixin {
 
         if (stack.isOf(SparkStrengthItems.morphReagent()) || stack.isOf(SparkStrengthItems.morphDevice())) {
             // 变形试剂和遥控器是 Morphling 的核心情报道具；只要被装备隐藏系统扫描到就不展示给其他存活玩家。
+            cir.setReturnValue(true);
+            return;
+        }
+
+        if ((stack.isOf(SparkStrengthItems.magnifier()) || stack.isOf(SparkStrengthItems.caseFolder()))
+                && DetectiveRules.isDetective(GameWorldComponent.KEY.get(holder.getWorld()).getRole(holder))) {
+            // A held magnifier or case folder would expose the detective; hide it while the holder is a detective.
+            // 手持放大镜或文件夹会暴露侦探身份；持有者为侦探时对其他玩家隐藏。
             cir.setReturnValue(true);
             return;
         }

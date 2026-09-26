@@ -1,9 +1,12 @@
 package annina.sparkstrength.network;
 
-import annina.sparkstrength.network.criminologist.OpenCriminologistScreenS2CPacket;
-import annina.sparkstrength.network.criminologist.SelectCriminologistTargetC2SPacket;
 import annina.sparkstrength.network.coroner.CoronerMorphC2SPacket;
 import annina.sparkstrength.network.demonhunter.DemonHunterSniffC2SPacket;
+import annina.sparkstrength.network.detective.OpenDetectiveFolderS2CPacket;
+import annina.sparkstrength.network.detective.SelectDetectiveCaseC2SPacket;
+import annina.sparkstrength.network.detective.SetDetectiveKillerGuessC2SPacket;
+import annina.sparkstrength.network.detective.SetDetectivePresumedKillerC2SPacket;
+import annina.sparkstrength.network.detective.UpdateDetectiveCaseNotesC2SPacket;
 import annina.sparkstrength.network.economy.SyncKillerTeamEconomyS2CPacket;
 import annina.sparkstrength.network.m67.M67Packets;
 import annina.sparkstrength.network.noisemaker.NoisemakerGlowC2SPacket;
@@ -23,7 +26,7 @@ import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.phantom.PhantomBackpackService;
 import annina.sparkstrength.role.coroner.CoronerService;
 import annina.sparkstrength.role.professor.ProfessorSerumService;
-import annina.sparkstrength.role.detective.CriminologistService;
+import annina.sparkstrength.role.detective.DetectiveCaseService;
 import annina.sparkstrength.role.demonhunter.DemonHunterSniffService;
 import annina.sparkstrength.tablet.TabletStateService;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -42,7 +45,10 @@ public final class SparkStrengthPackets {
         PayloadTypeRegistry.playC2S().register(PhantomBackpackInvisibilityC2SPacket.ID, PhantomBackpackInvisibilityC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(CoronerMorphC2SPacket.ID, CoronerMorphC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(ProfessorRemoteFeedC2SPacket.ID, ProfessorRemoteFeedC2SPacket.CODEC);
-        PayloadTypeRegistry.playC2S().register(SelectCriminologistTargetC2SPacket.ID, SelectCriminologistTargetC2SPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(SelectDetectiveCaseC2SPacket.ID, SelectDetectiveCaseC2SPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(UpdateDetectiveCaseNotesC2SPacket.ID, UpdateDetectiveCaseNotesC2SPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(SetDetectiveKillerGuessC2SPacket.ID, SetDetectiveKillerGuessC2SPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(SetDetectivePresumedKillerC2SPacket.ID, SetDetectivePresumedKillerC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(DemonHunterSniffC2SPacket.ID, DemonHunterSniffC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(RequestTabletSnapshotC2SPacket.ID, RequestTabletSnapshotC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(SendTabletChatC2SPacket.ID, SendTabletChatC2SPacket.CODEC);
@@ -51,7 +57,7 @@ public final class SparkStrengthPackets {
         PayloadTypeRegistry.playC2S().register(ConfirmTabletVoteC2SPacket.ID, ConfirmTabletVoteC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(ApproveSuspectRemovalC2SPacket.ID, ApproveSuspectRemovalC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(SelectTabletChannelC2SPacket.ID, SelectTabletChannelC2SPacket.CODEC);
-        PayloadTypeRegistry.playS2C().register(OpenCriminologistScreenS2CPacket.ID, OpenCriminologistScreenS2CPacket.CODEC);
+        PayloadTypeRegistry.playS2C().register(OpenDetectiveFolderS2CPacket.ID, OpenDetectiveFolderS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(OpenTabletScreenS2CPacket.ID, OpenTabletScreenS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncTabletSnapshotS2CPacket.ID, SyncTabletSnapshotS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncVeteranBlackoutS2CPacket.ID, SyncVeteranBlackoutS2CPacket.CODEC);
@@ -68,11 +74,27 @@ public final class SparkStrengthPackets {
         ServerPlayNetworking.registerGlobalReceiver(ProfessorRemoteFeedC2SPacket.ID, (payload, context) ->
                 ProfessorSerumService.tryRemoteFeed(context.player(), payload.targetPlayer(), payload.serumType())
         );
-        ServerPlayNetworking.registerGlobalReceiver(SelectCriminologistTargetC2SPacket.ID,
-                (payload, context) -> CriminologistService.handleSelection(
+        // Detective folder edits: the service re-validates role, liveness and case ownership (client input is untrusted).
+        // 侦探文件夹编辑：服务端重新校验身份、存活状态与案件归属，客户端输入不可信。
+        ServerPlayNetworking.registerGlobalReceiver(SelectDetectiveCaseC2SPacket.ID,
+                (payload, context) -> DetectiveCaseService.handleSelectCase(context.player(), payload.caseId()));
+        ServerPlayNetworking.registerGlobalReceiver(UpdateDetectiveCaseNotesC2SPacket.ID,
+                (payload, context) -> DetectiveCaseService.handleUpdateNotes(
                         context.player(),
-                        payload.victimUuid(),
-                        payload.suspectUuid()
+                        payload.caseId(),
+                        payload.notes()
+                ));
+        ServerPlayNetworking.registerGlobalReceiver(SetDetectiveKillerGuessC2SPacket.ID,
+                (payload, context) -> DetectiveCaseService.handleSetKillerGuess(
+                        context.player(),
+                        payload.caseId(),
+                        payload.roleId()
+                ));
+        ServerPlayNetworking.registerGlobalReceiver(SetDetectivePresumedKillerC2SPacket.ID,
+                (payload, context) -> DetectiveCaseService.handleSetPresumedKiller(
+                        context.player(),
+                        payload.caseId(),
+                        payload.playerUuid()
                 ));
         ServerPlayNetworking.registerGlobalReceiver(DemonHunterSniffC2SPacket.ID,
                 (payload, context) -> DemonHunterSniffService.trySniff(context.player()));
