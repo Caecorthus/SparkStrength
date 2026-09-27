@@ -47,7 +47,7 @@ public final class M67ShopService {
         // 与 M67 冷却资格一致；其他职业残留的伪装不享受优惠。
         int price = CoronerRules.isBomber(GameWorldComponent.KEY.get(player.getWorld()).getRole(player))
                 || (CoronerService.isActualCoroner(player) && CoronerService.hasBomberDisguise(player))
-                ? 75 : 100;
+                ? 25 : 50;
         ShopEntry m67 = new ShopEntry.Builder(ENTRY_ID, display, price, ShopEntry.Type.WEAPON)
                 .actualStack(SparkStrengthItems.m67().getDefaultStack())
                 .build();
