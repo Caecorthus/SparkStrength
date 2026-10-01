@@ -1,6 +1,7 @@
 package annina.sparkstrength.mixin.professor;
 
 import annina.sparkstrength.component.professor.ProfessorSerumTargetComponent;
+import annina.sparkstrength.util.RaycastShapeScope;
 import dev.doctor4t.wathe.block.DoorPartBlock;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.block.BlockState;
@@ -22,7 +23,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  *
  * <p>Wathe 门真正挡人的地方是 {@link DoorPartBlock#getCollisionShape}，
  * 因此这里只在碰撞形状查询时对带有效果的存活玩家返回空形状。
- * 门的渲染、开关状态、交互和射线检测都不改。</p>
+ * 门的渲染、开关状态和交互都不改。</p>
+ *
+ * <p>Movement only: COLLIDER rays reuse the target's shape context, so queries inside {@link RaycastShapeScope}
+ * keep the door and the target's sight and aim ({@code canSee}, {@code ProjectileUtil.getCollision}) stop at it.
+ * 仅限移动：COLLIDER 射线沿用目标的形状上下文，因此 {@link RaycastShapeScope} 内的查询保留门的形状，
+ * 目标的视线与瞄准（canSee、ProjectileUtil.getCollision）仍会被门挡住。</p>
  */
 @Mixin(DoorPartBlock.class)
 public abstract class ProfessorDoorPassingMixin {
@@ -41,7 +47,8 @@ public abstract class ProfessorDoorPassingMixin {
         Entity entity = entityShapeContext.getEntity();
         if (entity instanceof PlayerEntity player
                 && GameFunctions.isPlayerPlayingAndAlive(player)
-                && ProfessorSerumTargetComponent.KEY.get(player).hasDoorpassing()) {
+                && ProfessorSerumTargetComponent.KEY.get(player).hasDoorpassing()
+                && !RaycastShapeScope.isRaycast()) {
             cir.setReturnValue(VoxelShapes.empty());
         }
     }
