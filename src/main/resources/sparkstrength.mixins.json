@@ -21,6 +21,7 @@
     "m67.M67ServerPlayerMixin",
     "minecraft.ItemCooldownEntryAccessor",
     "minecraft.ItemCooldownManagerAccessor",
+    "minecraft.RaycastShapeScopeMixin",
     "noellesroles.HiddenEquipmentHelperMixin",
     "noellesroles.ToxicologistAntidoteItemMixin",
     "professor.ProfessorDoorPassingMixin",
