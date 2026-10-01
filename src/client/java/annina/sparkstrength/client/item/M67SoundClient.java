@@ -2,6 +2,7 @@ package annina.sparkstrength.client.item;
 
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.SparkStrengthSounds;
+import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.network.m67.M67SoundPayload;
 import annina.sparkstrength.item.m67.M67Rules;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -63,7 +64,8 @@ public final class M67SoundClient {
                 || actor.isRemoved() ? null : create(action, actor);
         // Keep high-water tombstones even after expiration; a stopped START cannot replay.
         // 到期后仍保留令牌上界，防止已停止的 START 重播。
-        remote.put(payload.actorUuid(), new Playback(payload.playbackToken(), sound, ticks + duration(action)));
+        remote.put(payload.actorUuid(), new Playback(payload.playbackToken(), sound,
+                ticks + duration(action, actor)));
         if (sound != null) {
             MinecraftClient.getInstance().getSoundManager().play(sound);
         }
@@ -81,7 +83,7 @@ public final class M67SoundClient {
         }
         local = create(action, player);
         localAction = action;
-        localDeadline = ticks + duration(action);
+        localDeadline = ticks + duration(action, player);
         MinecraftClient.getInstance().getSoundManager().play(local);
     }
 
@@ -144,8 +146,11 @@ public final class M67SoundClient {
                 || player.getStackInHand(Hand.OFF_HAND).isOf(SparkStrengthItems.m67());
     }
 
-    private static int duration(byte action) {
-        return action == M67SoundPayload.START_EQUIP ? M67Rules.EQUIP_COOLDOWN_TICKS : M67Rules.CHARGE_TICKS;
+    private static int duration(byte action, PlayerEntity actor) {
+        // Traits sync to their owner only: other actors keep the base window until the server's STOP.
+        // 天赋仅同步给本人：其他玩家沿用基础时长，由服务端 STOP 提前结束。
+        return action == M67SoundPayload.START_EQUIP ? M67Rules.EQUIP_COOLDOWN_TICKS
+                : SparkTraitsCompat.getThrowChargeTicks(actor, M67Rules.CHARGE_TICKS);
     }
 
     private static SoundInstance create(byte action, PlayerEntity actor) {

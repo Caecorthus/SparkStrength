@@ -84,7 +84,7 @@ public final class M67UseService {
         // Remove before spawn, decrement or clear callbacks can re-enter. / 先移除会话，避免生成、扣物品和清除回调重入。
         SESSIONS.remove(player);
         M67SoundService.stop(player);
-        if (!state.finish(player.getServerWorld().getTime(), authorized && valid)) {
+        if (!state.finish(player.getServerWorld().getTime(), authorized && valid, chargeTicks(player))) {
             clearM67Use(player);
             preserveCooldown(player, M67Rules.CANCEL_COOLDOWN_TICKS);
             return;
@@ -130,7 +130,7 @@ public final class M67UseService {
         if (state == null) {
             return;
         }
-        state.finish(player.getServerWorld().getTime(), false);
+        state.finish(player.getServerWorld().getTime(), false, M67Rules.CHARGE_TICKS);
         clearM67Use(player);
         preserveCooldown(player, M67Rules.CANCEL_COOLDOWN_TICKS);
     }
@@ -153,6 +153,12 @@ public final class M67UseService {
                 RELEASE_SCOPES.put(player, previous);
             }
         }
+    }
+
+    /** Resolved on the server from the player's traits; a packet never supplies it.
+     *  由服务端按玩家天赋解析，数据包不能指定。 */
+    static int chargeTicks(ServerPlayerEntity player) {
+        return SparkTraitsCompat.getThrowChargeTicks(player, M67Rules.CHARGE_TICKS);
     }
 
     public static int throwCooldownTicks(ServerPlayerEntity player) {
