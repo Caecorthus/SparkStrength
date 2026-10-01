@@ -36,9 +36,13 @@ public final class RoleEconomyService {
         }
     }
 
+    /**
+     * Pays the role's own +50 even to a SparkTraits Impostor; SparkTraits' Impostor +50 stacks on top (owner rule).
+     * 即使是 SparkTraits 内鬼也发放职业自带的 +50；SparkTraits 的内鬼 +50 另行叠加（所有者规则）。
+     */
     public static void onTaskComplete(ServerPlayerEntity player) {
         Role role = GameWorldComponent.KEY.get(player.getServerWorld()).getRole(player);
-        if (RoleEconomyRules.earnsTaskMoney(role) && !SparkTraitsCompat.hasImpostor(player)) {
+        if (RoleEconomyRules.earnsTaskMoney(role)) {
             PlayerShopComponent.KEY.get(player).addToBalance(RoleEconomyRules.TASK_MONEY_REWARD);
         }
     }

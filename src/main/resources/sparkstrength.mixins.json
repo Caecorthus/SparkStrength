@@ -9,6 +9,7 @@
     "coroner.CoronerBomberComponentSyncMixin",
     "coroner.CoronerIronManComponentSyncMixin",
     "coroner.CoronerIronManVialItemMixin",
+    "coroner.CoronerKillerDisguiseKnifeStabMixin",
     "coroner.CoronerPoisonNeedleItemMixin",
     "coroner.CoronerPoisonComponentSyncMixin",
     "coroner.CoronerTimedBombItemMixin",

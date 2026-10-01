@@ -9,7 +9,9 @@ import annina.sparkstrength.role.professor.ProfessorSerumRules;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import org.agmas.noellesroles.ModItems;
+import org.agmas.noellesroles.item.IngredientItem;
 import org.agmas.noellesroles.util.HiddenEquipmentHelper;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -17,8 +19,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- *
- * 将 SparkStrength 平板、工程师捕捉装置、教授试剂、变形怪道具和侦探道具加入 NoellesRoles 的隐藏装备过滤器。
+ * Adds SparkStrength's tablet, Engineer capture items, Professor serums, Morphling items, Detective tools,
+ * every Bartender ingredient and the Recaller's ender pearl / chorus fruit to NoellesRoles' hidden-equipment filter.
+ * 将 SparkStrength 平板、工程师捕捉装置、教授试剂、变形怪道具、侦探道具、全部酒保调剂以及回溯者的末影珍珠/紫颂果加入 NoellesRoles 的隐藏装备过滤器。
  */
 @Mixin(value = HiddenEquipmentHelper.class, remap = false)
 public abstract class HiddenEquipmentHelperMixin {
@@ -74,6 +77,20 @@ public abstract class HiddenEquipmentHelperMixin {
 
         if (stack.isOf(ModItems.BASE_SPIRIT) && CoronerService.hasBartenderDisguise(holder)) {
             // 验尸官伪装酒保时，基酒手持隐藏规则与真实酒保一致。
+            cir.setReturnValue(true);
+            return;
+        }
+
+        if (stack.getItem() instanceof IngredientItem) {
+            // Every Bartender ingredient stays hidden; upstream lists only six, missing special liqueur/spice.
+            // 所有酒保调剂（含上游后加、未列入的特调利口酒/特调香料）手持时始终对其他存活玩家隐藏。
+            cir.setReturnValue(true);
+            return;
+        }
+
+        if (stack.isOf(Items.ENDER_PEARL) || stack.isOf(Items.CHORUS_FRUIT)) {
+            // Only the Recaller shop (and the Coroner's Recaller disguise) sells these; holding one reveals the role.
+            // 末影珍珠/紫颂果仅由回溯者商店（及验尸官回溯者伪装商店）出售，手持会暴露身份。
             cir.setReturnValue(true);
             return;
         }
