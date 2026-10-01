@@ -32,7 +32,7 @@ final class M67SoundService {
                 actor.getInventory().selectedSlot);
         PLAYBACKS.put(actor, new Playback(actor.getServerWorld(), payload, recipients,
                 actor.getServerWorld().getTime() + (action == M67SoundPayload.START_EQUIP
-                        ? M67Rules.EQUIP_COOLDOWN_TICKS : M67Rules.CHARGE_TICKS)));
+                        ? M67Rules.EQUIP_COOLDOWN_TICKS : M67UseService.chargeTicks(actor))));
         recipients.forEach(listener -> ServerPlayNetworking.send(listener, payload));
     }
 

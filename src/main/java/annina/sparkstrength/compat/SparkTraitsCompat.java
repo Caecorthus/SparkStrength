@@ -33,6 +33,8 @@ public final class SparkTraitsCompat {
             ServerPlayerEntity.class, ServerPlayerEntity.class, ItemStack.class);
     private static final Method CHARISMA_DISCOUNT = findOptionalMethod(
             "discountShopEntryForCharisma", ShopEntry.class, PlayerEntity.class, ShopEntry.class);
+    private static final Method THROW_CHARGE_TICKS = findOptionalMethod(
+            "getThrowChargeTicks", int.class, PlayerEntity.class, int.class);
     private static boolean teamQueryFailed;
 
     private SparkTraitsCompat() {
@@ -134,6 +136,18 @@ public final class SparkTraitsCompat {
         }
         Object result = invokeOptional(CHARISMA_DISCOUNT, player, entry);
         return result instanceof ShopEntry discounted ? discounted : entry;
+    }
+
+    /** Self-timed throw charges only: SparkTraits already scales launch speed, so never multiply it here.
+     *  Missing, old or failing APIs keep the base charge, as does a non-positive answer.
+     *  仅用于自行计时的投掷蓄力：初速已由 SparkTraits 统一放大，此处不得再乘。
+     *  缺失、旧版或异常的 API 保持基础蓄力，非正数结果同样回退。 */
+    public static int getThrowChargeTicks(PlayerEntity player, int baseTicks) {
+        if (player == null) {
+            return baseTicks;
+        }
+        Object result = invokeOptional(THROW_CHARGE_TICKS, player, baseTicks);
+        return result instanceof Integer ticks && ticks > 0 ? ticks : baseTicks;
     }
 
     private static Method findOptionalMethod(String name, Class<?> returnType, Class<?>... parameters) {

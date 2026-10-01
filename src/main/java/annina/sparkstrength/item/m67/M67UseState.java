@@ -30,11 +30,12 @@ final class M67UseState {
                 && slot == selectedSlot && count == heldCount;
     }
 
-    boolean finish(long now, boolean authorizedRelease) {
+    /** The state holds no player, so the service resolves the required charge. / 状态不持有玩家，所需蓄力由服务解析后传入。 */
+    boolean finish(long now, boolean authorizedRelease, int chargeTicks) {
         if (completed) {
             return false;
         }
         completed = true;
-        return authorizedRelease && now - startTick >= M67Rules.CHARGE_TICKS;
+        return authorizedRelease && now - startTick >= chargeTicks;
     }
 }
