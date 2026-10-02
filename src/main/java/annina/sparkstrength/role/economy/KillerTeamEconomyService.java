@@ -66,14 +66,20 @@ public final class KillerTeamEconomyService {
         KillerTeamEconomyWorldComponent purse = KillerTeamEconomyWorldComponent.KEY.get(world);
         purse.clearRoundState();
         int openingMembers = 0;
+        int openingKillers = 0;
         // Traits are assigned synchronously before this event, but Wathe has not set ACTIVE yet.
         // 天赋在此事件前已同步分配，但 Wathe 尚未进入 ACTIVE，开局计数不能套用存活运行门禁。
         for (ServerPlayerEntity player : world.getPlayers()) {
             if (game.hasAnyRole(player) && isGenuineMember(player, game)) {
                 openingMembers++;
+                if (hasKillerRole(player, game)) {
+                    openingKillers++;
+                }
             }
         }
-        if (SparkTraitsCompat.isTeamEconomyAvailable()) {
+        // A lone killer with only an Impostor stays uninitialized; N still counts every genuine member.
+        // 仅 1 名真杀手加内鬼时钱包保持未初始化；开启后 N 仍按全部真实成员计数。
+        if (SparkTraitsCompat.isTeamEconomyAvailable() && KillerTeamEconomyRules.formsTeam(openingKillers)) {
             purse.initializeRound(openingMembers);
         }
         syncWorld(world);
@@ -120,19 +126,25 @@ public final class KillerTeamEconomyService {
         return 0;
     }
 
+    // Creative stays allowed: Wathe still shows and spends the personal wallet there, so the team row must match it.
+    // 创造模式不排除：Wathe 在创造模式下仍显示并可使用个人钱包，团队钱包需与之一致。
     private static boolean canAccess(ServerPlayerEntity player) {
         ServerWorld world = player.getServerWorld();
         GameWorldComponent game = GameWorldComponent.KEY.get(world);
         return KillerTeamEconomyWorldComponent.KEY.get(world).isEnabled()
                 && game.getGameStatus() == GameWorldComponent.GameStatus.ACTIVE
                 && game.hasAnyRole(player) && !game.isPlayerDead(player.getUuid())
-                && player.isAlive() && !player.isCreative() && !player.isSpectator()
+                && player.isAlive() && !player.isSpectator()
                 && isGenuineMember(player, game);
     }
 
     private static boolean isGenuineMember(ServerPlayerEntity player, GameWorldComponent game) {
+        return SparkTraitsCompat.isGenuineKillerTeamMember(player, hasKillerRole(player, game));
+    }
+
+    private static boolean hasKillerRole(ServerPlayerEntity player, GameWorldComponent game) {
         Role role = game.getRole(player);
-        return SparkTraitsCompat.isGenuineKillerTeamMember(player, role != null && role.canUseKiller());
+        return role != null && role.canUseKiller();
     }
 
     private static void syncWorld(ServerWorld world) {
