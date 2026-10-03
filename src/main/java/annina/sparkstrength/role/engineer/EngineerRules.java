@@ -33,4 +33,17 @@ public final class EngineerRules {
     public static boolean isEngineer(@Nullable Role role) {
         return role != null && ENGINEER_ID.equals(role.identifier());
     }
+
+    public static @Nullable Identifier roleId(@Nullable Role role) {
+        return role == null ? null : role.identifier();
+    }
+
+    /**
+     * Whether a capture device placed under real role {@code placedAs} may still report to an owner whose real role is
+     * now {@code currentRole}. An unknown placement role (devices saved before it was recorded) keeps reporting.
+     * 放置时的真实职业未知（旧版本实体）时保持原行为；否则只有放置者真实职业未变时才发放捕捉报告。
+     */
+    public static boolean reportsToOwner(@Nullable Identifier placedAs, @Nullable Identifier currentRole) {
+        return placedAs == null || placedAs.equals(currentRole);
+    }
 }

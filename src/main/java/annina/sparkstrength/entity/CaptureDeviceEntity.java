@@ -5,6 +5,7 @@ import annina.sparkstrength.component.engineer.EngineerStunnedPlayerComponent;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
 import annina.sparkstrength.role.engineer.EngineerCaptureReport;
 import annina.sparkstrength.role.engineer.EngineerRules;
+import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.record.GameRecordManager;
 import net.minecraft.component.DataComponentTypes;
@@ -18,12 +19,14 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtElement;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Box;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
@@ -47,7 +50,12 @@ public final class CaptureDeviceEntity extends Entity {
     private static final TrackedData<Boolean> CEILING_MOUNTED =
             DataTracker.registerData(CaptureDeviceEntity.class, TrackedDataHandlerRegistry.BOOLEAN);
 
+    private static final String OWNER_ROLE_KEY = "OwnerRole";
+
     private int lifetimeTicks;
+    // Server-only placer real-role id; null means unknown (older saves). Not tracked because clients never read it.
+    // 仅服务端使用的放置者真实职业；null 表示未知（旧存档）。客户端不需要，因此不放入 DataTracker。
+    private @Nullable Identifier ownerRoleId;
 
     public CaptureDeviceEntity(EntityType<? extends CaptureDeviceEntity> entityType, World world) {
         super(entityType, world);
@@ -89,6 +97,10 @@ public final class CaptureDeviceEntity extends Entity {
         return this.dataTracker.get(OWNER_UUID).orElse(null);
     }
 
+    public void setOwnerRoleId(@Nullable Identifier ownerRoleId) {
+        this.ownerRoleId = ownerRoleId;
+    }
+
     public void setCeilingMounted(boolean ceilingMounted) {
         this.dataTracker.set(CEILING_MOUNTED, ceilingMounted);
     }
@@ -111,6 +123,9 @@ public final class CaptureDeviceEntity extends Entity {
             setCeilingMounted(nbt.getBoolean("CeilingMounted"));
         }
         lifetimeTicks = nbt.getInt("LifetimeTicks");
+        ownerRoleId = nbt.contains(OWNER_ROLE_KEY, NbtElement.STRING_TYPE)
+                ? Identifier.tryParse(nbt.getString(OWNER_ROLE_KEY))
+                : null;
     }
 
     @Override
@@ -121,6 +136,9 @@ public final class CaptureDeviceEntity extends Entity {
         }
         nbt.putBoolean("CeilingMounted", isCeilingMounted());
         nbt.putInt("LifetimeTicks", lifetimeTicks);
+        if (ownerRoleId != null) {
+            nbt.putString(OWNER_ROLE_KEY, ownerRoleId.toString());
+        }
     }
 
     private List<ServerPlayerEntity> findCapturedPlayers() {
@@ -169,6 +187,13 @@ public final class CaptureDeviceEntity extends Entity {
 
         PlayerEntity owner = serverWorld.getPlayerByUuid(ownerUuid);
         if (owner == null) {
+            return;
+        }
+        // A device placed under one real role stops reporting once its owner's real role changes (e.g. a Grand Witch
+        // recruitment), so it never hands an old-role item to a converted owner; the capture itself still happened.
+        // 装置只向“放置时真实职业未变”的放置者发报告：职业变化后（如被大魔女招募）不再清理旧报告、发纸或播音效。
+        Identifier currentRoleId = EngineerRules.roleId(GameWorldComponent.KEY.get(serverWorld).getRole(owner));
+        if (!EngineerRules.reportsToOwner(ownerRoleId, currentRoleId)) {
             return;
         }
 
