@@ -33,6 +33,8 @@ import annina.sparkstrength.role.professor.ProfessorSerumShopService;
 import annina.sparkstrength.role.recaller.RecallerEconomyService;
 import annina.sparkstrength.role.recaller.RecallerShopService;
 import annina.sparkstrength.role.toxicologist.ToxicologistAntidoteService;
+import annina.sparkstrength.role.toxicologist.ToxicologistBluePassiveService;
+import annina.sparkstrength.role.toxicologist.ToxicologistBlueVitriolService;
 import annina.sparkstrength.role.toxicologist.ToxicologistCapsuleShop;
 import annina.sparkstrength.role.attendant.FlashlightBlackoutService;
 import annina.sparkstrength.role.veteran.VeteranBlackoutService;
@@ -75,7 +77,9 @@ public final class SparkStrengthEvents {
         ProfessorSerumShopService.register();
         RecallerShopService.register();
         ToxicologistAntidoteService.register();
+        ToxicologistBluePassiveService.register();
         ToxicologistCapsuleShop.register();
+        ToxicologistBlueVitriolService.register();
         TabletShopService.register();
         VeteranShopService.register();
         // 回溯者被动收入需要按世界 tick 定时结算，注册在服务端世界 tick 末尾。
@@ -83,6 +87,9 @@ public final class SparkStrengthEvents {
         ServerTickEvents.END_WORLD_TICK.register(CoronerService::tick);
         ServerTickEvents.END_WORLD_TICK.register(RecallerEconomyService::tick);
         ServerTickEvents.END_WORLD_TICK.register(TabletStateService::tick);
+        // Must stay on END_WORLD_TICK: it reads what SparkTraits' player component tick did earlier in the same world tick.
+        // 必须挂在 END_WORLD_TICK：它读取同一世界 tick 内 SparkTraits 玩家组件刚做的结果。
+        ServerTickEvents.END_WORLD_TICK.register(ToxicologistBluePassiveService::tick);
         ServerTickEvents.END_WORLD_TICK.register(VeteranBlackoutService::tick);
 
         RoleAssigned.EVENT.register((player, role) -> {
@@ -120,6 +127,7 @@ public final class SparkStrengthEvents {
                 EngineerCaptureDeviceService.clearPlayer(serverPlayer);
                 MorphlingService.reset(serverPlayer);
                 ToxicologistAntidoteService.clearPlayer(serverPlayer);
+                ToxicologistBluePassiveService.clearPlayer(serverPlayer);
                 VeteranKnifeService.reset(serverPlayer);
             }
         });
@@ -129,6 +137,7 @@ public final class SparkStrengthEvents {
             NoisemakerGlowService.glowKillerWhenNoisemakerDies(victim, killer);
             CoronerService.afterKill(victim);
             MorphlingService.afterKill(victim, killer, deathReason);
+            ToxicologistBluePassiveService.clearPlayer(victim);
             VeteranEconomyService.afterKill(victim, killer, deathReason);
         });
 
@@ -147,6 +156,7 @@ public final class SparkStrengthEvents {
                     MorphlingService.reset(player);
                     PhantomBackpackService.clearPlayer(player);
                     ToxicologistAntidoteService.clearPlayer(player);
+                    ToxicologistBluePassiveService.clearPlayer(player);
                     ProfessorSerumUserComponent.KEY.get(player).reset();
                     ProfessorSerumTargetComponent.KEY.get(player).reset();
                     DemonHunterSniffService.clearPlayer(player);
