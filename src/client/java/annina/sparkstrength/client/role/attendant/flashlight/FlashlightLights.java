@@ -117,8 +117,9 @@ public final class FlashlightLights {
     }
 
     /**
-     * Raises an entity's block light to the strongest unoccluded flashlight reaching it (never its own holder's).
-     * 将实体方块光提升到照到它的最强未遮挡手电筒亮度（不含持有者自己的手电）。
+     * Raises an entity's block light to the strongest unoccluded flashlight reaching it. A holder is never lit by its
+     * own beam but gets {@link FlashlightBeamRules#HOLDER_BLOCK_LIGHT} from the reflector spill.
+     * 将实体方块光提升到照到它的最强未遮挡手电筒亮度。持有者不会被自己的光束照亮，但会获得反光杯溢光的下限亮度。
      */
     public static int boostBlockLight(Entity entity, float tickDelta, int blockLight) {
         if (TRACKED.isEmpty() || blockLight >= 15) {
@@ -144,13 +145,17 @@ public final class FlashlightLights {
                 pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, BLOCK_ENTITY_SAMPLE_PULL, blockLight);
     }
 
-    private static int boost(List<FlashlightLight> lights, int ownerToSkip,
+    private static int boost(List<FlashlightLight> lights, int holderId,
                              double x, double y, double z, double samplePull, int blockLight) {
         int best = blockLight;
         for (int i = 0, size = lights.size(); i < size; i++) {
             FlashlightLight light = lights.get(i);
+            if (light.ownerEntityId() == holderId) {
+                best = Math.max(best, FlashlightBeamRules.HOLDER_BLOCK_LIGHT);
+                continue;
+            }
             FlashlightRayMap rayMap = light.rayMap();
-            if (rayMap == null || light.ownerEntityId() == ownerToSkip) {
+            if (rayMap == null) {
                 continue;
             }
             Vec3d origin = light.origin();

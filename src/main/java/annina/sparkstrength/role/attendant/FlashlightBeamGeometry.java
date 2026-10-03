@@ -1,10 +1,10 @@
 package annina.sparkstrength.role.attendant;
 
 /**
- * Pure beam geometry for the client ray map: the beam basis, per-cell ray directions, point-to-cell mapping, the
- * third-person hand offset and an allocation-free voxel walk. No Minecraft types, so the CPU side stays testable and
- * mirrors the shader mapping of {@link FlashlightBeamRules}.
- * 手电筒光束纯几何：光束基向量、网格单元射线方向、点到单元映射、第三人称手部偏移与无分配体素遍历。
+ * Pure beam geometry for the client ray map: the beam basis, per-cell ray directions, point-to-cell mapping and an
+ * allocation-free voxel walk. No Minecraft types, so the CPU side stays testable and mirrors the shader mapping of
+ * {@link FlashlightBeamRules}.
+ * 手电筒光束纯几何：光束基向量、网格单元射线方向、点到单元映射与无分配体素遍历。
  * 不依赖 Minecraft 类型，便于测试，并与着色器使用的 {@link FlashlightBeamRules} 映射一致。
  *
  * <p>A basis array holds forward, right and up as consecutive xyz triples ({@link #FORWARD}, {@link #RIGHT},
@@ -18,11 +18,6 @@ public final class FlashlightBeamGeometry {
     public static final int RIGHT = 3;
     public static final int UP = 6;
     public static final int BASIS_LENGTH = 9;
-
-    /** Third-person hand offset from the eye, in blocks (sideways, down, forward). / 第三人称手部相对眼睛的偏移（格）。 */
-    public static final double HAND_SIDE_BLOCKS = 0.3;
-    public static final double HAND_DROP_BLOCKS = 0.35;
-    public static final double HAND_FORWARD_BLOCKS = 0.3;
 
     /**
      * Below this horizontal length forward is treated as vertical and right falls back to a fixed axis, so a player
@@ -132,21 +127,6 @@ public final class FlashlightBeamGeometry {
             return -1;
         }
         return v * SIZE + u;
-    }
-
-    /**
-     * Eye-to-hand offset for a held flashlight, rotated by body yaw (Minecraft degrees: 0 faces +Z, 90 faces -X).
-     * Written to out[0..2]. 手持手电相对眼睛的偏移，按身体偏航角旋转（Minecraft 角度：0 朝 +Z，90 朝 -X）。
-     */
-    public static void handOffset(double bodyYawDegrees, boolean rightHand, double[] out) {
-        double yaw = Math.toRadians(bodyYawDegrees);
-        double sin = Math.sin(yaw);
-        double cos = Math.cos(yaw);
-        // Facing (-sin, 0, cos); the player's right is (-cos, 0, -sin). / 朝向 (-sin, 0, cos)，右侧 (-cos, 0, -sin)。
-        double side = rightHand ? HAND_SIDE_BLOCKS : -HAND_SIDE_BLOCKS;
-        out[0] = -cos * side - sin * HAND_FORWARD_BLOCKS;
-        out[1] = -HAND_DROP_BLOCKS;
-        out[2] = -sin * side + cos * HAND_FORWARD_BLOCKS;
     }
 
     /**
