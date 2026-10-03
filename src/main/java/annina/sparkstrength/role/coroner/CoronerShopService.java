@@ -9,6 +9,7 @@ import annina.sparkstrength.role.professor.ProfessorSerumShopService;
 import annina.sparkstrength.role.professor.ProfessorSerumType;
 import annina.sparkstrength.role.recaller.RecallerShopRules;
 import annina.sparkstrength.role.toxicologist.ToxicologistAntidoteService;
+import annina.sparkstrength.role.toxicologist.ToxicologistBlueShop;
 import annina.sparkstrength.role.toxicologist.ToxicologistCapsuleRules;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.BuildShopEntries;
@@ -109,12 +110,17 @@ public final class CoronerShopService {
                 ToxicologistCapsuleRules.CAPSULE_PRICE,
                 ShopEntry.Type.TOOL
         ).actualStack(SparkStrengthItems.capsule().getDefaultStack()).build());
-        insertAfterBodyBag(context, offset, new ShopEntry.Builder(
+        offset = insertAfterBodyBag(context, offset, new ShopEntry.Builder(
                 ToxicologistCapsuleRules.REFRESH_ANTIDOTE_COOLDOWN_ENTRY_ID,
                 refreshAntidoteCooldownDisplayStack(),
                 ToxicologistCapsuleRules.REFRESH_ANTIDOTE_COOLDOWN_PRICE,
                 ShopEntry.Type.TOOL
         ).onBuy(ToxicologistAntidoteService::refreshAntidoteCooldown).build());
+        // Same blue entries, in the same order, as the real Toxicologist shop.
+        // 与真实毒理学家商店相同的蓝毒条目与顺序。
+        for (ShopEntry entry : ToxicologistBlueShop.entries()) {
+            offset = insertAfterBodyBag(context, offset, entry);
+        }
     }
 
     private static void addProfessorShop(BuildShopEntries.ShopContext context) {

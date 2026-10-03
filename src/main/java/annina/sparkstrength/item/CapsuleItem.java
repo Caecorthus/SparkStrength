@@ -1,5 +1,6 @@
 package annina.sparkstrength.item;
 
+import annina.sparkstrength.compat.SparkTraitsBluePoisonCompat;
 import annina.sparkstrength.entity.CapsuleEntity;
 import annina.sparkstrength.role.coroner.CoronerService;
 import annina.sparkstrength.role.toxicologist.ToxicologistCapsuleRules;
@@ -32,6 +33,7 @@ import net.minecraft.world.World;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Throwable capsule that stores one food or drink stack and forces the hit player to consume it.
@@ -156,6 +158,22 @@ public final class CapsuleItem extends Item {
             return;
         }
 
+        if (contents.getItem() instanceof BlueBelladonnaItem) {
+            // Blue Belladonna is a blue-poison fruit, not a meal: same outcome as eating it by hand (Toxicologist-like
+            // eaters get the blue state) and never completes Wathe's EAT mood task.
+            // 蓝颠茄是蓝毒果实而不是正餐：结果与手动食用一致（类毒理学家获得蓝毒状态），且不会完成 Wathe 的进食心情任务。
+            target.getWorld().playSound(
+                    null,
+                    target.getBlockPos(),
+                    SoundEvents.ENTITY_GENERIC_EAT,
+                    SoundCategory.PLAYERS,
+                    1.0F,
+                    1.0F
+            );
+            BlueBelladonnaItem.applyEaten(target, contents);
+            return;
+        }
+
         boolean drink = isDrink(contents);
         PlayerMoodComponent mood = PlayerMoodComponent.KEY.get(target);
         if (drink) {
@@ -181,6 +199,36 @@ public final class CapsuleItem extends Item {
         }
 
         PoisonUtils.applyFoodPoison(target, contents);
+    }
+
+    /**
+     * Reads the synced NormalPoison summary flag, so client prediction and server agree without decoding the contents.
+     * 读取已同步的 NormalPoison 摘要标记；无需解码内容物，客户端预测与服务端即可一致。
+     */
+    public static boolean hasNativePoisonedContents(ItemStack capsuleStack) {
+        NbtCompound root = root(capsuleStack);
+        return root.contains(CONTAINED_ITEM_KEY, NbtElement.COMPOUND_TYPE) && root.getBoolean(NORMAL_POISON_KEY);
+    }
+
+    /**
+     * Server-side Blue Vitriol conversion of the stored food/drink. Re-encodes through {@link #setContents}, so the
+     * NormalPoison/BluePoison flags and the coloured capsule name follow the converted contents.
+     * 服务端对胶囊内食物/饮品执行蓝矾转化。经 setContents 重新编码，NormalPoison/BluePoison 标记与胶囊名称颜色随之更新。
+     */
+    public static boolean convertContentsPoisonToBlue(
+            ItemStack capsuleStack,
+            UUID poisoner,
+            RegistryWrapper.WrapperLookup registryLookup
+    ) {
+        if (!hasNativePoisonedContents(capsuleStack)) {
+            return false;
+        }
+        ItemStack contents = getContents(capsuleStack, registryLookup);
+        if (!SparkTraitsBluePoisonCompat.convertStackPoisonToBlue(contents, poisoner)) {
+            return false;
+        }
+        setContents(capsuleStack, contents, registryLookup);
+        return true;
     }
 
     public static boolean isFoodOrDrink(ItemStack stack) {

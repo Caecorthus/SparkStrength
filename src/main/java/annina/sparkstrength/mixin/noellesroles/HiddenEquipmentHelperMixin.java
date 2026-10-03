@@ -21,9 +21,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * Adds SparkStrength's tablet, Engineer capture items, Professor serums, Morphling items, Detective tools,
- * Perfumer kit, every Bartender ingredient and the Recaller's ender pearl / chorus fruit to NoellesRoles'
- * hidden-equipment filter.
- * 将 SparkStrength 平板、工程师捕捉装置、教授试剂、变形怪道具、侦探道具、调香师道具、全部酒保调剂以及回溯者的末影珍珠/紫颂果加入 NoellesRoles 的隐藏装备过滤器。
+ * Perfumer kit, every Bartender ingredient, the Recaller's ender pearl / chorus fruit and the Toxicologist's
+ * Blue Vitriol / Blue Belladonna to NoellesRoles' hidden-equipment filter.
+ * 将 SparkStrength 平板、工程师捕捉装置、教授试剂、变形怪道具、侦探道具、调香师道具、全部酒保调剂、回溯者的末影珍珠/紫颂果以及毒理学家的蓝矾/蓝颠茄加入 NoellesRoles 的隐藏装备过滤器。
  */
 @Mixin(value = HiddenEquipmentHelper.class, remap = false)
 public abstract class HiddenEquipmentHelperMixin {
@@ -103,6 +103,13 @@ public abstract class HiddenEquipmentHelperMixin {
         if (stack.isOf(Items.ENDER_PEARL) || stack.isOf(Items.CHORUS_FRUIT)) {
             // Only the Recaller shop (and the Coroner's Recaller disguise) sells these; holding one reveals the role.
             // 末影珍珠/紫颂果仅由回溯者商店（及验尸官回溯者伪装商店）出售，手持会暴露身份。
+            cir.setReturnValue(true);
+            return;
+        }
+
+        if (stack.isOf(SparkStrengthItems.blueVitriol()) || stack.isOf(SparkStrengthItems.blueBelladonna())) {
+            // Only the Toxicologist shop (and the Coroner's Toxicologist disguise shop) sells these, like the antidote.
+            // 蓝矾/蓝颠茄仅由毒理学家商店（及验尸官毒理学家伪装商店）出售，与解毒剂一样手持会暴露身份。
             cir.setReturnValue(true);
             return;
         }

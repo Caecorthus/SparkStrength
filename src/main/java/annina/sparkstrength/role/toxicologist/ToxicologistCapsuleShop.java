@@ -15,8 +15,8 @@ import net.minecraft.text.Text;
 import java.util.List;
 
 /**
- * Adds the capsule shop entry for Toxicologists.
- * 给毒理学家追加胶囊商店项。
+ * Adds the capsule, antidote-refresh and blue-poison shop entries for Toxicologists.
+ * 给毒理学家追加胶囊、解毒剂冷却刷新与蓝毒道具商店项。
  */
 public final class ToxicologistCapsuleShop {
     private static boolean registered;
@@ -30,6 +30,7 @@ public final class ToxicologistCapsuleShop {
         }
         registered = true;
         BuildShopEntries.EVENT.register(ToxicologistCapsuleShop::buildShopEntries);
+        ToxicologistBlueShop.register();
     }
 
     private static void buildShopEntries(PlayerEntity player, BuildShopEntries.ShopContext context) {
@@ -49,6 +50,11 @@ public final class ToxicologistCapsuleShop {
                 ToxicologistCapsuleRules.REFRESH_ANTIDOTE_COOLDOWN_PRICE,
                 ShopEntry.Type.TOOL
         ).onBuy(ToxicologistAntidoteService::refreshAntidoteCooldown).build());
+        // Blue items go after the existing entries so earlier purchase indices stay unchanged.
+        // 蓝毒道具追加在原有条目之后，保持原有条目的购买下标不变。
+        for (ShopEntry entry : ToxicologistBlueShop.entries()) {
+            context.addEntry(entry);
+        }
     }
 
     private static ItemStack capsuleDisplayStack() {

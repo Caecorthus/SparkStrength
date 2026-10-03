@@ -1,5 +1,7 @@
 package annina.sparkstrength;
 
+import annina.sparkstrength.item.BlueBelladonnaItem;
+import annina.sparkstrength.item.BlueVitriolItem;
 import annina.sparkstrength.item.CaptureDeviceItem;
 import annina.sparkstrength.item.CapsuleItem;
 import annina.sparkstrength.item.CaseFolderItem;
@@ -17,6 +19,7 @@ import annina.sparkstrength.item.TabletItem;
 import annina.sparkstrength.item.ZephyrPerfumeItem;
 import annina.sparkstrength.role.perfumer.PerfumerRules;
 import annina.sparkstrength.role.professor.ProfessorSerumType;
+import annina.sparkstrength.role.toxicologist.ToxicologistBlueRules;
 import net.minecraft.item.Item;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
@@ -41,6 +44,8 @@ public final class SparkStrengthItems {
     public static final Identifier COOLING_OIL_ID = SparkStrength.id("cooling_oil");
     public static final Identifier AROMA_ORB_ID = SparkStrength.id("aroma_orb");
     public static final Identifier ZEPHYR_PERFUME_ID = SparkStrength.id("zephyr_perfume");
+    public static final Identifier BLUE_VITRIOL_ID = SparkStrength.id("blue_vitriol");
+    public static final Identifier BLUE_BELLADONNA_ID = SparkStrength.id("blue_belladonna");
     private static Item m67;
     private static Item capsule;
     private static Item flashlight;
@@ -59,6 +64,8 @@ public final class SparkStrengthItems {
     private static Item coolingOil;
     private static Item aromaOrb;
     private static Item zephyrPerfume;
+    private static Item blueVitriol;
+    private static Item blueBelladonna;
     private static boolean registered;
 
     private SparkStrengthItems() {
@@ -157,6 +164,18 @@ public final class SparkStrengthItems {
                 Registries.ITEM,
                 ZEPHYR_PERFUME_ID,
                 new ZephyrPerfumeItem(new Item.Settings().maxCount(1))
+        );
+        blueVitriol = Registry.register(
+                Registries.ITEM,
+                BLUE_VITRIOL_ID,
+                new BlueVitriolItem(new Item.Settings().maxCount(ToxicologistBlueRules.MAX_STACK))
+        );
+        blueBelladonna = Registry.register(
+                Registries.ITEM,
+                BLUE_BELLADONNA_ID,
+                new BlueBelladonnaItem(new Item.Settings()
+                        .maxCount(ToxicologistBlueRules.MAX_STACK)
+                        .food(BlueBelladonnaItem.FOOD))
         );
         registered = true;
     }
@@ -285,5 +304,19 @@ public final class SparkStrengthItems {
             throw new IllegalStateException("SparkStrength items are not registered yet");
         }
         return zephyrPerfume;
+    }
+
+    public static Item blueVitriol() {
+        if (blueVitriol == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return blueVitriol;
+    }
+
+    public static Item blueBelladonna() {
+        if (blueBelladonna == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return blueBelladonna;
     }
 }
