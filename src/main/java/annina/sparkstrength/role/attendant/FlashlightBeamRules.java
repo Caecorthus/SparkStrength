@@ -9,7 +9,10 @@ package annina.sparkstrength.role.attendant;
  */
 public final class FlashlightBeamRules {
     public static final double RANGE_BLOCKS = 28.0;
-    /** Distance at which the inverse-square falloff halves the intensity. / 衰减至一半亮度的距离。 */
+    /**
+     * Distance at which the inverse-square term halves; the range window trims it slightly more.
+     * 平方反比项减半的距离；射程窗口会再略微压低。
+     */
     public static final double FALLOFF_BLOCKS = 10.0;
     public static final double PEAK_INTENSITY = 1.35;
     public static final double INNER_HALF_ANGLE_RADIANS = Math.toRadians(8.0);
@@ -28,20 +31,26 @@ public final class FlashlightBeamRules {
     public static final double EXPOSURE = 1.6;
 
     private static final int DISTANCE_ENCODING_MAX = 0xFFFF;
+    // Precomputed: the ray caster and entity lighting call these per ray / per entity.
+    // 预先计算：射线投射与实体照明会逐射线、逐实体调用它们。
+    private static final double COS_INNER = Math.cos(INNER_HALF_ANGLE_RADIANS);
+    private static final double COS_OUTER = Math.cos(OUTER_HALF_ANGLE_RADIANS);
+    private static final double COS_SPILL = Math.cos(SPILL_HALF_ANGLE_RADIANS);
+    private static final double RAY_GRID_TANGENT_EXTENT = Math.tan(SPILL_HALF_ANGLE_RADIANS + RAY_GRID_MARGIN_RADIANS);
 
     private FlashlightBeamRules() {
     }
 
     public static double cosInner() {
-        return Math.cos(INNER_HALF_ANGLE_RADIANS);
+        return COS_INNER;
     }
 
     public static double cosOuter() {
-        return Math.cos(OUTER_HALF_ANGLE_RADIANS);
+        return COS_OUTER;
     }
 
     public static double cosSpill() {
-        return Math.cos(SPILL_HALF_ANGLE_RADIANS);
+        return COS_SPILL;
     }
 
     /**
@@ -80,7 +89,7 @@ public final class FlashlightBeamRules {
 
     /** Tangent of the half-angle the ray grid spans on each axis. / 射线网格每个轴向所覆盖半角的正切值。 */
     public static double rayGridTangentExtent() {
-        return Math.tan(SPILL_HALF_ANGLE_RADIANS + RAY_GRID_MARGIN_RADIANS);
+        return RAY_GRID_TANGENT_EXTENT;
     }
 
     /**
