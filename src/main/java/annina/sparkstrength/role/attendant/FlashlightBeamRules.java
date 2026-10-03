@@ -3,9 +3,9 @@ package annina.sparkstrength.role.attendant;
 /**
  * Pure flashlight beam math shared by the client light tracker, entity lighting and the flashlight shaders.
  * The shaders receive these constants as uniforms; keep every formula here in sync with
- * {@code assets/sparkstrength/shaders/core/flashlight_*.fsh}.
+ * {@code assets/sparkstrength/shaders/include/flashlight.glsl}.
  * 手电筒光束纯数学规则，由客户端光源追踪、实体照明与手电筒着色器共用。
- * 着色器通过 uniform 接收这些常量；此处公式须与 {@code shaders/core/flashlight_*.fsh} 保持一致。
+ * 着色器通过 uniform 接收这些常量；此处公式须与 {@code shaders/include/flashlight.glsl} 保持一致。
  */
 public final class FlashlightBeamRules {
     public static final double RANGE_BLOCKS = 28.0;

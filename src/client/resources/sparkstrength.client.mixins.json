@@ -6,6 +6,7 @@
   "client": [
     "attendant.FlashlightBlockEntityLightMixin",
     "attendant.FlashlightEntityLightMixin",
+    "attendant.FlashlightReceiverInvalidationMixin",
     "corruptcop.CorruptCopHudMixin",
     "coroner.CoronerInventoryScreenMixin",
     "coroner.CoronerTimeRendererMixin",
