@@ -4,6 +4,7 @@
   "package": "annina.sparkstrength.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "attendant.SmallDoorBlockDoorLogMixin",
     "coroner.CoronerBaseSpiritItemMixin",
     "coroner.CoronerBartenderComponentSyncMixin",
     "coroner.CoronerBomberComponentSyncMixin",

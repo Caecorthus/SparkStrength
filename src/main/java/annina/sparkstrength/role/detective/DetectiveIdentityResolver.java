@@ -150,14 +150,18 @@ public final class DetectiveIdentityResolver {
      * 侦探作为存活者必然受影响。NoellesRoles 开启 insaneSeesMorphs 时，情绪低于抑郁的观察者看到的所有名字都是“??!?!”。
      */
     private static boolean isAnonymised(ServerPlayerEntity viewer, ServerPlayerEntity target) {
+        return isSubjectAnonymised(target) || viewerSeesNoNames(viewer);
+    }
+
+    /**
+     * Viewer-independent half of {@link #isAnonymised}: the target is in Wathe psycho mode, or a Jester moment is on.
+     * isAnonymised 中与观察者无关的部分：目标处于 Wathe 疯魔，或正处于小丑时刻。
+     */
+    public static boolean isSubjectAnonymised(ServerPlayerEntity target) {
         if (PlayerPsychoComponent.KEY.get(target).getPsychoTicks() > 0) {
             return true;
         }
         ServerWorld world = target.getServerWorld();
-        if (ConfigWorldComponent.KEY.get(world).insaneSeesMorphs
-                && PlayerMoodComponent.KEY.get(viewer).isLowerThanDepressed()) {
-            return true;
-        }
         GameWorldComponent game = GameWorldComponent.KEY.get(world);
         for (ServerPlayerEntity player : world.getPlayers()) {
             if (game.isRole(player, Noellesroles.JESTER) && JesterPlayerComponent.KEY.get(player).inPsychoMode) {
@@ -165,6 +169,16 @@ public final class DetectiveIdentityResolver {
             }
         }
         return false;
+    }
+
+    /**
+     * Viewer-dependent half of {@link #isAnonymised}: NoellesRoles {@code insaneSeesMorphs} with the viewer's mood below
+     * depressed hides every name from that viewer.
+     * isAnonymised 中与观察者相关的部分：NoellesRoles 开启 insaneSeesMorphs 且观察者情绪低于抑郁时，所有名字对其隐藏。
+     */
+    public static boolean viewerSeesNoNames(ServerPlayerEntity viewer) {
+        return ConfigWorldComponent.KEY.get(viewer.getServerWorld()).insaneSeesMorphs
+                && PlayerMoodComponent.KEY.get(viewer).isLowerThanDepressed();
     }
 
     /**

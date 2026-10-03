@@ -3,6 +3,8 @@ package annina.sparkstrength.tablet;
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.compat.SparkFactionCompat;
 import annina.sparkstrength.compat.SparkTraitsCompat;
+import annina.sparkstrength.role.attendant.AttendantRules;
+import annina.sparkstrength.role.coroner.CoronerService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.ShopPurchase;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -27,6 +29,7 @@ import java.util.Set;
 public final class TabletShopService {
     private static final String ALREADY_OWNED_KEY = "message.sparkstrength.tablet.already_owned";
     private static final String UNDERCOVER_GRANTED_KEY = "message.sparkstrength.tablet.undercover_granted";
+    private static final String ATTENDANT_GRANTED_KEY = "message.sparkstrength.tablet.attendant_granted";
     private static boolean registered;
 
     private TabletShopService() {
@@ -52,10 +55,11 @@ public final class TabletShopService {
     }
 
     /**
-     * Grants the Undercover its free killer-network tablet for roles assigned mid-round (RoleAssigned while ACTIVE);
-     * round-start roles are granted by {@link #grantStarterTablets} once they are final.
-     * 为局中分配的身份（ACTIVE 状态下的 RoleAssigned）发放卧底的免费杀手网络平板；开局身份在最终确定后由
-     * grantStarterTablets 发放。
+     * Grants the free starter tablet ({@link TabletShopRules#startsWithTablet}: Undercover killer network, Attendant
+     * door monitor) for roles assigned mid-round (RoleAssigned while ACTIVE); round-start roles are granted by
+     * {@link #grantStarterTablets} once they are final.
+     * 为局中分配的身份（ACTIVE 状态下的 RoleAssigned）发放免费开局平板（卧底的杀手网络、乘务员的房门监控）；
+     * 开局身份在最终确定后由 grantStarterTablets 发放。
      */
     public static void assignForRole(ServerPlayerEntity player, Role role) {
         // SparkTraits Conscience compensation may convert an Undercover after RoleAssigned during initialization;
@@ -84,7 +88,8 @@ public final class TabletShopService {
     private static void grantStarterTablet(ServerPlayerEntity player, Role role) {
         if (TabletShopRules.shouldGrantStarterTablet(role, hasTabletAnywhere(player))) {
             player.giveItemStack(new ItemStack(SparkStrengthItems.tablet()));
-            player.sendMessage(Text.translatable(UNDERCOVER_GRANTED_KEY), false);
+            player.sendMessage(Text.translatable(
+                    AttendantRules.isAttendant(role) ? ATTENDANT_GRANTED_KEY : UNDERCOVER_GRANTED_KEY), false);
         }
     }
 
@@ -114,9 +119,10 @@ public final class TabletShopService {
             return entries;
         }
         GameWorldComponent game = GameWorldComponent.KEY.get(player.getWorld());
-        // Undercover's tablet is granted at role assignment and it has no money, so it is never listed here.
-        // 卧底的平板在身份分配时发放且其没有金钱，因此这里从不列出。
-        if (game.isPlayerDead(player.getUuid()) || TabletShopRules.isUndercover(game.getRole(player))) {
+        // Undercover's and Attendant's tablets are granted at role assignment, so they are never listed here (an
+        // Impostor-trait one would otherwise see an entry it can never buy). Real role only, synced to both sides.
+        // 卧底与乘务员的平板在身份分配时发放，因此这里从不列出（否则带内鬼天赋者会看到一个永远买不了的商品）。只看真实身份，两端同步一致。
+        if (game.isPlayerDead(player.getUuid()) || TabletShopRules.startsWithTablet(game.getRole(player))) {
             return entries;
         }
         // A non-empty identity set implies a real round role (TabletChannelRules.Facts#hasRole).
@@ -191,13 +197,21 @@ public final class TabletShopService {
     }
 
     private static boolean ownsTablet(PlayerEntity player) {
-        if (player.getInventory().contains(stack -> stack.isOf(SparkStrengthItems.tablet()))) {
+        if (player.getInventory().contains(TabletShopService::isOwnedTablet)) {
             return true;
         }
         // The shop lives in the inventory screen, so a tablet may be held on the cursor while buying.
         // 商店位于物品栏界面，购买时平板可能正被鼠标拿起。
         return player.currentScreenHandler != null
-                && player.currentScreenHandler.getCursorStack().isOf(SparkStrengthItems.tablet());
+                && isOwnedTablet(player.currentScreenHandler.getCursorStack());
+    }
+
+    /**
+     * A tablet lent by a Coroner's Attendant disguise is taken back when the disguise ends, so it never blocks a purchase.
+     * 验尸官乘务员伪装借出的平板会在伪装结束时收回，因此不阻止购买。
+     */
+    private static boolean isOwnedTablet(ItemStack stack) {
+        return stack.isOf(SparkStrengthItems.tablet()) && !CoronerService.isTemporaryGrant(stack);
     }
 
     private static ItemStack tabletDisplayStack(Set<TabletChannel> allowed) {

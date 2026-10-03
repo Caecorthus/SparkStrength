@@ -4,6 +4,9 @@ import annina.sparkstrength.component.tablet.TabletWorldComponent;
 import annina.sparkstrength.network.tablet.OpenTabletScreenS2CPacket;
 import annina.sparkstrength.network.tablet.SyncTabletSnapshotS2CPacket;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
+import annina.sparkstrength.role.attendant.AttendantRules;
+import annina.sparkstrength.role.attendant.DoorLog;
+import annina.sparkstrength.role.detective.DetectiveIdentityResolver;
 import com.mojang.authlib.GameProfile;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -36,6 +39,10 @@ import java.util.UUID;
  * 匿名频道还会按观看者的互认状态逐人裁剪：未互认发送者的聊天行不含 UUID 与名字，未互认成员不会进入成员列表
  * （匿名频道完全不绘制描边，见 TabletClientHighlights）。
  * 成员资格与推送范围仍由身份决定。</p>
+ *
+ * <p>Role-granted features ({@link TabletFeature}) ride the same snapshot: the door log is filled only for viewers
+ * holding {@link TabletFeature#DOOR_LOG} and is delivered by the periodic sync and on tablet open.
+ * 身份授予的功能随同一快照下发：房门记录只为拥有房门监控的观看者填充，并通过周期同步与打开平板时下发。</p>
  */
 public final class TabletStateService {
     private TabletStateService() {
@@ -375,8 +382,38 @@ public final class TabletStateService {
                                 : TabletSnapshot.ChatRow.hidden(message.message()))
                         .toList(),
                 meetingFeatures ? meetingSnapshot(world, tablet, viewer, electorate) : TabletSnapshot.Meeting.inactive(),
-                meetingFeatures ? suspectRows(world, tablet, viewerUuid, electorate) : List.of()
+                meetingFeatures ? suspectRows(world, tablet, viewerUuid, electorate) : List.of(),
+                access.featureMask(),
+                access.hasFeature(TabletFeature.DOOR_LOG) ? doorLogRows(viewer, tablet, now) : List.of()
         );
+    }
+
+    /**
+     * Door log for one viewer, newest first. Entries already store the apparent (disguise-aware) identity, never a
+     * disguised player's real uuid; a viewer whose names are hidden sees every actor as anonymous.
+     * 单个观看者的房门记录，最新在前。条目只存表面身份（考虑伪装），绝不存伪装者的真实 UUID；名字被隐藏的观看者看到的操作者全部匿名。
+     */
+    private static List<TabletSnapshot.DoorLogRow> doorLogRows(ServerPlayerEntity viewer, TabletWorldComponent tablet, long now) {
+        List<DoorLog.Entry> entries = tablet.doorLog().newestFirst();
+        if (entries.isEmpty()) {
+            return List.of();
+        }
+        boolean hideNames = DetectiveIdentityResolver.viewerSeesNoNames(viewer);
+        return entries.stream()
+                .map(entry -> {
+                    DoorLog.Actor actor = AttendantRules.actorShownTo(entry.actor(), hideNames);
+                    return new TabletSnapshot.DoorLogRow(
+                            entry.id(),
+                            entry.kind().wire(),
+                            entry.doorName(),
+                            actor != null,
+                            actor == null ? null : actor.displayUuid(),
+                            actor == null ? "" : actor.displayName(),
+                            DoorLog.ageSeconds(entry, now),
+                            entry.count()
+                    );
+                })
+                .toList();
     }
 
     private static List<TabletSnapshot.PlayerRow> connectionRows(
@@ -597,8 +634,8 @@ public final class TabletStateService {
     }
 
     /**
-     * Clients without the v3 payload are skipped instead of being disconnected by unknown bytes.
-     * 未注册 v3 负载的客户端直接跳过，避免因未知字节断线。
+     * Clients without the current (v4) payload are skipped instead of being disconnected by unknown bytes.
+     * 未注册当前（v4）负载的客户端直接跳过，避免因未知字节断线。
      */
     private static boolean sendPacket(ServerPlayerEntity player, TabletSnapshot snapshot) {
         if (!ServerPlayNetworking.canSend(player, SyncTabletSnapshotS2CPacket.ID)) {

@@ -1,6 +1,7 @@
 package annina.sparkstrength.component.tablet;
 
 import annina.sparkstrength.SparkStrength;
+import annina.sparkstrength.role.attendant.DoorLog;
 import annina.sparkstrength.tablet.TabletChannel;
 import annina.sparkstrength.tablet.TabletChannelRules;
 import annina.sparkstrength.tablet.TabletLinkRules;
@@ -68,6 +69,9 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
     private final HashMap<UUID, HashSet<UUID>> identityLinks = new HashMap<>();
     private final LinkedHashMap<LinkKey, LinkRequest> linkRequests = new LinkedHashMap<>();
     private final HashMap<UUID, LastLinkGesture> lastLinkGestures = new HashMap<>();
+    // Attendant door log: round-scoped and in-memory only (never NBT), shared by every door-log viewer of this world.
+    // 乘务员房门记录：仅本局内存状态（绝不写入 NBT），由本世界所有房门监控查看者共享。
+    private final DoorLog doorLog = new DoorLog();
 
     public TabletWorldComponent(World world) {
         this.world = world;
@@ -298,6 +302,10 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
         return (int) Math.max(0, meetingCooldownEndTick - currentTick);
     }
 
+    public DoorLog doorLog() {
+        return doorLog;
+    }
+
     public void clearRoundState() {
         chatHistories.clear();
         suspects.clear();
@@ -312,6 +320,7 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
         identityLinks.clear();
         linkRequests.clear();
         lastLinkGestures.clear();
+        doorLog.clear();
         // syncedViewers is kept on purpose: the sync pass after a round clear must still revoke stale snapshots.
         // 有意保留 syncedViewers：清局后的同步轮次仍需向其撤销过期快照。
     }

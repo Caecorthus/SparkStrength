@@ -13,6 +13,7 @@ import annina.sparkstrength.item.m67.M67RoundService;
 import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.phantom.PhantomBackpackService;
 import annina.sparkstrength.role.attendant.AttendantFlashlightService;
+import annina.sparkstrength.role.attendant.DoorLogService;
 import annina.sparkstrength.role.coroner.CoronerEconomyService;
 import annina.sparkstrength.role.coroner.CoronerEngineerService;
 import annina.sparkstrength.role.coroner.CoronerService;
@@ -65,6 +66,7 @@ public final class SparkStrengthEvents {
         CoronerService.register();
         CoronerShopService.register();
         DetectiveCaseService.register();
+        DoorLogService.register();
         FlashlightBlackoutService.register();
         VeteranBlackoutService.register();
         RoleEconomyService.register();

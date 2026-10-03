@@ -453,6 +453,15 @@ public final class CoronerService {
         }
         if (CoronerRules.isAttendant(role)) {
             giveTemporaryStack(player, createAttendantBook(player), disguiseUuid, snapshot.roleId(), "attendant_book");
+            /*
+             * Attendant disguise also grants the tablet door monitor (TabletChannelResolver#features). Lend a marked
+             * tablet only when the Coroner has none, so removeTemporaryItems never takes a tablet the Coroner owns.
+             * 乘务员伪装同时获得平板房门监控；只在验尸官没有任何平板时借出带标记的临时平板，
+             * 保证 removeTemporaryItems 绝不会收走验尸官自己的平板。
+             */
+            if (!hasTabletAnywhere(player)) {
+                giveTemporaryItem(player, SparkStrengthItems.tablet(), disguiseUuid, snapshot.roleId(), "tablet");
+            }
         }
         if (CoronerRules.isUndercover(role)) {
             giveTemporaryItem(player, WatheItems.WALKIE_TALKIE, disguiseUuid, snapshot.roleId(), "walkie_talkie");
@@ -543,6 +552,14 @@ public final class CoronerService {
         }
         NbtCompound root = data.getCompound(TEMP_ITEM_ROOT_KEY);
         return root.containsUuid(TEMP_OWNER_KEY) && ownerUuid.equals(root.getUuid(TEMP_OWNER_KEY));
+    }
+
+    private static boolean hasTabletAnywhere(ServerPlayerEntity player) {
+        if (player.getInventory().contains(stack -> stack.isOf(SparkStrengthItems.tablet()))) {
+            return true;
+        }
+        return player.currentScreenHandler != null
+                && player.currentScreenHandler.getCursorStack().isOf(SparkStrengthItems.tablet());
     }
 
     private static void removeTemporaryItems(ServerPlayerEntity player) {

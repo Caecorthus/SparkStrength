@@ -1,6 +1,8 @@
 package annina.sparkstrength.network.tablet;
 
+import annina.sparkstrength.role.attendant.DoorLogKind;
 import annina.sparkstrength.tablet.TabletChannel;
+import annina.sparkstrength.tablet.TabletFeature;
 import net.minecraft.network.PacketByteBuf;
 import org.jetbrains.annotations.Nullable;
 
@@ -19,6 +21,10 @@ import java.util.UUID;
  *
  * <p>Channel fields follow {@code localHasTablet}; changing this codec requires a new sync payload id.
  * 频道字段紧跟 localHasTablet；修改此编解码必须更换同步包 id。</p>
+ *
+ * <p>{@code featureMask} ({@link TabletFeature}) is independent of the channel; {@code doorLog} is non-empty only for
+ * viewers holding {@link TabletFeature#DOOR_LOG}, newest first.
+ * featureMask 与频道无关；doorLog 只对拥有房门监控的观看者非空，最新在前。</p>
  */
 public record TabletSnapshot(
         boolean localHasTablet,
@@ -33,7 +39,9 @@ public record TabletSnapshot(
         List<PlayerRow> connections,
         List<ChatRow> chat,
         Meeting meeting,
-        List<SuspectRow> suspects
+        List<SuspectRow> suspects,
+        int featureMask,
+        List<DoorLogRow> doorLog
 ) {
     public static TabletSnapshot empty() {
         return new TabletSnapshot(
@@ -49,6 +57,8 @@ public record TabletSnapshot(
                 List.of(),
                 List.of(),
                 Meeting.inactive(),
+                List.of(),
+                0,
                 List.of()
         );
     }
@@ -59,6 +69,14 @@ public record TabletSnapshot(
 
     public EnumSet<TabletChannel> allowedChannels() {
         return TabletChannel.fromMask(allowedChannelMask);
+    }
+
+    public EnumSet<TabletFeature> features() {
+        return TabletFeature.fromMask(featureMask);
+    }
+
+    public boolean hasFeature(TabletFeature feature) {
+        return (featureMask & (1 << feature.wire())) != 0;
     }
 
     public void write(PacketByteBuf buf) {
@@ -75,6 +93,8 @@ public record TabletSnapshot(
         writeList(buf, chat, (targetBuf, row) -> row.write(targetBuf));
         meeting.write(buf);
         writeList(buf, suspects, (targetBuf, row) -> row.write(targetBuf));
+        buf.writeVarInt(featureMask);
+        writeList(buf, doorLog, (targetBuf, row) -> row.write(targetBuf));
     }
 
     public static TabletSnapshot read(PacketByteBuf buf) {
@@ -91,7 +111,9 @@ public record TabletSnapshot(
                 readList(buf, PlayerRow::read),
                 readList(buf, ChatRow::read),
                 Meeting.read(buf),
-                readList(buf, SuspectRow::read)
+                readList(buf, SuspectRow::read),
+                buf.readVarInt(),
+                readList(buf, DoorLogRow::read)
         );
     }
 
@@ -233,6 +255,72 @@ public record TabletSnapshot(
                     buf.readVarInt(),
                     buf.readBoolean()
             );
+        }
+    }
+
+    /**
+     * One door-log line. {@code id} is the server's monotonic entry id (unread tracking); {@code ageSeconds} is
+     * computed at snapshot time. Only {@link DoorLogKind#KEY_OPENED} rows carry an actor; an anonymous actor has no
+     * uuid and no name. {@code actorUuid} is the apparent (disguise-aware) identity, never a disguised player's real uuid.
+     * 一行房门记录。id 为服务端单调递增的条目 id（用于未读）；ageSeconds 在生成快照时计算。只有 KEY_OPENED 行带操作者；
+     * 匿名操作者不带 uuid 与名字。actorUuid 是表面身份（考虑伪装），绝不是伪装者的真实 uuid。
+     */
+    public record DoorLogRow(
+            int id,
+            int kindWire,
+            String doorName,
+            boolean hasActor,
+            @Nullable UUID actorUuid,
+            String actorName,
+            int ageSeconds,
+            int count
+    ) {
+        public DoorLogRow {
+            doorName = doorName == null ? "" : doorName;
+            if (!hasActor || actorUuid == null) {
+                actorUuid = null;
+                actorName = "";
+            } else if (actorName == null) {
+                actorName = "";
+            }
+            ageSeconds = Math.max(0, ageSeconds);
+            count = Math.max(1, count);
+        }
+
+        public @Nullable DoorLogKind kind() {
+            return DoorLogKind.fromWire(kindWire);
+        }
+
+        /** An actor is present but hidden (psycho / Jester moment). / 有操作者但被隐藏（疯魔 / 小丑时刻）。 */
+        public boolean isAnonymousActor() {
+            return hasActor && actorUuid == null;
+        }
+
+        private void write(PacketByteBuf buf) {
+            buf.writeVarInt(id);
+            buf.writeVarInt(kindWire);
+            buf.writeString(doorName);
+            buf.writeBoolean(hasActor);
+            if (hasActor) {
+                writeOptionalUuid(buf, actorUuid);
+                buf.writeString(actorName);
+            }
+            buf.writeVarInt(ageSeconds);
+            buf.writeVarInt(count);
+        }
+
+        private static DoorLogRow read(PacketByteBuf buf) {
+            int id = buf.readVarInt();
+            int kindWire = buf.readVarInt();
+            String doorName = buf.readString(32767);
+            boolean hasActor = buf.readBoolean();
+            UUID actorUuid = null;
+            String actorName = "";
+            if (hasActor) {
+                actorUuid = readOptionalUuid(buf);
+                actorName = buf.readString(32767);
+            }
+            return new DoorLogRow(id, kindWire, doorName, hasActor, actorUuid, actorName, buf.readVarInt(), buf.readVarInt());
         }
     }
 }

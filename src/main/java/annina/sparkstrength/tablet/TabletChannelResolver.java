@@ -3,6 +3,8 @@ package annina.sparkstrength.tablet;
 import annina.sparkstrength.compat.SparkFactionCompat;
 import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.component.tablet.TabletWorldComponent;
+import annina.sparkstrength.role.attendant.AttendantRules;
+import annina.sparkstrength.role.coroner.CoronerService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -61,6 +63,9 @@ public final class TabletChannelResolver {
      * <p>Alive holders use live identity; dead holders are read-only and keep the set frozen at their last alive
      * resolution because SparkTraits clears traits at death (a dead Impostor must keep both networks).
      * 存活者使用实时身份；死亡者只读，并沿用最后一次存活时冻结的集合，因为 SparkTraits 会在死亡时清除天赋。</p>
+     *
+     * <p>{@link #features} are resolved live for alive and dead holders alike; see there for the dead-holder rule.
+     * 功能对存活与死亡持有者都实时解析；死亡持有者的规则见 features。</p>
      */
     public static Access access(ServerPlayerEntity player) {
         TabletWorldComponent state = TabletWorldComponent.KEY.get(player.getServerWorld());
@@ -76,7 +81,27 @@ public final class TabletChannelResolver {
         }
         TabletChannel selected = TabletChannelRules.choose(allowed, state.selectedChannel(uuid));
         state.setSelectedChannel(uuid, selected);
-        return new Access(allowed, selected, alive, TabletChannelRules.canSend(selected, alive));
+        return new Access(allowed, selected, alive, TabletChannelRules.canSend(selected, alive), features(player));
+    }
+
+    /**
+     * Server-only role-granted sections, independent of channels (a no-signal holder keeps them) and never part of
+     * {@link TabletChannelRules.Facts}, so shop listing, pricing, links and the police electorate are unaffected.
+     * 服务端的身份授予分区，与频道无关（无信号的持有者仍保留），且从不进入 Facts，因此不影响商店、定价、互认与义警选民。
+     *
+     * <p>Door log: the REAL round role is Attendant (Wathe keeps the role after death, so a dead Attendant keeps read
+     * access like a frozen channel), or a live Coroner disguise as Attendant ({@code CoronerService.afterKill} clears
+     * the disguise at death, so it ends there).
+     * 房门监控：真实局内身份为乘务员（Wathe 死亡后保留身份，因此死亡的乘务员与冻结频道一样保留只读权限），
+     * 或当前伪装成乘务员的验尸官（死亡时 CoronerService.afterKill 会清除伪装，权限随之结束）。</p>
+     */
+    public static EnumSet<TabletFeature> features(ServerPlayerEntity player) {
+        EnumSet<TabletFeature> features = EnumSet.noneOf(TabletFeature.class);
+        Role realRole = GameWorldComponent.KEY.get(player.getWorld()).getRole(player);
+        if (AttendantRules.hasDoorLog(realRole, CoronerService.hasAttendantDisguise(player))) {
+            features.add(TabletFeature.DOOR_LOG);
+        }
+        return features;
     }
 
     /**
@@ -101,15 +126,36 @@ public final class TabletChannelResolver {
      * @param selected channel currently viewed and posted to; null means no signal / 当前查看与发言的频道，null 表示无信号
      * @param alive    {@code GameFunctions.isPlayerPlayingAndAlive} / 是否局内存活
      * @param canSend  {@link TabletChannelRules#canSend} / 是否可发送聊天
+     * @param features {@link TabletChannelResolver#features} granted to the holder, independent of {@code allowed} / 持有者获得的功能，与 allowed 无关
      */
-    public record Access(EnumSet<TabletChannel> allowed, @Nullable TabletChannel selected, boolean alive, boolean canSend) {
+    public record Access(
+            EnumSet<TabletChannel> allowed,
+            @Nullable TabletChannel selected,
+            boolean alive,
+            boolean canSend,
+            EnumSet<TabletFeature> features
+    ) {
         public Access {
             allowed = allowed == null ? EnumSet.noneOf(TabletChannel.class) : EnumSet.copyOf(allowed);
+            features = features == null ? EnumSet.noneOf(TabletFeature.class) : EnumSet.copyOf(features);
         }
 
         @Override
         public EnumSet<TabletChannel> allowed() {
             return EnumSet.copyOf(allowed);
+        }
+
+        @Override
+        public EnumSet<TabletFeature> features() {
+            return EnumSet.copyOf(features);
+        }
+
+        public boolean hasFeature(@Nullable TabletFeature feature) {
+            return feature != null && features.contains(feature);
+        }
+
+        public int featureMask() {
+            return TabletFeature.mask(features);
         }
 
         public boolean isMember(@Nullable TabletChannel channel) {

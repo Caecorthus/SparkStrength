@@ -1,6 +1,7 @@
 package annina.sparkstrength.tablet;
 
 import annina.sparkstrength.compat.SparkFactionCompat;
+import annina.sparkstrength.role.attendant.AttendantRules;
 import annina.sparkstrength.role.corruptcop.CorruptCopRules;
 import annina.sparkstrength.role.veteran.VeteranRules;
 import dev.doctor4t.wathe.api.Role;
@@ -43,10 +44,19 @@ public final class TabletShopRules {
     }
 
     /**
-     * Undercover has no money or shop, so its killer-network tablet is granted once at role assignment instead.
-     * 卧底没有金钱与商店，因此其杀手网络平板在身份分配时发放一次，而非购买。
+     * Real round roles whose tablet is granted, never sold: Undercover (killer network) and Attendant (door monitor).
+     * The tablet shop entry is never listed for them, even when an Impostor trait gives them a shop.
+     * 平板为发放而非购买的真实局内身份：卧底（杀手网络）与乘务员（房门监控）。即使内鬼天赋让其拥有商店，也从不列出平板商品。
+     */
+    public static boolean startsWithTablet(@Nullable Role role) {
+        return isUndercover(role) || AttendantRules.isAttendant(role);
+    }
+
+    /**
+     * Starter tablets are granted once at role assignment instead of being bought.
+     * 开局平板在身份分配时发放一次，而非购买。
      */
     public static boolean shouldGrantStarterTablet(@Nullable Role role, boolean alreadyHasTablet) {
-        return isUndercover(role) && !alreadyHasTablet;
+        return startsWithTablet(role) && !alreadyHasTablet;
     }
 }
