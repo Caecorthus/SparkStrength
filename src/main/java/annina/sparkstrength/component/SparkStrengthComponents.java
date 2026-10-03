@@ -12,6 +12,7 @@ import annina.sparkstrength.component.morphling.MorphBodyDisguiseWorldComponent;
 import annina.sparkstrength.component.morphling.MorphMarkPlayerComponent;
 import annina.sparkstrength.component.phantom.PhantomBackpackTargetComponent;
 import annina.sparkstrength.component.phantom.PhantomBackpackUserComponent;
+import annina.sparkstrength.component.perfumer.PerfumerScentComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumTargetComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
 import annina.sparkstrength.component.tablet.TabletWorldComponent;
@@ -82,6 +83,9 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.beginRegistration(PlayerEntity.class, ToxicologistAntidoteComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(ToxicologistAntidoteComponent::new);
+        registry.beginRegistration(PlayerEntity.class, PerfumerScentComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(PerfumerScentComponent::new);
         registry.registerFor(PlayerBodyEntity.class, CoronerBodySnapshotComponent.KEY, CoronerBodySnapshotComponent::new);
     }
 

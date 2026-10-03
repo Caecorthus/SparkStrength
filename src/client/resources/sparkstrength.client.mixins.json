@@ -36,6 +36,11 @@
     "morphling.MorphlingReagentCrosshairMixin",
     "morphling.MorphlingRendererDispatchMixin",
     "morphling.MorphlingRoleNameRendererMixin",
+    "perfumer.PerfumerAromaMouseMixin",
+    "perfumer.PerfumerBlurGameRendererMixin",
+    "perfumer.PerfumerInstinctGateMixin",
+    "perfumer.PerfumerInstinctKeyMixin",
+    "perfumer.PerfumerOverlayHudMixin",
     "veteran.VeteranInstantKnifeMixin",
     "wathe.ShopRowOverflowMixin"
   ],

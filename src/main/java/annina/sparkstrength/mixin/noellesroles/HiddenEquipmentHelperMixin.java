@@ -5,6 +5,7 @@ import annina.sparkstrength.role.coroner.CoronerService;
 import annina.sparkstrength.role.detective.DetectiveRules;
 import annina.sparkstrength.role.engineer.EngineerCaptureReport;
 import annina.sparkstrength.role.engineer.EngineerRules;
+import annina.sparkstrength.role.perfumer.PerfumerRules;
 import annina.sparkstrength.role.professor.ProfessorSerumRules;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import net.minecraft.entity.player.PlayerEntity;
@@ -20,8 +21,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * Adds SparkStrength's tablet, Engineer capture items, Professor serums, Morphling items, Detective tools,
- * every Bartender ingredient and the Recaller's ender pearl / chorus fruit to NoellesRoles' hidden-equipment filter.
- * 将 SparkStrength 平板、工程师捕捉装置、教授试剂、变形怪道具、侦探道具、全部酒保调剂以及回溯者的末影珍珠/紫颂果加入 NoellesRoles 的隐藏装备过滤器。
+ * Perfumer kit, every Bartender ingredient and the Recaller's ender pearl / chorus fruit to NoellesRoles'
+ * hidden-equipment filter.
+ * 将 SparkStrength 平板、工程师捕捉装置、教授试剂、变形怪道具、侦探道具、调香师道具、全部酒保调剂以及回溯者的末影珍珠/紫颂果加入 NoellesRoles 的隐藏装备过滤器。
  */
 @Mixin(value = HiddenEquipmentHelper.class, remap = false)
 public abstract class HiddenEquipmentHelperMixin {
@@ -71,6 +73,16 @@ public abstract class HiddenEquipmentHelperMixin {
                 && DetectiveRules.isDetective(GameWorldComponent.KEY.get(holder.getWorld()).getRole(holder))) {
             // A held magnifier or case folder would expose the detective; hide it while the holder is a detective.
             // 手持放大镜或文件夹会暴露侦探身份；持有者为侦探时对其他玩家隐藏。
+            cir.setReturnValue(true);
+            return;
+        }
+
+        if ((stack.isOf(SparkStrengthItems.coolingOil())
+                || stack.isOf(SparkStrengthItems.aromaOrb())
+                || stack.isOf(SparkStrengthItems.zephyrPerfume()))
+                && PerfumerRules.isPerfumer(GameWorldComponent.KEY.get(holder.getWorld()).getRole(holder))) {
+            // Only the Perfumer's shop sells these; hide them while the holder's real role is Perfumer.
+            // 这些道具只由调香师商店出售；持有者真实身份为调香师时对其他玩家隐藏。
             cir.setReturnValue(true);
             return;
         }

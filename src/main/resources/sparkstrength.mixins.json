@@ -24,6 +24,8 @@
     "minecraft.RaycastShapeScopeMixin",
     "noellesroles.HiddenEquipmentHelperMixin",
     "noellesroles.ToxicologistAntidoteItemMixin",
+    "perfumer.PerfumerZephyrMoodDrainMixin",
+    "perfumer.SparkWitchPerfumerCorpseDrainMixin",
     "professor.ProfessorDoorPassingMixin",
     "professor.ProfessorSedativeMoodMixin",
     "silencer.SilencerBatAttackMixin",
