@@ -15,8 +15,11 @@ import org.jetbrains.annotations.Nullable;
 public final class CorruptCopRules {
     public static final Identifier CORRUPT_COP_ID = Identifier.of("noellesroles", "corrupt_cop");
     public static final Identifier NEUTRAL_MASTER_KEY_ID = Identifier.of("noellesroles", "neutral_master_key");
+    // SparkWitch Insider (内应), matched by stable id only: SparkWitch is not a SparkStrength dependency.
+    // SparkWitch 的内应，仅按稳定 id 匹配：SparkWitch 不是 SparkStrength 的依赖。
+    public static final Identifier INSIDER_ID = Identifier.of("sparkwitch", "insider");
     public static final int ABILITY_COLOR = 0x193264;
-    public static final float LATERAL_SPEED_MULTIPLIER = 1.75F;
+    public static final float LATERAL_SPEED_MULTIPLIER = 2.25F;
     public static final int INSTINCT_PRIORITY = 90;
     public static final int NEUTRAL_MASTER_KEY_COOLDOWN_TICKS = 200;
     private static final double NORMALIZED_MOVEMENT_INPUT_EPSILON = 1.0E-7D;
@@ -31,7 +34,8 @@ public final class CorruptCopRules {
             boolean samePlayer,
             boolean targetAlive,
             boolean targetSpectatingOrCreative,
-            boolean targetInvisible
+            boolean targetInvisible,
+            boolean throughWallsVision
     ) {
         if (!isCorruptCop(viewerRole)
                 || !viewerAlive
@@ -42,7 +46,15 @@ public final class CorruptCopRules {
                 || targetInvisible) {
             return null;
         }
-        return GetInstinctHighlight.HighlightResult.withKeybind(viewerRole.color(), INSTINCT_PRIORITY);
+        /*
+         * NoellesRoles' Moment vision window answers keyless at priority 0, which this priority-90 answer outranks;
+         * stay keyless during that window so the cop's Moment wall vision is not reduced to key-held instinct.
+         * NoellesRoles 的黑警时刻透视窗口以优先级 0 免按键作答，会被这里的优先级 90 覆盖；
+         * 因此窗口期间同样免按键，避免黑警时刻的透视退化为按住本能键才可见。
+         */
+        return throughWallsVision
+                ? GetInstinctHighlight.HighlightResult.always(viewerRole.color(), INSTINCT_PRIORITY)
+                : GetInstinctHighlight.HighlightResult.withKeybind(viewerRole.color(), INSTINCT_PRIORITY);
     }
 
     public static DoorInteraction.DoorInteractionResult neutralMasterKeyDoorResult(
@@ -99,6 +111,10 @@ public final class CorruptCopRules {
 
     public static boolean isCorruptCop(Role role) {
         return role != null && CORRUPT_COP_ID.equals(role.identifier());
+    }
+
+    public static boolean isInsider(Role role) {
+        return role != null && INSIDER_ID.equals(role.identifier());
     }
 
     public static boolean usesKillerStyleInstinctLight(
