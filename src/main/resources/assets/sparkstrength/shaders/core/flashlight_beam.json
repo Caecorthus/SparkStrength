@@ -1,0 +1,36 @@
+{
+    "vertex": "sparkstrength:flashlight_beam",
+    "fragment": "sparkstrength:flashlight_beam",
+    "samplers": [
+        { "name": "DepthSampler" },
+        { "name": "Sampler2" },
+        { "name": "RayMapSampler" }
+    ],
+    "uniforms": [
+        { "name": "InvViewProjMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+        { "name": "ViewProjMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+        { "name": "ScreenSize", "type": "float", "count": 2, "values": [ 1.0, 1.0 ] },
+        { "name": "FogStart", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "FogEnd", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "FogColor", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] },
+        { "name": "FogShape", "type": "int", "count": 1, "values": [ 0 ] },
+        { "name": "BeamStrength", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "GlareStrength", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "ConeCos", "type": "float", "count": 3, "values": [ 1.0, 1.0, 1.0 ] },
+        { "name": "SpillStrength", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "RangeFalloff", "type": "float", "count": 2, "values": [ 1.0, 1.0 ] },
+        { "name": "PeakIntensity", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "Exposure", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "ShadowBias", "type": "float", "count": 2, "values": [ 0.0, 0.0 ] },
+        { "name": "RayGrid", "type": "float", "count": 3, "values": [ 1.0, 1.0, 0.0 ] },
+        { "name": "LightOrigin", "type": "float", "count": 3, "values": [ 0.0, 0.0, 0.0 ] },
+        { "name": "LightDirection", "type": "float", "count": 3, "values": [ 0.0, 0.0, 1.0 ] },
+        { "name": "LightColor", "type": "float", "count": 3, "values": [ 1.0, 1.0, 1.0 ] },
+        { "name": "ShadowOrigin", "type": "float", "count": 3, "values": [ 0.0, 0.0, 0.0 ] },
+        { "name": "ShadowForward", "type": "float", "count": 3, "values": [ 0.0, 0.0, 1.0 ] },
+        { "name": "ShadowRight", "type": "float", "count": 3, "values": [ 1.0, 0.0, 0.0 ] },
+        { "name": "ShadowUp", "type": "float", "count": 3, "values": [ 0.0, 1.0, 0.0 ] },
+        { "name": "ShadowEnabled", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "AmbientEnabled", "type": "float", "count": 1, "values": [ 0.0 ] }
+    ]
+}
