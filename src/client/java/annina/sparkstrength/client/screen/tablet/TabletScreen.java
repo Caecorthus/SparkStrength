@@ -368,7 +368,6 @@ public final class TabletScreen extends Screen {
     }
 
     private void requestSnapshot() {
-        if (Boolean.getBoolean("sparkstrength.tabletPreview")) return; // TEMP tablet preview harness
         ClientPlayNetworking.send(new RequestTabletSnapshotC2SPacket());
     }
 
@@ -2098,7 +2097,6 @@ public final class TabletScreen extends Screen {
     }
 
     private @Nullable UUID localUuid() {
-        if (Boolean.getBoolean("sparkstrength.tabletPreview") && client != null && client.player == null) return client.getSession().getUuidOrNull(); // TEMP tablet preview harness
         return client != null && client.player != null ? client.player.getUuid() : null;
     }
 
