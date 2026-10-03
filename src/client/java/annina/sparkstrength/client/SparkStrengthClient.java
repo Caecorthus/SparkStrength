@@ -1,6 +1,7 @@
 package annina.sparkstrength.client;
 
 import annina.sparkstrength.client.item.CapsuleClient;
+import annina.sparkstrength.client.item.FlashlightModelClient;
 import annina.sparkstrength.client.item.M67Client;
 import annina.sparkstrength.client.item.PerfumerItemsClient;
 import annina.sparkstrength.client.role.attendant.flashlight.FlashlightLights;
@@ -33,6 +34,7 @@ public final class SparkStrengthClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         CapsuleClient.register();
+        FlashlightModelClient.register();
         M67Client.initialize();
         PerfumerItemsClient.register();
         CoronerClientHooks.register();

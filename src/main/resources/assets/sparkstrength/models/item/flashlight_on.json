@@ -1,6 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
+  "parent": "sparkstrength:item/flashlight",
   "textures": {
-    "layer0": "minecraft:item/lantern"
+    "flashlight": "sparkstrength:item/flashlight_on",
+    "particle": "sparkstrength:item/flashlight_on"
   }
 }
