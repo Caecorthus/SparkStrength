@@ -238,12 +238,29 @@ final class TabletSectionPainter {
      * 匿名频道的配对提示卡片，绘制在 [x, y, w, maxHeight] 内；返回使用的高度（0 表示放不下，未绘制）。
      */
     static int linkHint(TabletCanvas c, TextRenderer tr, int x, int y, int w, int maxHeight, TabletTheme.Accent a) {
+        return hintCallout(c, tr, x, y, w, maxHeight, a, false,
+                Text.translatable(KEY + "connections.link_hint").getString());
+    }
+
+    /**
+     * Police task-unlock callout (lock icon, {@code done}/{@code required} progress in the text), same box as
+     * {@link #linkHint}; returns the height used (0 = nothing fit).
+     * 义警任务解锁提示卡片（锁图标，文字内含进度），外观与 linkHint 相同；返回使用的高度（0 表示放不下）。
+     */
+    static int taskHint(TabletCanvas c, TextRenderer tr, int x, int y, int w, int maxHeight, TabletTheme.Accent a,
+                        int done, int required) {
+        return hintCallout(c, tr, x, y, w, maxHeight, a, true,
+                Text.translatable(KEY + "connections.task_hint", done, required).getString());
+    }
+
+    private static int hintCallout(TabletCanvas c, TextRenderer tr, int x, int y, int w, int maxHeight,
+                                   TabletTheme.Accent a, boolean lockIcon, String text) {
         int textWidth = w - HINT_TEXT_X - HINT_PAD_X;
         int maxLines = Math.min(HINT_MAX_LINES, (maxHeight - 2 * HINT_PAD_Y + 2) / LINE_STEP);
         if (textWidth < 40 || maxLines < 1) {
             return 0;
         }
-        List<String> lines = wrap(tr, Text.translatable(KEY + "connections.link_hint").getString(), textWidth, maxLines);
+        List<String> lines = wrap(tr, text, textWidth, maxLines);
         if (lines.isEmpty()) {
             return 0;
         }
@@ -252,7 +269,12 @@ final class TabletSectionPainter {
         c.roundRect(x, y, w, h, CARD_R, TabletTheme.withAlpha(a.base(), 0x14));
         c.roundRectOutline(x, y, w, h, CARD_R, 1f, TabletTheme.withAlpha(a.base(), 0x40));
         // Icon centred on the first text line. 图标与首行文字垂直居中对齐。
-        TabletIcons.link(c, x + HINT_PAD_X, y + HINT_PAD_Y + 4 - HINT_ICON / 2f, HINT_ICON, a.pale());
+        float iconY = y + HINT_PAD_Y + 4 - HINT_ICON / 2f;
+        if (lockIcon) {
+            TabletIcons.lock(c, x + HINT_PAD_X, iconY, HINT_ICON, a.pale());
+        } else {
+            TabletIcons.link(c, x + HINT_PAD_X, iconY, HINT_ICON, a.pale());
+        }
         for (int i = 0; i < lines.size(); i++) {
             c.text(tr, lines.get(i), x + HINT_TEXT_X, y + HINT_PAD_Y + i * LINE_STEP, TabletTheme.TEXT_2);
         }

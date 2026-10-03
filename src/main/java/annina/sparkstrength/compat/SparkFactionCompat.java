@@ -37,8 +37,8 @@ public final class SparkFactionCompat {
         }
     }
 
-    /** Shopping classification only: this does not change NoellesRoles allocation or faction.
-     *  仅注册购物分类，不改变 NoellesRoles 的身份分配或阵营。 */
+    /** Police tablet-network classification only: this does not change NoellesRoles allocation or faction.
+     *  仅注册义警平板网络分类，不改变 NoellesRoles 的身份分配或阵营。 */
     public static boolean registerCorruptCopPoliceRole() {
         if (REGISTER_POLICE_ROLE == null || CONTAINS_POLICE_ROLE == null) {
             return false;
@@ -60,7 +60,7 @@ public final class SparkFactionCompat {
             return false;
         }
         // Idempotent retry also preserves Corrupt Cop after a transient initialization failure.
-        // 幂等重试也保证临时初始化失败后，黑警仍可恢复购物资格。
+        // 幂等重试也保证临时初始化失败后，黑警仍可恢复义警网络资格。
         if (!registerCorruptCopPoliceRole()) {
             return null;
         }

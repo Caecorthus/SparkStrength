@@ -15,16 +15,35 @@ import java.util.UUID;
  * Per-viewer tablet state. The server redacts it to the viewer's selected channel before sending.
  * 按观看者生成的平板状态；服务端发送前已按其所选频道裁剪。
  *
- * <p>In anonymous channels the server also redacts by the viewer's links: an unlinked sender's {@link ChatRow} carries
- * no UUID or name, and unlinked members are left out of {@code connections}.
- * 在匿名频道中，服务端还会按观看者的互认状态裁剪：未互认发送者的聊天行不含 UUID 与名字，未互认成员不会出现在 connections 中。</p>
+ * <p>The server also redacts identities per viewer ({@code TabletIdentityRules}): in the anonymous killer channel by
+ * the viewer's links, in the police channel by the viewer's completed tasks this round. A hidden sender's
+ * {@link ChatRow} carries no UUID or name, and hidden members are left out of {@code connections}.
+ * 服务端还会按查看者裁剪身份：杀手匿名频道按互认状态，义警频道按查看者本局已完成的任务数。被隐藏发送者的聊天行不含 UUID
+ * 与名字，被隐藏成员不会出现在 connections 中。</p>
  *
- * <p>Channel fields follow {@code localHasTablet}; changing this codec requires a new sync payload id.
- * 频道字段紧跟 localHasTablet；修改此编解码必须更换同步包 id。</p>
+ * <p>Wire layout (v5, in order; changing it requires a new sync payload id):
+ * 线上布局（v5，按顺序；修改它必须更换同步包 id）：
+ * <ol>
+ *   <li>bool localHasTablet, varint channelWire, varint allowedChannelMask, bool canSend,
+ *   varint channelSwitchCooldownSeconds, bool channelLocked</li>
+ *   <li>bool localMeetingParticipant, varint cooldownSeconds, varint localMeetingCallsRemaining</li>
+ *   <li>list connections ({@link PlayerRow}), list chat ({@link ChatRow}), {@link Meeting},
+ *   list suspects ({@link SuspectRow})</li>
+ *   <li>v4: varint featureMask, list doorLog ({@link DoorLogRow})</li>
+ *   <li>v5: varint identityTasksRemaining</li>
+ * </ol>
+ * Lists are a varint count followed by the rows.
+ * 列表为 varint 数量后接各行。</p>
  *
  * <p>{@code featureMask} ({@link TabletFeature}) is independent of the channel; {@code doorLog} is non-empty only for
  * viewers holding {@link TabletFeature#DOOR_LOG}, newest first.
  * featureMask 与频道无关；doorLog 只对拥有房门监控的观看者非空，最新在前。</p>
+ *
+ * <p>{@code identityTasksRemaining} is how many more tasks the viewer must complete this round before the viewed
+ * channel reveals other members (police only); 0 when already unlocked or when the viewed channel is not task-gated.
+ * It only describes the viewer's own progress and never anyone else's membership.
+ * identityTasksRemaining 表示查看者本局还需完成多少任务，当前查看的频道才会显示其他成员（仅义警）；已解锁或该频道不按任务
+ * 解锁时为 0。它只描述查看者自己的进度，从不涉及他人的成员身份。</p>
  */
 public record TabletSnapshot(
         boolean localHasTablet,
@@ -41,8 +60,13 @@ public record TabletSnapshot(
         Meeting meeting,
         List<SuspectRow> suspects,
         int featureMask,
-        List<DoorLogRow> doorLog
+        List<DoorLogRow> doorLog,
+        int identityTasksRemaining
 ) {
+    public TabletSnapshot {
+        identityTasksRemaining = Math.max(0, identityTasksRemaining);
+    }
+
     public static TabletSnapshot empty() {
         return new TabletSnapshot(
                 false,
@@ -59,7 +83,8 @@ public record TabletSnapshot(
                 Meeting.inactive(),
                 List.of(),
                 0,
-                List.of()
+                List.of(),
+                0
         );
     }
 
@@ -95,6 +120,7 @@ public record TabletSnapshot(
         writeList(buf, suspects, (targetBuf, row) -> row.write(targetBuf));
         buf.writeVarInt(featureMask);
         writeList(buf, doorLog, (targetBuf, row) -> row.write(targetBuf));
+        buf.writeVarInt(identityTasksRemaining);
     }
 
     public static TabletSnapshot read(PacketByteBuf buf) {
@@ -113,7 +139,8 @@ public record TabletSnapshot(
                 Meeting.read(buf),
                 readList(buf, SuspectRow::read),
                 buf.readVarInt(),
-                readList(buf, DoorLogRow::read)
+                readList(buf, DoorLogRow::read),
+                buf.readVarInt()
         );
     }
 

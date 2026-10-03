@@ -8,8 +8,8 @@ import java.util.EnumSet;
  * 由身份授予、不属于聊天网络的平板分区。wire 位是稳定的网络包契约，禁止使用 ordinal()。
  *
  * <p>Features are independent of {@link TabletChannel}: a holder with no channel ("no signal") still sees its
- * features, and features never affect shop listings, pricing, links or the police electorate.
- * 功能与频道相互独立：没有频道（无信号）的持有者仍能看到其功能；功能不影响商店、定价、互认或义警选民。</p>
+ * features, and features never affect channel membership, links or the police electorate.
+ * 功能与频道相互独立：没有频道（无信号）的持有者仍能看到其功能；功能不影响频道成员资格、互认或义警选民。</p>
  */
 public enum TabletFeature {
     /** Attendant room-door monitor. / 乘务员房门监控。 */

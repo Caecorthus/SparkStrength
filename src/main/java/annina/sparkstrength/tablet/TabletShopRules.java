@@ -1,31 +1,46 @@
 package annina.sparkstrength.tablet;
 
 import annina.sparkstrength.compat.SparkFactionCompat;
-import annina.sparkstrength.role.attendant.AttendantRules;
 import annina.sparkstrength.role.corruptcop.CorruptCopRules;
 import annina.sparkstrength.role.veteran.VeteranRules;
 import dev.doctor4t.wathe.api.Role;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
 /**
- * Shop and highlight rules for the SparkStrength tablet item.
- * SparkStrength 平板物品的商店与高亮规则。
+ * Pure grant, police-network and highlight rules for the SparkStrength tablet item. The tablet is never sold: it is
+ * granted free to every tablet-eligible player (the class name is historical).
+ * SparkStrength 平板物品的纯发放、义警网络与高亮规则。平板从不出售，而是免费发放给每名符合条件的玩家（类名沿用旧称）。
  */
 public final class TabletShopRules {
     public static final Identifier VIGILANTE_ID = Identifier.of("wathe", "vigilante");
     public static final Identifier UNDERCOVER_ID = Identifier.of("noellesroles", "undercover");
-    public static final String TABLET_ENTRY_ID = "sparkstrength_tablet";
-    /** Police-network price; per-channel pricing is {@link TabletChannelRules#price}. / 义警网络价格；分频道定价见 TabletChannelRules#price。 */
-    public static final int TABLET_PRICE = 150;
-    /** Police-network member outline; the only outlining channel ({@link TabletChannel#outlinesMembers()}). / 义警网络成员描边色；唯一描边的频道。 */
-    public static final int TABLET_HIGHLIGHT_COLOR = 0x1B8AE5;
+    /**
+     * Mid-round grant reconciliation cadence while the round is ACTIVE. / 对局 ACTIVE 期间局中补发对账的间隔。
+     */
+    public static final int GRANT_RECONCILE_INTERVAL_TICKS = 20;
+    public static final String POLICE_GRANTED_KEY = "message.sparkstrength.tablet.police_granted";
+    public static final String KILLER_GRANTED_KEY = "message.sparkstrength.tablet.killer_granted";
+    public static final String WITCH_GRANTED_KEY = "message.sparkstrength.tablet.witch_granted";
+    public static final String IMPOSTOR_GRANTED_KEY = "message.sparkstrength.tablet.impostor_granted";
+    public static final String UNDERCOVER_GRANTED_KEY = "message.sparkstrength.tablet.undercover_granted";
+    public static final String ATTENDANT_GRANTED_KEY = "message.sparkstrength.tablet.attendant_granted";
+    /** Police-network suspect highlight; tablets never outline channel members. / 义警网络嫌疑人高亮色；平板从不描边频道成员。 */
     public static final int SUSPECT_HIGHLIGHT_COLOR = 0xFF8C00;
 
     private TabletShopRules() {
     }
 
-    public static boolean canBuyTabletRole(@Nullable Role role) {
+    /**
+     * Police-network role ({@code TabletChannelRules.Facts#policeRole}): SparkFactionAPI {@code PoliceRoles} minus
+     * Veteran, with Corrupt Cop registered by {@code TabletShopService#register}.
+     * 义警网络身份（Facts#policeRole）：SparkFactionAPI PoliceRoles 去掉老兵；黑警由 TabletShopService#register 注册。
+     */
+    public static boolean isPoliceNetworkRole(@Nullable Role role) {
         if (role == null || VeteranRules.isVeteran(role)) {
             return false;
         }
@@ -44,19 +59,51 @@ public final class TabletShopRules {
     }
 
     /**
-     * Real round roles whose tablet is granted, never sold: Undercover (killer network) and Attendant (door monitor).
-     * The tablet shop entry is never listed for them, even when an Impostor trait gives them a shop.
-     * 平板为发放而非购买的真实局内身份：卧底（杀手网络）与乘务员（房门监控）。即使内鬼天赋让其拥有商店，也从不列出平板商品。
+     * Tablet eligibility: a real round role that belongs to at least one tablet network
+     * ({@code TabletChannelResolver.identityChannels} non-empty), or the real Attendant, whose door monitor needs no
+     * channel. A Coroner's Attendant disguise never counts (it is lent a temporary tablet instead).
+     * 平板资格：拥有有效局内身份，且属于至少一个平板网络（identityChannels 非空），或真实身份为乘务员（房门监控无需频道）。
+     * 验尸官的乘务员伪装不计入（伪装期间改为借出临时平板）。
+     *
+     * @param hasRole            {@code TabletChannelRules.Facts#hasRole} / 拥有有效局内身份
+     * @param hasIdentityChannel identity channel set is non-empty / 身份频道集非空
+     * @param realAttendant      real round role is Attendant / 真实局内身份为乘务员
      */
-    public static boolean startsWithTablet(@Nullable Role role) {
-        return isUndercover(role) || AttendantRules.isAttendant(role);
+    public static boolean isTabletEligible(boolean hasRole, boolean hasIdentityChannel, boolean realAttendant) {
+        return hasRole && (hasIdentityChannel || realAttendant);
     }
 
     /**
-     * Starter tablets are granted once at role assignment instead of being bought.
-     * 开局平板在身份分配时发放一次，而非购买。
+     * Private chat lines sent with a granted tablet: one for the channel set (Undercover keeps its own killer line),
+     * then the Attendant's door-monitor line. Empty for an ineligible player.
+     * 发放平板时发送的私聊提示：先发频道提示（卧底保留其专属的杀手频道提示），再发乘务员房门监控提示；无资格者为空。
      */
-    public static boolean shouldGrantStarterTablet(@Nullable Role role, boolean alreadyHasTablet) {
-        return startsWithTablet(role) && !alreadyHasTablet;
+    public static List<String> grantMessageKeys(
+            @Nullable Set<TabletChannel> channels,
+            boolean undercover,
+            boolean realAttendant
+    ) {
+        List<String> keys = new ArrayList<>(2);
+        String channelKey = channelGrantMessageKey(channels, undercover);
+        if (channelKey != null) {
+            keys.add(channelKey);
+        }
+        if (realAttendant) {
+            keys.add(ATTENDANT_GRANTED_KEY);
+        }
+        return List.copyOf(keys);
+    }
+
+    private static @Nullable String channelGrantMessageKey(@Nullable Set<TabletChannel> channels, boolean undercover) {
+        if (channels == null || channels.isEmpty()) {
+            return null;
+        }
+        if (channels.contains(TabletChannel.POLICE)) {
+            return channels.contains(TabletChannel.KILLER) ? IMPOSTOR_GRANTED_KEY : POLICE_GRANTED_KEY;
+        }
+        if (channels.contains(TabletChannel.KILLER)) {
+            return undercover ? UNDERCOVER_GRANTED_KEY : KILLER_GRANTED_KEY;
+        }
+        return channels.contains(TabletChannel.WITCH) ? WITCH_GRANTED_KEY : null;
     }
 }

@@ -8,6 +8,7 @@ import annina.sparkstrength.role.attendant.AttendantRules;
 import annina.sparkstrength.role.attendant.DoorLog;
 import annina.sparkstrength.role.detective.DetectiveIdentityResolver;
 import com.mojang.authlib.GameProfile;
+import dev.doctor4t.wathe.api.event.TaskComplete;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -33,11 +34,13 @@ import java.util.UUID;
  * and meeting/suspect data (fields, action-bar broadcasts, meeting-driven syncs) reach police members only.
  * 每份快照都按观看者所选频道裁剪：成员与聊天只来自该频道，会议/嫌疑人数据（字段、动作栏广播、会议同步）只发给义警成员。</p>
  *
- * <p>Anonymous channels ({@link TabletChannel#anonymousSenders()}) are additionally redacted per viewer by link state:
- * an unlinked sender's chat row carries no UUID or name, and unlinked members never enter the member list (anonymous
- * channels draw no outlines at all, see TabletClientHighlights). Membership and push fan-out stay identity-based.
- * 匿名频道还会按观看者的互认状态逐人裁剪：未互认发送者的聊天行不含 UUID 与名字，未互认成员不会进入成员列表
- * （匿名频道完全不绘制描边，见 TabletClientHighlights）。
+ * <p>Identities are additionally redacted per viewer by {@link TabletIdentityRules}: anonymous channels
+ * ({@link TabletChannel#anonymousSenders()}, killer) by link state, task-gated channels
+ * ({@link TabletChannel#revealsAfterTasks()}, police) by the viewer's completed tasks this round. A hidden sender's chat
+ * row carries no UUID or name, and hidden members never enter the member list (tablets draw no member outlines, see
+ * TabletClientHighlights). Membership and push fan-out stay identity-based.
+ * 身份还会经 TabletIdentityRules 按观看者逐人裁剪：匿名频道（杀手）按互认状态，任务解锁频道（义警）按查看者本局已完成的
+ * 任务数。被隐藏发送者的聊天行不含 UUID 与名字，被隐藏成员不会进入成员列表（平板不描边成员，见 TabletClientHighlights）。
  * 成员资格与推送范围仍由身份决定。</p>
  *
  * <p>Role-granted features ({@link TabletFeature}) ride the same snapshot: the door log is filled only for viewers
@@ -45,7 +48,50 @@ import java.util.UUID;
  * 身份授予的功能随同一快照下发：房门记录只为拥有房门监控的观看者填充，并通过周期同步与打开平板时下发。</p>
  */
 public final class TabletStateService {
+    private static boolean registered;
+
     private TabletStateService() {
+    }
+
+    public static synchronized void register() {
+        if (registered) {
+            return;
+        }
+        registered = true;
+        TaskComplete.EVENT.register((player, taskType) -> onTaskComplete(player));
+    }
+
+    /**
+     * Wathe server-side task hook (REAL and FAKE mood roles alike): counts the task for any player with a round role.
+     * The completion that crosses {@link TabletIdentityRules#POLICE_REVEAL_TASKS} tells a police-network player that
+     * member identities are unlocked and resyncs their tablet; nobody else learns anything.
+     * Wathe 服务端任务钩子（真实与虚假心情身份都会触发）：为任何拥有局内身份的玩家计数。跨过解锁门槛的那一次完成会通知
+     * 义警网络玩家成员身份已解锁并重新同步其平板；其他人不会得到任何信息。
+     */
+    public static void onTaskComplete(ServerPlayerEntity player) {
+        if (player == null) {
+            return;
+        }
+        ServerWorld world = player.getServerWorld();
+        if (!GameWorldComponent.KEY.get(world).hasAnyRole(player.getUuid())) {
+            return;
+        }
+        TabletWorldComponent tablet = TabletWorldComponent.KEY.get(world);
+        int previous = tablet.completedTasks(player.getUuid());
+        int done = tablet.recordCompletedTask(player.getUuid());
+        // Identity channels, not the viewed one: an Impostor viewing the killer channel still unlocks police identities.
+        // 按身份频道而非当前查看的频道判断：正在查看杀手频道的内鬼同样会解锁义警身份。
+        if (!TabletIdentityRules.crossesRevealThreshold(previous, done)
+                || !TabletChannelResolver.identityChannels(player).contains(TabletChannel.POLICE)) {
+            return;
+        }
+        player.sendMessage(Text.translatable(
+                "message.sparkstrength.tablet.police_identities_unlocked",
+                TabletIdentityRules.POLICE_REVEAL_TASKS
+        ), false);
+        if (TabletAccess.hasTabletInHotbar(player)) {
+            syncTo(player);
+        }
     }
 
     public static void openTablet(ServerPlayerEntity player) {
@@ -362,6 +408,8 @@ public final class TabletStateService {
         boolean meetingFeatures = access.viewsMeetingFeatures();
         Set<UUID> electorate = meetingFeatures ? TabletAccess.policeElectorate(roster) : Set.of();
         Set<UUID> links = tablet.identityLinks(viewerUuid);
+        // Dead viewers keep the count they reached while alive. / 死亡查看者沿用存活时达到的任务数。
+        int tasksDone = tablet.completedTasks(viewerUuid);
 
         return new TabletSnapshot(
                 true,
@@ -373,18 +421,20 @@ public final class TabletStateService {
                 meetingFeatures && electorate.contains(viewerUuid),
                 meetingFeatures ? TabletRules.secondsCeil(tablet.meetingCooldownTicks(now)) : 0,
                 meetingFeatures ? tablet.remainingMeetingCalls(viewerUuid) : 0,
-                connectionRows(world, roster, channel, viewerUuid, links),
-                // Stored history keeps real senders, so earlier messages reveal once a link forms.
-                // 存储的历史保留真实发送者，因此互认后之前的消息也会显示名字。
+                connectionRows(world, roster, channel, viewerUuid, links, tasksDone),
+                // Stored history keeps real senders, so earlier messages reveal once a link forms or tasks unlock.
+                // 存储的历史保留真实发送者，因此互认或任务解锁后之前的消息也会显示名字。
                 tablet.chatHistory(channel).stream()
-                        .map(message -> TabletLinkRules.revealsIdentity(channel, viewerUuid, message.senderUuid(), links)
+                        .map(message -> TabletIdentityRules.revealsIdentity(
+                                channel, viewerUuid, message.senderUuid(), links, tasksDone)
                                 ? new TabletSnapshot.ChatRow(message.senderUuid(), message.senderName(), message.message())
                                 : TabletSnapshot.ChatRow.hidden(message.message()))
                         .toList(),
                 meetingFeatures ? meetingSnapshot(world, tablet, viewer, electorate) : TabletSnapshot.Meeting.inactive(),
                 meetingFeatures ? suspectRows(world, tablet, viewerUuid, electorate) : List.of(),
                 access.featureMask(),
-                access.hasFeature(TabletFeature.DOOR_LOG) ? doorLogRows(viewer, tablet, now) : List.of()
+                access.hasFeature(TabletFeature.DOOR_LOG) ? doorLogRows(viewer, tablet, now) : List.of(),
+                TabletIdentityRules.tasksRemaining(channel, tasksDone)
         );
     }
 
@@ -421,7 +471,8 @@ public final class TabletStateService {
             Map<UUID, TabletChannelResolver.Access> roster,
             @Nullable TabletChannel channel,
             UUID viewerUuid,
-            Set<UUID> links
+            Set<UUID> links,
+            int tasksDone
     ) {
         if (channel == null) {
             return List.of();
@@ -435,9 +486,11 @@ public final class TabletStateService {
                 : byName;
         return roster.entrySet().stream()
                 .filter(entry -> entry.getValue().isMember(channel))
-                // Unlinked members are dropped before any player lookup, so their UUID/name never reach the row.
-                // 未互认成员在查找玩家之前就被剔除，其 UUID/名字不会进入行数据。
-                .filter(entry -> TabletLinkRules.revealsIdentity(channel, viewerUuid, entry.getKey(), links))
+                // Hidden members (unlinked, or police before the task unlock) are dropped before any player lookup,
+                // so their UUID/name never reach the row; a locked police viewer is left with only their own row.
+                // 被隐藏的成员（未互认，或任务解锁前的义警）在查找玩家之前就被剔除，其 UUID/名字不会进入行数据；
+                // 未解锁的义警查看者只剩自己这一行。
+                .filter(entry -> TabletIdentityRules.revealsIdentity(channel, viewerUuid, entry.getKey(), links, tasksDone))
                 .map(entry -> world.getServer().getPlayerManager().getPlayer(entry.getKey()))
                 .filter(Objects::nonNull)
                 .sorted(order)
@@ -634,8 +687,8 @@ public final class TabletStateService {
     }
 
     /**
-     * Clients without the current (v4) payload are skipped instead of being disconnected by unknown bytes.
-     * 未注册当前（v4）负载的客户端直接跳过，避免因未知字节断线。
+     * Clients without the current (v5) payload are skipped instead of being disconnected by unknown bytes.
+     * 未注册当前（v5）负载的客户端直接跳过，避免因未知字节断线。
      */
     private static boolean sendPacket(ServerPlayerEntity player, TabletSnapshot snapshot) {
         if (!ServerPlayNetworking.canSend(player, SyncTabletSnapshotS2CPacket.ID)) {
