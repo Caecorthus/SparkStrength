@@ -4,9 +4,11 @@
   "version": "${version}",
   "name": "SparkStrength",
   "description": "",
-  "authors": [],
+  "authors": [
+    "Caecorthus"
+  ],
   "contact": {},
-  "license": "ARR",
+  "license": "AGPL-3.0-only",
   "environment": "*",
   "entrypoints": {
     "main": [
