@@ -29,6 +29,13 @@ public final class FlashlightBeamRules {
     public static final double SHADOW_BIAS_PER_BLOCK = 0.02;
     /** Soft knee before light reaches albedo or entity light levels. / 光照作用于反照率或实体亮度前的软拐点。 */
     public static final double EXPOSURE = 1.6;
+    /**
+     * Block-light floor for the holder of a lit flashlight (spill off the reflector), so their hand and the flashlight
+     * body read dimly instead of as a black cut-out inside the beam; others see the holder faintly lit too.
+     * 已开启手电持有者的方块光下限（反光杯的溢光），使其手部与手电本体呈现暗淡亮度，而不是光斑中的黑色剪影；
+     * 其他玩家也会看到持有者被微微照亮。
+     */
+    public static final int HOLDER_BLOCK_LIGHT = 6;
 
     private static final int DISTANCE_ENCODING_MAX = 0xFFFF;
     // Precomputed: the ray caster and entity lighting call these per ray / per entity.
