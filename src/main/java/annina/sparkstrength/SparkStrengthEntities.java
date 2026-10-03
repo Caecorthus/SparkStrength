@@ -1,7 +1,9 @@
 package annina.sparkstrength;
 
+import annina.sparkstrength.entity.AromaOrbEntity;
 import annina.sparkstrength.entity.CapsuleEntity;
 import annina.sparkstrength.entity.CaptureDeviceEntity;
+import annina.sparkstrength.entity.CoolingOilEntity;
 import annina.sparkstrength.entity.M67GrenadeEntity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnGroup;
@@ -13,9 +15,13 @@ public final class SparkStrengthEntities {
     public static final Identifier CAPSULE_ID = SparkStrength.id("capsule");
     public static final Identifier CAPTURE_DEVICE_ID = SparkStrength.id("capture_device");
     public static final Identifier M67_ID = SparkStrength.id("m67");
+    public static final Identifier COOLING_OIL_ID = SparkStrength.id("cooling_oil");
+    public static final Identifier AROMA_ORB_ID = SparkStrength.id("aroma_orb");
     private static EntityType<M67GrenadeEntity> m67;
     private static EntityType<CapsuleEntity> capsule;
     private static EntityType<CaptureDeviceEntity> captureDevice;
+    private static EntityType<CoolingOilEntity> coolingOil;
+    private static EntityType<AromaOrbEntity> aromaOrb;
     private static boolean registered;
 
     private SparkStrengthEntities() {
@@ -54,6 +60,28 @@ public final class SparkStrengthEntities {
                         .disableSummon()
                         .build(M67_ID.toString())
         );
+        coolingOil = Registry.register(
+                Registries.ENTITY_TYPE,
+                COOLING_OIL_ID,
+                EntityType.Builder.<CoolingOilEntity>create(CoolingOilEntity::new, SpawnGroup.MISC)
+                        .dimensions(0.25F, 0.25F)
+                        .maxTrackingRange(4)
+                        .trackingTickInterval(10)
+                        .disableSaving()
+                        .disableSummon()
+                        .build(COOLING_OIL_ID.toString())
+        );
+        aromaOrb = Registry.register(
+                Registries.ENTITY_TYPE,
+                AROMA_ORB_ID,
+                EntityType.Builder.<AromaOrbEntity>create(AromaOrbEntity::new, SpawnGroup.MISC)
+                        .dimensions(0.25F, 0.25F)
+                        .maxTrackingRange(4)
+                        .trackingTickInterval(10)
+                        .disableSaving()
+                        .disableSummon()
+                        .build(AROMA_ORB_ID.toString())
+        );
         registered = true;
     }
 
@@ -76,5 +104,19 @@ public final class SparkStrengthEntities {
             throw new IllegalStateException("SparkStrength entities are not registered yet");
         }
         return captureDevice;
+    }
+
+    public static EntityType<CoolingOilEntity> coolingOil() {
+        if (coolingOil == null) {
+            throw new IllegalStateException("SparkStrength entities are not registered yet");
+        }
+        return coolingOil;
+    }
+
+    public static EntityType<AromaOrbEntity> aromaOrb() {
+        if (aromaOrb == null) {
+            throw new IllegalStateException("SparkStrength entities are not registered yet");
+        }
+        return aromaOrb;
     }
 }

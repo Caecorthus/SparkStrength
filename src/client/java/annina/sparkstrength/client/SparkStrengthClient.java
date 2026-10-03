@@ -2,6 +2,7 @@ package annina.sparkstrength.client;
 
 import annina.sparkstrength.client.item.CapsuleClient;
 import annina.sparkstrength.client.item.M67Client;
+import annina.sparkstrength.client.item.PerfumerItemsClient;
 import annina.sparkstrength.client.role.coroner.CoronerClientHooks;
 import annina.sparkstrength.client.role.corruptcop.CorruptCopClientHooks;
 import annina.sparkstrength.client.role.corruptcop.CorruptCopMusicController;
@@ -10,6 +11,7 @@ import annina.sparkstrength.client.role.economy.RoleEconomyClientHooks;
 import annina.sparkstrength.client.role.economy.KillerTeamEconomyClientHooks;
 import annina.sparkstrength.client.role.engineer.EngineerClientHooks;
 import annina.sparkstrength.client.role.morphling.MorphlingClientHooks;
+import annina.sparkstrength.client.role.perfumer.PerfumerClientHooks;
 import annina.sparkstrength.client.role.professor.ProfessorSerumClientHooks;
 import annina.sparkstrength.client.role.veteran.VeteranClientHooks;
 import annina.sparkstrength.client.screen.detective.DetectiveFolderScreen;
@@ -31,11 +33,13 @@ public final class SparkStrengthClient implements ClientModInitializer {
     public void onInitializeClient() {
         CapsuleClient.register();
         M67Client.initialize();
+        PerfumerItemsClient.register();
         CoronerClientHooks.register();
         CorruptCopClientHooks.register();
         DemonHunterSniffClientHooks.register();
         EngineerClientHooks.register();
         MorphlingClientHooks.register();
+        PerfumerClientHooks.register();
         ProfessorSerumClientHooks.register();
         RoleEconomyClientHooks.register();
         TabletClientHighlights.register();

@@ -4,6 +4,8 @@ import annina.sparkstrength.item.CaptureDeviceItem;
 import annina.sparkstrength.item.CapsuleItem;
 import annina.sparkstrength.item.CaseFolderItem;
 import annina.sparkstrength.item.CoronerBodyBagItem;
+import annina.sparkstrength.item.AromaOrbItem;
+import annina.sparkstrength.item.CoolingOilItem;
 import annina.sparkstrength.item.FlashlightItem;
 import annina.sparkstrength.item.M67Item;
 import annina.sparkstrength.item.MagnifierItem;
@@ -12,6 +14,8 @@ import annina.sparkstrength.item.MorphReagentItem;
 import annina.sparkstrength.item.PowerRestorationItem;
 import annina.sparkstrength.item.ProfessorSerumItem;
 import annina.sparkstrength.item.TabletItem;
+import annina.sparkstrength.item.ZephyrPerfumeItem;
+import annina.sparkstrength.role.perfumer.PerfumerRules;
 import annina.sparkstrength.role.professor.ProfessorSerumType;
 import net.minecraft.item.Item;
 import net.minecraft.registry.Registries;
@@ -34,6 +38,9 @@ public final class SparkStrengthItems {
     public static final Identifier M67_ID = SparkStrength.id("m67");
     public static final Identifier MAGNIFIER_ID = SparkStrength.id("magnifier");
     public static final Identifier CASE_FOLDER_ID = SparkStrength.id("case_folder");
+    public static final Identifier COOLING_OIL_ID = SparkStrength.id("cooling_oil");
+    public static final Identifier AROMA_ORB_ID = SparkStrength.id("aroma_orb");
+    public static final Identifier ZEPHYR_PERFUME_ID = SparkStrength.id("zephyr_perfume");
     private static Item m67;
     private static Item capsule;
     private static Item flashlight;
@@ -49,6 +56,9 @@ public final class SparkStrengthItems {
     private static Item coronerBodyBag;
     private static Item magnifier;
     private static Item caseFolder;
+    private static Item coolingOil;
+    private static Item aromaOrb;
+    private static Item zephyrPerfume;
     private static boolean registered;
 
     private SparkStrengthItems() {
@@ -132,6 +142,21 @@ public final class SparkStrengthItems {
                 Registries.ITEM,
                 CASE_FOLDER_ID,
                 new CaseFolderItem(new Item.Settings().maxCount(1))
+        );
+        coolingOil = Registry.register(
+                Registries.ITEM,
+                COOLING_OIL_ID,
+                new CoolingOilItem(new Item.Settings().maxCount(PerfumerRules.THROWABLE_MAX_STACK))
+        );
+        aromaOrb = Registry.register(
+                Registries.ITEM,
+                AROMA_ORB_ID,
+                new AromaOrbItem(new Item.Settings().maxCount(PerfumerRules.THROWABLE_MAX_STACK))
+        );
+        zephyrPerfume = Registry.register(
+                Registries.ITEM,
+                ZEPHYR_PERFUME_ID,
+                new ZephyrPerfumeItem(new Item.Settings().maxCount(1))
         );
         registered = true;
     }
@@ -239,5 +264,26 @@ public final class SparkStrengthItems {
             throw new IllegalStateException("SparkStrength items are not registered yet");
         }
         return caseFolder;
+    }
+
+    public static Item coolingOil() {
+        if (coolingOil == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return coolingOil;
+    }
+
+    public static Item aromaOrb() {
+        if (aromaOrb == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return aromaOrb;
+    }
+
+    public static Item zephyrPerfume() {
+        if (zephyrPerfume == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return zephyrPerfume;
     }
 }

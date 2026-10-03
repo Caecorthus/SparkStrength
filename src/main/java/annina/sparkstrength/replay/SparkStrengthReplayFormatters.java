@@ -34,6 +34,9 @@ public final class SparkStrengthReplayFormatters {
     public static final Identifier MORPH_REAGENT_MARKED = SparkStrength.id("morph_reagent_marked");
     public static final Identifier MORPH_MARK_TRIGGERED = SparkStrength.id("morph_mark_triggered");
     public static final Identifier MORPH_MARK_ENDED = SparkStrength.id("morph_mark_ended");
+    public static final Identifier PERFUMER_COOLING_OIL_HIT = SparkStrength.id("perfumer_cooling_oil_hit");
+    public static final Identifier PERFUMER_AROMA_HIT = SparkStrength.id("perfumer_aroma_hit");
+    public static final Identifier PERFUMER_ZEPHYR_USED = SparkStrength.id("perfumer_zephyr_used");
 
     private SparkStrengthReplayFormatters() {
     }
@@ -246,6 +249,24 @@ public final class SparkStrengthReplayFormatters {
                         match,
                         "replay.global.sparkstrength.morph_mark_ended"
                 ));
+        ReplayRegistry.registerGlobalEventFormatter(PERFUMER_COOLING_OIL_HIT,
+                (event, match, world) -> throwableHitEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.perfumer_cooling_oil_hit"
+                ));
+        ReplayRegistry.registerGlobalEventFormatter(PERFUMER_AROMA_HIT,
+                (event, match, world) -> throwableHitEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.perfumer_aroma_hit"
+                ));
+        ReplayRegistry.registerGlobalEventFormatter(PERFUMER_ZEPHYR_USED,
+                (event, match, world) -> onePlayerEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.perfumer_zephyr_used"
+                ));
     }
 
     private static Text onePlayerEvent(NbtCompound data, dev.doctor4t.wathe.record.GameRecordManager.MatchRecord match, String key) {
@@ -255,6 +276,27 @@ public final class SparkStrengthReplayFormatters {
             return null;
         }
         return Text.translatable(key, ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache));
+    }
+
+    /**
+     * A thrower who logged off before impact is recorded with no actor, so fall back to the one-argument key.
+     * 投掷者在命中前离线时事件没有 actor，此时回退到单参数文本。
+     */
+    private static Text throwableHitEvent(NbtCompound data, dev.doctor4t.wathe.record.GameRecordManager.MatchRecord match, String key) {
+        var playerInfoCache = ReplayGenerator.getPlayerInfoCache(match);
+        UUID actorUuid = data.containsUuid("actor") ? data.getUuid("actor") : null;
+        UUID targetUuid = data.containsUuid("target") ? data.getUuid("target") : null;
+        if (targetUuid == null) {
+            return null;
+        }
+        if (actorUuid == null) {
+            return Text.translatable(key + ".unknown", ReplayGenerator.formatPlayerName(targetUuid, playerInfoCache));
+        }
+        return Text.translatable(
+                key,
+                ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache),
+                ReplayGenerator.formatPlayerName(targetUuid, playerInfoCache)
+        );
     }
 
     private static Text formatPlayerNameWithFallback(
