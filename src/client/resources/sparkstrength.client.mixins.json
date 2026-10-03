@@ -4,6 +4,8 @@
   "package": "annina.sparkstrength.client.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "attendant.FlashlightBlockEntityLightMixin",
+    "attendant.FlashlightEntityLightMixin",
     "corruptcop.CorruptCopHudMixin",
     "coroner.CoronerInventoryScreenMixin",
     "coroner.CoronerTimeRendererMixin",
