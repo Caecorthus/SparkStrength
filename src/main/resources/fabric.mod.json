@@ -17,12 +17,6 @@
     "client": [
       "annina.sparkstrength.client.SparkStrengthClient"
     ],
-    "lambdynlights:initializer": [
-      "annina.sparkstrength.client.role.attendant.FlashlightDynamicLightsInitializer"
-    ],
-    "dynamiclights": [
-      "annina.sparkstrength.client.role.attendant.FlashlightDynamicLightsInitializer"
-    ],
     "voicechat": [
       "annina.sparkstrength.voice.SparkStrengthVoiceChatPlugin"
     ],
