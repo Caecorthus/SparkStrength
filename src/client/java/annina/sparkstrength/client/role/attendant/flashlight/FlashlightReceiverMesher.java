@@ -44,9 +44,18 @@ final class FlashlightReceiverMesher {
     private static final int CUTOUT_MIPPED_CUTOFF = 128;
     private static final int CUTOUT_CUTOFF = 26;
 
+    /** Section plus a one-block border on each face. / 区段及其各面外扩一格。 */
+    private static final int PADDED = 18;
+
     private final Random random = Random.createLocal();
     private final BlockPos.Mutable pos = new BlockPos.Mutable();
     private final BlockPos.Mutable neighbor = new BlockPos.Mutable();
+    /**
+     * Block states of the section and its six face-adjacent border slabs (edges and corners unused), so face culling
+     * reads an array instead of the world for every face.
+     * 区段及其六个面相邻边界层的方块状态（棱与角不使用），使每个面的剔除判断读取数组而非世界。
+     */
+    private final BlockState[] padded = new BlockState[PADDED * PADDED * PADDED];
 
     /**
      * Render thread. Returns null when the section has no receiving face (all air, translucent or culled).
@@ -69,10 +78,11 @@ final class FlashlightReceiverMesher {
         int originX = sectionX << 4;
         int originY = sectionY << 4;
         int originZ = sectionZ << 4;
+        fillPadded(world, section, originX, originY, originZ);
         for (int y = 0; y < 16; y++) {
             for (int z = 0; z < 16; z++) {
                 for (int x = 0; x < 16; x++) {
-                    BlockState state = section.getBlockState(x, y, z);
+                    BlockState state = padded[paddedIndex(x, y, z)];
                     if (state.isAir() || state.getRenderType() != BlockRenderType.MODEL) {
                         continue;
                     }
@@ -81,6 +91,21 @@ final class FlashlightReceiverMesher {
                         continue;
                     }
                     pos.set(originX + x, originY + y, originZ + z);
+                    // Opaque full cube against opaque full cube is exactly the case where shouldDrawSide returns false
+                    // (full culling faces on both sides); checking it first skips buried blocks cheaply.
+                    // 不透明完整方块紧贴不透明完整方块时 shouldDrawSide 必然返回 false（两侧剔除面均完整）；先行判断可廉价跳过被埋住的方块。
+                    boolean opaqueCube = state.isOpaqueFullCube(world, pos);
+                    int culledFaces = 0;
+                    if (opaqueCube) {
+                        for (Direction direction : DIRECTIONS) {
+                            if (neighborIsOpaqueCube(world, x, y, z, direction)) {
+                                culledFaces |= 1 << direction.ordinal();
+                            }
+                        }
+                        if (culledFaces == (1 << DIRECTIONS.length) - 1) {
+                            continue;
+                        }
+                    }
                     BakedModel model = blockRenderManager.getModel(state);
                     long seed = state.getRenderingSeed(pos);
                     Vec3d offset = state.getModelOffset(world, pos);
@@ -88,6 +113,9 @@ final class FlashlightReceiverMesher {
                     float offsetY = y + (float) offset.y;
                     float offsetZ = z + (float) offset.z;
                     for (Direction direction : DIRECTIONS) {
+                        if ((culledFaces & 1 << direction.ordinal()) != 0) {
+                            continue;
+                        }
                         random.setSeed(seed);
                         List<BakedQuad> quads = model.getQuads(state, direction, random);
                         if (quads.isEmpty()) {
@@ -105,6 +133,41 @@ final class FlashlightReceiverMesher {
             }
         }
         return builder.endNullable();
+    }
+
+    private void fillPadded(ClientWorld world, ChunkSection section, int originX, int originY, int originZ) {
+        for (int y = 0; y < 16; y++) {
+            for (int z = 0; z < 16; z++) {
+                for (int x = 0; x < 16; x++) {
+                    padded[paddedIndex(x, y, z)] = section.getBlockState(x, y, z);
+                }
+            }
+        }
+        for (int a = 0; a < 16; a++) {
+            for (int b = 0; b < 16; b++) {
+                padded[paddedIndex(-1, a, b)] = worldState(world, originX - 1, originY + a, originZ + b);
+                padded[paddedIndex(16, a, b)] = worldState(world, originX + 16, originY + a, originZ + b);
+                padded[paddedIndex(a, -1, b)] = worldState(world, originX + a, originY - 1, originZ + b);
+                padded[paddedIndex(a, 16, b)] = worldState(world, originX + a, originY + 16, originZ + b);
+                padded[paddedIndex(a, b, -1)] = worldState(world, originX + a, originY + b, originZ - 1);
+                padded[paddedIndex(a, b, 16)] = worldState(world, originX + a, originY + b, originZ + 16);
+            }
+        }
+    }
+
+    private BlockState worldState(ClientWorld world, int x, int y, int z) {
+        return world.getBlockState(neighbor.set(x, y, z));
+    }
+
+    private boolean neighborIsOpaqueCube(ClientWorld world, int x, int y, int z, Direction direction) {
+        BlockState state = padded[paddedIndex(x + direction.getOffsetX(), y + direction.getOffsetY(),
+                z + direction.getOffsetZ())];
+        return state.isOpaqueFullCube(world, neighbor.set(pos, direction));
+    }
+
+    /** x, y, z in [-1, 16]. / 坐标范围 [-1, 16]。 */
+    private static int paddedIndex(int x, int y, int z) {
+        return ((y + 1) * PADDED + z + 1) * PADDED + x + 1;
     }
 
     /** Translucent and tripwire layers are not receivers. / 半透明与绊线层不作为受光面。 */
