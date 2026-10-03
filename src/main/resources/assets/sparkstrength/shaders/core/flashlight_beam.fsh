@@ -116,7 +116,12 @@ vec3 beam(vec3 start, vec3 dir, float sceneDist) {
         density += weight * flashlight_fog_keep(fog_distance(pos, FogShape), FogStart, FogEnd, FogColor);
     }
     float ambient = flashlight_ambient_scale(vec2(RayGrid.y * 0.5));
-    return LightColor * ((1.0 - exp(-BeamStrength * density * stepLength)) * ambient);
+    // A viewer standing inside the cone looks down the whole beam, so every pixel gathers haze into a grey veil; fade
+    // the haze by how deep the camera sits in the cone and let the glare carry "looking into the light".
+    // 观察者站在光锥内时会沿整条光束观看，每个像素都积累雾光而形成灰色薄幕；按相机处于光锥的深度淡化雾光，由眩光表现“直视光源”。
+    float cameraDist = max(length(LightOrigin), 1.0e-4);
+    float insideCone = flashlight_cone(dot(-LightOrigin / cameraDist, LightDirection));
+    return LightColor * ((1.0 - exp(-BeamStrength * density * stepLength)) * ambient * (1.0 - 0.85 * insideCone));
 }
 
 // Soft lens glare when the viewer looks into the light and its origin is not hidden behind scene depth.

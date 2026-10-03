@@ -5,6 +5,7 @@ import annina.sparkstrength.role.attendant.FlashlightBeamRules;
 import dev.doctor4t.wathe.block.CullingBlock;
 import dev.doctor4t.wathe.block.GlassPanelBlock;
 import dev.doctor4t.wathe.block.PrivacyBlock;
+import dev.doctor4t.wathe.client.WatheClient;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
@@ -40,6 +41,7 @@ final class FlashlightRayCaster implements FlashlightBeamGeometry.VoxelVisitor, 
     private int bottomY;
     private int topY;
     private int bottomSection;
+    private int sceneryTopY;
 
     private boolean chunkCached;
     private int chunkX;
@@ -107,6 +109,9 @@ final class FlashlightRayCaster implements FlashlightBeamGeometry.VoxelVisitor, 
         bottomY = world.getBottomY();
         topY = world.getTopY();
         bottomSection = world.getBottomSectionCoord();
+        // Relocated wathe scenery is not where it is drawn while the train runs, so rays pass its real blocks.
+        // 列车行驶时 wathe 风景的绘制位置并非其真实位置，因此射线穿过其真实方块。
+        sceneryTopY = WatheClient.isTrainMoving() ? FlashlightReceiverCache.WATHE_SCENERY_TOP_Y : Integer.MIN_VALUE;
         // Chunks and light may change between casts; caches only live for one cast.
         // 两次投射之间区块与光照可能变化，缓存只在单次投射内有效。
         chunkCached = false;
@@ -243,7 +248,7 @@ final class FlashlightRayCaster implements FlashlightBeamGeometry.VoxelVisitor, 
     }
 
     private BlockState blockState(int x, int y, int z) {
-        if (y < bottomY || y >= topY) {
+        if (y < bottomY || y >= topY || y < sceneryTopY) {
             return AIR;
         }
         int cx = x >> 4;

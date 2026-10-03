@@ -49,7 +49,7 @@ final class FlashlightReceiverCache {
      * 列车行驶时 wathe 将此 Y 以下的区段作为移动风景重新定位渲染（其 Sodium 与原版区段渲染都以此为界），
      * 这些区段的真实位置并非其绘制位置。
      */
-    private static final int WATHE_SCENERY_TOP_Y = 64;
+    static final int WATHE_SCENERY_TOP_Y = 64;
 
     private final Long2ObjectLinkedOpenHashMap<Section> sections = new Long2ObjectLinkedOpenHashMap<>();
     private final List<LongArrayList> lightSections = new ArrayList<>();
