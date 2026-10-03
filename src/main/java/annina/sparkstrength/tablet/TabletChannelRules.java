@@ -6,32 +6,31 @@ import java.util.EnumSet;
 import java.util.Set;
 
 /**
- * Pure channel membership, selection, switching and pricing rules.
- * 纯频道成员、选择、切换与定价规则。
+ * Pure channel membership, selection, sending and switching rules.
+ * 纯频道成员、选择、发送与切换规则。
  *
  * <p>Membership is identity-based: every channel in {@link #allowed(Facts)} is a network the holder belongs to
- * (push fan-out, member lists, non-anonymous outlines, police electorate). The selected channel only picks the chat/features being
- * viewed, so an Impostor switching views never appears in or disappears from either member list. Anonymous channels
- * additionally filter the member-list payload per viewer by link state ({@code TabletLinkRules}).
- * 成员资格由身份决定：allowed 中的每个频道都是持有者所属的网络（推送范围、成员列表、非匿名频道描边、义警选民）。
+ * (push fan-out, member lists, police electorate). The selected channel only picks the chat/features being
+ * viewed, so an Impostor switching views never appears in or disappears from either member list. The member-list
+ * payload is additionally filtered per viewer ({@code TabletIdentityRules}): by link state on the killer channel, by
+ * the viewer's completed tasks on the police channel.
+ * 成员资格由身份决定：allowed 中的每个频道都是持有者所属的网络（推送范围、成员列表、义警选民）。
  * 所选频道只决定当前查看的聊天与功能，因此内鬼切换视图不会让自己在任何成员列表中出现或消失。
- * 匿名频道还会按观看者的互认状态过滤下发的成员列表（见 TabletLinkRules）。</p>
+ * 下发的成员列表还会按查看者过滤（见 TabletIdentityRules）：杀手频道按互认状态，义警频道按查看者已完成的任务数。</p>
  */
 public final class TabletChannelRules {
     public static final int SWITCH_COOLDOWN_TICKS = 100;
     public static final int CHAT_HISTORY_LIMIT = 50;
-    public static final int POLICE_TABLET_PRICE = TabletShopRules.TABLET_PRICE;
-    public static final int FACTION_TABLET_PRICE = 100;
 
     private TabletChannelRules() {
     }
 
     /**
-     * Identity facts gathered by the resolver; pure so both shop sides and tests share one truth table.
-     * 解析器收集的身份事实；保持纯净，便于商店两端与测试共用同一真值表。
+     * Identity facts gathered by the resolver; pure so the tablet grant, server access and tests share one truth table.
+     * 解析器收集的身份事实；保持纯净，便于平板发放、服务端访问与测试共用同一真值表。
      *
      * @param hasRole      the holder has a non-empty round role / 持有者拥有有效的局内身份
-     * @param policeRole   {@link TabletShopRules#canBuyTabletRole} / 警职购物分类
+     * @param policeRole   {@link TabletShopRules#isPoliceNetworkRole} / 义警网络身份
      * @param killerRole   wathe {@code Role.canUseKiller()} / 原生杀手标记
      * @param impostor     active SparkTraits Impostor / SparkTraits 内鬼天赋
      * @param conscience   active SparkTraits Conscience / SparkTraits 善良天赋
@@ -60,8 +59,7 @@ public final class TabletChannelRules {
         }
         if (facts.undercover()) {
             // Undercover poses as a killer teammate: it joins the killer network, where names stay ??? until linked.
-            // Its tablet is granted at role assignment, never sold.
-            // 卧底伪装成杀手队友：加入杀手网络，名字在互认前显示为 ???。其平板在身份分配时发放，从不出售。
+            // 卧底伪装成杀手队友：加入杀手网络，名字在互认前显示为 ???。
             return EnumSet.of(TabletChannel.KILLER);
         }
         if (facts.impostor()) {
@@ -129,11 +127,6 @@ public final class TabletChannelRules {
             return SwitchResult.COOLDOWN;
         }
         return SwitchResult.OK;
-    }
-
-    /** Police-network access keeps the police price; killer/witch-only access is cheaper. / 含义警网络按义警价，仅杀手/魔女更便宜。 */
-    public static int price(Set<TabletChannel> allowed) {
-        return allowed.contains(TabletChannel.POLICE) ? POLICE_TABLET_PRICE : FACTION_TABLET_PRICE;
     }
 
     public enum SwitchResult {

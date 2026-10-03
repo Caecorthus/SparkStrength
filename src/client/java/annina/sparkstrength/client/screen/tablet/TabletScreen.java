@@ -16,6 +16,7 @@ import annina.sparkstrength.network.tablet.SendTabletChatC2SPacket;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
 import annina.sparkstrength.tablet.TabletChannel;
 import annina.sparkstrength.tablet.TabletFeature;
+import annina.sparkstrength.tablet.TabletIdentityRules;
 import annina.sparkstrength.tablet.TabletLayout;
 import annina.sparkstrength.tablet.TabletLayout.Rect;
 import annina.sparkstrength.tablet.TabletRules;
@@ -110,8 +111,8 @@ public final class TabletScreen extends Screen {
     private static final int INPUT_INSET_X = 12;
     private static final int INPUT_H = 9;
     private static final int NEW_PILL_H = 16;
-    // Room kept below the member rows for the link hint callout (two text lines). 成员行下方为配对提示保留的高度（两行文字）。
-    private static final int LINK_HINT_MIN_H = 42;
+    // Room kept below the member rows for a hint callout (two text lines). 成员行下方为提示卡片保留的高度（两行文字）。
+    private static final int HINT_CALLOUT_MIN_H = 42;
 
     // Action bar buttons (meeting footer). 会议操作栏按钮。
     private static final int ACTION_PAD = 14;
@@ -1488,7 +1489,14 @@ public final class TabletScreen extends Screen {
     private int paintHeaderChip(TabletSnapshot snapshot, int right, int centerY, int maxWidth, long now) {
         TabletSnapshot.Meeting meeting = snapshot.meeting();
         return switch (session.section()) {
-            case CONNECTIONS -> paintPill(right, centerY, maxWidth, memberCount(snapshot).getString(),
+            // Locked police view: a lock + task progress instead of a misleading "1 connected".
+            // 义警身份未解锁：显示锁与任务进度，而非具有误导性的“已接入 1”。
+            case CONNECTIONS -> identitiesLocked(snapshot)
+                    ? paintPill(right, centerY, maxWidth, Text.translatable(KEY + "channel.tasks_locked",
+                            identityTasksDone(snapshot), TabletIdentityRules.POLICE_REVEAL_TASKS).getString(),
+                    frameAccent.pale(), TabletTheme.withAlpha(frameAccent.base(), 0x2E), 0, TabletIcons::lock,
+                    frameAccent.pale())
+                    : paintPill(right, centerY, maxWidth, memberCount(snapshot).getString(),
                     TabletTheme.TEXT_2, TabletTheme.SURFACE, 0, null, 0);
             case CHAT -> paintPill(right, centerY, maxWidth, String.valueOf(snapshot.chat().size()),
                     TabletTheme.TEXT_2, TabletTheme.SURFACE, 0, TabletIcons::chat, TabletTheme.TEXT_2);
@@ -1576,11 +1584,14 @@ public final class TabletScreen extends Screen {
         int totalRows = grid.totalRows(rows.size());
         int first = session.connectionsFirstRow();
         int shownRows = Math.min(grid.visibleRows(), totalRows - first);
-        boolean linkHint = snapshot.canSend() && isAnonymousChannel(snapshot) && linkedPartners(snapshot) == 0;
-        if (linkHint) {
+        // A locked police viewer was sent only their own row (dead viewers too, so they still learn why); an unlinked
+        // live killer was sent only theirs. 未解锁的义警查看者只收到自己的行（死亡者也显示，以便知道原因）；未互认的存活杀手同理。
+        boolean taskHint = identitiesLocked(snapshot);
+        boolean linkHint = !taskHint && snapshot.canSend() && isAnonymousChannel(snapshot) && linkedPartners(snapshot) == 0;
+        if (taskHint || linkHint) {
             // Pin the callout to the bottom by giving up the last row(s) when it would not fit after them.
             // 若放在最后一行之后放不下，就让出末尾的行，把提示卡片固定在列表底部。
-            while (shownRows > 0 && grid.area().bottom() - grid.rowY(shownRows) < LINK_HINT_MIN_H) {
+            while (shownRows > 0 && grid.area().bottom() - grid.rowY(shownRows) < HINT_CALLOUT_MIN_H) {
                 shownRows--;
             }
         }
@@ -1597,7 +1608,12 @@ public final class TabletScreen extends Screen {
                         player, player.uuid().equals(self), frameAccent);
             }
         }
-        if (linkHint) {
+        if (taskHint) {
+            int top = grid.rowY(shownRows);
+            TabletSectionPainter.taskHint(c, textRenderer, grid.area().x(), top, grid.area().width(),
+                    grid.area().bottom() - top, frameAccent, identityTasksDone(snapshot),
+                    TabletIdentityRules.POLICE_REVEAL_TASKS);
+        } else if (linkHint) {
             int top = grid.rowY(shownRows);
             TabletSectionPainter.linkHint(c, textRenderer, grid.area().x(), top, grid.area().width(),
                     grid.area().bottom() - top, frameAccent);
@@ -2106,6 +2122,20 @@ public final class TabletScreen extends Screen {
             return Text.translatable(KEY + "channel.linked", linkedPartners(snapshot));
         }
         return Text.translatable(KEY + "channel.connected", snapshot.connections().size());
+    }
+
+    /**
+     * The viewed channel hides other members until this viewer completes their tasks (police); the server then sent
+     * only the viewer's own member row and sender-less chat rows for everyone else.
+     * 当前频道在查看者完成任务前隐藏其他成员（义警）；此时服务端只下发查看者自己的成员行，其他人的聊天行不带发送者。
+     */
+    private static boolean identitiesLocked(TabletSnapshot snapshot) {
+        TabletChannel channel = snapshot.channel();
+        return channel != null && channel.revealsAfterTasks() && snapshot.identityTasksRemaining() > 0;
+    }
+
+    private static int identityTasksDone(TabletSnapshot snapshot) {
+        return Math.max(0, TabletIdentityRules.POLICE_REVEAL_TASKS - snapshot.identityTasksRemaining());
     }
 
     private static boolean isAnonymousChannel(TabletSnapshot snapshot) {

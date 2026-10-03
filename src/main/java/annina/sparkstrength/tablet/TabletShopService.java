@@ -2,34 +2,27 @@ package annina.sparkstrength.tablet;
 
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.compat.SparkFactionCompat;
-import annina.sparkstrength.compat.SparkTraitsCompat;
+import annina.sparkstrength.component.tablet.TabletWorldComponent;
 import annina.sparkstrength.role.attendant.AttendantRules;
-import annina.sparkstrength.role.coroner.CoronerService;
-import dev.doctor4t.wathe.api.Role;
-import dev.doctor4t.wathe.api.event.ShopPurchase;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
-import dev.doctor4t.wathe.util.ShopEntry;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.LoreComponent;
+import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Set;
 
 /**
- * Adds the SparkStrength tablet to eligible roles' shop.
- * 给符合条件的角色追加 SparkStrength 平板商店项。
+ * Grants the SparkStrength tablet; it is never sold and takes no shop slot (the class name is historical). Every
+ * tablet-eligible player ({@link TabletShopRules#isTabletEligible}) gets one free at round start, and a reconciliation
+ * pass covers players who become eligible mid-round. At most one grant per player per round.
+ * 发放 SparkStrength 平板；平板从不出售，也不占用商店栏位（类名沿用旧称）。每名符合条件的玩家开局免费获得一台，
+ * 局中才获得资格的玩家由对账轮次补发。每名玩家每局最多发放一次。
  */
 public final class TabletShopService {
-    private static final String ALREADY_OWNED_KEY = "message.sparkstrength.tablet.already_owned";
-    private static final String UNDERCOVER_GRANTED_KEY = "message.sparkstrength.tablet.undercover_granted";
-    private static final String ATTENDANT_GRANTED_KEY = "message.sparkstrength.tablet.attendant_granted";
     private static boolean registered;
 
     private TabletShopService() {
@@ -40,198 +33,102 @@ public final class TabletShopService {
             return;
         }
         registered = true;
+        // Corrupt Cop joins SparkFactionAPI PoliceRoles, i.e. the police network (TabletShopRules#isPoliceNetworkRole).
+        // 黑警注册进 SparkFactionAPI PoliceRoles，即加入义警平板网络。
         SparkFactionCompat.registerCorruptCopPoliceRole();
-        // No BuildShopEntries listener: SparkWitch witch/killer shops and NoellesRoles/SparkWitch civilian shops
-        // call clearEntries() and cross-mod listener order is not guaranteed. Purchases resolve by list index,
-        // so the tablet is appended last after every listener (M67ShopEntriesMixin -> appendToFinalEntries).
-        // 不注册 BuildShopEntries 监听：SparkWitch 魔女/杀手商店与 NoellesRoles/SparkWitch 平民商店会 clearEntries()，
-        // 且跨模组监听顺序无保证。购买按列表下标解析，因此平板在所有监听器之后追加到末尾。
-        //
-        // Deny-only (never allow, so later listeners still run). Wathe prints the deny reason on the action bar;
-        // a false onBuy would instead be overwritten by Wathe's generic purchase_failed message in the same tick.
-        // 只拒绝不放行（不会跳过后续监听器）。Wathe 会把拒绝原因显示在动作栏；若仅靠 onBuy 返回 false，
-        // 提示会在同一 tick 被 Wathe 的通用 purchase_failed 覆盖。
-        ShopPurchase.BEFORE.register(TabletShopService::denyDuplicateTablet);
-    }
-
-    /**
-     * Grants the free starter tablet ({@link TabletShopRules#startsWithTablet}: Undercover killer network, Attendant
-     * door monitor) for roles assigned mid-round (RoleAssigned while ACTIVE); round-start roles are granted by
-     * {@link #grantStarterTablets} once they are final.
-     * 为局中分配的身份（ACTIVE 状态下的 RoleAssigned）发放免费开局平板（卧底的杀手网络、乘务员的房门监控）；
-     * 开局身份在最终确定后由 grantStarterTablets 发放。
-     */
-    public static void assignForRole(ServerPlayerEntity player, Role role) {
-        // SparkTraits Conscience compensation may convert an Undercover after RoleAssigned during initialization;
-        // grant only for the final role.
-        // SparkTraits 良心补偿可能在初始化期间的 RoleAssigned 之后改写卧底身份；只按最终身份发放。
-        if (GameWorldComponent.KEY.get(player.getWorld()).getGameStatus() != GameWorldComponent.GameStatus.ACTIVE) {
-            return;
-        }
-        grantStarterTablet(player, role);
     }
 
     /**
      * Round-start grant from {@code GameEvents.ON_FINISH_INITIALIZE}: runs after every RoleAssigned of Wathe's
-     * initializeGame (including trait compensation) and before the round becomes ACTIVE.
-     * 开局发放（ON_FINISH_INITIALIZE）：在 Wathe initializeGame 的所有 RoleAssigned（含天赋补偿）之后、
-     * 对局变为 ACTIVE 之前执行。
+     * initializeGame (including SparkTraits Conscience compensation, which may rewrite a role), so it sees final roles
+     * and traits, before the round becomes ACTIVE. Must run after the tablet round state is cleared.
+     * 开局发放（ON_FINISH_INITIALIZE）：在 Wathe initializeGame 的所有 RoleAssigned（含可能改写身份的 SparkTraits
+     * 良心补偿）之后、对局变为 ACTIVE 之前执行，因此看到的是最终身份与天赋。必须在清理平板本局状态之后调用。
      */
     public static void grantStarterTablets(ServerWorld world, GameWorldComponent game) {
+        TabletWorldComponent state = TabletWorldComponent.KEY.get(world);
         for (ServerPlayerEntity player : world.getPlayers()) {
+            // Status is still STARTING here, so isPlayerPlayingAndAlive would be false for everyone.
+            // 此时状态仍为 STARTING，isPlayerPlayingAndAlive 对所有人都为 false。
             if (game.hasAnyRole(player)) {
-                grantStarterTablet(player, game.getRole(player));
+                settle(player, state, false);
             }
         }
     }
 
-    private static void grantStarterTablet(ServerPlayerEntity player, Role role) {
-        if (TabletShopRules.shouldGrantStarterTablet(role, hasTabletAnywhere(player))) {
-            player.giveItemStack(new ItemStack(SparkStrengthItems.tablet()));
-            player.sendMessage(Text.translatable(
-                    AttendantRules.isAttendant(role) ? ATTENDANT_GRANTED_KEY : UNDERCOVER_GRANTED_KEY), false);
-        }
-    }
-
-    public static boolean isTabletEconomyEligible(PlayerEntity player) {
-        if (player == null) {
-            return false;
-        }
-        Role role = GameWorldComponent.KEY.get(player.getWorld()).getRole(player);
-        // Impostor is an independent optional trait override, including for Veteran; no income is granted here.
-        // 叛徒是独立的可选天赋覆盖（包括老兵）；此处不授予任何收入。
-        return TabletShopRules.canBuyTabletRole(role) || SparkTraitsCompat.hasImpostor(player);
-    }
-
     /**
-     * Appends the tablet to Wathe's final shop list; must give the same answer on client and server because
-     * Wathe rebuilds the list server-side and buys by index. Called from {@code M67ShopEntriesMixin}.
-     * 将平板追加到 Wathe 最终商店列表末尾；客户端与服务端必须得出相同结果，因为 Wathe 会在服务端重建列表并按下标购买。
-     *
-     * <p>Deliberately not {@code GameFunctions.isPlayerPlayingAndAlive}: Wathe's {@code initializeGame} runs
-     * {@code initializeShopsForPlayers} (which caches stock from this list) before the status becomes ACTIVE,
-     * so a running-state gate would drop the round-start {@code stock(1)}. Only the synced dead set is checked.
-     * 刻意不使用 isPlayerPlayingAndAlive：Wathe 在状态变为 ACTIVE 之前就调用 initializeShopsForPlayers 缓存库存，
-     * 依赖运行状态会丢失开局的 stock(1)。这里只检查已同步的死亡集合。</p>
+     * Mid-round reconciliation (END_WORLD_TICK, every {@link TabletShopRules#GRANT_RECONCILE_INTERVAL_TICKS} while
+     * ACTIVE) instead of a RoleAssigned-time grant: SparkWitch Grand Witch recruitment fires RoleAssigned and then
+     * rewrites every inventory slot from a snapshot (wiping anything given inside the event), and Wraith promotion uses
+     * addRole without firing RoleAssigned at all. Each alive, eligible, not-yet-settled player gets a tablet only if
+     * they hold none, and is settled either way; a missing tablet never re-triggers a grant, because the Black Raven
+     * disguise stashes inventory items and a re-grant would duplicate when the stash returns.
+     * 局中对账（ACTIVE 期间于 END_WORLD_TICK 每隔固定 tick 执行），取代 RoleAssigned 时发放：SparkWitch 大魔女招募会先触发
+     * RoleAssigned、再按快照重写所有物品栏槽位（事件内发放的物品会被抹掉）；冤魂晋升使用 addRole，根本不触发 RoleAssigned。
+     * 每名存活、有资格且尚未结算的玩家只在身上没有平板时获得一台，无论是否发放都记为已结算；平板缺失绝不会再次触发发放，
+     * 因为黑羽鸦伪装会暂存物品，重复发放会在暂存归还时产生第二台。
      */
-    public static List<ShopEntry> appendToFinalEntries(PlayerEntity player, List<ShopEntry> entries) {
-        if (player == null) {
-            return entries;
+    public static void tick(ServerWorld world) {
+        if (world.getTime() % TabletShopRules.GRANT_RECONCILE_INTERVAL_TICKS != 0) {
+            return;
         }
-        GameWorldComponent game = GameWorldComponent.KEY.get(player.getWorld());
-        // Undercover's and Attendant's tablets are granted at role assignment, so they are never listed here (an
-        // Impostor-trait one would otherwise see an entry it can never buy). Real role only, synced to both sides.
-        // 卧底与乘务员的平板在身份分配时发放，因此这里从不列出（否则带内鬼天赋者会看到一个永远买不了的商品）。只看真实身份，两端同步一致。
-        if (game.isPlayerDead(player.getUuid()) || TabletShopRules.startsWithTablet(game.getRole(player))) {
-            return entries;
+        if (GameWorldComponent.KEY.get(world).getGameStatus() != GameWorldComponent.GameStatus.ACTIVE) {
+            return;
         }
-        // A non-empty identity set implies a real round role (TabletChannelRules.Facts#hasRole).
-        // 身份频道集非空即意味着拥有有效的局内身份。
-        EnumSet<TabletChannel> allowed = TabletChannelResolver.identityChannels(player);
-        if (allowed.isEmpty()) {
-            return entries;
-        }
-        // Killer/witch-only roles with an intentionally empty shop keep no shop (and no money display).
-        // 仅杀手/魔女网络且商店被刻意清空的身份，保持无商店（也不显示金钱）。
-        if (!allowed.contains(TabletChannel.POLICE) && entries.isEmpty()) {
-            return entries;
-        }
-        for (ShopEntry entry : entries) {
-            if (TabletShopRules.TABLET_ENTRY_ID.equals(entry.id()) || entry.stack().isOf(SparkStrengthItems.tablet())) {
-                return entries;
+        TabletWorldComponent state = TabletWorldComponent.KEY.get(world);
+        for (ServerPlayerEntity player : world.getPlayers()) {
+            if (GameFunctions.isPlayerPlayingAndAlive(player)) {
+                settle(player, state, true);
             }
         }
-
-        ShopEntry tablet = new ShopEntry.Builder(
-                TabletShopRules.TABLET_ENTRY_ID,
-                tabletDisplayStack(allowed),
-                TabletChannelRules.price(allowed),
-                ShopEntry.Type.TOOL
-        ).actualStack(SparkStrengthItems.tablet().getDefaultStack())
-                .stock(1)
-                .onBuy(TabletShopService::buyTablet)
-                .build();
-        List<ShopEntry> result = new ArrayList<>(entries);
-        result.add(SparkTraitsCompat.discountShopEntryForCharisma(player, tablet));
-        return result;
     }
 
-    /**
-     * Server-side purchase handler (PlayerShopComponent.tryBuy). Returning false charges nothing. Round-start
-     * stock only exists for roles held at initialization, so this ownership check also caps mid-round roles at one.
-     * 服务端购买处理（PlayerShopComponent.tryBuy）；返回 false 不扣费。开局库存只覆盖初始化时的身份，
-     * 因此该持有检查同时把局中获得的身份限制为一台。
-     */
-    private static boolean buyTablet(PlayerEntity player) {
-        if (ownsTablet(player)) {
-            // Normally already denied with a message by denyDuplicateTablet; this is the authoritative backstop.
-            // 通常已由 denyDuplicateTablet 带提示拒绝；此处为权威兜底。
-            return false;
+    private static void settle(ServerPlayerEntity player, TabletWorldComponent state, boolean syncAfterGrant) {
+        if (state.isTabletGrantSettled(player.getUuid())) {
+            return;
         }
-        // Wathe's default onBuy: first empty hotbar slot 0-8, otherwise fail.
-        // 与 Wathe 默认 onBuy 一致：放入第一个空的快捷栏 0-8，没有则失败。
-        if (!ShopEntry.insertStackInFreeSlot(player, SparkStrengthItems.tablet().getDefaultStack())) {
-            return false;
+        // Same identity facts as channel membership (TabletChannelResolver.identityChannels), plus the real Attendant.
+        // 与频道成员资格相同的身份事实（identityChannels），再加真实乘务员身份。
+        TabletChannelRules.Facts facts = TabletChannelResolver.facts(player);
+        EnumSet<TabletChannel> channels = TabletChannelRules.allowed(facts);
+        boolean realAttendant = isRealAttendant(player);
+        if (!TabletShopRules.isTabletEligible(facts.hasRole(), !channels.isEmpty(), realAttendant)) {
+            // Not settled: a later role/trait/faction change can still make this player eligible this round.
+            // 不记为已结算：本局之后的身份/天赋/阵营变化仍可能让该玩家获得资格。
+            return;
         }
-        if (player instanceof ServerPlayerEntity serverPlayer) {
-            TabletStateService.syncTo(serverPlayer);
+        if (!hasTabletAnywhere(player)) {
+            if (!player.giveItemStack(new ItemStack(SparkStrengthItems.tablet()))) {
+                // Full inventory: stay unsettled so the next reconciliation pass retries.
+                // 物品栏已满：保持未结算，由下一轮对账重试。
+                return;
+            }
+            List<String> keys = TabletShopRules.grantMessageKeys(channels, facts.undercover(), realAttendant);
+            for (String key : keys) {
+                player.sendMessage(Text.translatable(key), false);
+            }
+            if (syncAfterGrant) {
+                TabletStateService.syncTo(player);
+            }
         }
-        return true;
+        state.markTabletGrantSettled(player.getUuid());
     }
 
-    private static ShopPurchase.PurchaseResult denyDuplicateTablet(ServerPlayerEntity player, ShopEntry entry, int index) {
-        return TabletShopRules.TABLET_ENTRY_ID.equals(entry.id()) && ownsTablet(player)
-                ? ShopPurchase.PurchaseResult.deny(ALREADY_OWNED_KEY)
-                : null;
+    private static boolean isRealAttendant(PlayerEntity player) {
+        // Real round role only: a Coroner's Attendant disguise is lent a temporary tablet by CoronerService instead.
+        // 只看真实局内身份：验尸官的乘务员伪装改由 CoronerService 借出临时平板。
+        return AttendantRules.isAttendant(GameWorldComponent.KEY.get(player.getWorld()).getRole(player));
     }
 
     private static boolean hasTabletAnywhere(ServerPlayerEntity player) {
-        // RoleAssigned can fire more than once per round; scan every slot so the grant never duplicates.
-        // RoleAssigned 每局可能触发多次；扫描所有槽位，避免重复发放。
+        // Every slot plus the cursor stack (the inventory screen may be open), so a grant never duplicates a tablet.
+        // 扫描所有槽位以及鼠标上的物品（物品栏界面可能打开），保证发放绝不重复。
         for (int slot = 0; slot < player.getInventory().size(); slot++) {
             if (player.getInventory().getStack(slot).isOf(SparkStrengthItems.tablet())) {
                 return true;
             }
         }
-        return false;
-    }
-
-    private static boolean ownsTablet(PlayerEntity player) {
-        if (player.getInventory().contains(TabletShopService::isOwnedTablet)) {
-            return true;
-        }
-        // The shop lives in the inventory screen, so a tablet may be held on the cursor while buying.
-        // 商店位于物品栏界面，购买时平板可能正被鼠标拿起。
         return player.currentScreenHandler != null
-                && isOwnedTablet(player.currentScreenHandler.getCursorStack());
-    }
-
-    /**
-     * A tablet lent by a Coroner's Attendant disguise is taken back when the disguise ends, so it never blocks a purchase.
-     * 验尸官乘务员伪装借出的平板会在伪装结束时收回，因此不阻止购买。
-     */
-    private static boolean isOwnedTablet(ItemStack stack) {
-        return stack.isOf(SparkStrengthItems.tablet()) && !CoronerService.isTemporaryGrant(stack);
-    }
-
-    private static ItemStack tabletDisplayStack(Set<TabletChannel> allowed) {
-        ItemStack stack = SparkStrengthItems.tablet().getDefaultStack();
-        stack.set(DataComponentTypes.ITEM_NAME, Text.translatable("shop.sparkstrength.tablet"));
-        stack.set(DataComponentTypes.LORE, new LoreComponent(List.of(
-                Text.translatable(descriptionKey(allowed))
-                        .styled(style -> style.withColor(0x808080).withItalic(false))
-        )));
-        return stack;
-    }
-
-    private static String descriptionKey(Set<TabletChannel> allowed) {
-        String key = "shop.sparkstrength.tablet.description";
-        if (allowed.contains(TabletChannel.POLICE)) {
-            return allowed.contains(TabletChannel.KILLER) ? key + ".impostor" : key;
-        }
-        if (allowed.contains(TabletChannel.KILLER)) {
-            return key + ".killer";
-        }
-        return allowed.contains(TabletChannel.WITCH) ? key + ".witch" : key;
+                && player.currentScreenHandler.getCursorStack().isOf(SparkStrengthItems.tablet());
     }
 }

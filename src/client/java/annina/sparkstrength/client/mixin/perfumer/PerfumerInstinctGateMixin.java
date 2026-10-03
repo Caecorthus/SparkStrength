@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.Mixin;
  *   every key-gated highlight, the killer instinct night-vision light and the Corrupt Cop / witch light ORs that
  *   consult these gates.</li>
  *   <li>Outline: {@code getInstinctHighlight} returns -1, hiding always-on highlights too (GetInstinctHighlight
- *   listeners, SparkTraits HEAD answers, SparkWitch Insider/Fear wrappers, tablet outlines).</li>
+ *   listeners, SparkTraits HEAD answers, SparkWitch Insider/Fear wrappers, tablet suspect highlights).</li>
  * </ul>
  * Ordering: MixinExtras applies {@code @WrapMethod} after every {@code @Inject}/{@code @ModifyReturnValue} from any mod
  * at any priority, so returning without {@code original.call()} skips them all; a HEAD veto could not, because HEAD
@@ -25,7 +25,7 @@ import org.spongepowered.asm.mixin.Mixin;
  * 风油精本能屏蔽第 2、3 层，只作用于本地受害者（死亡或旁观视角不受影响）。
  * 门控层：两个本能入口返回 false，同时关闭所有需按键的高亮、杀手本能夜视亮度，以及依赖这两个入口的黑警/魔女亮度 OR 注入。
  * 描边层：{@code getInstinctHighlight} 返回 -1，常驻描边也一并隐藏（GetInstinctHighlight 监听器、SparkTraits 的 HEAD
- * 结果、SparkWitch 内应/恐惧包装器、平板描边）。
+ * 结果、SparkWitch 内应/恐惧包装器、平板嫌疑人高亮）。
  * 顺序：MixinExtras 在所有模组、任意优先级的 {@code @Inject}/{@code @ModifyReturnValue} 之后应用 {@code @WrapMethod}，
  * 因此不调用 {@code original.call()} 即可全部跳过；HEAD 否决做不到，因为 HEAD 回调按优先级升序执行、排在更早的启用之后。
  * 多个 {@code @WrapMethod} 之间低优先级位于最外层：500 包在 SparkWitch 内应（1000）、恐惧（1500）与控场专家（1000）外面，

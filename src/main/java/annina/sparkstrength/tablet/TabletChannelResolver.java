@@ -24,9 +24,9 @@ import java.util.UUID;
  * Gathers identity facts for tablet channels from role flags, owner-synced traits and the role-only base faction.
  * 从身份标记、同步给本人的天赋与仅由身份决定的基础阵营收集平板频道事实。
  *
- * <p>{@link #identityChannels(PlayerEntity)} is side-agnostic so client shop listings and server purchase
- * validation (which pick entries by index) always agree. Server-only live/frozen access builds on top of it.
- * identityChannels 与端无关，保证按下标购买的客户端商店列表与服务端校验一致；服务端的存活/冻结访问建立在其之上。</p>
+ * <p>{@link #identityChannels(PlayerEntity)} is side-agnostic (only owner-synced data); the tablet grant
+ * ({@code TabletShopService}), links and the server-only live/frozen access all build on it.
+ * identityChannels 与端无关（只读取同步给本人的数据）；平板发放、互认与服务端的存活/冻结访问都建立在其之上。</p>
  */
 public final class TabletChannelResolver {
     private TabletChannelResolver() {
@@ -40,7 +40,7 @@ public final class TabletChannelResolver {
         boolean hasRole = role != null && role != WatheRoles.NO_ROLE;
         return new TabletChannelRules.Facts(
                 hasRole,
-                hasRole && TabletShopRules.canBuyTabletRole(role),
+                hasRole && TabletShopRules.isPoliceNetworkRole(role),
                 hasRole && role.canUseKiller(),
                 hasRole && SparkTraitsCompat.hasImpostor(player),
                 hasRole && SparkTraitsCompat.hasConscience(player),
@@ -86,8 +86,8 @@ public final class TabletChannelResolver {
 
     /**
      * Server-only role-granted sections, independent of channels (a no-signal holder keeps them) and never part of
-     * {@link TabletChannelRules.Facts}, so shop listing, pricing, links and the police electorate are unaffected.
-     * 服务端的身份授予分区，与频道无关（无信号的持有者仍保留），且从不进入 Facts，因此不影响商店、定价、互认与义警选民。
+     * {@link TabletChannelRules.Facts}, so channel membership, links and the police electorate are unaffected.
+     * 服务端的身份授予分区，与频道无关（无信号的持有者仍保留），且从不进入 Facts，因此不影响频道成员资格、互认与义警选民。
      *
      * <p>Door log: the REAL round role is Attendant (Wathe keeps the role after death, so a dead Attendant keeps read
      * access like a frozen channel), or a live Coroner disguise as Attendant ({@code CoronerService.afterKill} clears
@@ -121,8 +121,8 @@ public final class TabletChannelResolver {
     }
 
     /**
-     * @param allowed  networks the holder belongs to (push fan-out, member lists, outlines, police electorate; anonymous
-     *                 channels filter member lists per viewer by links and draw no outlines) / 持有者所属的网络（匿名频道的成员列表还会按互认逐人过滤，且不绘制描边）
+     * @param allowed  networks the holder belongs to (push fan-out, member lists, police electorate; member lists are
+     *                 filtered per viewer by TabletIdentityRules, and no channel draws member outlines) / 持有者所属的网络（成员列表还会经 TabletIdentityRules 按查看者过滤，且任何频道都不描边成员）
      * @param selected channel currently viewed and posted to; null means no signal / 当前查看与发言的频道，null 表示无信号
      * @param alive    {@code GameFunctions.isPlayerPlayingAndAlive} / 是否局内存活
      * @param canSend  {@link TabletChannelRules#canSend} / 是否可发送聊天

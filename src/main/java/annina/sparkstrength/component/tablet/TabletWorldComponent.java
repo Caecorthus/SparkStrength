@@ -69,6 +69,14 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
     private final HashMap<UUID, HashSet<UUID>> identityLinks = new HashMap<>();
     private final LinkedHashMap<LinkKey, LinkRequest> linkRequests = new LinkedHashMap<>();
     private final HashMap<UUID, LastLinkGesture> lastLinkGestures = new HashMap<>();
+    // Tasks completed this round per player (police identity unlock): in-memory only, a restart fails closed to locked.
+    // 本局每名玩家已完成的任务数（用于解锁义警身份）：仅内存保存，重启后安全回退为未解锁。
+    private final HashMap<UUID, Integer> completedTasks = new HashMap<>();
+    // Players whose free tablet grant is settled this round (granted, or already holding one): round-scoped and
+    // in-memory only (never NBT); a restart only re-checks alive eligible players, who are granted one if they hold none.
+    // 本局已结算免费平板发放的玩家（已发放或本就持有）：仅本局内存状态（绝不写入 NBT）；重启后只会重新检查存活且有资格的玩家，
+    // 身上没有平板者才补发。
+    private final HashSet<UUID> tabletGrantSettled = new HashSet<>();
     // Attendant door log: round-scoped and in-memory only (never NBT), shared by every door-log viewer of this world.
     // 乘务员房门记录：仅本局内存状态（绝不写入 NBT），由本世界所有房门监控查看者共享。
     private final DoorLog doorLog = new DoorLog();
@@ -201,6 +209,15 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
         return previous != null && TabletLinkRules.isHeldRepeat(previous.target(), previous.tick(), target, now);
     }
 
+    public int completedTasks(UUID playerUuid) {
+        return completedTasks.getOrDefault(playerUuid, 0);
+    }
+
+    /** Counts one completed task and returns the new round total. / 计入一次完成的任务并返回本局新的总数。 */
+    public int recordCompletedTask(UUID playerUuid) {
+        return completedTasks.merge(playerUuid, 1, Integer::sum);
+    }
+
     public Set<UUID> suspects() {
         return Collections.unmodifiableSet(suspects);
     }
@@ -302,6 +319,17 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
         return (int) Math.max(0, meetingCooldownEndTick - currentTick);
     }
 
+    /** See {@code TabletShopService#tick}. / 见 TabletShopService#tick。 */
+    public boolean isTabletGrantSettled(UUID playerUuid) {
+        return tabletGrantSettled.contains(playerUuid);
+    }
+
+    public void markTabletGrantSettled(UUID playerUuid) {
+        if (playerUuid != null) {
+            tabletGrantSettled.add(playerUuid);
+        }
+    }
+
     public DoorLog doorLog() {
         return doorLog;
     }
@@ -320,6 +348,8 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
         identityLinks.clear();
         linkRequests.clear();
         lastLinkGestures.clear();
+        completedTasks.clear();
+        tabletGrantSettled.clear();
         doorLog.clear();
         // syncedViewers is kept on purpose: the sync pass after a round clear must still revoke stale snapshots.
         // 有意保留 syncedViewers：清局后的同步轮次仍需向其撤销过期快照。
