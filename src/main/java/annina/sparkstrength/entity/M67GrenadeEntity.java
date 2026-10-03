@@ -38,8 +38,12 @@ public final class M67GrenadeEntity extends ThrownItemEntity {
             M67GrenadeEntity.class, TrackedDataHandlerRegistry.OPTIONAL_UUID);
     private static final TrackedData<Optional<UUID>> THROWER_UUID = DataTracker.registerData(
             M67GrenadeEntity.class, TrackedDataHandlerRegistry.OPTIONAL_UUID);
+    // m67_throw.ogg's striker clicks end within 0.25s of release; landing clatter must not mask them.
+    // m67_throw.ogg 的撞针声在投出后 0.25 秒内结束，落地声不得将其掩盖。
+    private static final int THROW_STRIKER_TICKS = 5;
 
     private boolean hasLanded;
+    private boolean landSoundPending;
     private int interpolationTicks;
     private double trackedX;
     private double trackedY;
@@ -142,6 +146,11 @@ public final class M67GrenadeEntity extends ThrownItemEntity {
         M67Physics.Vector velocity = motion.velocity();
         setVelocity(velocity.x(), velocity.y(), velocity.z());
         if (motion.firstLanding()) {
+            landSoundPending = true;
+        }
+        // Spawned on release, so age counts server ticks since the throw. / 投出时生成，age 即投出后的服务端刻数。
+        if (landSoundPending && age >= THROW_STRIKER_TICKS) {
+            landSoundPending = false;
             world.playSound(null, getX(), getY(), getZ(), SparkStrengthSounds.M67_LAND,
                     SoundCategory.PLAYERS, 1.0F, 1.0F);
         }

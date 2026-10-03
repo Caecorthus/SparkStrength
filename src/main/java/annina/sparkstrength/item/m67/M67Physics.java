@@ -1,7 +1,9 @@
 package annina.sparkstrength.item.m67;
 
 public final class M67Physics {
-    public static final double LAUNCH_SPEED = 0.98;
+    // Rests >= 1.75x the old 0.98-speed distance at every aim from 60° up to 30° down.
+    // 从上仰 60° 到下压 30° 的任意角度，静止距离均不低于旧速度 0.98 的 1.75 倍。
+    public static final double LAUNCH_SPEED = 2.25;
     public static final double GRAVITY = 0.08;
     private static final double AIR_DRAG = 0.99;
     private static final double WALL_RESTITUTION = 0.35;
