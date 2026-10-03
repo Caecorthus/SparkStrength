@@ -83,12 +83,16 @@ public final class SparkStrengthEvents {
         ToxicologistCapsuleShop.register();
         ToxicologistBlueVitriolService.register();
         TabletShopService.register();
+        TabletStateService.register();
         VeteranShopService.register();
         // 回溯者被动收入需要按世界 tick 定时结算，注册在服务端世界 tick 末尾。
         ServerTickEvents.END_WORLD_TICK.register(CoronerEconomyService::tick);
         ServerTickEvents.END_WORLD_TICK.register(CoronerService::tick);
         ServerTickEvents.END_WORLD_TICK.register(RecallerEconomyService::tick);
         ServerTickEvents.END_WORLD_TICK.register(TabletStateService::tick);
+        // Mid-round tablet grant reconciliation (replaces a RoleAssigned-time grant; see TabletShopService#tick).
+        // 局中平板补发对账（取代 RoleAssigned 时发放；见 TabletShopService#tick）。
+        ServerTickEvents.END_WORLD_TICK.register(TabletShopService::tick);
         // Must stay on END_WORLD_TICK: it reads what SparkTraits' player component tick did earlier in the same world tick.
         // 必须挂在 END_WORLD_TICK：它读取同一世界 tick 内 SparkTraits 玩家组件刚做的结果。
         ServerTickEvents.END_WORLD_TICK.register(ToxicologistBluePassiveService::tick);
@@ -104,7 +108,6 @@ public final class SparkStrengthEvents {
                 DemonHunterSniffService.assignForRole(serverPlayer, role);
                 MorphlingService.assignForRole(serverPlayer, role);
                 PhantomBackpackService.assignForRole(serverPlayer, role);
-                TabletShopService.assignForRole(serverPlayer, role);
                 ToxicologistAntidoteService.clearPlayer(serverPlayer);
                 VeteranKnifeService.assignForRole(serverPlayer, role);
             }
@@ -174,6 +177,8 @@ public final class SparkStrengthEvents {
                 // Also clear at round start: an aborted round or restart must not carry tablet chat/suspects forward.
                 // 开局时也清理：异常结束或重启的对局不能把平板聊天/嫌疑人带入下一局。
                 TabletStateService.clearRoundState(serverWorld);
+                // After the clear (it resets the per-round grant set): every tablet-eligible player gets one free tablet.
+                // 必须在清理之后（清理会重置本局发放记录）：每名符合条件的玩家免费获得一台平板。
                 TabletShopService.grantStarterTablets(serverWorld, gameComponent);
                 // Crime-scene snapshots are round state; clear before granting kits so a new round starts empty.
                 // 案发快照属于单局状态；先清空再发放侦探道具，保证新一局从空白开始。

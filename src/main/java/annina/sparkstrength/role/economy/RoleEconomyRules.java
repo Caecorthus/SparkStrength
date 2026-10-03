@@ -1,13 +1,11 @@
 package annina.sparkstrength.role.economy;
 
-import annina.sparkstrength.role.corruptcop.CorruptCopRules;
 import annina.sparkstrength.role.detective.DetectiveRules;
 import annina.sparkstrength.role.coroner.CoronerRules;
 import annina.sparkstrength.role.engineer.EngineerRules;
 import annina.sparkstrength.role.professor.ProfessorSerumRules;
 import annina.sparkstrength.role.toxicologist.ToxicologistCapsuleRules;
 import annina.sparkstrength.role.veteran.VeteranRules;
-import annina.sparkstrength.tablet.TabletShopRules;
 import dev.doctor4t.wathe.api.Role;
 import org.jetbrains.annotations.Nullable;
 
@@ -31,11 +29,7 @@ public final class RoleEconomyRules {
                 || ToxicologistCapsuleRules.isToxicologist(role)
                 || ProfessorSerumRules.isProfessor(role)
                 || EngineerRules.isEngineer(role)
-                || VeteranRules.isVeteran(role)
-                // Shop categories must not grant starting/task money to new roles.
-                // 商店分类不能为新身份自动授予初始金币或任务收入。
-                || TabletShopRules.isVigilante(role)
-                || CorruptCopRules.isCorruptCop(role);
+                || VeteranRules.isVeteran(role);
     }
 
     public static boolean shouldInitializeGoodMoney(@Nullable Role role) {

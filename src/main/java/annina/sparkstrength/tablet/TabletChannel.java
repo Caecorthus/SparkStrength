@@ -37,13 +37,14 @@ public enum TabletChannel {
     }
 
     /**
-     * Only the police network outlines its members in the world. Witches already recognise each other through the
-     * witch cohort tag and witch instinct (a tablet outline would override its role colours), and a killer outline
-     * would single out real killers from the Undercover, whom NoellesRoles masks at PRIORITY_HIGH.
-     * 只有义警网络会在世界中描边成员。魔女已能通过魔女同伙标记与魔女本能互认（平板描边会覆盖其身份颜色）；
-     * 杀手描边则会把真正的杀手与卧底区分开（NoellesRoles 以 PRIORITY_HIGH 为卧底伪装）。
+     * Other members' identities (chat senders and member rows) reveal to each viewer only after that viewer has
+     * completed {@link TabletIdentityRules#POLICE_REVEAL_TASKS} tasks this round; redaction is server-side per viewer
+     * ({@link TabletIdentityRules}). No tablet channel outlines its members in the world. A code capability only, never
+     * a wire field, and never link-capable: identity links stay {@link #anonymousSenders()} (killer) only.
+     * 其他成员的身份（聊天发送者与成员行）只在查看者本局完成指定数量任务后才对其显示；脱敏在服务端按查看者进行。
+     * 任何平板频道都不会在世界中描边成员。仅为代码能力，不上线传输，也不可互认：身份互认仍只属于 anonymousSenders（杀手）。
      */
-    public boolean outlinesMembers() {
+    public boolean revealsAfterTasks() {
         return this == POLICE;
     }
 
@@ -57,8 +58,10 @@ public enum TabletChannel {
 
     /**
      * Senders and members are shown as "???" to each viewer until the two have linked; redaction is server-side per
-     * viewer. A code capability only, never a wire field.
-     * 发送者与成员对每位查看者显示为“???”，直到双方互认；脱敏在服务端按查看者进行。仅为代码能力，不上线传输。
+     * viewer. Also the only source of link eligibility ({@link TabletLinkRules#canLink}). A code capability only, never
+     * a wire field.
+     * 发送者与成员对每位查看者显示为“???”，直到双方互认；脱敏在服务端按查看者进行。也是互认资格的唯一来源。
+     * 仅为代码能力，不上线传输。
      */
     public boolean anonymousSenders() {
         return this == KILLER;
