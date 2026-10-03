@@ -8,6 +8,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
+import net.minecraft.world.World;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -35,6 +36,8 @@ public final class SparkTraitsCompat {
             "discountShopEntryForCharisma", ShopEntry.class, PlayerEntity.class, ShopEntry.class);
     private static final Method THROW_CHARGE_TICKS = findOptionalMethod(
             "getThrowChargeTicks", int.class, PlayerEntity.class, int.class);
+    private static final Method FINAL_MOMENT_ACTIVE = findOptionalMethod(
+            "isFinalMomentActive", boolean.class, World.class);
     private static boolean teamQueryFailed;
 
     private SparkTraitsCompat() {
@@ -148,6 +151,12 @@ public final class SparkTraitsCompat {
         }
         Object result = invokeOptional(THROW_CHARGE_TICKS, player, baseTicks);
         return result instanceof Integer ticks && ticks > 0 ? ticks : baseTicks;
+    }
+
+    /** Reads SparkTraits' world-synced Final Moment flag; usable on clients. Missing or old APIs report false.
+     *  读取 SparkTraits 同步到世界的终局时刻标记，客户端可用；缺失或旧版 API 一律视为未开启。 */
+    public static boolean isFinalMomentActive(World world) {
+        return world != null && Boolean.TRUE.equals(invokeOptional(FINAL_MOMENT_ACTIVE, world));
     }
 
     private static Method findOptionalMethod(String name, Class<?> returnType, Class<?>... parameters) {

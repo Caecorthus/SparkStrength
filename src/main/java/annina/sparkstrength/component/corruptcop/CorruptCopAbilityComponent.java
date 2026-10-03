@@ -12,8 +12,8 @@ import org.ladysnake.cca.api.v3.component.ComponentRegistry;
 import org.ladysnake.cca.api.v3.component.sync.AutoSyncedComponent;
 
 /**
- * Owner-only runtime state for the Corrupt Cop ability.
- * 黑警主动技能仅同步给本人的运行时状态。
+ * Runtime state for the Corrupt Cop ability, synced to every tracking client.
+ * 黑警主动技能的运行时状态，同步给所有追踪该玩家的客户端。
  */
 public final class CorruptCopAbilityComponent implements AutoSyncedComponent {
     public static final ComponentKey<CorruptCopAbilityComponent> KEY = ComponentRegistry.getOrCreate(
@@ -46,9 +46,10 @@ public final class CorruptCopAbilityComponent implements AutoSyncedComponent {
 
     @Override
     public boolean shouldSyncWith(ServerPlayerEntity recipient) {
-        // The toggle is private HUD/audio state and is never disclosed to other players.
-        // 开关只服务于本人的 HUD 与音乐，绝不向其他玩家披露。
-        return recipient == player;
+        // Nearby clients need the toggle to conceal the cop from their own instinct; HUD and music still read
+        // only the local player's copy.
+        // 附近客户端需要该开关来在自己的本能中屏蔽黑警；HUD 与音乐仍只读取本人的副本。
+        return true;
     }
 
     @Override

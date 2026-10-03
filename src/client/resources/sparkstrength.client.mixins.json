@@ -9,6 +9,7 @@
     "coroner.CoronerTimeRendererMixin",
     "corruptcop.SoundManagerAccessor",
     "corruptcop.SoundSystemAccessor",
+    "corruptcop.WatheClientInstinctConcealMixin",
     "corruptcop.WatheClientInstinctLightMixin",
     "noisemaker.NoisemakerInventoryScreenMixin",
     "phantom.PhantomBackpackInventoryScreenMixin",
