@@ -25,8 +25,26 @@ public final class FlashlightBeamRules {
      */
     public static final double RAY_GRID_MARGIN_RADIANS = Math.toRadians(8.0);
     public static final int RAY_GRID_SIZE = 32;
-    public static final double SHADOW_BIAS_BLOCKS = 0.35;
-    public static final double SHADOW_BIAS_PER_BLOCK = 0.02;
+    /**
+     * Occlusion stores, per ray, the distance where the ray leaves the first occluder (see
+     * {@link #OCCLUDER_DEPTH_CAP_BLOCKS}), so an occluder's lit front faces keep its whole thickness as slack and the
+     * receiver shader's normal offset absorbs grid discretisation. The bias is therefore slightly negative up close:
+     * receivers lying on the occluder's far faces (the floor and wall seams right behind a closed door) count as
+     * shadowed; it turns positive past 20 blocks where cells grow coarse.
+     * 遮挡按射线记录离开首个遮挡体的距离（见 OCCLUDER_DEPTH_CAP_BLOCKS），因此遮挡体受光的正面以其整个厚度作为余量，
+     * 受光着色器的法线偏移吸收网格离散误差。所以近处的偏移略为负：位于遮挡体背面上的受光点（紧贴关闭的门背后的地面与墙缝）
+     * 视为处于阴影中；超过 20 格后单元变粗，偏移转为正值。
+     */
+    public static final double SHADOW_BIAS_BLOCKS = -0.02;
+    public static final double SHADOW_BIAS_PER_BLOCK = 0.001;
+    /**
+     * Deepest an occluder run may extend past its entry: a ray that leaves one occluding box straight into another
+     * (carpet into floor, slab into the block below) keeps going up to this depth, which gives grazing floors a
+     * full block of slack, while a ray diving into the ground cannot carry light under a wall.
+     * 遮挡区间自进入点起的最大延伸深度：射线离开一个遮挡盒并立即进入另一个（地毯到地面、台阶到下方方块）时继续延伸至此
+     * 深度，使掠射地面获得一整格余量，同时钻入地面的射线不会把光带到墙下。
+     */
+    public static final double OCCLUDER_DEPTH_CAP_BLOCKS = 1.0;
     /** Soft knee before light reaches albedo or entity light levels. / 光照作用于反照率或实体亮度前的软拐点。 */
     public static final double EXPOSURE = 1.6;
     /**
@@ -116,8 +134,13 @@ public final class FlashlightBeamRules {
         return SHADOW_BIAS_BLOCKS + SHADOW_BIAS_PER_BLOCK * Math.max(0.0, distance);
     }
 
-    public static boolean isShadowed(double distance, double hitDistance) {
-        return distance > hitDistance + shadowBias(distance);
+    /**
+     * True when a receiver {@code distance} from the cast origin lies beyond the occluder the cell's ray left at
+     * {@code occluderExit} (RANGE_BLOCKS when nothing occludes). 距投射原点 distance 的受光点位于该单元射线离开遮挡体的
+     * 距离 occluderExit（无遮挡时为射程）之后时为 true。
+     */
+    public static boolean isShadowed(double distance, double occluderExit) {
+        return distance > occluderExit + shadowBias(distance);
     }
 
     /** 16-bit fixed point of {@code distance / RANGE_BLOCKS}. / 距离占射程比例的 16 位定点编码。 */

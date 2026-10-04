@@ -64,6 +64,10 @@ float flashlight_shadow_bias(float dist) {
     return ShadowBias.x + ShadowBias.y * max(0.0, dist);
 }
 
+// hitDistance is where the cell's ray LEAVES its first occluder (FlashlightRayMap). The occluder's thickness is the
+// slack for its own lit faces, so the bias is slightly negative up close (points on a door's far face are shadowed).
+// hitDistance 为单元射线离开首个遮挡体的距离（见 FlashlightRayMap）。遮挡体厚度即其受光面的余量，
+// 因此近处偏移略为负（门背面上的点处于阴影中）。
 bool flashlight_is_shadowed(float dist, float hitDistance) {
     return dist > hitDistance + flashlight_shadow_bias(dist);
 }
@@ -85,9 +89,9 @@ bool flashlight_grid_point(vec3 pos, out vec2 texel, out float dist) {
     return true;
 }
 
-// 1 when the cell's ray reaches dist, 0 when it is blocked first; cells outside the grid are unlit.
-// R/G hold the high/low byte of encodeDistance(hit).
-// 单元射线能到达 dist 时为 1，先被遮挡时为 0；网格外的单元视为不受光。R/G 为命中距离编码的高/低字节。
+// 1 when the cell's ray reaches dist, 0 when an occluder lies before it; cells outside the grid are unlit.
+// R/G hold the high/low byte of encodeDistance(occluder exit).
+// 单元射线能到达 dist 时为 1，之前有遮挡体时为 0；网格外的单元视为不受光。R/G 为遮挡体出口距离编码的高/低字节。
 float flashlight_cell_lit(ivec2 cell, float dist) {
     int size = int(RayGrid.y);
     if (cell.x < 0 || cell.y < 0 || cell.x >= size || cell.y >= size) {
@@ -113,7 +117,7 @@ float flashlight_visibility(vec2 texel, float dist) {
 }
 
 // Halves the flashlight where the scene is already lit: B/A hold block/sky light * 17 of the open cell before the
-// hit, looked up through the live lightmap (wathe's true darkness maps level 0 to black, so dark areas keep 1.0).
+// occluder, looked up through the live lightmap (wathe's true darkness maps level 0 to black, so dark areas keep 1.0).
 // 场景本已明亮处将手电亮度减半：B/A 为命中前空气格的方块光/天空光 ×17，经实时光照贴图查询
 // （wathe 真黑暗把 0 级映射为纯黑，所以黑暗处保持 1.0）。
 float flashlight_ambient_scale(vec2 texel) {

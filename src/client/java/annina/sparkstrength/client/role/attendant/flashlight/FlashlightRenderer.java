@@ -80,15 +80,21 @@ public final class FlashlightRenderer {
     }
 
     /**
-     * Client block change (see FlashlightReceiverInvalidationMixin): re-mesh the section and border neighbours.
-     * 客户端方块变化（见 FlashlightReceiverInvalidationMixin）：重新网格化所在区段及边界相邻区段。
+     * Client block change (see FlashlightReceiverInvalidationMixin): re-mesh the section and border neighbours, and
+     * let nearby beams recast their occlusion next tick (a door that just closed must stop light at once).
+     * 客户端方块变化（见 FlashlightReceiverInvalidationMixin）：重新网格化所在区段及边界相邻区段，并让附近光束在下一 tick
+     * 重新投射遮挡（刚关上的门必须立即挡光）。
      */
     public static void onBlockChanged(BlockPos pos) {
         if (RenderSystem.isOnRenderThread()) {
             RECEIVERS.onBlockChanged(pos);
+            FlashlightLights.onBlockChanged(pos);
         } else {
             BlockPos immutable = pos.toImmutable();
-            RenderSystem.recordRenderCall(() -> RECEIVERS.onBlockChanged(immutable));
+            RenderSystem.recordRenderCall(() -> {
+                RECEIVERS.onBlockChanged(immutable);
+                FlashlightLights.onBlockChanged(immutable);
+            });
         }
     }
 

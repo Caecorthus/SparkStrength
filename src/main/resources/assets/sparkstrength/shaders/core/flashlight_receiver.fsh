@@ -37,9 +37,12 @@ void main() {
         discard;
     }
 
+    // Lambert-like response with a 0.3 floor for lit faces, faded to 0 as a face turns edge-on so back faces (the far
+    // side of a closed door) get nothing and grazing faces do not pop.
+    // 受光面采用带 0.3 下限的类 Lambert 响应，并在表面转为侧向时渐变到 0：背面（关闭的门的背光面）不受光，掠射面不会突变。
     vec3 normal = normalize(vertexNormal);
     float facing = max(dot(normal, lightDir), 0.0);
-    intensity *= mix(0.3, 1.0, facing);
+    intensity *= mix(0.3, 1.0, facing) * smoothstep(0.0, 0.1, facing);
 
     // Normal offset: lift the lookup by about one grid cell at grazing angles, so a floor seen at a shallow angle does
     // not shadow itself where one cell's hit distance spans several blocks. The isShadowed test itself is unchanged.
