@@ -80,6 +80,9 @@ public final class VeteranKnifeService {
         }
 
         Hand usedHand = heldKnifeHand(player);
+        // 必须在目标死亡前保存有效阵营；SparkTraits 会在死亡后的事件中清空目标当前词条。
+        boolean targetWasEffectiveCivilian =
+                VeteranRules.isEffectiveCivilian(game.getRole(target), target);
         knife.useStab();
         if (VeteranRules.shouldRemoveKnifeAfterUse(knife.getStabUsesLeft())) {
             removeOneHeldOrInventoryKnife(player);
@@ -95,7 +98,7 @@ public final class VeteranKnifeService {
         );
 
         GameFunctions.killPlayer(target, true, player, GameConstants.DeathReasons.KNIFE);
-        punishVeteranForStabbingInnocent(game, player, target);
+        punishVeteranForStabbingInnocent(game, player, target, targetWasEffectiveCivilian);
         player.swingHand(usedHand);
         // 老兵加强要求刺杀后没有刀 CD；这里显式清掉，防止其他逻辑在同 tick 写入冷却。
         player.getItemCooldownManager().remove(WatheItems.KNIFE);
@@ -127,6 +130,9 @@ public final class VeteranKnifeService {
          * 临时匕首会在解除/切换变形时统一回收。
          */
         Hand usedHand = heldKnifeHand(player);
+        // 验尸官借用老兵身份时也要在死亡前保存词条阵营，和真实老兵完全一致。
+        boolean targetWasEffectiveCivilian =
+                VeteranRules.isEffectiveCivilian(game.getRole(target), target);
         GameRecordManager.recordItemUse(
                 player,
                 Registries.ITEM.getId(WatheItems.KNIFE),
@@ -135,7 +141,7 @@ public final class VeteranKnifeService {
         );
         GameFunctions.killPlayer(target, true, player, GameConstants.DeathReasons.KNIFE);
         if (CoronerService.hasVeteranDisguise(player)) {
-            punishVeteranForStabbingInnocent(game, player, target);
+            punishVeteranForStabbingInnocent(game, player, target, targetWasEffectiveCivilian);
         }
         player.swingHand(usedHand);
         player.getItemCooldownManager().remove(WatheItems.KNIFE);
@@ -151,16 +157,17 @@ public final class VeteranKnifeService {
     private static void punishVeteranForStabbingInnocent(
             GameWorldComponent game,
             ServerPlayerEntity veteran,
-            ServerPlayerEntity target
+            ServerPlayerEntity target,
+            boolean targetWasEffectiveCivilian
     ) {
         if (!game.isPlayerDead(target.getUuid())
-                || !VeteranRules.isEffectiveCivilian(game.getRole(target), target)
+                || !targetWasEffectiveCivilian
                 || !GameFunctions.isPlayerPlayingAndAlive(veteran)) {
             return;
         }
 
         // 需求指定“使用匕首 knife 杀到好人阵营时老兵小脑死亡”。
-        // 这里把“好人阵营”严格按有效阵营处理：善良词条仍算好人，会触发惩罚；
+        // 这里使用出刀前快照严格按有效阵营处理：善良词条仍算好人，会触发惩罚；
         // 内鬼词条虽然原始职业是好人，但有效阵营已是杀手，因此不会误罚老兵。
         // 先确认目标已死亡，避免疯魔盾或其它 KillPlayer.BEFORE 取消死亡时误罚老兵。
         // 此服务只接管 Wathe knife 的刺杀包，所以这里天然只覆盖明确使用匕首的成功击杀。

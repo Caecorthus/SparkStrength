@@ -80,6 +80,8 @@ public final class SparkStrengthEvents {
         ToxicologistCapsuleShop.register();
         TabletShopService.register();
         VeteranShopService.register();
+        // 老兵经济服务同时注册死亡前阵营快照和死亡后金币结算。
+        VeteranEconomyService.register();
         ShadowJesterShowdownService.register();
         // 回溯者被动收入需要按世界 tick 定时结算，注册在服务端世界 tick 末尾。
         ServerTickEvents.END_WORLD_TICK.register(CoronerEconomyService::tick);
@@ -131,7 +133,6 @@ public final class SparkStrengthEvents {
             CriminologistService.afterKill(victim, killer, deathReason);
             CoronerService.afterKill(victim);
             MorphlingService.afterKill(victim, killer, deathReason);
-            VeteranEconomyService.afterKill(victim, killer, deathReason);
         });
 
         GameEvents.ON_FINISH_FINALIZE.register((world, gameComponent) -> {
@@ -142,6 +143,7 @@ public final class SparkStrengthEvents {
                 EngineerCaptureDeviceService.clearRoundState(serverWorld);
                 TabletStateService.clearRoundState(serverWorld);
                 VeteranBlackoutService.clear(serverWorld);
+                VeteranEconomyService.clearRoundState();
                 for (ServerPlayerEntity player : serverWorld.getPlayers()) {
                     CorruptCopAbilityService.reset(player);
                     CoronerService.clearPlayer(player);
@@ -164,6 +166,7 @@ public final class SparkStrengthEvents {
                 MorphBodyDisguiseWorldComponent.KEY.get(serverWorld).clearRoundState();
                 BomberTrapService.clearRoundState(serverWorld);
                 EngineerCaptureDeviceService.clearRoundState(serverWorld);
+                VeteranEconomyService.clearRoundState();
             }
         });
     }
