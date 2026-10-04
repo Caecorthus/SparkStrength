@@ -18,6 +18,7 @@ import annina.sparkstrength.client.role.morphling.MorphlingClientHooks;
 import annina.sparkstrength.client.role.perfumer.PerfumerClientHooks;
 import annina.sparkstrength.client.role.professor.ProfessorSerumClientHooks;
 import annina.sparkstrength.client.role.veteran.VeteranClientHooks;
+import annina.sparkstrength.client.role.vulture.SkateboardClient;
 import annina.sparkstrength.client.screen.detective.DetectiveFolderScreen;
 import annina.sparkstrength.client.screen.tablet.TabletClientState;
 import annina.sparkstrength.client.screen.tablet.TabletScreen;
@@ -50,6 +51,7 @@ public final class SparkStrengthClient implements ClientModInitializer {
         PerfumerClientHooks.register();
         ProfessorSerumClientHooks.register();
         RoleEconomyClientHooks.register();
+        SkateboardClient.register();
         TabletClientHighlights.register();
         VeteranClientHooks.register();
         ClientTickEvents.END_CLIENT_TICK.register(CorruptCopMusicController::tick);

@@ -45,6 +45,7 @@ import annina.sparkstrength.role.veteran.VeteranBlackoutService;
 import annina.sparkstrength.role.veteran.VeteranEconomyService;
 import annina.sparkstrength.role.veteran.VeteranKnifeService;
 import annina.sparkstrength.role.veteran.VeteranShopService;
+import annina.sparkstrength.role.vulture.VultureSkateboardService;
 import annina.sparkstrength.tablet.TabletShopService;
 import annina.sparkstrength.tablet.TabletStateService;
 import dev.doctor4t.wathe.api.event.GameEvents;
@@ -91,6 +92,7 @@ public final class SparkStrengthEvents {
         TabletShopService.register();
         TabletStateService.register();
         VeteranShopService.register();
+        VultureSkateboardService.register();
         // 回溯者被动收入需要按世界 tick 定时结算，注册在服务端世界 tick 末尾。
         ServerTickEvents.END_WORLD_TICK.register(CoronerEconomyService::tick);
         ServerTickEvents.END_WORLD_TICK.register(CoronerService::tick);

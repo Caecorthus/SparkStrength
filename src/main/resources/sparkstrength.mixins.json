@@ -44,6 +44,7 @@
     "silencer.SilencerKnifeUseMixin",
     "veteran.VeteranKnifeStabPayloadMixin",
     "veteran.VeteranServerKnifeUseMixin",
+    "vulture.SkateboardStepSoundMixin",
     "wathe.GameFunctionsMixin",
     "wathe.GrenadeExplosionMixin",
     "wathe.KillerPassiveMoneyCapMixin",

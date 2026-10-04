@@ -16,6 +16,7 @@ import annina.sparkstrength.item.MorphDeviceItem;
 import annina.sparkstrength.item.MorphReagentItem;
 import annina.sparkstrength.item.PowerRestorationItem;
 import annina.sparkstrength.item.ProfessorSerumItem;
+import annina.sparkstrength.item.SkateboardItem;
 import annina.sparkstrength.item.TabletItem;
 import annina.sparkstrength.item.ZephyrPerfumeItem;
 import annina.sparkstrength.role.bomber.drone.DroneKind;
@@ -50,6 +51,7 @@ public final class SparkStrengthItems {
     public static final Identifier BLUE_BELLADONNA_ID = SparkStrength.id("blue_belladonna");
     public static final Identifier GRENADE_DRONE_ID = SparkStrength.id("grenade_drone");
     public static final Identifier BOMB_DRONE_ID = SparkStrength.id("bomb_drone");
+    public static final Identifier SKATEBOARD_ID = SparkStrength.id("skateboard");
     private static Item m67;
     private static Item capsule;
     private static Item flashlight;
@@ -72,6 +74,7 @@ public final class SparkStrengthItems {
     private static Item blueBelladonna;
     private static Item grenadeDrone;
     private static Item bombDrone;
+    private static Item skateboard;
     private static boolean registered;
 
     private SparkStrengthItems() {
@@ -192,6 +195,11 @@ public final class SparkStrengthItems {
                 Registries.ITEM,
                 BOMB_DRONE_ID,
                 new DroneItem(DroneKind.BOMB, new Item.Settings().maxCount(1))
+        );
+        skateboard = Registry.register(
+                Registries.ITEM,
+                SKATEBOARD_ID,
+                new SkateboardItem(new Item.Settings().maxCount(1))
         );
         registered = true;
     }
@@ -348,6 +356,13 @@ public final class SparkStrengthItems {
             throw new IllegalStateException("SparkStrength items are not registered yet");
         }
         return bombDrone;
+    }
+
+    public static Item skateboard() {
+        if (skateboard == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return skateboard;
     }
 
     public static Item drone(DroneKind kind) {
