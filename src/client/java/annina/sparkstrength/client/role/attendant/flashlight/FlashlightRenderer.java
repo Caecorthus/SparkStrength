@@ -11,6 +11,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.Framebuffer;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.gl.VertexBuffer;
 import net.minecraft.client.render.Frustum;
@@ -26,19 +27,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Draws every visible flashlight in two hooks. Receivers run at {@code WorldRenderEvents.AFTER_ENTITIES}: an additive
- * pass that re-renders lit block geometry as albedo x light (wathe's true darkness makes unlit pixels pure black, so
- * the scene cannot simply be brightened). Running before block entities, translucent terrain and translucent entity
- * layers lets glass windows blend over lit walls and lets anything drawn later in front simply cover the light, while
- * the opaque terrain and entity depth already occludes it. The volumetric beam runs last, over everything, at
- * {@code LAST} (before the first-person hand), or at {@code AFTER_TRANSLUCENT} with Fabulous graphics, because Fabulous
- * composites the transparency layers into the main framebuffer and clears its depth before LAST. Lights are collected
- * once per frame; nothing runs without lights or while an Iris shader pack is active.
- * 分两个挂载点绘制所有可见手电筒。受光面在 {@code WorldRenderEvents.AFTER_ENTITIES} 绘制：叠加通道把受光方块几何以
- * “反照率 × 光照”重新绘制（wathe 真黑暗使未受光像素为纯黑，无法直接提亮画面）。在方块实体、半透明地形与半透明实体层之前
- * 绘制，玻璃窗会正确叠在被照亮的墙上，之后绘制在前方的物体会直接覆盖光照，而不透明地形与实体深度已提供遮挡。
- * 体积光束最后绘制在所有内容之上：在 {@code LAST}（第一人称手部之前），或在“极佳”画质下于 {@code AFTER_TRANSLUCENT}，
- * 因为极佳模式在 LAST 之前会把透明层合成到主帧缓冲并清除其深度。每帧只收集一次光源；没有光源或启用 Iris 光影包时不执行任何操作。
+ * Draws every visible flashlight in three steps. Opaque receivers (solid and cutout layers) run at
+ * {@code WorldRenderEvents.AFTER_ENTITIES}: an additive pass that re-renders lit block geometry as albedo x light
+ * (wathe's true darkness makes unlit pixels pure black, so the scene cannot simply be brightened). Running before block
+ * entities, translucent terrain and translucent entity layers lets glass windows blend over lit walls and lets anything
+ * drawn later in front simply cover the light, while the opaque terrain and entity depth already occludes it.
+ * Translucent receivers (glass, wathe's hull and privacy panels) run at {@code AFTER_TRANSLUCENT}, once translucent
+ * terrain has written its depth, adding albedo x alpha x light on top of it: into the main framebuffer with Fast and
+ * Fancy graphics, into the translucent target with Fabulous, whose composite blends premultiplied colour, so the same
+ * additive term stays correct. The volumetric beam runs last, over everything, at {@code LAST} (before the
+ * first-person hand), or at {@code AFTER_TRANSLUCENT} with Fabulous graphics, because Fabulous composites the
+ * transparency layers into the main framebuffer and clears its depth before LAST. Lights are collected once per frame;
+ * nothing runs without lights or while an Iris shader pack is active.
+ * 分三步绘制所有可见手电筒。不透明受光面（实心与镂空层）在 {@code WorldRenderEvents.AFTER_ENTITIES} 绘制：叠加通道把受光
+ * 方块几何以“反照率 × 光照”重新绘制（wathe 真黑暗使未受光像素为纯黑，无法直接提亮画面）。在方块实体、半透明地形与半透明
+ * 实体层之前绘制，玻璃窗会正确叠在被照亮的墙上，之后绘制在前方的物体会直接覆盖光照，而不透明地形与实体深度已提供遮挡。
+ * 半透明受光面（玻璃、wathe 船体与隐私面板）在 {@code AFTER_TRANSLUCENT} 绘制，此时半透明地形已写入深度，在其上叠加
+ * “反照率 × alpha × 光照”：快速与高品质画质下写入主帧缓冲，“极佳”画质下写入半透明目标；其合成按预乘颜色混合，
+ * 因此同样的叠加项依然正确。体积光束最后绘制在所有内容之上：在 {@code LAST}（第一人称手部之前），或在“极佳”画质下于
+ * {@code AFTER_TRANSLUCENT}，因为极佳模式在 LAST 之前会把透明层合成到主帧缓冲并清除其深度。每帧只收集一次光源；
+ * 没有光源或启用 Iris 光影包时不执行任何操作。
  */
 public final class FlashlightRenderer {
     private static final FlashlightReceiverCache RECEIVERS = new FlashlightReceiverCache();
@@ -57,8 +65,9 @@ public final class FlashlightRenderer {
     public static void register() {
         FlashlightShaders.register();
         WorldRenderEvents.START.register(context -> FRAME_LIGHTS.clear());
-        WorldRenderEvents.AFTER_ENTITIES.register(FlashlightRenderer::renderReceivers);
+        WorldRenderEvents.AFTER_ENTITIES.register(FlashlightRenderer::renderOpaqueReceivers);
         WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> {
+            renderTranslucentReceivers(context);
             if (context.advancedTranslucency()) {
                 renderBeams(context);
             }
@@ -98,7 +107,7 @@ public final class FlashlightRenderer {
         }
     }
 
-    private static void renderReceivers(WorldRenderContext context) {
+    private static void renderOpaqueReceivers(WorldRenderContext context) {
         MinecraftClient client = MinecraftClient.getInstance();
         ClientWorld world = context.world();
         if (world == null) {
@@ -122,10 +131,41 @@ public final class FlashlightRenderer {
         Vec3d camera = context.camera().getPos();
         Frustum frustum = context.frustum();
         context.profiler().push("sparkstrength_flashlight_receivers");
-        int[] saved = beginPass(client, context);
+        int[] saved = beginPass(client, context, client.getFramebuffer());
         try {
             RECEIVERS.prepare(world, FRAME_LIGHTS, frustum);
-            drawReceivers(client, receiver, context, camera, frustum);
+            drawReceivers(client, receiver, context, camera, frustum, false);
+        } finally {
+            endPass(client, context, saved);
+            context.profiler().pop();
+        }
+    }
+
+    /**
+     * Translucent-layer receivers over the translucent terrain drawn this frame, reusing the sections prepared at
+     * AFTER_ENTITIES. Fabulous keeps translucent terrain (and its depth) in its own target until the composite. Sodium
+     * may draw translucent-layer quads with opaque textures in its solid passes instead; with Fast/Fancy they are in
+     * the main target anyway, and with Fabulous their depth reaches the translucent target through vanilla's depth
+     * copy, so they still pass the depth test and the receiver shader's alpha mark keeps the light in the composite.
+     * 在本帧已绘制的半透明地形之上绘制半透明层受光面，复用 AFTER_ENTITIES 时准备的区段。“极佳”画质在合成前把半透明地形
+     * （及其深度）保存在独立目标中。Sodium 可能把纹理不透明的半透明层四边形改在其实心通道中绘制：快速/高品质画质下它们本就在
+     * 主目标中；“极佳”画质下其深度经原版的深度复制进入半透明目标，仍能通过深度测试，受光着色器的 alpha 标记使光照保留在合成结果中。
+     */
+    private static void renderTranslucentReceivers(WorldRenderContext context) {
+        ShaderProgram receiver = FlashlightShaders.receiver();
+        if (FRAME_LIGHTS.isEmpty() || receiver == null) {
+            return;
+        }
+        MinecraftClient client = MinecraftClient.getInstance();
+        Framebuffer target = context.advancedTranslucency()
+                ? context.worldRenderer().getTranslucentFramebuffer() : client.getFramebuffer();
+        if (target == null) {
+            return;
+        }
+        context.profiler().push("sparkstrength_flashlight_translucent_receivers");
+        int[] saved = beginPass(client, context, target);
+        try {
+            drawReceivers(client, receiver, context, context.camera().getPos(), context.frustum(), true);
         } finally {
             endPass(client, context, saved);
             context.profiler().pop();
@@ -138,7 +178,7 @@ public final class FlashlightRenderer {
         }
         MinecraftClient client = MinecraftClient.getInstance();
         context.profiler().push("sparkstrength_flashlight_beams");
-        int[] saved = beginPass(client, context);
+        int[] saved = beginPass(client, context, client.getFramebuffer());
         try {
             BEAM.render(client, FRAME_LIGHTS, context.camera().getPos(), context.positionMatrix(),
                     context.projectionMatrix());
@@ -149,13 +189,13 @@ public final class FlashlightRenderer {
     }
 
     /**
-     * Binds the main framebuffer, the block atlas (Sampler0) and the live lightmap (Sampler2); returns the shader
+     * Binds the target framebuffer, the block atlas (Sampler0) and the live lightmap (Sampler2); returns the shader
      * textures it replaced.
-     * 绑定主帧缓冲、方块图集（Sampler0）与实时光照贴图（Sampler2）；返回被替换的着色器纹理。
+     * 绑定目标帧缓冲、方块图集（Sampler0）与实时光照贴图（Sampler2）；返回被替换的着色器纹理。
      */
-    private static int[] beginPass(MinecraftClient client, WorldRenderContext context) {
+    private static int[] beginPass(MinecraftClient client, WorldRenderContext context, Framebuffer target) {
         int[] saved = {RenderSystem.getShaderTexture(0), RenderSystem.getShaderTexture(2)};
-        client.getFramebuffer().beginWrite(false);
+        target.beginWrite(false);
         RenderSystem.setShaderTexture(0, PlayerScreenHandler.BLOCK_ATLAS_TEXTURE);
         context.lightmapTextureManager().enable();
         return saved;
@@ -183,12 +223,13 @@ public final class FlashlightRenderer {
 
     /**
      * Additive (ONE, ONE), depth-tested (LEQUAL) without depth writes, pulled forward by the same polygon offset as
-     * vanilla's decal layering so it never z-fights with Sodium's or vanilla's terrain.
+     * vanilla's decal layering so it never z-fights with Sodium's or vanilla's terrain. The translucent layer weights
+     * the light by texture alpha (PremultiplyAlpha), matching how much of the pixel the glass itself covers.
      * 叠加（ONE, ONE）、深度测试（LEQUAL）但不写深度，并使用与原版贴花分层相同的多边形偏移前移，
-     * 避免与 Sodium 或原版地形产生深度冲突。
+     * 避免与 Sodium 或原版地形产生深度冲突。半透明层按纹理 alpha 加权光照（PremultiplyAlpha），与玻璃自身覆盖像素的比例一致。
      */
     private static void drawReceivers(MinecraftClient client, ShaderProgram receiver, WorldRenderContext context,
-                                      Vec3d camera, Frustum frustum) {
+                                      Vec3d camera, Frustum frustum, boolean translucentLayer) {
         RenderSystem.enableBlend();
         RenderSystem.blendFunc(GlStateManager.SrcFactor.ONE, GlStateManager.DstFactor.ONE);
         RenderSystem.enableDepthTest();
@@ -199,10 +240,11 @@ public final class FlashlightRenderer {
         RenderSystem.enableCull();
         receiver.initializeUniforms(VertexFormat.DrawMode.QUADS, context.positionMatrix(), context.projectionMatrix(),
                 client.getWindow());
+        receiver.getUniformOrDefault("PremultiplyAlpha").set(translucentLayer ? 1.0F : 0.0F);
         for (int index = 0; index < FRAME_LIGHTS.size(); index++) {
             FlashlightShaders.applyLight(receiver, FRAME_LIGHTS.get(index), camera);
             receiver.bind();
-            RECEIVERS.draw(receiver, index, camera, frustum);
+            RECEIVERS.draw(receiver, index, translucentLayer, camera, frustum);
             receiver.unbind();
         }
         VertexBuffer.unbind();

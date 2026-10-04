@@ -26,11 +26,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Render-thread cache of flashlight receiver meshes, one {@link VertexBuffer} per 16x16x16 section. Sections are meshed
+ * Render-thread cache of flashlight receiver meshes: per 16x16x16 section one {@link VertexBuffer} for the solid and
+ * cutout layers and one for the translucent layer, built together. Sections are meshed
  * lazily when a light's spill cone first reaches them (a few per frame, nearest first), kept in LRU order, marked dirty
  * on client block changes (stale geometry keeps drawing until the rebuild, so a door never flickers dark) and dropped
  * with their chunk, on world change and on resource reload (atlas UVs change).
- * 手电筒受光网格的渲染线程缓存，每个 16x16x16 区段一个 {@link VertexBuffer}。光源溢光锥首次覆盖区段时才按需构建
+ * 手电筒受光网格的渲染线程缓存：每个 16x16x16 区段有一个实心/镂空层 {@link VertexBuffer} 与一个半透明层缓冲，二者一同构建。
+ * 光源溢光锥首次覆盖区段时才按需构建
  * （每帧少量、由近及远），按 LRU 顺序保留；客户端方块变化时标记为脏（重建前继续绘制旧几何，开门不会闪黑），
  * 并随所在区块卸载、世界切换与资源重载（图集 UV 改变）一起丢弃。
  */
@@ -56,13 +58,19 @@ final class FlashlightReceiverCache {
     private final Long2DoubleOpenHashMap buildPriority = new Long2DoubleOpenHashMap();
     private final LongArrayList buildOrder = new LongArrayList();
     private final FlashlightReceiverMesher mesher = new FlashlightReceiverMesher();
-    private @Nullable BufferAllocator allocator;
+    private @Nullable BufferAllocator opaqueAllocator;
+    private @Nullable BufferAllocator translucentAllocator;
     private long frame;
 
     private static final class Section {
-        private @Nullable VertexBuffer buffer;
+        private @Nullable VertexBuffer opaque;
+        private @Nullable VertexBuffer translucent;
         private boolean dirty;
         private long lastUsedFrame;
+
+        private @Nullable VertexBuffer buffer(boolean translucentLayer) {
+            return translucentLayer ? translucent : opaque;
+        }
     }
 
     /**
@@ -103,10 +111,12 @@ final class FlashlightReceiverCache {
     }
 
     /**
-     * Render thread: draws this light's cached sections with {@code program} bound, setting ChunkOffset per section.
-     * 渲染线程：在已绑定 {@code program} 时绘制该光源的缓存区段，并逐区段设置 ChunkOffset。
+     * Render thread: draws one layer of this light's cached sections with {@code program} bound, setting ChunkOffset
+     * per section. Uses the section lists of this frame's {@link #prepare}.
+     * 渲染线程：在已绑定 {@code program} 时绘制该光源缓存区段的某一层，并逐区段设置 ChunkOffset；使用本帧 prepare 得到的区段列表。
      */
-    void draw(ShaderProgram program, int lightIndex, Vec3d camera, @Nullable Frustum frustum) {
+    void draw(ShaderProgram program, int lightIndex, boolean translucentLayer, Vec3d camera,
+              @Nullable Frustum frustum) {
         GlUniform chunkOffset = program.chunkOffset;
         if (chunkOffset == null || lightIndex >= lightSections.size()) {
             return;
@@ -115,7 +125,8 @@ final class FlashlightReceiverCache {
         for (int i = 0; i < keys.size(); i++) {
             long key = keys.getLong(i);
             Section section = sections.get(key);
-            if (section == null || section.buffer == null || !isVisible(frustum, key)) {
+            VertexBuffer buffer = section == null ? null : section.buffer(translucentLayer);
+            if (buffer == null || !isVisible(frustum, key)) {
                 continue;
             }
             chunkOffset.set(
@@ -123,8 +134,8 @@ final class FlashlightReceiverCache {
                     (float) ((ChunkSectionPos.unpackY(key) << 4) - camera.y),
                     (float) ((ChunkSectionPos.unpackZ(key) << 4) - camera.z));
             chunkOffset.upload();
-            section.buffer.bind();
-            section.buffer.draw();
+            buffer.bind();
+            buffer.draw();
         }
     }
 
@@ -180,9 +191,13 @@ final class FlashlightReceiverCache {
             keys.clear();
         }
         buildPriority.clear();
-        if (allocator != null) {
-            allocator.close();
-            allocator = null;
+        if (opaqueAllocator != null) {
+            opaqueAllocator.close();
+            opaqueAllocator = null;
+        }
+        if (translucentAllocator != null) {
+            translucentAllocator.close();
+            translucentAllocator = null;
         }
     }
 
@@ -259,23 +274,19 @@ final class FlashlightReceiverCache {
         int sectionX = ChunkSectionPos.unpackX(key);
         int sectionZ = ChunkSectionPos.unpackZ(key);
         WorldChunk chunk = world.getChunkManager().getWorldChunk(sectionX, sectionZ);
-        BuiltBuffer mesh = chunk == null ? null
-                : mesher.build(world, chunk, sectionX, ChunkSectionPos.unpackY(key), sectionZ, allocator());
+        if (opaqueAllocator == null) {
+            opaqueAllocator = new BufferAllocator(INITIAL_ALLOCATOR_BYTES);
+            translucentAllocator = new BufferAllocator(INITIAL_ALLOCATOR_BYTES);
+        }
+        FlashlightReceiverMesher.Mesh mesh = chunk == null ? FlashlightReceiverMesher.Mesh.EMPTY
+                : mesher.build(world, chunk, sectionX, ChunkSectionPos.unpackY(key), sectionZ, opaqueAllocator,
+                translucentAllocator);
         Section section = sections.get(key);
         if (section == null) {
             section = new Section();
         }
-        if (mesh == null) {
-            close(section);
-        } else {
-            if (section.buffer == null) {
-                section.buffer = new VertexBuffer(VertexBuffer.Usage.STATIC);
-            }
-            section.buffer.bind();
-            // upload() closes the BuiltBuffer, releasing the allocator for the next section.
-            // upload() 会关闭 BuiltBuffer，从而释放分配器供下一个区段使用。
-            section.buffer.upload(mesh);
-        }
+        section.opaque = upload(section.opaque, mesh.opaque());
+        section.translucent = upload(section.translucent, mesh.translucent());
         section.dirty = false;
         section.lastUsedFrame = frame;
         sections.putAndMoveToLast(key, section);
@@ -313,11 +324,21 @@ final class FlashlightReceiverCache {
         return near;
     }
 
-    private BufferAllocator allocator() {
-        if (allocator == null) {
-            allocator = new BufferAllocator(INITIAL_ALLOCATOR_BYTES);
+    /**
+     * Reuses or frees a layer's buffer; upload() closes the BuiltBuffer, releasing its allocator for the next section.
+     * 复用或释放某一层的缓冲；upload() 会关闭 BuiltBuffer，从而释放其分配器供下一个区段使用。
+     */
+    private static @Nullable VertexBuffer upload(@Nullable VertexBuffer buffer, @Nullable BuiltBuffer mesh) {
+        if (mesh == null) {
+            if (buffer != null) {
+                buffer.close();
+            }
+            return null;
         }
-        return allocator;
+        VertexBuffer target = buffer != null ? buffer : new VertexBuffer(VertexBuffer.Usage.STATIC);
+        target.bind();
+        target.upload(mesh);
+        return target;
     }
 
     private static boolean isVisible(@Nullable Frustum frustum, long key) {
@@ -338,9 +359,13 @@ final class FlashlightReceiverCache {
     }
 
     private static void close(Section section) {
-        if (section.buffer != null) {
-            section.buffer.close();
-            section.buffer = null;
+        if (section.opaque != null) {
+            section.opaque.close();
+            section.opaque = null;
+        }
+        if (section.translucent != null) {
+            section.translucent.close();
+            section.translucent = null;
         }
     }
 }
