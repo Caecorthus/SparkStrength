@@ -1,7 +1,6 @@
 package annina.sparkstrength.client.role.attendant.flashlight;
 
 import annina.sparkstrength.role.attendant.FlashlightBeamRules;
-import it.unimi.dsi.fastutil.ints.Int2ByteOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.Camera;
@@ -62,7 +61,7 @@ final class TrackedFlashlight implements AutoCloseable {
     private double tickOriginY;
     private double tickOriginZ;
     private long reachTick = Long.MIN_VALUE;
-    private final Int2ByteOpenHashMap entityReach = new Int2ByteOpenHashMap();
+    private final Long2ByteOpenHashMap entityReach = new Long2ByteOpenHashMap();
     private final Long2ByteOpenHashMap blockEntityReach = new Long2ByteOpenHashMap();
 
     TrackedFlashlight(AbstractClientPlayerEntity player) {
@@ -158,22 +157,26 @@ final class TrackedFlashlight implements AutoCloseable {
     }
 
     /**
-     * Exact line of sight from this tick's beam origin to the entity's bounding-box centre, cached for the tick.
-     * 从本 tick 光束起点到实体碰撞箱中心的精确视线，按 tick 缓存。
+     * Exact line of sight from this tick's beam origin to one height sample of the entity (see
+     * {@link FlashlightLights#ENTITY_SAMPLE_HEIGHTS}) on its bounding-box axis, cached per sample for the tick.
+     * 从本 tick 光束起点到实体碰撞箱中轴上某个高度采样点的精确视线，按采样点在本 tick 内缓存。
      */
-    boolean reachesEntity(FlashlightRayCaster caster, ClientWorld world, Entity entity, long tick) {
+    boolean reachesEntity(FlashlightRayCaster caster, ClientWorld world, Entity entity, int sample, double heightFraction,
+                          long tick) {
         if (!hasTickOrigin) {
             return false;
         }
         syncReachTick(tick);
-        byte cached = entityReach.get(entity.getId());
+        long key = ((long) entity.getId() << 2) | sample;
+        byte cached = entityReach.get(key);
         if (cached != UNKNOWN) {
             return cached != 0;
         }
         Box box = entity.getBoundingBox();
         boolean reaches = !caster.isSegmentBlocked(world, tickOriginX, tickOriginY, tickOriginZ,
-                (box.minX + box.maxX) * 0.5, (box.minY + box.maxY) * 0.5, (box.minZ + box.maxZ) * 0.5);
-        entityReach.put(entity.getId(), reaches ? (byte) 1 : (byte) 0);
+                (box.minX + box.maxX) * 0.5, box.minY + (box.maxY - box.minY) * heightFraction,
+                (box.minZ + box.maxZ) * 0.5);
+        entityReach.put(key, reaches ? (byte) 1 : (byte) 0);
         return reaches;
     }
 
