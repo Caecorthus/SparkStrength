@@ -26,19 +26,23 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 
 /**
- * Meshes the solid and cutout block models of one 16x16x16 section into receiver geometry for the flashlight shader:
- * section-relative position, atlas UV, tint and the quad's geometric normal. No lighting or AO is baked in; the
- * vertex alpha carries the block layer's cutout threshold instead. Model selection mirrors vanilla's
- * BlockModelRenderer (same rendering seed per face, same face culling), so the light lands on the exact terrain texels.
- * 将单个 16x16x16 区段内实心与镂空方块模型网格化为手电筒受光几何：区段相对坐标、图集 UV、着色与面几何法线。
- * 不烘焙光照与 AO；顶点 alpha 改为携带方块层的镂空阈值。模型选择与原版 BlockModelRenderer 一致
- * （每个面相同的渲染种子、相同的面剔除），因此光照恰好落在地形纹素上。
+ * Meshes the block models of one 16x16x16 section into receiver geometry for the flashlight shader: section-relative
+ * position, atlas UV, tint and the quad's geometric normal. Solid and cutout layers go to the opaque mesh, the
+ * translucent layer to a separate mesh drawn after translucent terrain. No lighting or AO is baked in; the vertex alpha
+ * carries the block layer's cutout threshold instead (0 for solid and translucent). Model selection mirrors vanilla's
+ * BlockModelRenderer (same rendering seed per face, same face culling including {@code isSideInvisible}, which wathe's
+ * culling hull relies on), so the light lands on the exact terrain texels.
+ * 将单个 16x16x16 区段的方块模型网格化为手电筒受光几何：区段相对坐标、图集 UV、着色与面几何法线。实心与镂空层进入不透明
+ * 网格，半透明层进入在半透明地形之后绘制的独立网格。不烘焙光照与 AO；顶点 alpha 改为携带方块层的镂空阈值
+ * （实心与半透明层为 0）。模型选择与原版 BlockModelRenderer 一致（每个面相同的渲染种子、相同的面剔除，包括 wathe
+ * 剔除船体所依赖的 {@code isSideInvisible}），因此光照恰好落在地形纹素上。
  */
 final class FlashlightReceiverMesher {
     private static final Direction[] DIRECTIONS = Direction.values();
     /** BakedQuad vertex data uses POSITION_COLOR_TEXTURE_LIGHT_NORMAL: 8 ints per vertex. / 每个顶点 8 个 int。 */
     private static final int QUAD_STRIDE = 8;
     private static final int NO_LAYER = -1;
+    private static final int TRANSLUCENT_LAYER = -2;
     /** Cutout thresholds of vanilla's rendertype_cutout(_mipped) shaders, as vertex alpha bytes. / 原版镂空阈值的字节值。 */
     private static final int SOLID_CUTOFF = 0;
     private static final int CUTOUT_MIPPED_CUTOFF = 128;
@@ -58,22 +62,31 @@ final class FlashlightReceiverMesher {
     private final BlockState[] padded = new BlockState[PADDED * PADDED * PADDED];
 
     /**
-     * Render thread. Returns null when the section has no receiving face (all air, translucent or culled).
-     * 渲染线程。区段没有受光面（全为空气、半透明或被剔除）时返回 null。
+     * One section's receiver meshes; either is null when that layer has no receiving face.
+     * 单个区段的受光网格；某层没有受光面时为 null。
      */
-    @Nullable
-    BuiltBuffer build(ClientWorld world, WorldChunk chunk, int sectionX, int sectionY, int sectionZ,
-                      BufferAllocator allocator) {
+    record Mesh(@Nullable BuiltBuffer opaque, @Nullable BuiltBuffer translucent) {
+        static final Mesh EMPTY = new Mesh(null, null);
+    }
+
+    /**
+     * Render thread. The two layers need separate allocators because a builder writes its vertices contiguously.
+     * 渲染线程。两层需要各自的分配器，因为构建器连续写入其顶点。
+     */
+    Mesh build(ClientWorld world, WorldChunk chunk, int sectionX, int sectionY, int sectionZ,
+               BufferAllocator opaqueAllocator, BufferAllocator translucentAllocator) {
         int index = world.sectionCoordToIndex(sectionY);
         ChunkSection[] sections = chunk.getSectionArray();
         ChunkSection section = index >= 0 && index < sections.length ? sections[index] : null;
         if (section == null || section.isEmpty()) {
-            return null;
+            return Mesh.EMPTY;
         }
         MinecraftClient client = MinecraftClient.getInstance();
         BlockRenderManager blockRenderManager = client.getBlockRenderManager();
         BlockColors blockColors = client.getBlockColors();
-        BufferBuilder builder = new BufferBuilder(allocator, VertexFormat.DrawMode.QUADS,
+        BufferBuilder opaque = new BufferBuilder(opaqueAllocator, VertexFormat.DrawMode.QUADS,
+                FlashlightShaders.RECEIVER_FORMAT);
+        BufferBuilder translucent = new BufferBuilder(translucentAllocator, VertexFormat.DrawMode.QUADS,
                 FlashlightShaders.RECEIVER_FORMAT);
         int originX = sectionX << 4;
         int originY = sectionY << 4;
@@ -90,6 +103,10 @@ final class FlashlightReceiverMesher {
                     if (cutoff == NO_LAYER) {
                         continue;
                     }
+                    boolean translucentLayer = cutoff == TRANSLUCENT_LAYER;
+                    BufferBuilder builder = translucentLayer ? translucent : opaque;
+                    // Vanilla's translucent shader has no alpha test, like solid. / 原版半透明着色器与实心层一样没有 alpha 测试。
+                    cutoff = translucentLayer ? SOLID_CUTOFF : cutoff;
                     pos.set(originX + x, originY + y, originZ + z);
                     // Opaque full cube against opaque full cube is exactly the case where shouldDrawSide returns false
                     // (full culling faces on both sides); checking it first skips buried blocks cheaply.
@@ -132,7 +149,7 @@ final class FlashlightReceiverMesher {
                 }
             }
         }
-        return builder.endNullable();
+        return new Mesh(opaque.endNullable(), translucent.endNullable());
     }
 
     private void fillPadded(ClientWorld world, ChunkSection section, int originX, int originY, int originZ) {
@@ -170,7 +187,7 @@ final class FlashlightReceiverMesher {
         return ((y + 1) * PADDED + z + 1) * PADDED + x + 1;
     }
 
-    /** Translucent and tripwire layers are not receivers. / 半透明与绊线层不作为受光面。 */
+    /** The tripwire layer is not a receiver. / 绊线层不作为受光面。 */
     private static int cutoff(RenderLayer layer) {
         if (layer == RenderLayer.getSolid()) {
             return SOLID_CUTOFF;
@@ -180,6 +197,9 @@ final class FlashlightReceiverMesher {
         }
         if (layer == RenderLayer.getCutout()) {
             return CUTOUT_CUTOFF;
+        }
+        if (layer == RenderLayer.getTranslucent()) {
+            return TRANSLUCENT_LAYER;
         }
         return NO_LAYER;
     }

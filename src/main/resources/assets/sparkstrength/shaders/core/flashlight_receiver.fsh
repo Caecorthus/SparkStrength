@@ -9,6 +9,8 @@ uniform sampler2D Sampler0;
 uniform float FogStart;
 uniform float FogEnd;
 uniform vec4 FogColor;
+// 1 for the translucent-layer pass, 0 for solid and cutout. / 半透明层通道为 1，实心与镂空层为 0。
+uniform float PremultiplyAlpha;
 
 in vec3 worldPos;
 in float vertexDistance;
@@ -19,9 +21,8 @@ in vec3 vertexNormal;
 out vec4 fragColor;
 
 // Additive (ONE, ONE) light for terrain that wathe's true darkness leaves pure black: albedo x light, faded by the
-// same fog the terrain got. Alpha stays 0 so the framebuffer alpha is untouched.
-// 叠加（ONE, ONE）到被 wathe 真黑暗渲染为纯黑的地形上：反照率 × 光照，并按地形所受的同一雾效衰减。
-// 输出 alpha 为 0，不改动帧缓冲 alpha。
+// same fog the terrain got. Opaque receivers leave the framebuffer alpha untouched.
+// 叠加（ONE, ONE）到被 wathe 真黑暗渲染为纯黑的地形上：反照率 × 光照，并按地形所受的同一雾效衰减。不透明受光面不改动帧缓冲 alpha。
 void main() {
     vec4 albedo = texture(Sampler0, texCoord0);
     // Vertex alpha carries the block layer's cutout threshold (0 for solid). / 顶点 alpha 携带方块层的镂空阈值（实心层为 0）。
@@ -62,5 +63,19 @@ void main() {
     }
 
     float keep = flashlight_fog_keep(vertexDistance, FogStart, FogEnd, FogColor);
-    fragColor = vec4(albedo.rgb * vertexColor.rgb * LightColor * (flashlight_exposed(intensity) * keep), 0.0);
+    // Translucent layer: premultiply by alpha, i.e. light only the share of the pixel the glass covers; what shows
+    // through it already got its own light. / 半透明层：按 alpha 预乘，只照亮玻璃覆盖的像素份额；透过玻璃可见的内容已各自受光。
+    float coverage = mix(1.0, albedo.a, PremultiplyAlpha);
+    if (coverage <= 0.0) {
+        discard;
+    }
+    float light = flashlight_exposed(intensity) * keep * coverage;
+    // Translucent pass: add 1/255 alpha. Fabulous composites its translucent target premultiplied but skips texels
+    // whose alpha is exactly 0, and Sodium's render-pass optimisation draws translucent-layer quads with opaque
+    // textures (wathe's hull, the frosted privacy panel) into the main target, leaving that texel empty; the mark lets
+    // the light through at a 0.4% dimming. The main framebuffer's alpha is never displayed.
+    // 半透明通道：alpha 增加 1/255。“极佳”画质按预乘方式合成半透明目标，但会跳过 alpha 恰为 0 的纹素；Sodium 的渲染通道
+    // 优化会把纹理不透明的半透明层四边形（wathe 船体、雾化隐私面板）画进主目标，使该纹素为空；此标记让光照得以合成，
+    // 仅变暗 0.4%。主帧缓冲的 alpha 不会显示。
+    fragColor = vec4(albedo.rgb * vertexColor.rgb * LightColor * light, PremultiplyAlpha / 255.0);
 }
