@@ -136,6 +136,9 @@ public final class FlashlightBeamGeometry {
      */
     public static double walk(double ox, double oy, double oz, double dx, double dy, double dz,
                               double maxDistance, VoxelVisitor visitor) {
+        if (!Double.isFinite(ox) || !Double.isFinite(oy) || !Double.isFinite(oz)) {
+            return maxDistance;
+        }
         int x = (int) Math.floor(ox);
         int y = (int) Math.floor(oy);
         int z = (int) Math.floor(oz);
@@ -170,5 +173,124 @@ public final class FlashlightBeamGeometry {
             }
         }
         return maxDistance;
+    }
+
+    /**
+     * Distance interval where the unit ray from (ox, oy, oz) along (dx, dy, dz) crosses the box, written to
+     * out[0] (enter, clamped to 0 when the origin is inside) and out[1] (exit). False when the ray misses the box or
+     * the box lies behind the origin. 单位射线穿过轴对齐盒的距离区间：out[0] 为进入距离（原点在盒内时为 0），
+     * out[1] 为离开距离；未命中或盒在原点后方时返回 false。
+     */
+    public static boolean rayBox(double ox, double oy, double oz, double dx, double dy, double dz,
+                                 double minX, double minY, double minZ, double maxX, double maxY, double maxZ,
+                                 double[] out) {
+        double near = Double.NEGATIVE_INFINITY;
+        double far = Double.POSITIVE_INFINITY;
+        if (dx == 0.0) {
+            if (ox < minX || ox > maxX) {
+                return false;
+            }
+        } else {
+            double a = (minX - ox) / dx;
+            double b = (maxX - ox) / dx;
+            near = Math.max(near, Math.min(a, b));
+            far = Math.min(far, Math.max(a, b));
+        }
+        if (dy == 0.0) {
+            if (oy < minY || oy > maxY) {
+                return false;
+            }
+        } else {
+            double a = (minY - oy) / dy;
+            double b = (maxY - oy) / dy;
+            near = Math.max(near, Math.min(a, b));
+            far = Math.min(far, Math.max(a, b));
+        }
+        if (dz == 0.0) {
+            if (oz < minZ || oz > maxZ) {
+                return false;
+            }
+        } else {
+            double a = (minZ - oz) / dz;
+            double b = (maxZ - oz) / dz;
+            near = Math.max(near, Math.min(a, b));
+            far = Math.min(far, Math.max(a, b));
+        }
+        double enter = Math.max(near, 0.0);
+        if (!(far >= enter)) {
+            return false;
+        }
+        out[0] = enter;
+        out[1] = far;
+        return true;
+    }
+
+    /**
+     * Depth of the first occluder a ray meets: it starts at the first box hit and grows while the ray leaves one
+     * occluding box straight into another (a carpet into the floor under it, a slab into the block below), capped at
+     * {@link FlashlightBeamRules#OCCLUDER_DEPTH_CAP_BLOCKS} past the entry so a ray that dives into the ground cannot
+     * carry light under a wall. A thin door followed by air keeps its own thickness. Mutable and reused per ray.
+     * 射线遇到的首个遮挡体的深度：从首个命中盒开始，射线离开一个遮挡盒并立即进入另一个时继续延伸（地毯连到下方地面、
+     * 台阶连到下方方块），最多延伸到进入点之后的 OCCLUDER_DEPTH_CAP_BLOCKS，避免钻入地面的射线把光带到墙下。
+     * 后接空气的薄门只保留自身厚度。可变对象，逐射线复用。
+     */
+    public static final class OccluderRun {
+        /** Boxes that touch within this distance count as one occluder. / 间距小于此值的盒视为同一遮挡体。 */
+        public static final double CONTACT_EPSILON = 1.0e-6;
+
+        private boolean active;
+        private double entry;
+        private double exit;
+        private double limit;
+
+        public void reset() {
+            active = false;
+        }
+
+        public boolean active() {
+            return active;
+        }
+
+        /** Starts the run at the first hit box [enter, exit]. / 以首个命中盒 [enter, exit] 开始。 */
+        public void start(double enter, double boxExit) {
+            active = true;
+            entry = enter;
+            limit = enter + FlashlightBeamRules.OCCLUDER_DEPTH_CAP_BLOCKS;
+            exit = Math.min(Math.max(boxExit, enter), limit);
+        }
+
+        /**
+         * Extends the run by a box interval that starts inside it or touches its end; true when the exit moved.
+         * 用起点位于当前区间内或与其末端相接的盒区间延伸；出口前移时返回 true。
+         */
+        public boolean offer(double enter, double boxExit) {
+            if (!active || enter > exit + CONTACT_EPSILON || boxExit <= exit) {
+                return false;
+            }
+            double extended = Math.min(boxExit, limit);
+            if (extended <= exit) {
+                return false;
+            }
+            exit = extended;
+            return true;
+        }
+
+        /** True once the run reached its depth cap. / 已达到深度上限时为 true。 */
+        public boolean capped() {
+            return exit >= limit;
+        }
+
+        /** True when a voxel entered at this distance can no longer continue the run. / 在此距离进入的体素已无法延续时为 true。 */
+        public boolean endsBefore(double voxelEnter) {
+            return voxelEnter > exit + CONTACT_EPSILON;
+        }
+
+        public double entry() {
+            return entry;
+        }
+
+        public double exit() {
+            return exit;
+        }
     }
 }

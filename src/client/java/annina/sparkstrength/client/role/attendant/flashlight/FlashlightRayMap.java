@@ -13,15 +13,18 @@ import org.jetbrains.annotations.Nullable;
 /**
  * CPU-raycast occlusion grid for one flashlight: {@code SIZE x SIZE} rays over the tangent plane described by
  * {@link annina.sparkstrength.role.attendant.FlashlightBeamRules#gridCellTangent(int)}, cast from {@link #origin()}
- * along normalize(forward + tu*right + tv*up). It doubles as a shadow map for the shaders and as the line-of-sight
- * test for entity lighting, so light never passes through walls.
- * 单支手电筒的 CPU 射线遮挡网格：在切平面上投射 SIZE x SIZE 条射线。它既是着色器的阴影图，也是实体照明的视线检测，
- * 保证光不会穿墙。
+ * along normalize(forward + tu*right + tv*up). It is the shadow map for the terrain and beam shaders. Each cell stores
+ * the distance where its ray LEAVES the first occluder (the far side of the hit box, extended through boxes it runs
+ * straight into, at most {@code OCCLUDER_DEPTH_CAP_BLOCKS} deep), so a closed door shadows everything past its back
+ * face while its own front face never shadows itself. Entities and block entities use exact segment tests instead.
+ * 单支手电筒的 CPU 射线遮挡网格：在切平面上投射 SIZE x SIZE 条射线，作为地形与光束着色器的阴影图。每个单元记录其射线
+ * 离开首个遮挡体的距离（命中盒的远侧，并延伸穿过紧接着进入的盒，最深 OCCLUDER_DEPTH_CAP_BLOCKS），因此关闭的门会遮住
+ * 其背面之后的一切，而门的正面不会自阴影。实体与方块实体改用精确线段检测。
  *
  * <p>GPU layout of {@link #texture()}: R = high byte and G = low byte of
- * {@code FlashlightBeamRules.encodeDistance(hitDistance)}, B = block light * 17, A = sky light * 17 (light sampled in
- * the open cell just before the hit). Texel (u, v) = grid cell (u, v); v grows along {@link #up()}.
- * GPU 布局：R/G 为命中距离 16 位编码的高/低字节，B/A 为命中前空气格的方块光/天空光 ×17；纹素 (u, v) 即网格单元。</p>
+ * {@code FlashlightBeamRules.encodeDistance(occluderExit)}, B = block light * 17, A = sky light * 17 (light sampled in
+ * the open cell just before the occluder). Texel (u, v) = grid cell (u, v); v grows along {@link #up()}.
+ * GPU 布局：R/G 为遮挡体出口距离 16 位编码的高/低字节，B/A 为遮挡体前空气格的方块光/天空光 ×17；纹素 (u, v) 即网格单元。</p>
  *
  * <p>Lifetime: one map per tracked flashlight, recast in place on client ticks, so {@link #texture()} keeps the same
  * object (and GL id) until the light stops being tracked and the map is closed. Use a map only within the frame that
@@ -86,7 +89,11 @@ public final class FlashlightRayMap implements AutoCloseable {
         return up;
     }
 
-    /** Hit distance of cell (u, v) in blocks; RANGE_BLOCKS when the ray hit nothing. / 单元命中距离，未命中为射程。 */
+    /**
+     * Distance where cell (u, v)'s ray leaves its first occluder, in blocks; RANGE_BLOCKS when nothing occludes.
+     * The name predates the exit semantics and is kept for the shared contract.
+     * 单元 (u, v) 射线离开首个遮挡体的距离（格），无遮挡时为射程。名称沿用旧约定。
+     */
     public float hitDistance(int u, int v) {
         return hitDistances[v * SIZE + u];
     }
@@ -97,8 +104,8 @@ public final class FlashlightRayMap implements AutoCloseable {
     }
 
     /**
-     * Allocation-free {@link #isLit(Vec3d)}: false behind the origin, outside the grid or beyond the cell's hit.
-     * 无分配版本：位于原点后方、网格外或超出该单元命中距离时为 false。
+     * Allocation-free {@link #isLit(Vec3d)}: false behind the origin, outside the grid or past the cell's occluder.
+     * 无分配版本：位于原点后方、网格外或越过该单元遮挡体时为 false。
      */
     public boolean isLit(double x, double y, double z) {
         if (!hasCast) {
