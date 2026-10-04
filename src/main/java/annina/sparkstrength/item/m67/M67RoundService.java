@@ -85,7 +85,8 @@ public final class M67RoundService {
         ROUNDS.get(world).grenades.add(grenade);
     }
 
-    static int openingRemaining(ServerWorld world) {
+    /** Remaining match opening lock in ticks; also gates Bomber drones. / 剩余开局锁刻数；同时约束炸弹客无人机。 */
+    public static int openingRemaining(ServerWorld world) {
         Round round = ROUNDS.get(world);
         return round == null || !round.inGame || !active(world) ? 0 : round.clock.openingRemaining(world.getTime());
     }

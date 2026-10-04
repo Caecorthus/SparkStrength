@@ -22,6 +22,7 @@ public final class SparkStrength implements ModInitializer {
     public void onInitialize() {
         SparkStrengthSounds.initialize();
         SparkStrengthEntities.register();
+        SparkStrengthDataComponents.register();
         SparkStrengthItems.register();
         SparkStrengthItemGroups.register();
         SparkStrengthPackets.registerServer();

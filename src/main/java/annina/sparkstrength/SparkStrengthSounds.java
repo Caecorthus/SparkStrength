@@ -19,6 +19,13 @@ public final class SparkStrengthSounds {
     public static final SoundEvent M67_THROW = REGISTRAR.create("item.m67.throw");
     public static final SoundEvent M67_LAND = REGISTRAR.create("item.m67.land");
     public static final SoundEvent M67_EXPLODE = REGISTRAR.create("item.m67.explode");
+    /** Looping rotor noise; each drone kind sounds different. / 循环旋翼噪音，两种无人机音色不同。 */
+    public static final SoundEvent GRENADE_DRONE_LOOP = REGISTRAR.create("entity.grenade_drone.loop");
+    public static final SoundEvent BOMB_DRONE_LOOP = REGISTRAR.create("entity.bomb_drone.loop");
+    public static final SoundEvent DRONE_PLACE = REGISTRAR.create("entity.drone.place");
+    public static final SoundEvent DRONE_BREAK = REGISTRAR.create("entity.drone.break");
+    public static final SoundEvent DRONE_RELEASE = REGISTRAR.create("entity.drone.release");
+    public static final SoundEvent DRONE_BIND = REGISTRAR.create("item.drone.bind");
 
     private SparkStrengthSounds() {
     }

@@ -3,7 +3,9 @@ package annina.sparkstrength.client.screen.tablet;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
 import annina.sparkstrength.tablet.TabletChannel;
 import annina.sparkstrength.tablet.TabletFeature;
+import annina.sparkstrength.tablet.TabletUiSession;
 import net.minecraft.util.Util;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Objects;
@@ -28,6 +30,7 @@ public final class TabletClientState {
     private static int lastLiveChannelWire = TabletChannel.NO_CHANNEL_WIRE;
     private static int doorLogSeenId;
     private static long snapshotAppliedAtMs = Util.getMeasuringTimeMs();
+    private static @Nullable TabletUiSession.Section resumeSection;
 
     private TabletClientState() {
     }
@@ -137,6 +140,21 @@ public final class TabletClientState {
     }
 
     /**
+     * One-shot: the next tablet screen opens on {@code section} (if still visible). Set when a drone link starts, since
+     * the pilot client closes the tablet; reopening it after the flight lands back on the drone list.
+     * 一次性：下一次打开平板时停在该分区（若仍可见）。在发起无人机连接时设置，因为驾驶客户端会关闭平板；飞行后再打开时回到无人机列表。
+     */
+    public static void resumeOnNextOpen(TabletUiSession.Section section) {
+        resumeSection = section;
+    }
+
+    public static @Nullable TabletUiSession.Section consumeResumeSection() {
+        TabletUiSession.Section section = resumeSection;
+        resumeSection = null;
+        return section;
+    }
+
+    /**
      * Drops every trace of the previous server/session; called on disconnect.
      * 清除上一个服务器/会话的全部状态；在断开连接时调用。
      */
@@ -147,5 +165,6 @@ public final class TabletClientState {
         chatSeenSignature = 0L;
         lastLiveChannelWire = TabletChannel.NO_CHANNEL_WIRE;
         doorLogSeenId = 0;
+        resumeSection = null;
     }
 }

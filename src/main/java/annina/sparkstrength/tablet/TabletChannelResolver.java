@@ -4,6 +4,7 @@ import annina.sparkstrength.compat.SparkFactionCompat;
 import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.component.tablet.TabletWorldComponent;
 import annina.sparkstrength.role.attendant.AttendantRules;
+import annina.sparkstrength.role.coroner.CoronerRules;
 import annina.sparkstrength.role.coroner.CoronerService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
@@ -94,12 +95,19 @@ public final class TabletChannelResolver {
      * the disguise at death, so it ends there).
      * 房门监控：真实局内身份为乘务员（Wathe 死亡后保留身份，因此死亡的乘务员与冻结频道一样保留只读权限），
      * 或当前伪装成乘务员的验尸官（死亡时 CoronerService.afterKill 会清除伪装，权限随之结束）。</p>
+     *
+     * <p>Drones: an ALIVE player whose REAL round role is Bomber (a Coroner's Bomber disguise never counts). A dead
+     * Bomber's drones are cleaned up, so the section ends with the life.
+     * 无人机：真实局内身份为炸弹客且仍存活（验尸官的炸弹客伪装不算）。炸弹客死亡后其无人机会被清理，该分区随之结束。</p>
      */
     public static EnumSet<TabletFeature> features(ServerPlayerEntity player) {
         EnumSet<TabletFeature> features = EnumSet.noneOf(TabletFeature.class);
         Role realRole = GameWorldComponent.KEY.get(player.getWorld()).getRole(player);
         if (AttendantRules.hasDoorLog(realRole, CoronerService.hasAttendantDisguise(player))) {
             features.add(TabletFeature.DOOR_LOG);
+        }
+        if (CoronerRules.isBomber(realRole) && GameFunctions.isPlayerPlayingAndAlive(player)) {
+            features.add(TabletFeature.DRONE);
         }
         return features;
     }
