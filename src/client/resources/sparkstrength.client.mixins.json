@@ -2,6 +2,7 @@
   "required": true,
   "minVersion": "0.8",
   "package": "annina.sparkstrength.client.mixin",
+  "plugin": "annina.sparkstrength.client.mixin.SparkStrengthClientMixinPlugin",
   "compatibilityLevel": "JAVA_21",
   "client": [
     "bomber.DroneCrosshairHintMixin",
@@ -16,6 +17,7 @@
     "bomber.DronePilotInstinctKeyMixin",
     "bomber.DronePilotMouseMixin",
     "bomber.DronePilotTargetMixin",
+    "bomber.DronePilotTerrainGridMixin",
     "bomber.DronePilotWorldRendererMixin",
     "corruptcop.CorruptCopHudMixin",
     "coroner.CoronerInventoryScreenMixin",
