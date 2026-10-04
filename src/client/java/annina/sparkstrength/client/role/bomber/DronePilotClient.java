@@ -24,6 +24,7 @@ import net.minecraft.client.option.GameOptions;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.client.world.ClientChunkManager;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.Entity;
 import net.minecraft.text.Text;
@@ -33,6 +34,7 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
+import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
@@ -68,6 +70,11 @@ public final class DronePilotClient {
     private static final double GROUND_PROBE = 0.05;
     /** Altitude readout / drop marker search depth. / 高度读数与投弹点的向下探测深度。 */
     private static final double GROUND_SCAN_DEPTH = 96.0;
+    /**
+     * Fail-safe cap on the post-session body hold (the body's chunks normally return within a few ticks).
+     * 会话结束后本体保持的兜底上限（本体所在区块通常几刻内就会重新送达）。
+     */
+    private static final int BODY_SETTLE_MAX_TICKS = 200;
 
     // Session (main thread; droneId is also read by DroneEntity.localPilotCheck). / 会话（主线程；droneId 也被 localPilotCheck 读取）。
     private static volatile int droneId = -1;
@@ -78,6 +85,10 @@ public final class DronePilotClient {
     private static @Nullable ClientPlayerEntity sessionPlayer;
     private static @Nullable ClientWorld sessionWorld;
     private static boolean savedChunkCulling = true;
+
+    // Post-session body hold (see freezesBody). / 会话结束后的本体保持（见 freezesBody）。
+    private static @Nullable ClientPlayerEntity settleBody;
+    private static int settleTicks;
 
     // Flight prediction. / 飞行预测。
     private static Vec3d flightVelocity = Vec3d.ZERO;
@@ -269,6 +280,23 @@ public final class DronePilotClient {
         player.setJumping(false);
     }
 
+    /**
+     * The body's own movement (walk, gravity, knockback velocity) is frozen for the whole session: a non-camera player
+     * sends no movement packets, so the server holds it still anyway. The re-centred chunk view unloads the body's
+     * chunk on this client, and 1.21.1's {@code ClientWorld.isChunkLoaded} is always true, so vanilla would let it
+     * free-fall through the empty chunk. After the session the hold lasts until the chunks under the body are back,
+     * since the camera returns before the server re-streams them. Server teleports still apply (they set the position).
+     * 整个会话期间冻结本体自身的移动（行走、重力、击退速度）：非镜头玩家不发送移动包，服务器本来就让它保持不动。重新居中的区块视野
+     * 会让本客户端卸载本体所在区块，而 1.21.1 的 ClientWorld.isChunkLoaded 恒为 true，原版会让本体穿过空区块自由下落。
+     * 会话结束后镜头先于服务器重新推送区块回到本体，因此保持到本体下方区块重新加载为止。服务器传送仍然生效（直接设置位置）。
+     */
+    public static boolean freezesBody(ClientPlayerEntity player) {
+        if (player != MinecraftClient.getInstance().player) {
+            return false;
+        }
+        return droneId >= 0 || (settleTicks > 0 && player == settleBody && !bodyChunksLoaded(player));
+    }
+
     /** Wathe's killer instinct key reads as released while piloting. / 驾驶时 Wathe 杀手本能键视为未按下。 */
     public static boolean blocksInstinctKey(KeyBinding key) {
         return droneId >= 0 && key == WatheClient.instinctKeybind;
@@ -385,6 +413,10 @@ public final class DronePilotClient {
         if (notifyServer && ClientPlayNetworking.canSend(DronePilotExitC2SPacket.ID)) {
             ClientPlayNetworking.send(new DronePilotExitC2SPacket(id));
         }
+        // Keep the body still until its chunks are back (see freezesBody); only the session's own body, since a
+        // respawned player is a new instance. / 本体区块重新送达前保持静止（见 freezesBody）；只针对会话本身的本体，重生后的玩家是新实例。
+        settleBody = sessionPlayer;
+        settleTicks = BODY_SETTLE_MAX_TICKS;
         clearSession();
         if (restoreCamera && client.player != null) {
             Entity camera = client.getCameraEntity();
@@ -406,6 +438,8 @@ public final class DronePilotClient {
 
     /** Disconnect / join: drop everything without touching a world that is being torn down. / 断开/加入：清空状态，不触碰正在销毁的世界。 */
     private static void reset(MinecraftClient client) {
+        settleBody = null;
+        settleTicks = 0;
         if (droneId < 0) {
             return;
         }
@@ -433,6 +467,7 @@ public final class DronePilotClient {
 
     private static void tick(MinecraftClient client) {
         if (droneId < 0) {
+            settle(client);
             return;
         }
         ClientPlayerEntity player = client.player;
@@ -471,6 +506,21 @@ public final class DronePilotClient {
             feedback(Text.translatable("hud.sparkstrength.drone.feedback.released"), DronePilotHud.accent(bound.kind()));
         }
         lastPayload = bound.hasPayload();
+    }
+
+    /**
+     * Ends the post-session body hold once the chunks under the body are back on this client, or at the cap.
+     * 本体下方区块在本客户端重新加载后（或到达上限时）结束会话后的本体保持。
+     */
+    private static void settle(MinecraftClient client) {
+        if (settleTicks <= 0) {
+            return;
+        }
+        ClientPlayerEntity body = client.player;
+        if (body == null || body != settleBody || --settleTicks <= 0 || bodyChunksLoaded(body)) {
+            settleBody = null;
+            settleTicks = 0;
+        }
     }
 
     /**
@@ -600,6 +650,24 @@ public final class DronePilotClient {
             case MOUSE -> GLFW.glfwGetMouseButton(handle, key.getCode()) == GLFW.GLFW_PRESS;
             case SCANCODE -> binding.isPressed();
         };
+    }
+
+    /** Every chunk the body's hitbox overlaps is loaded on this client. / 本体碰撞箱覆盖的区块在本客户端均已加载。 */
+    private static boolean bodyChunksLoaded(ClientPlayerEntity body) {
+        Box box = body.getBoundingBox();
+        ClientChunkManager chunks = body.clientWorld.getChunkManager();
+        int minX = ChunkSectionPos.getSectionCoord(box.minX);
+        int maxX = ChunkSectionPos.getSectionCoord(box.maxX);
+        int minZ = ChunkSectionPos.getSectionCoord(box.minZ);
+        int maxZ = ChunkSectionPos.getSectionCoord(box.maxZ);
+        for (int x = minX; x <= maxX; x++) {
+            for (int z = minZ; z <= maxZ; z++) {
+                if (!chunks.isChunkLoaded(x, z)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private static void drain(KeyBinding binding) {
