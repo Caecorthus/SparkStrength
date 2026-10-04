@@ -20,15 +20,6 @@ loom {
     }
 }
 
-sourceSets {
-    // LambDynamicLights publishes intermediary API jars for this version, so client sources compile against a local named-shape stub.
-    // 此版本 LambDynamicLights 发布的是 intermediary API jar，因此客户端源码使用本地 Yarn 命名接口形状编译；这些 stub 不会进入最终 jar。
-    lambdynlightsStub {
-        java.srcDir("src/lambdynlightsStub/java")
-        compileClasspath += sourceSets.main.compileClasspath
-    }
-}
-
 repositories {
     mavenCentral()
     maven {
@@ -81,11 +72,6 @@ dependencies {
     modRuntimeOnly "maven.modrinth:simple-voice-chat:fabric-${project.voicechat_version}"
     modRuntimeOnly "de.maxhenkel.voicechat:voicechat-api:${project.voicechat_api_version}:fabric-stub"
 
-}
-
-tasks.named("compileClientJava") {
-    dependsOn tasks.named("compileLambdynlightsStubJava")
-    classpath = sourceSets.lambdynlightsStub.output + classpath
 }
 
 processResources {

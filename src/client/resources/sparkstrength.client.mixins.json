@@ -4,6 +4,10 @@
   "package": "annina.sparkstrength.client.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "attendant.FlashlightAimArmMixin",
+    "attendant.FlashlightBlockEntityLightMixin",
+    "attendant.FlashlightEntityLightMixin",
+    "attendant.FlashlightReceiverInvalidationMixin",
     "bomber.DroneCrosshairHintMixin",
     "bomber.DroneDemonHunterTargetMixin",
     "bomber.DroneGunTargetMixin",
