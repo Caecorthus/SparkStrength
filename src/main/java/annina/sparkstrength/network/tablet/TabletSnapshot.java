@@ -31,6 +31,7 @@ import java.util.UUID;
  *   list suspects ({@link SuspectRow})</li>
  *   <li>v4: varint featureMask, list doorLog ({@link DoorLogRow})</li>
  *   <li>v5: varint identityTasksRemaining</li>
+ *   <li>v6: list drones ({@link DroneRow})</li>
  * </ol>
  * Lists are a varint count followed by the rows.
  * 列表为 varint 数量后接各行。</p>
@@ -61,10 +62,12 @@ public record TabletSnapshot(
         List<SuspectRow> suspects,
         int featureMask,
         List<DoorLogRow> doorLog,
-        int identityTasksRemaining
+        int identityTasksRemaining,
+        List<DroneRow> drones
 ) {
     public TabletSnapshot {
         identityTasksRemaining = Math.max(0, identityTasksRemaining);
+        drones = drones == null ? List.of() : List.copyOf(drones);
     }
 
     public static TabletSnapshot empty() {
@@ -84,7 +87,8 @@ public record TabletSnapshot(
                 List.of(),
                 0,
                 List.of(),
-                0
+                0,
+                List.of()
         );
     }
 
@@ -121,6 +125,7 @@ public record TabletSnapshot(
         buf.writeVarInt(featureMask);
         writeList(buf, doorLog, (targetBuf, row) -> row.write(targetBuf));
         buf.writeVarInt(identityTasksRemaining);
+        writeList(buf, drones, (targetBuf, row) -> row.write(targetBuf));
     }
 
     public static TabletSnapshot read(PacketByteBuf buf) {
@@ -140,7 +145,8 @@ public record TabletSnapshot(
                 readList(buf, SuspectRow::read),
                 buf.readVarInt(),
                 readList(buf, DoorLogRow::read),
-                buf.readVarInt()
+                buf.readVarInt(),
+                readList(buf, DroneRow::read)
         );
     }
 
@@ -348,6 +354,60 @@ public record TabletSnapshot(
                 actorName = buf.readString(32767);
             }
             return new DoorLogRow(id, kindWire, doorName, hasActor, actorUuid, actorName, buf.readVarInt(), buf.readVarInt());
+        }
+    }
+
+    /**
+     * One of the viewer's own Bomber drones; non-empty only for viewers holding {@link TabletFeature#DRONE}. Rows never
+     * describe another player's drones.
+     * 查看者自己的一架炸弹客无人机；只有拥有 {@link TabletFeature#DRONE} 的查看者才会收到。绝不包含他人的无人机。
+     *
+     * @param entityId        placed drone's entity id, or -1 while it is an item / 已放置无人机的实体 id；仍为物品时为 -1
+     * @param kindWire        {@code DroneKind} wire / 型号
+     * @param statusWire      {@link #STATUS_ITEM} .. {@link #STATUS_FALLING} / 状态
+     * @param chargePercent   battery, whole percent / 电量整数百分比
+     * @param payload         grenade drone has a bound M67 / 已挂载 M67
+     * @param cooldownSeconds remaining item cooldown (opening lock or 45 s loss cooldown) / 剩余冷却秒数
+     * @param distance        whole blocks from the viewer to a placed drone, -1 for items / 与已放置无人机的距离（格），物品为 -1
+     */
+    public record DroneRow(
+            int entityId,
+            int kindWire,
+            int statusWire,
+            int chargePercent,
+            boolean payload,
+            int cooldownSeconds,
+            int distance
+    ) {
+        public static final int STATUS_ITEM = 0;
+        public static final int STATUS_GROUNDED = 1;
+        public static final int STATUS_HOVERING = 2;
+        public static final int STATUS_FLYING = 3;
+        public static final int STATUS_PILOTING = 4;
+        public static final int STATUS_FALLING = 5;
+
+        public DroneRow {
+            chargePercent = Math.clamp(chargePercent, 0, 100);
+            cooldownSeconds = Math.max(0, cooldownSeconds);
+        }
+
+        public boolean placed() {
+            return entityId >= 0;
+        }
+
+        private void write(PacketByteBuf buf) {
+            buf.writeVarInt(entityId + 1);
+            buf.writeVarInt(kindWire);
+            buf.writeVarInt(statusWire);
+            buf.writeVarInt(chargePercent);
+            buf.writeBoolean(payload);
+            buf.writeVarInt(cooldownSeconds);
+            buf.writeVarInt(distance + 1);
+        }
+
+        private static DroneRow read(PacketByteBuf buf) {
+            return new DroneRow(buf.readVarInt() - 1, buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
+                    buf.readBoolean(), buf.readVarInt(), buf.readVarInt() - 1);
         }
     }
 }

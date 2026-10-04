@@ -1,22 +1,36 @@
 package annina.sparkstrength.tablet;
 
 import annina.sparkstrength.component.tablet.TabletWorldComponent;
+import annina.sparkstrength.entity.DroneEntity;
+import annina.sparkstrength.item.DroneItem;
+import annina.sparkstrength.mixin.minecraft.ItemCooldownEntryAccessor;
+import annina.sparkstrength.mixin.minecraft.ItemCooldownManagerAccessor;
 import annina.sparkstrength.network.tablet.OpenTabletScreenS2CPacket;
 import annina.sparkstrength.network.tablet.SyncTabletSnapshotS2CPacket;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
 import annina.sparkstrength.role.attendant.AttendantRules;
 import annina.sparkstrength.role.attendant.DoorLog;
+import annina.sparkstrength.role.bomber.drone.DroneKind;
+import annina.sparkstrength.role.bomber.drone.DroneRules;
+import annina.sparkstrength.role.bomber.drone.DroneService;
+import annina.sparkstrength.role.bomber.drone.DroneState;
 import annina.sparkstrength.role.detective.DetectiveIdentityResolver;
 import com.mojang.authlib.GameProfile;
 import dev.doctor4t.wathe.api.event.TaskComplete;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.entity.player.ItemCooldownManager;
+import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
+import net.minecraft.util.math.MathHelper;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,6 +60,10 @@ import java.util.UUID;
  * <p>Role-granted features ({@link TabletFeature}) ride the same snapshot: the door log is filled only for viewers
  * holding {@link TabletFeature#DOOR_LOG} and is delivered by the periodic sync and on tablet open.
  * 身份授予的功能随同一快照下发：房门记录只为拥有房门监控的观看者填充，并通过周期同步与打开平板时下发。</p>
+ *
+ * <p>Drone rows are filled only for viewers holding {@link TabletFeature#DRONE} and list only the viewer's own drones;
+ * besides the periodic sync, {@code DronePilotService} pushes a snapshot when a pilot session starts or ends.
+ * 无人机行只为拥有无人机功能的观看者填充，且只列出查看者自己的无人机；除周期同步外，DronePilotService 在驾驶会话开始或结束时推送快照。</p>
  */
 public final class TabletStateService {
     private static boolean registered;
@@ -434,8 +452,86 @@ public final class TabletStateService {
                 meetingFeatures ? suspectRows(world, tablet, viewerUuid, electorate) : List.of(),
                 access.featureMask(),
                 access.hasFeature(TabletFeature.DOOR_LOG) ? doorLogRows(viewer, tablet, now) : List.of(),
-                TabletIdentityRules.tasksRemaining(channel, tasksDone)
+                TabletIdentityRules.tasksRemaining(channel, tasksDone),
+                access.hasFeature(TabletFeature.DRONE) ? droneRows(viewer) : List.of()
         );
+    }
+
+    /**
+     * The viewer's own drones: carried drone items first (inventory order), then grenade drones queued to come back
+     * (hotbar full or viewer out of survival; item rows with their cooldown), then its placed drones in this world
+     * (entity id order). Rows never describe another player's drones, and owner identity never leaves the server.
+     * 查看者自己的无人机：先列随身携带的无人机物品（按物品栏顺序），再列排队等待归还的投弹无人机（快捷栏已满或查看者暂不在生存模式；
+     * 以物品行显示并带冷却），最后列其在本世界已放置的无人机（按实体 id）。绝不包含他人的无人机，主人身份也不会离开服务器。
+     */
+    private static List<TabletSnapshot.DroneRow> droneRows(ServerPlayerEntity viewer) {
+        List<TabletSnapshot.DroneRow> rows = new ArrayList<>();
+        PlayerInventory inventory = viewer.getInventory();
+        ItemCooldownManager cooldowns = viewer.getItemCooldownManager();
+        for (int slot = 0; slot < inventory.size(); slot++) {
+            ItemStack stack = inventory.getStack(slot);
+            if (!(stack.getItem() instanceof DroneItem item)) {
+                continue;
+            }
+            rows.add(new TabletSnapshot.DroneRow(
+                    -1,
+                    item.kind().wire(),
+                    TabletSnapshot.DroneRow.STATUS_ITEM,
+                    DroneRules.percent(DroneItem.charge(stack)),
+                    item.kind() == DroneKind.GRENADE && DroneItem.hasPayload(stack),
+                    TabletRules.secondsCeil(remainingCooldownTicks(cooldowns, item)),
+                    -1
+            ));
+        }
+        UUID viewerUuid = viewer.getUuid();
+        for (DroneService.PendingReturnStatus pending : DroneService.pendingReturns(viewer.getServerWorld(), viewerUuid)) {
+            rows.add(new TabletSnapshot.DroneRow(
+                    -1,
+                    DroneKind.GRENADE.wire(),
+                    TabletSnapshot.DroneRow.STATUS_ITEM,
+                    DroneRules.percent(pending.charge()),
+                    false,
+                    TabletRules.secondsCeil(pending.cooldownTicks()),
+                    -1
+            ));
+        }
+        DroneService.dronesOf(viewer.getServerWorld(), viewerUuid).stream()
+                // Defensive owner re-check: the registry contract already scopes to this owner.
+                // 防御性复核主人：登记表契约本已限定为该主人。
+                .filter(drone -> !drone.isRemoved() && viewerUuid.equals(drone.ownerUuid()))
+                .sorted(Comparator.comparingInt(DroneEntity::getId))
+                .forEach(drone -> rows.add(new TabletSnapshot.DroneRow(
+                        drone.getId(),
+                        drone.kind().wire(),
+                        viewerUuid.equals(drone.pilotUuid()) ? TabletSnapshot.DroneRow.STATUS_PILOTING : statusWire(drone.state()),
+                        DroneRules.percent(drone.charge()),
+                        drone.hasPayload(),
+                        0,
+                        MathHelper.floor(viewer.distanceTo(drone))
+                )));
+        return rows;
+    }
+
+    private static int statusWire(DroneState state) {
+        return switch (state) {
+            case GROUNDED -> TabletSnapshot.DroneRow.STATUS_GROUNDED;
+            case HOVERING -> TabletSnapshot.DroneRow.STATUS_HOVERING;
+            case FLYING -> TabletSnapshot.DroneRow.STATUS_FLYING;
+            case FALLING -> TabletSnapshot.DroneRow.STATUS_FALLING;
+        };
+    }
+
+    /**
+     * Exact remaining item cooldown (opening lock or loss cooldown); vanilla exposes only a progress fraction.
+     * 精确的物品剩余冷却（开局锁或损毁冷却）；原版只公开进度比例。
+     */
+    private static int remainingCooldownTicks(ItemCooldownManager cooldowns, Item item) {
+        Object entry = ((ItemCooldownManagerAccessor) cooldowns).sparkstrength$getEntries().get(item);
+        if (entry == null) {
+            return 0;
+        }
+        return Math.max(0, ((ItemCooldownEntryAccessor) entry).sparkstrength$getEndTick()
+                - ((ItemCooldownManagerAccessor) cooldowns).sparkstrength$getTick());
     }
 
     /**
@@ -687,8 +783,8 @@ public final class TabletStateService {
     }
 
     /**
-     * Clients without the current (v5) payload are skipped instead of being disconnected by unknown bytes.
-     * 未注册当前（v5）负载的客户端直接跳过，避免因未知字节断线。
+     * Clients without the current (v6) payload are skipped instead of being disconnected by unknown bytes.
+     * 未注册当前（v6）负载的客户端直接跳过，避免因未知字节断线。
      */
     private static boolean sendPacket(ServerPlayerEntity player, TabletSnapshot snapshot) {
         if (!ServerPlayNetworking.canSend(player, SyncTabletSnapshotS2CPacket.ID)) {

@@ -6,6 +6,7 @@ import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.EmptyIcon;
 import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.HeroState;
 import annina.sparkstrength.client.screen.tablet.TabletTheme.Accent;
 import annina.sparkstrength.compat.SparkWitchCompat;
+import annina.sparkstrength.network.drone.DronePilotStartC2SPacket;
 import annina.sparkstrength.network.tablet.ApproveSuspectRemovalC2SPacket;
 import annina.sparkstrength.network.tablet.CallTabletMeetingC2SPacket;
 import annina.sparkstrength.network.tablet.CastTabletVoteC2SPacket;
@@ -14,6 +15,7 @@ import annina.sparkstrength.network.tablet.RequestTabletSnapshotC2SPacket;
 import annina.sparkstrength.network.tablet.SelectTabletChannelC2SPacket;
 import annina.sparkstrength.network.tablet.SendTabletChatC2SPacket;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
+import annina.sparkstrength.role.bomber.drone.DroneKind;
 import annina.sparkstrength.tablet.TabletChannel;
 import annina.sparkstrength.tablet.TabletFeature;
 import annina.sparkstrength.tablet.TabletIdentityRules;
@@ -64,23 +66,30 @@ import static annina.sparkstrength.client.screen.tablet.TabletSectionPainter.PIL
  * 因此控件、布局与绘制都使用逻辑单位。裁剪只通过 TabletCanvas.pushClip（物理像素），从不使用会忽略矩阵的
  * DrawContext.enableScissor。</p>
  *
- * <p>Feature sections (the Attendant door log) ride along with any channel. A holder whose only content is the door
- * log ("monitor-only": no channel and none to switch to) gets monitor chrome instead of "No Signal": a non-clickable
- * status chip, a monitor badge and the {@link TabletTheme#MONITOR} accent.
- * 功能分区（乘务员房门记录）可与任意频道并存。只有房门记录的持有者（“仅监控”：无频道且无可切换频道）显示监控外观，
- * 而非“无信号”：不可点击的状态胶囊、监控徽标与 MONITOR 强调色。</p>
+ * <p>Feature sections (the Attendant door log, the Bomber drone link) ride along with any channel. A holder whose only
+ * content is feature sections ("feature-only": no channel and none to switch to, e.g. a plain Attendant or a SparkTraits
+ * Conscience Bomber) gets that feature's chrome instead of "No Signal": a non-clickable status chip naming it, its badge
+ * glyph and its accent ({@link TabletTheme#accentFor(TabletFeature)}).
+ * 功能分区（乘务员房门记录、炸弹客无人机链路）可与任意频道并存。只有功能分区的持有者（“仅功能”：无频道且无可切换频道，
+ * 例如普通乘务员或 SparkTraits 善良炸弹客）显示该功能的外观，而非“无信号”：写着功能名的不可点击状态胶囊、
+ * 功能徽标图形与功能强调色。</p>
+ *
+ * <p>The drone section only asks to connect ({@link DronePilotStartC2SPacket}); the server re-validates ownership,
+ * state and the pilot's body, and the pilot client owns everything after that (camera, input, closing this screen).
+ * 无人机分区只发出连接请求；服务端重新校验归属、状态与驾驶者本体，此后的一切（视角、输入、关闭本界面）由驾驶客户端负责。</p>
  */
 public final class TabletScreen extends Screen {
     private static final DateTimeFormatter CLOCK_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
 
     private static final int SNAPSHOT_POLL_TICKS = 20;
     private static final int PENDING_SWITCH_TICKS = 40;
+    // How long a sent drone connect request shows "connecting" before the button re-arms. 连接请求显示“连接中”的时长。
+    private static final int PENDING_PILOT_TICKS = 40;
     private static final int CHAT_SCROLL_STEP = 18;
     // Chat edge mask: band height and column pitch (logical px). 聊天边缘遮罩：带高与列间距（逻辑像素）。
     private static final int CHAT_MASK = 18;
     private static final int CHAT_MASK_STEP = 12;
     private static final int COUNTER_THRESHOLD = 100;
-    private static final long PULSE_PERIOD_MS = 1200L;
     private static final long SIGNAL_SWEEP_MS = 220L;
 
     // Pills (status chip, header chip, switcher chips). 胶囊（状态栏频道、页眉信息、切换浮层标签）。
@@ -180,6 +189,10 @@ public final class TabletScreen extends Screen {
     private boolean newMessagesPending;
     // Door-log rows the scroll position refers to; anchors the reader when newer rows arrive. 门记录滚动位置所对应的行。
     private List<TabletSnapshot.DoorLogRow> lastDoorLogRows = List.of();
+    // Drone button states of the current build; a snapshot that changes them rebuilds the widgets. 当前构建的无人机按钮状态。
+    private List<DroneButtonKey> lastDroneButtons = List.of();
+    private int pendingPilotEntityId = -1;
+    private int pendingPilotTicks;
 
     // Stable identity of each keyed widget in the current build, so a rebuild can restore keyboard focus.
     // 当前构建中各控件的稳定标识，供重建时恢复键盘焦点。
@@ -191,6 +204,11 @@ public final class TabletScreen extends Screen {
         lastChannelWire = snapshot.channelWire();
         lastCanSend = snapshot.canSend();
         chatView.setBackdrop(this::screenBackdropAt);
+        Section resume = TabletClientState.consumeResumeSection();
+        if (resume != null) {
+            // init() falls back to the first visible section if it is gone. 若该分区已不可见，init() 会回退到第一个可见分区。
+            session.select(resume);
+        }
     }
 
     // ============================================================================================ lifecycle
@@ -207,6 +225,7 @@ public final class TabletScreen extends Screen {
         layout = TabletLayout.forViewport(canvasWidth, canvasHeight, visibleSections.size(), referenceTabs);
         clampRowScrolls(snapshot);
         lastDoorLogRows = doorLogRows(snapshot);
+        lastDroneButtons = droneButtonKeys(snapshot);
         ensureChatInput();
         focusKeys.clear();
         tabButtons.clear();
@@ -240,6 +259,7 @@ public final class TabletScreen extends Screen {
                     initSuspects(snapshot);
                 }
             }
+            case DRONE -> initDrones(snapshot);
         }
     }
 
@@ -298,13 +318,19 @@ public final class TabletScreen extends Screen {
             onChannelChanged(previousChannelWire);
         }
 
+        int droneFirstRow = session.droneFirstRow();
         if (layout != null) {
             anchorDoorLog(snapshot);
             clampRowScrolls(snapshot);
         }
-        if (switcherOpen && monitorOnly(snapshot)) {
-            // Became monitor-only (channels lost mid-round): the switcher has nothing to offer. 变为仅监控时关闭切换浮层。
+        if (switcherOpen && featureOnly(snapshot)) {
+            // Became feature-only (channels lost mid-round): the switcher has nothing to offer. 变为仅功能时关闭切换浮层。
             switcherOpen = false;
+        }
+        if (pendingPilotEntityId >= 0 && !pendingPilotStillConnectable(snapshot)) {
+            // Linked, lost or gone: the request is settled either way. 已连接、失控或已消失：请求已有结果。
+            pendingPilotEntityId = -1;
+            pendingPilotTicks = 0;
         }
         // Features can change mid-round (Coroner disguise ends), so the section set is re-derived on every snapshot.
         // 功能可能在回合中变化（验尸官伪装结束），因此每次快照都重新计算分区集合。
@@ -318,7 +344,9 @@ public final class TabletScreen extends Screen {
                 || !nextSections.equals(visibleSections)
                 || nextReference != referenceTabs
                 || session.section() == Section.MEETING
-                || session.section() == Section.SUSPECTS) {
+                || session.section() == Section.SUSPECTS
+                || (session.section() == Section.DRONE && (droneFirstRow != session.droneFirstRow()
+                        || !droneButtonKeys(snapshot).equals(lastDroneButtons)))) {
             refresh();
         }
     }
@@ -349,6 +377,13 @@ public final class TabletScreen extends Screen {
         super.tick();
         if (pendingSwitchTicks > 0 && --pendingSwitchTicks == 0) {
             pendingChannelWire = TabletChannel.NO_CHANNEL_WIRE;
+        }
+        if (pendingPilotTicks > 0 && --pendingPilotTicks == 0) {
+            // No answer (refused, e.g. body not on the ground): re-arm the connect button. 未获响应（被拒绝）：恢复连接按钮。
+            pendingPilotEntityId = -1;
+            if (session.section() == Section.DRONE) {
+                refresh();
+            }
         }
         snapshotRequestTicks++;
         if (snapshotRequestTicks >= SNAPSHOT_POLL_TICKS) {
@@ -558,11 +593,58 @@ public final class TabletScreen extends Screen {
         }
     }
 
+    /**
+     * One connect button per visible drone card. Only placed, controllable drones get an active button; the others
+     * show why not (stowed, cooling down, falling, already linked, another link busy). The server re-validates every
+     * request.
+     * 每张可见无人机卡片一个连接按钮。只有已放置且可操控的无人机按钮可用；其余显示原因（在背包、冷却、坠落、已连接、
+     * 链路占线）。服务端会重新校验每个请求。
+     */
+    private void initDrones(TabletSnapshot snapshot) {
+        Grid grid = droneGrid();
+        List<TabletSnapshot.DroneRow> rows = droneRows(snapshot);
+        boolean linkBusy = droneLinkBusy(rows);
+        int first = session.droneFirstRow();
+        for (int row = 0; row < grid.visibleRows() && first + row < rows.size(); row++) {
+            TabletSnapshot.DroneRow drone = rows.get(first + row);
+            DroneAction action = droneAction(drone, linkBusy);
+            Rect rect = TabletSectionPainter.droneButtonRect(textRenderer, grid.area().x(), grid.rowY(row),
+                    grid.area().width());
+            String focusKey = drone.placed() ? "drone:" + drone.entityId() : "drone:item:" + (first + row);
+            // Drone accent whatever the channel, like the door monitor's live chip. 与房门监控相同，无论频道都用无人机强调色。
+            addButton(focusKey, rect, Text.translatable(KEY + action.labelKey()), action.style(), action.icon(),
+                    TabletTheme.DRONE, () -> connectDrone(drone))
+                    .active = action == DroneAction.CONNECT;
+        }
+    }
+
+    private void connectDrone(TabletSnapshot.DroneRow drone) {
+        // No-op when the server never declared the pilot channel (or there is no connection).
+        // 服务端未声明驾驶通道（或无连接）时不发送。
+        if (!drone.placed() || pendingPilotEntityId >= 0
+                || !ClientPlayNetworking.canSend(DronePilotStartC2SPacket.ID)) {
+            return;
+        }
+        ClientPlayNetworking.send(new DronePilotStartC2SPacket(drone.entityId()));
+        pendingPilotEntityId = drone.entityId();
+        pendingPilotTicks = PENDING_PILOT_TICKS;
+        // The pilot client closes the tablet for the drone camera; reopening it lands back on the drone list.
+        // 驾驶客户端会关闭平板以切换到无人机视角；之后再打开平板时回到无人机列表。
+        TabletClientState.resumeOnNextOpen(Section.DRONE);
+        refresh();
+    }
+
     private TabletPressable addButton(String focusKey, Rect rect, Text label, ButtonStyle style, ButtonIcon icon,
                                       Runnable action) {
+        return addButton(focusKey, rect, label, style, icon, null, action);
+    }
+
+    /** {@code accent} null = the frame accent of the frame being painted. accent 为 null 时使用当前帧的外框强调色。 */
+    private TabletPressable addButton(String focusKey, Rect rect, Text label, ButtonStyle style, ButtonIcon icon,
+                                      @Nullable Accent accent, Runnable action) {
         return keyed(focusKey, addDrawableChild(new TabletPressable(rect.x(), rect.y(), rect.width(), rect.height(),
                 label, action, (context, button, hovered, delta) -> TabletSectionPainter.button(frameCanvas,
-                        textRenderer, button, style, icon, label, hovered, frameAccent))));
+                        textRenderer, button, style, icon, label, hovered, accent != null ? accent : frameAccent))));
     }
 
     private <T extends Element> T keyed(String focusKey, T widget) {
@@ -783,6 +865,18 @@ public final class TabletScreen extends Screen {
                     return true;
                 }
             }
+            case DRONE -> {
+                Grid grid = droneGrid();
+                if (grid.area().contains(x, y)) {
+                    // Each visible card owns a button, so a moved window rebuilds like SUSPECTS. 每张可见卡片带按钮，滚动后与嫌疑分区一样重建。
+                    int previous = session.droneFirstRow();
+                    session.scrollDrones(verticalAmount, droneRows(snapshot).size(), grid.visibleRows());
+                    if (session.droneFirstRow() != previous) {
+                        refresh();
+                    }
+                    return true;
+                }
+            }
         }
         return super.mouseScrolled(x, y, horizontalAmount, verticalAmount);
     }
@@ -964,24 +1058,25 @@ public final class TabletScreen extends Screen {
     // ============================================================================================ geometry
 
     /**
-     * Status-bar channel chip; the single source for both painting and hit testing. Monitor-only holders get a
-     * static chip naming the door monitor instead of "No Signal" and a switcher of locked rows.
-     * 状态栏频道胶囊；绘制与命中测试共用。仅监控持有者显示不可点击、写着房门监控的胶囊，而不是“无信号”与全锁定的切换浮层。
+     * Status-bar channel chip; the single source for both painting and hit testing. Feature-only holders get a
+     * static chip naming their feature (door monitor, drones) instead of "No Signal" and a switcher of locked rows.
+     * 状态栏频道胶囊；绘制与命中测试共用。仅功能持有者显示不可点击、写着功能名（房门监控、无人机）的胶囊，
+     * 而不是“无信号”与全锁定的切换浮层。
      */
     private ChannelChip channelChip(TabletSnapshot snapshot) {
         Rect status = layout.statusBar();
         boolean live = snapshot.localHasTablet();
-        boolean monitor = live && monitorOnly(snapshot);
+        Section feature = live ? featureOnlySection(snapshot) : null;
         // Clickable exactly when mouseClicked opens the switcher from it. 与 mouseClicked 打开切换浮层的条件一致。
-        boolean clickable = live && !monitor;
+        boolean clickable = live && !featureOnly(snapshot);
         TabletChannel channel = live ? snapshot.channel() : null;
         String name;
         String shortName = null;
         if (!live) {
             name = Text.translatable(KEY + "no_signal.connecting").getString();
-        } else if (monitor) {
-            name = Text.translatable(Section.DOOR_LOG.translationKey()).getString();
-            shortName = Text.translatable(Section.DOOR_LOG.shortTranslationKey()).getString();
+        } else if (feature != null) {
+            name = Text.translatable(feature.translationKey()).getString();
+            shortName = Text.translatable(feature.shortTranslationKey()).getString();
         } else if (channel == null) {
             name = Text.translatable(KEY + "channel.none").getString();
         } else {
@@ -1001,7 +1096,7 @@ public final class TabletScreen extends Screen {
         int x = Math.max(minX, Math.min(maxX - width, status.centerX() - width / 2));
         int height = Math.min(PILL_H, status.height());
         return new ChannelChip(new Rect(x, status.y() + (status.height() - height) / 2, width, height), name, clickable,
-                channel != null || monitor);
+                channel != null || feature != null);
     }
 
     private Rect signalBox() {
@@ -1074,6 +1169,11 @@ public final class TabletScreen extends Screen {
         return Grid.of(layout.bodyNoFooter(), 1, TabletSectionPainter.DOOR_ROW_H, TabletSectionPainter.DOOR_ROW_STEP);
     }
 
+    /** Above the controls footer. 位于操作提示页脚之上。 */
+    private Grid droneGrid() {
+        return Grid.of(layout.list(), 1, TabletSectionPainter.DRONE_CARD_H, TabletSectionPainter.DRONE_ROW_STEP);
+    }
+
     /** Row scrolls are in grid rows (ceil(n / columns)); clamped on every snapshot and rebuild. 以网格行计，每次快照与重建时限制范围。 */
     private void clampRowScrolls(TabletSnapshot snapshot) {
         Grid members = connectionsGrid();
@@ -1084,6 +1184,7 @@ public final class TabletScreen extends Screen {
         Grid suspects = suspectGrid();
         session.applySuspectSnapshot(suspects.totalRows(snapshot.suspects().size()), suspects.visibleRows());
         session.applyDoorLogSnapshot(-1, doorLogRows(snapshot).size(), doorLogGrid().visibleRows());
+        session.clampDrones(droneRows(snapshot).size(), droneGrid().visibleRows());
     }
 
     /** 2 px scroll track in the right gutter of a list area. 列表右侧留白中的 2 像素滚动条轨道。 */
@@ -1274,9 +1375,9 @@ public final class TabletScreen extends Screen {
 
         Rect signal = signalBox();
         boolean connecting = !snapshot.localHasTablet();
-        // The door monitor works without a network, so a monitor-only tablet is not shown as signal-less.
-        // 房门监控无需网络，仅监控的平板不显示为无信号。
-        int lit = connecting ? sweepBars(now) : snapshot.channel() == null && !monitorOnly(snapshot) ? 0 : 4;
+        // Features (door monitor, drone link) work without a network, so a feature-only tablet is not shown as
+        // signal-less. 功能（房门监控、无人机链路）无需网络，仅功能的平板不显示为无信号。
+        int lit = connecting ? sweepBars(now) : snapshot.channel() == null && !featureOnly(snapshot) ? 0 : 4;
         TabletIcons.signal(c, signal.x(), signal.y(), signal.width(), lit,
                 connecting ? TabletTheme.NONE.pale() : TabletTheme.TEXT_2, SIGNAL_DIM);
     }
@@ -1341,13 +1442,19 @@ public final class TabletScreen extends Screen {
         }
         TabletChannel channel = snapshot.channel();
         int textY = badge.y() + (badge.height() - 8) / 2;
-        if (monitorOnly(snapshot)) {
-            // Not a channel: a monitor glyph instead of a monogram, and nothing to click. 不是频道：显示监控图形而非首字，且不可点击。
+        Section feature = featureOnlySection(snapshot);
+        if (feature != null) {
+            // Not a channel: the feature's glyph instead of a monogram, and nothing to click. 不是频道：显示功能图形而非首字，且不可点击。
             c.roundRectGradientV(badge.x(), badge.y(), badge.width(), badge.height(), 9f,
                     frameAccent.base(), frameAccent.deep());
             float glyph = 16f;
-            TabletIcons.eye(c, badge.centerX() - glyph / 2f, badge.y() + (badge.height() - glyph) / 2f, glyph,
-                    TabletTheme.WHITE);
+            float glyphX = badge.centerX() - glyph / 2f;
+            float glyphY = badge.y() + (badge.height() - glyph) / 2f;
+            if (feature == Section.DRONE) {
+                TabletIcons.drone(c, glyphX, glyphY, glyph, TabletTheme.WHITE);
+            } else {
+                TabletIcons.eye(c, glyphX, glyphY, glyph, TabletTheme.WHITE);
+            }
             return;
         }
         if (channel == null) {
@@ -1396,6 +1503,7 @@ public final class TabletScreen extends Screen {
             case MEETING -> TabletIcons.megaphone(c, box.x(), box.y(), box.width(), color);
             case SUSPECTS -> TabletIcons.target(c, box.x(), box.y(), box.width(), color);
             case DOOR_LOG -> TabletIcons.door(c, box.x(), box.y(), box.width(), color);
+            case DRONE -> TabletIcons.drone(c, box.x(), box.y(), box.width(), color);
         }
     }
 
@@ -1439,6 +1547,17 @@ public final class TabletScreen extends Screen {
                     if (TabletClientState.hasUnreadDoorLog(snapshot)) {
                         c.circle(cx, cy, 4f, TabletTheme.mix(screenBackdropAt((int) cx, (int) cy), 0xFF000000, 0.25f));
                         c.circle(cx, cy, 3f, TabletTheme.DANGER);
+                    }
+                }
+                case DRONE -> {
+                    // A falling drone is an alarm; one in the air without its pilot (draining) pulses.
+                    // 坠落中的无人机为警报红点；无人驾驶仍在空中（持续耗电）的无人机显示脉冲点。
+                    DroneAlert alert = droneAlert(snapshot);
+                    if (alert == DroneAlert.FALLING) {
+                        c.circle(cx, cy, 4f, TabletTheme.mix(screenBackdropAt((int) cx, (int) cy), 0xFF000000, 0.25f));
+                        c.circle(cx, cy, 3f, TabletTheme.DANGER);
+                    } else if (alert == DroneAlert.UNATTENDED) {
+                        paintPulseDot(cx, cy, 3f, TabletTheme.DRONE.base(), now);
                     }
                 }
                 case CONNECTIONS -> {
@@ -1516,7 +1635,41 @@ public final class TabletScreen extends Screen {
                     TabletTheme.MONITOR.pale(), TabletTheme.withAlpha(TabletTheme.MONITOR.base(), 0x2E), 0,
                     (canvas, x, y, size, color) -> paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
                     TabletTheme.MONITOR.base());
+            case DRONE -> paintDroneHeaderChip(snapshot, right, centerY, maxWidth, now);
         };
+    }
+
+    /**
+     * Drones flying under control (hovering, flying, piloted) as a live drone-accent chip; with none, falling drones as
+     * a red alarm chip; else the drone count.
+     * 有受控飞行的无人机（悬停、飞行、驾驶中）时显示无人机强调色的实时胶囊；没有时若有坠落中的无人机则显示红色警报胶囊；
+     * 否则显示无人机数量。
+     */
+    private int paintDroneHeaderChip(TabletSnapshot snapshot, int right, int centerY, int maxWidth, long now) {
+        List<TabletSnapshot.DroneRow> rows = droneRows(snapshot);
+        int airborne = 0;
+        int falling = 0;
+        for (TabletSnapshot.DroneRow row : rows) {
+            if (isAirborne(row)) {
+                airborne++;
+            } else if (row.placed() && row.statusWire() == TabletSnapshot.DroneRow.STATUS_FALLING) {
+                falling++;
+            }
+        }
+        if (airborne > 0) {
+            return paintPill(right, centerY, maxWidth, Text.translatable(KEY + "drone.airborne", airborne).getString(),
+                    TabletTheme.DRONE.pale(), TabletTheme.withAlpha(TabletTheme.DRONE.base(), 0x2E), 0,
+                    (canvas, x, y, size, color) -> paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
+                    TabletTheme.DRONE.base());
+        }
+        if (falling > 0) {
+            return paintPill(right, centerY, maxWidth, Text.translatable(KEY + "drone.falling_count", falling).getString(),
+                    TabletTheme.KILLER.pale(), TabletTheme.withAlpha(TabletTheme.DANGER, 0x33), 0,
+                    (canvas, x, y, size, color) -> paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
+                    TabletTheme.DANGER);
+        }
+        return paintPill(right, centerY, maxWidth, String.valueOf(rows.size()), TabletTheme.TEXT_2, TabletTheme.SURFACE,
+                0, TabletIcons::drone, TabletTheme.TEXT_2);
     }
 
     /**
@@ -1546,9 +1699,7 @@ public final class TabletScreen extends Screen {
     }
 
     private void paintPulseDot(float cx, float cy, float radius, int color, long now) {
-        float phase = (float) (0.5 + 0.5 * Math.sin(2.0 * Math.PI * (now % PULSE_PERIOD_MS) / PULSE_PERIOD_MS));
-        frameCanvas.circle(cx, cy, radius + 2f * phase, TabletTheme.withAlpha(color, Math.round(0x55 * (1f - phase))));
-        frameCanvas.circle(cx, cy, radius, TabletTheme.multiplyAlpha(color, 0.7f + 0.3f * phase));
+        TabletSectionPainter.pulseDot(frameCanvas, cx, cy, radius, color, now);
     }
 
     // ------------------------------------------------------------------------------------------------ sections
@@ -1568,6 +1719,7 @@ public final class TabletScreen extends Screen {
                 }
             }
             case DOOR_LOG -> paintDoorLog(snapshot);
+            case DRONE -> paintDrones(snapshot, now);
         }
     }
 
@@ -1866,6 +2018,31 @@ public final class TabletScreen extends Screen {
         TabletSectionPainter.scrollThumb(c, scrollTrack(grid.area()), first, grid.visibleRows(), rows.size());
     }
 
+    /**
+     * One card per drone (connect buttons are widgets, see initDrones) above the pilot controls cheat-sheet; an empty
+     * list centres its empty state in the whole body and hides the cheat-sheet.
+     * 每架无人机一张卡片（连接按钮是控件，见 initDrones），下方为驾驶操作提示；没有无人机时空状态在整个正文区居中，且不显示操作提示。
+     */
+    private void paintDrones(TabletSnapshot snapshot, long now) {
+        TabletCanvas c = frameCanvas;
+        List<TabletSnapshot.DroneRow> rows = droneRows(snapshot);
+        if (rows.isEmpty()) {
+            TabletSectionPainter.emptyState(c, textRenderer, layout.bodyNoFooter(), EmptyIcon.DRONE,
+                    Text.translatable(KEY + "drone.empty"), Text.translatable(KEY + "drone.empty_hint"));
+            return;
+        }
+        Grid grid = droneGrid();
+        int first = session.droneFirstRow();
+        for (int row = 0; row < grid.visibleRows() && first + row < rows.size(); row++) {
+            TabletSnapshot.DroneRow drone = rows.get(first + row);
+            TabletSectionPainter.droneCard(c, textRenderer, grid.area().x(), grid.rowY(row), grid.area().width(), drone,
+                    Objects.requireNonNull(DroneKind.fromWire(drone.kindWire())), now);
+        }
+        TabletSectionPainter.scrollThumb(c, scrollTrack(grid.area()), first, grid.visibleRows(), rows.size());
+        int padX = layout.mode().padX();
+        TabletSectionPainter.droneControls(c, textRenderer, layout.footer().inset(padX, 0, padX, 0), client.options);
+    }
+
     private static HeroState heroState(TabletSnapshot snapshot) {
         if (snapshot.cooldownSeconds() > 0) {
             return HeroState.COOLDOWN;
@@ -2063,19 +2240,149 @@ public final class TabletScreen extends Screen {
 
     // ============================================================================================ helpers
 
-    private static Accent frameAccentFor(TabletSnapshot snapshot) {
-        return monitorOnly(snapshot) ? TabletTheme.MONITOR : TabletTheme.accentFor(snapshot.channel());
+    private Accent frameAccentFor(TabletSnapshot snapshot) {
+        Section feature = featureOnlySection(snapshot);
+        TabletFeature required = feature == null ? null : feature.requiredFeature();
+        return required != null ? TabletTheme.accentFor(required) : TabletTheme.accentFor(snapshot.channel());
     }
 
     /**
-     * The door log is the holder's only content: no channel now and none to switch to (a plain Attendant).
-     * 房门记录是持有者唯一的内容：当前无频道且没有可切换的频道（普通乘务员）。
+     * Feature sections are the holder's only content: no channel now and none to switch to (a plain Attendant, a
+     * SparkTraits Conscience Bomber).
+     * 功能分区是持有者唯一的内容：当前无频道且没有可切换的频道（普通乘务员、SparkTraits 善良炸弹客）。
      */
-    private static boolean monitorOnly(TabletSnapshot snapshot) {
+    private static boolean featureOnly(TabletSnapshot snapshot) {
         return snapshot.localHasTablet()
                 && snapshot.channel() == null
                 && snapshot.allowedChannels().isEmpty()
-                && snapshot.hasFeature(TabletFeature.DOOR_LOG);
+                && !snapshot.features().isEmpty();
+    }
+
+    /**
+     * For a feature-only holder, the feature section that names the tablet (chip, badge, accent): the open section when
+     * it is a granted feature section, else the first granted one. Null when the holder is not feature-only.
+     * 仅功能持有者用于命名平板（胶囊、徽标、强调色）的功能分区：当前打开的分区若为已授予的功能分区则用它，否则用第一个已授予的；
+     * 非仅功能持有者为 null。
+     */
+    private @Nullable Section featureOnlySection(TabletSnapshot snapshot) {
+        if (!featureOnly(snapshot)) {
+            return null;
+        }
+        TabletFeature open = session.section().requiredFeature();
+        if (open != null && snapshot.hasFeature(open)) {
+            return session.section();
+        }
+        for (Section section : Section.values()) {
+            TabletFeature required = section.requiredFeature();
+            if (required != null && snapshot.hasFeature(required)) {
+                return section;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The viewer's drone rows this client can show, in server order; empty without the feature. Rows of a kind this
+     * client does not know (newer server) are skipped.
+     * 本客户端可显示的查看者无人机行（服务端顺序）；无此功能时为空。跳过本客户端不认识的型号（更新的服务端）。
+     */
+    private static List<TabletSnapshot.DroneRow> droneRows(TabletSnapshot snapshot) {
+        if (!snapshot.hasFeature(TabletFeature.DRONE) || snapshot.drones().isEmpty()) {
+            return List.of();
+        }
+        List<TabletSnapshot.DroneRow> rows = snapshot.drones();
+        for (TabletSnapshot.DroneRow row : rows) {
+            if (DroneKind.fromWire(row.kindWire()) == null) {
+                return rows.stream().filter(candidate -> DroneKind.fromWire(candidate.kindWire()) != null).toList();
+            }
+        }
+        return rows;
+    }
+
+    /** In the air under control; a falling drone has lost control and is not counted. 受控飞行中；坠落中的无人机已失控，不计入。 */
+    private static boolean isAirborne(TabletSnapshot.DroneRow row) {
+        if (!row.placed()) {
+            return false;
+        }
+        return switch (row.statusWire()) {
+            case TabletSnapshot.DroneRow.STATUS_HOVERING, TabletSnapshot.DroneRow.STATUS_FLYING,
+                 TabletSnapshot.DroneRow.STATUS_PILOTING -> true;
+            default -> false;
+        };
+    }
+
+    private static DroneAlert droneAlert(TabletSnapshot snapshot) {
+        DroneAlert alert = DroneAlert.NONE;
+        for (TabletSnapshot.DroneRow row : droneRows(snapshot)) {
+            if (!row.placed()) {
+                continue;
+            }
+            if (row.statusWire() == TabletSnapshot.DroneRow.STATUS_FALLING) {
+                return DroneAlert.FALLING;
+            }
+            if (row.statusWire() == TabletSnapshot.DroneRow.STATUS_HOVERING
+                    || row.statusWire() == TabletSnapshot.DroneRow.STATUS_FLYING) {
+                alert = DroneAlert.UNATTENDED;
+            }
+        }
+        return alert;
+    }
+
+    /**
+     * Presentation-only: what a card's button offers. Placed drones on the ground or in the air can be linked; the
+     * server re-validates (owner, state, the pilot's body on the ground).
+     * 仅用于展示：卡片按钮提供的操作。已放置且在地面或空中的无人机可以连接；服务端会重新校验（归属、状态、驾驶者本体着地）。
+     */
+    private DroneAction droneAction(TabletSnapshot.DroneRow row, boolean linkBusy) {
+        if (!row.placed() || row.statusWire() == TabletSnapshot.DroneRow.STATUS_ITEM) {
+            return row.cooldownSeconds() > 0 ? DroneAction.COOLDOWN : DroneAction.PLACE_FIRST;
+        }
+        return switch (row.statusWire()) {
+            case TabletSnapshot.DroneRow.STATUS_PILOTING -> DroneAction.LINKED;
+            case TabletSnapshot.DroneRow.STATUS_FALLING -> DroneAction.LOST;
+            default -> row.entityId() == pendingPilotEntityId ? DroneAction.CONNECTING
+                    : linkBusy ? DroneAction.BUSY : DroneAction.CONNECT;
+        };
+    }
+
+    /**
+     * One pilot link at a time: while a drone is piloted or a connect request is pending, other cards cannot connect.
+     * 同一时间只有一条驾驶链路：有无人机正在驾驶或连接请求未决时，其它卡片不能连接。
+     */
+    private boolean droneLinkBusy(List<TabletSnapshot.DroneRow> rows) {
+        if (pendingPilotEntityId >= 0) {
+            return true;
+        }
+        for (TabletSnapshot.DroneRow row : rows) {
+            if (row.placed() && row.statusWire() == TabletSnapshot.DroneRow.STATUS_PILOTING) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<DroneButtonKey> droneButtonKeys(TabletSnapshot snapshot) {
+        List<TabletSnapshot.DroneRow> rows = droneRows(snapshot);
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+        boolean linkBusy = droneLinkBusy(rows);
+        ArrayList<DroneButtonKey> keys = new ArrayList<>(rows.size());
+        for (TabletSnapshot.DroneRow row : rows) {
+            keys.add(new DroneButtonKey(row.entityId(), row.kindWire(), droneAction(row, linkBusy)));
+        }
+        return keys;
+    }
+
+    private boolean pendingPilotStillConnectable(TabletSnapshot snapshot) {
+        for (TabletSnapshot.DroneRow row : droneRows(snapshot)) {
+            if (row.entityId() == pendingPilotEntityId) {
+                return row.statusWire() == TabletSnapshot.DroneRow.STATUS_GROUNDED
+                        || row.statusWire() == TabletSnapshot.DroneRow.STATUS_HOVERING
+                        || row.statusWire() == TabletSnapshot.DroneRow.STATUS_FLYING;
+            }
+        }
+        return false;
     }
 
     /**
@@ -2159,6 +2466,48 @@ public final class TabletScreen extends Screen {
 
     // ============================================================================================ types
 
+    private enum DroneAction {
+        CONNECT("drone.connect", ButtonStyle.PRIMARY, ButtonIcon.LINK),
+        CONNECTING("drone.connecting", ButtonStyle.SECONDARY, ButtonIcon.SPINNER),
+        LINKED("drone.linked", ButtonStyle.SECONDARY, ButtonIcon.LINK),
+        LOST("drone.lost", ButtonStyle.DANGER_SOFT, ButtonIcon.NONE),
+        BUSY("drone.busy", ButtonStyle.SECONDARY, ButtonIcon.NONE),
+        COOLDOWN("drone.cooling", ButtonStyle.SECONDARY, ButtonIcon.CLOCK),
+        PLACE_FIRST("drone.place_first", ButtonStyle.SECONDARY, ButtonIcon.NONE);
+
+        private final String labelKey;
+        private final ButtonStyle style;
+        private final ButtonIcon icon;
+
+        DroneAction(String labelKey, ButtonStyle style, ButtonIcon icon) {
+            this.labelKey = labelKey;
+            this.style = style;
+            this.icon = icon;
+        }
+
+        String labelKey() {
+            return labelKey;
+        }
+
+        ButtonStyle style() {
+            return style;
+        }
+
+        ButtonIcon icon() {
+            return icon;
+        }
+    }
+
+    private enum DroneAlert {
+        NONE,
+        UNATTENDED,
+        FALLING
+    }
+
+    /** Everything about a drone row that changes its button. 无人机行中会改变其按钮的全部信息。 */
+    private record DroneButtonKey(int entityId, int kindWire, DroneAction action) {
+    }
+
     private enum SwitchState {
         CURRENT,
         JOIN,
@@ -2173,7 +2522,7 @@ public final class TabletScreen extends Screen {
         void paint(TabletCanvas canvas, float x, float y, float size, int color);
     }
 
-    /** {@code lit}: a live channel or the door monitor (accent dot with glow, bright name). 已接入频道或房门监控（发光圆点、亮色名字）。 */
+    /** {@code lit}: a live channel or a feature-only tablet (accent dot with glow, bright name). 已接入频道或仅功能平板（发光圆点、亮色名字）。 */
     private record ChannelChip(Rect rect, String name, boolean clickable, boolean lit) {
     }
 

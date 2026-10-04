@@ -4,6 +4,7 @@ import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.compat.SparkFactionCompat;
 import annina.sparkstrength.component.tablet.TabletWorldComponent;
 import annina.sparkstrength.role.attendant.AttendantRules;
+import annina.sparkstrength.role.coroner.CoronerRules;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.player.PlayerEntity;
@@ -87,12 +88,13 @@ public final class TabletShopService {
         if (state.isTabletGrantSettled(player.getUuid())) {
             return;
         }
-        // Same identity facts as channel membership (TabletChannelResolver.identityChannels), plus the real Attendant.
-        // 与频道成员资格相同的身份事实（identityChannels），再加真实乘务员身份。
+        // Same identity facts as channel membership (TabletChannelResolver.identityChannels), plus the real Attendant
+        // and the real Bomber. / 与频道成员资格相同的身份事实（identityChannels），再加真实乘务员与真实炸弹客身份。
         TabletChannelRules.Facts facts = TabletChannelResolver.facts(player);
         EnumSet<TabletChannel> channels = TabletChannelRules.allowed(facts);
         boolean realAttendant = isRealAttendant(player);
-        if (!TabletShopRules.isTabletEligible(facts.hasRole(), !channels.isEmpty(), realAttendant)) {
+        boolean realBomber = isRealBomber(player);
+        if (!TabletShopRules.isTabletEligible(facts.hasRole(), !channels.isEmpty(), realAttendant, realBomber)) {
             // Not settled: a later role/trait/faction change can still make this player eligible this round.
             // 不记为已结算：本局之后的身份/天赋/阵营变化仍可能让该玩家获得资格。
             return;
@@ -103,7 +105,7 @@ public final class TabletShopService {
                 // 物品栏已满：保持未结算，由下一轮对账重试。
                 return;
             }
-            List<String> keys = TabletShopRules.grantMessageKeys(channels, facts.undercover(), realAttendant);
+            List<String> keys = TabletShopRules.grantMessageKeys(channels, facts.undercover(), realAttendant, realBomber);
             for (String key : keys) {
                 player.sendMessage(Text.translatable(key), false);
             }
@@ -118,6 +120,12 @@ public final class TabletShopService {
         // Real round role only: a Coroner's Attendant disguise is lent a temporary tablet by CoronerService instead.
         // 只看真实局内身份：验尸官的乘务员伪装改由 CoronerService 借出临时平板。
         return AttendantRules.isAttendant(GameWorldComponent.KEY.get(player.getWorld()).getRole(player));
+    }
+
+    private static boolean isRealBomber(PlayerEntity player) {
+        // Real round role only: a Coroner's Bomber disguise gets no drones, so no drone tablet either.
+        // 只看真实局内身份：验尸官的炸弹客伪装没有无人机，因此也不发无人机平板。
+        return CoronerRules.isBomber(GameWorldComponent.KEY.get(player.getWorld()).getRole(player));
     }
 
     private static boolean hasTabletAnywhere(ServerPlayerEntity player) {

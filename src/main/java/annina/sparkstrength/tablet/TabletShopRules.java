@@ -29,6 +29,7 @@ public final class TabletShopRules {
     public static final String IMPOSTOR_GRANTED_KEY = "message.sparkstrength.tablet.impostor_granted";
     public static final String UNDERCOVER_GRANTED_KEY = "message.sparkstrength.tablet.undercover_granted";
     public static final String ATTENDANT_GRANTED_KEY = "message.sparkstrength.tablet.attendant_granted";
+    public static final String BOMBER_GRANTED_KEY = "message.sparkstrength.tablet.bomber_granted";
     /** Police-network suspect highlight; tablets never outline channel members. / 义警网络嫌疑人高亮色；平板从不描边频道成员。 */
     public static final int SUSPECT_HIGHLIGHT_COLOR = 0xFF8C00;
 
@@ -60,36 +61,47 @@ public final class TabletShopRules {
 
     /**
      * Tablet eligibility: a real round role that belongs to at least one tablet network
-     * ({@code TabletChannelResolver.identityChannels} non-empty), or the real Attendant, whose door monitor needs no
-     * channel. A Coroner's Attendant disguise never counts (it is lent a temporary tablet instead).
-     * 平板资格：拥有有效局内身份，且属于至少一个平板网络（identityChannels 非空），或真实身份为乘务员（房门监控无需频道）。
-     * 验尸官的乘务员伪装不计入（伪装期间改为借出临时平板）。
+     * ({@code TabletChannelResolver.identityChannels} non-empty), or a real role whose tablet feature needs no channel:
+     * the Attendant (door monitor) or the Bomber (drone directory; a SparkTraits Conscience Bomber has no channel).
+     * Disguises never count: a Coroner's Attendant disguise is lent a temporary tablet instead, and a Coroner's Bomber
+     * disguise gets no drones at all.
+     * 平板资格：拥有有效局内身份，且属于至少一个平板网络（identityChannels 非空），或真实身份的平板功能无需频道：
+     * 乘务员（房门监控）或炸弹客（无人机目录；SparkTraits 善良炸弹客没有频道）。伪装不计入：验尸官的乘务员伪装改为借出临时平板，
+     * 验尸官的炸弹客伪装没有无人机。
      *
      * @param hasRole            {@code TabletChannelRules.Facts#hasRole} / 拥有有效局内身份
      * @param hasIdentityChannel identity channel set is non-empty / 身份频道集非空
      * @param realAttendant      real round role is Attendant / 真实局内身份为乘务员
+     * @param realBomber         real round role is Bomber / 真实局内身份为炸弹客
      */
-    public static boolean isTabletEligible(boolean hasRole, boolean hasIdentityChannel, boolean realAttendant) {
-        return hasRole && (hasIdentityChannel || realAttendant);
+    public static boolean isTabletEligible(
+            boolean hasRole, boolean hasIdentityChannel, boolean realAttendant, boolean realBomber
+    ) {
+        return hasRole && (hasIdentityChannel || realAttendant || realBomber);
     }
 
     /**
      * Private chat lines sent with a granted tablet: one for the channel set (Undercover keeps its own killer line),
-     * then the Attendant's door-monitor line. Empty for an ineligible player.
-     * 发放平板时发送的私聊提示：先发频道提示（卧底保留其专属的杀手频道提示），再发乘务员房门监控提示；无资格者为空。
+     * then the Attendant's door-monitor line, then the Bomber's drone line. Empty for an ineligible player.
+     * 发放平板时发送的私聊提示：先发频道提示（卧底保留其专属的杀手频道提示），再发乘务员房门监控提示，最后发炸弹客无人机提示；
+     * 无资格者为空。
      */
     public static List<String> grantMessageKeys(
             @Nullable Set<TabletChannel> channels,
             boolean undercover,
-            boolean realAttendant
+            boolean realAttendant,
+            boolean realBomber
     ) {
-        List<String> keys = new ArrayList<>(2);
+        List<String> keys = new ArrayList<>(3);
         String channelKey = channelGrantMessageKey(channels, undercover);
         if (channelKey != null) {
             keys.add(channelKey);
         }
         if (realAttendant) {
             keys.add(ATTENDANT_GRANTED_KEY);
+        }
+        if (realBomber) {
+            keys.add(BOMBER_GRANTED_KEY);
         }
         return List.copyOf(keys);
     }

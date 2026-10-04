@@ -8,6 +8,7 @@ import annina.sparkstrength.item.CaseFolderItem;
 import annina.sparkstrength.item.CoronerBodyBagItem;
 import annina.sparkstrength.item.AromaOrbItem;
 import annina.sparkstrength.item.CoolingOilItem;
+import annina.sparkstrength.item.DroneItem;
 import annina.sparkstrength.item.FlashlightItem;
 import annina.sparkstrength.item.M67Item;
 import annina.sparkstrength.item.MagnifierItem;
@@ -17,6 +18,7 @@ import annina.sparkstrength.item.PowerRestorationItem;
 import annina.sparkstrength.item.ProfessorSerumItem;
 import annina.sparkstrength.item.TabletItem;
 import annina.sparkstrength.item.ZephyrPerfumeItem;
+import annina.sparkstrength.role.bomber.drone.DroneKind;
 import annina.sparkstrength.role.perfumer.PerfumerRules;
 import annina.sparkstrength.role.professor.ProfessorSerumType;
 import annina.sparkstrength.role.toxicologist.ToxicologistBlueRules;
@@ -46,6 +48,8 @@ public final class SparkStrengthItems {
     public static final Identifier ZEPHYR_PERFUME_ID = SparkStrength.id("zephyr_perfume");
     public static final Identifier BLUE_VITRIOL_ID = SparkStrength.id("blue_vitriol");
     public static final Identifier BLUE_BELLADONNA_ID = SparkStrength.id("blue_belladonna");
+    public static final Identifier GRENADE_DRONE_ID = SparkStrength.id("grenade_drone");
+    public static final Identifier BOMB_DRONE_ID = SparkStrength.id("bomb_drone");
     private static Item m67;
     private static Item capsule;
     private static Item flashlight;
@@ -66,6 +70,8 @@ public final class SparkStrengthItems {
     private static Item zephyrPerfume;
     private static Item blueVitriol;
     private static Item blueBelladonna;
+    private static Item grenadeDrone;
+    private static Item bombDrone;
     private static boolean registered;
 
     private SparkStrengthItems() {
@@ -176,6 +182,16 @@ public final class SparkStrengthItems {
                 new BlueBelladonnaItem(new Item.Settings()
                         .maxCount(ToxicologistBlueRules.MAX_STACK)
                         .food(BlueBelladonnaItem.FOOD))
+        );
+        grenadeDrone = Registry.register(
+                Registries.ITEM,
+                GRENADE_DRONE_ID,
+                new DroneItem(DroneKind.GRENADE, new Item.Settings().maxCount(1))
+        );
+        bombDrone = Registry.register(
+                Registries.ITEM,
+                BOMB_DRONE_ID,
+                new DroneItem(DroneKind.BOMB, new Item.Settings().maxCount(1))
         );
         registered = true;
     }
@@ -318,5 +334,23 @@ public final class SparkStrengthItems {
             throw new IllegalStateException("SparkStrength items are not registered yet");
         }
         return blueBelladonna;
+    }
+
+    public static Item grenadeDrone() {
+        if (grenadeDrone == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return grenadeDrone;
+    }
+
+    public static Item bombDrone() {
+        if (bombDrone == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return bombDrone;
+    }
+
+    public static Item drone(DroneKind kind) {
+        return kind == DroneKind.BOMB ? bombDrone() : grenadeDrone();
     }
 }
