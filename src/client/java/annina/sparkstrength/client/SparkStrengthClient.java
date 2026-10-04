@@ -11,6 +11,7 @@ import annina.sparkstrength.client.role.engineer.EngineerClientHooks;
 import annina.sparkstrength.client.role.morphling.MorphlingClientHooks;
 import annina.sparkstrength.client.role.professor.ProfessorSerumClientHooks;
 import annina.sparkstrength.client.role.veteran.VeteranClientHooks;
+import annina.sparkstrength.client.role.shadowjester.ShadowJesterShowdownMusicController;
 import annina.sparkstrength.client.screen.criminologist.CriminologistScreen;
 import annina.sparkstrength.client.screen.tablet.TabletClientState;
 import annina.sparkstrength.client.screen.tablet.TabletScreen;
@@ -18,6 +19,7 @@ import annina.sparkstrength.client.tablet.TabletClientHighlights;
 import annina.sparkstrength.network.criminologist.OpenCriminologistScreenS2CPacket;
 import annina.sparkstrength.network.tablet.OpenTabletScreenS2CPacket;
 import annina.sparkstrength.network.tablet.SyncTabletSnapshotS2CPacket;
+import annina.sparkstrength.network.shadowjester.SyncShadowJesterShowdownMusicS2CPacket;
 import annina.sparkstrength.network.veteran.SyncVeteranBlackoutS2CPacket;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -39,9 +41,12 @@ public final class SparkStrengthClient implements ClientModInitializer {
         TabletClientHighlights.register();
         VeteranClientHooks.register();
         ClientTickEvents.END_CLIENT_TICK.register(CorruptCopMusicController::tick);
+        ClientTickEvents.END_CLIENT_TICK.register(ShadowJesterShowdownMusicController::tick);
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
                 VeteranClientHooks.resetBlackoutState());
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
+                ShadowJesterShowdownMusicController.reset());
         ClientPlayNetworking.registerGlobalReceiver(OpenCriminologistScreenS2CPacket.ID,
                 (payload, context) -> context.client().execute(() ->
                         context.client().setScreen(new CriminologistScreen(payload.victimUuid()))));
@@ -58,5 +63,10 @@ public final class SparkStrengthClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(SyncVeteranBlackoutS2CPacket.ID,
                 (payload, context) -> context.client().execute(() ->
                         VeteranClientHooks.setBlackoutActive(payload.active())));
+        ClientPlayNetworking.registerGlobalReceiver(
+                SyncShadowJesterShowdownMusicS2CPacket.ID,
+                (payload, context) -> context.client().execute(() ->
+                        ShadowJesterShowdownMusicController.setServerRequestedActive(payload.active()))
+        );
     }
 }

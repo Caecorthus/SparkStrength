@@ -23,6 +23,8 @@
     "minecraft.ItemCooldownEntryAccessor",
     "minecraft.ItemCooldownManagerAccessor",
     "noellesroles.HiddenEquipmentHelperMixin",
+    "noellesroles.ShadowJesterAllianceMixin",
+    "noellesroles.ShadowJesterWinPriorityMixin",
     "noellesroles.ToxicologistAntidoteItemMixin",
     "professor.ProfessorDoorPassingMixin",
     "professor.ProfessorSedativeMoodMixin",
@@ -34,7 +36,8 @@
     "veteran.VeteranServerKnifeUseMixin",
     "wathe.GameFunctionsMixin",
     "wathe.KillerPassiveMoneyCapMixin",
-    "wathe.PlayerShopComponentAccessor"
+    "wathe.PlayerShopComponentAccessor",
+    "wathe.ShadowJesterRevolverCooldownMixin"
   ],
   "injectors": {
     "defaultRequire": 1

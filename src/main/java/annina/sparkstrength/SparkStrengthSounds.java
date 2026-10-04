@@ -14,6 +14,8 @@ public final class SparkStrengthSounds {
 
     public static final Identifier MUSIC_TAKEDISKRUSH_ID = SparkStrength.id("music.takediskrush");
     public static final SoundEvent MUSIC_TAKEDISKRUSH = REGISTRAR.create("music.takediskrush");
+    public static final Identifier SHADOW_JESTER_ID = SparkStrength.id("ambient.shadow_jester");
+    public static final SoundEvent SHADOW_JESTER = REGISTRAR.create("ambient.shadow_jester");
 
     private SparkStrengthSounds() {
     }
@@ -22,6 +24,9 @@ public final class SparkStrengthSounds {
         REGISTRAR.registerEntries();
         if (!Registries.SOUND_EVENT.containsId(MUSIC_TAKEDISKRUSH_ID)) {
             SparkStrength.LOGGER.warn("SparkStrength sound event {} was not registered.", MUSIC_TAKEDISKRUSH_ID);
+        }
+        if (!Registries.SOUND_EVENT.containsId(SHADOW_JESTER_ID)) {
+            SparkStrength.LOGGER.warn("SparkStrength sound event {} was not registered.", SHADOW_JESTER_ID);
         }
     }
 }

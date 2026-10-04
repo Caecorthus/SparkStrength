@@ -48,7 +48,8 @@
       "sparkstrength:reporter_communication",
       "sparkstrength:criminologist_world",
       "sparkstrength:tablet_world",
-      "sparkstrength:morph_body_disguise_world"
+      "sparkstrength:morph_body_disguise_world",
+      "sparkstrength:shadow_jester_showdown"
     ]
   },
   "mixins": [

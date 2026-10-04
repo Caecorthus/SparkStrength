@@ -26,6 +26,26 @@ public final class SparkTraitsCompat {
     }
 
     /**
+     * 判断玩家是否属于 SparkTraits 规则下的有效杀手阵营。
+     *
+     * <p>规则与 SparkTraits 的公开有效阵营实现保持一致：内鬼词条会把原始好人
+     * 翻为杀手；善良词条会把原始杀手翻为好人。若两个词条同时存在，则按
+     * SparkTraits 的优先级由内鬼词条负责判定为杀手。</p>
+     */
+    public static boolean isEffectiveKiller(Role role, PlayerEntity player) {
+        if (role == null) {
+            return false;
+        }
+        if (hasImpostor(player)) {
+            return true;
+        }
+        if (hasConscience(player)) {
+            return false;
+        }
+        return role.canUseKiller();
+    }
+
+    /**
      * 判断玩家是否持有指定的 SparkTraits 词条。
      *
      * <p>这里通过 SparkTraits 公开门面反射调用，避免 SparkStrength 直接依赖

@@ -19,6 +19,7 @@ import annina.sparkstrength.component.noisemaker.NoisemakerGlowTargetComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
 import annina.sparkstrength.component.toxicologist.ToxicologistAntidoteComponent;
 import annina.sparkstrength.component.veteran.VeteranKnifeComponent;
+import annina.sparkstrength.component.shadowjester.ShadowJesterShowdownWorldComponent;
 import dev.doctor4t.wathe.entity.PlayerBodyEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import org.jetbrains.annotations.NotNull;
@@ -90,5 +91,9 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.register(CriminologistWorldComponent.KEY, CriminologistWorldComponent::new);
         registry.register(TabletWorldComponent.KEY, TabletWorldComponent::new);
         registry.register(MorphBodyDisguiseWorldComponent.KEY, MorphBodyDisguiseWorldComponent::new);
+        registry.register(
+                ShadowJesterShowdownWorldComponent.KEY,
+                ShadowJesterShowdownWorldComponent::new
+        );
     }
 }
