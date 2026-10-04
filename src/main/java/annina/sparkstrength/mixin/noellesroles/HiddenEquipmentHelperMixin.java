@@ -22,8 +22,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /**
  * Adds SparkStrength's tablet, Engineer capture items, Professor serums, Morphling items, Detective tools,
  * Perfumer kit, every Bartender ingredient, the Recaller's ender pearl / chorus fruit, the Toxicologist's
- * Blue Vitriol / Blue Belladonna and the Bomber's drones to NoellesRoles' hidden-equipment filter.
- * 将 SparkStrength 平板、工程师捕捉装置、教授试剂、变形怪道具、侦探道具、调香师道具、全部酒保调剂、回溯者的末影珍珠/紫颂果、毒理学家的蓝矾/蓝颠茄以及炸弹客无人机加入 NoellesRoles 的隐藏装备过滤器。
+ * Blue Vitriol / Blue Belladonna, the Bomber's drones and the Vulture's skateboard to NoellesRoles' hidden-equipment
+ * filter.
+ * 将 SparkStrength 平板、工程师捕捉装置、教授试剂、变形怪道具、侦探道具、调香师道具、全部酒保调剂、回溯者的末影珍珠/紫颂果、毒理学家的蓝矾/蓝颠茄、炸弹客无人机以及秃鹫滑板加入 NoellesRoles 的隐藏装备过滤器。
  */
 @Mixin(value = HiddenEquipmentHelper.class, remap = false)
 public abstract class HiddenEquipmentHelperMixin {
@@ -117,6 +118,13 @@ public abstract class HiddenEquipmentHelperMixin {
         if (stack.isOf(SparkStrengthItems.grenadeDrone()) || stack.isOf(SparkStrengthItems.bombDrone())) {
             // Only the real Bomber ever holds drones; a held drone would expose the role, like the timed bomb.
             // 只有真实炸弹客会持有无人机；手持无人机会像定时炸弹一样暴露身份。
+            cir.setReturnValue(true);
+            return;
+        }
+
+        if (stack.isOf(SparkStrengthItems.skateboard())) {
+            // Only the real Vulture is ever given a skateboard; holding one would expose the role, like its master key.
+            // 只有真实秃鹫会获得滑板；手持滑板会像它的万能钥匙一样暴露身份。
             cir.setReturnValue(true);
             return;
         }

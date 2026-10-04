@@ -44,6 +44,7 @@ public final class SparkStrengthReplayFormatters {
     public static final Identifier DRONE_GRENADE_DROPPED = SparkStrength.id("drone_grenade_dropped");
     public static final Identifier DRONE_DESTROYED = SparkStrength.id("drone_destroyed");
     public static final Identifier BOMB_DRONE_DETONATED = SparkStrength.id("bomb_drone_detonated");
+    public static final Identifier SKATEBOARD_RIDE_STARTED = SparkStrength.id("skateboard_ride_started");
 
     private SparkStrengthReplayFormatters() {
     }
@@ -273,6 +274,12 @@ public final class SparkStrengthReplayFormatters {
                         event.data(),
                         match,
                         "replay.global.sparkstrength.perfumer_zephyr_used"
+                ));
+        ReplayRegistry.registerGlobalEventFormatter(SKATEBOARD_RIDE_STARTED,
+                (event, match, world) -> onePlayerEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.skateboard_ride_started"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(DRONE_PLACED, (event, match, world) -> {
             NbtCompound data = event.data();

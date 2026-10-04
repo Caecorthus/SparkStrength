@@ -62,6 +62,12 @@
     "perfumer.PerfumerInstinctKeyMixin",
     "perfumer.PerfumerOverlayHudMixin",
     "veteran.VeteranInstantKnifeMixin",
+    "vulture.SkateboardFovMixin",
+    "vulture.SkateboardHeldItemMixin",
+    "vulture.SkateboardHudMixin",
+    "vulture.SkateboardLiftMixin",
+    "vulture.SkateboardLimbsMixin",
+    "vulture.SkateboardPresenceFootstepsMixin",
     "wathe.ShopRowOverflowMixin"
   ],
   "injectors": {
