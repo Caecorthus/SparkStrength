@@ -309,6 +309,64 @@ public final class TabletIcons {
         canvas.circle(x + 8f * u, y + 8f * u, 2.3f * u, color);
     }
 
+    // ------------------------------------------------------------------------------------------------ drones
+
+    /**
+     * Quadcopter from above: four rotor discs centred (3.6,3.6)…(12.4,12.4) r3 (30% fill, thin rim), X arms w1.5 from
+     * each hub towards the centre, hub dots r0.9, body (5.4,5.4 5.2x5.2 r1.6) drawn last over the arm ends.
+     */
+    public static void drone(TabletCanvas canvas, float x, float y, float size, int color) {
+        float u = size / GRID;
+        int disc = TabletTheme.multiplyAlpha(color, 0.3f);
+        float rim = Math.max(0.8f * u, canvas.px());
+        float arm = Math.max(1.5f * u, canvas.px());
+        for (int k = 0; k < 4; k++) {
+            float hubX = x + ((k & 1) == 0 ? 3.6f : 12.4f) * u;
+            float hubY = y + ((k & 2) == 0 ? 3.6f : 12.4f) * u;
+            canvas.circle(hubX, hubY, 3.0f * u, disc);
+            canvas.ring(hubX, hubY, 3.0f * u, rim, color);
+            canvas.capsule(hubX, hubY, x + 8f * u + (hubX - x - 8f * u) * 0.25f, y + 8f * u + (hubY - y - 8f * u) * 0.25f,
+                    arm, color);
+            canvas.circle(hubX, hubY, 0.9f * u, color);
+        }
+        canvas.roundRect(x + 5.4f * u, y + 5.4f * u, 5.2f * u, 5.2f * u, 1.6f * u, color);
+    }
+
+    /** M67-style grenade: body (8,9.9) r4.6, fuse neck (6.4,3.6 3.2x2.1), spoon (9.4,4.0) → (12.8,7.8), pin ring (4.9,3.7) r1.7. */
+    public static void grenade(TabletCanvas canvas, float x, float y, float size, int color) {
+        float u = size / GRID;
+        float stroke = stroke(canvas, size);
+        canvas.circle(x + 8f * u, y + 9.9f * u, 4.6f * u, color);
+        canvas.roundRect(x + 6.4f * u, y + 3.6f * u, 3.2f * u, 2.1f * u, 0.5f * u, color);
+        canvas.capsule(x + 9.4f * u, y + 4.0f * u, x + 12.8f * u, y + 7.8f * u, stroke, color);
+        canvas.ring(x + 4.9f * u, y + 3.7f * u, 1.7f * u, Math.max(0.9f * u, canvas.px()), color);
+    }
+
+    /** Lightning bolt (charging): A(10,1) B(3.8,9.2) C(7.6,9.2) D(6.2,15) E(12.2,6.8) F(8.4,6.8), star-shaped around (8,8). */
+    public static void bolt(TabletCanvas canvas, float x, float y, float size, int color) {
+        float u = size / GRID;
+        int n = 0;
+        n = put(n, x + 10.0f * u, y + 1.0f * u);
+        n = put(n, x + 3.8f * u, y + 9.2f * u);
+        n = put(n, x + 7.6f * u, y + 9.2f * u);
+        n = put(n, x + 6.2f * u, y + 15.0f * u);
+        n = put(n, x + 12.2f * u, y + 6.8f * u);
+        n = put(n, x + 8.4f * u, y + 6.8f * u);
+        canvas.fillStar(PATH, n, x + 8f * u, y + 8f * u, color);
+    }
+
+    /** Location arrow pointing up-right: notch (7.4,8.6), tail (2.4,7.4), tip (13.6,2.4), wing (8.6,13.6). */
+    public static void locate(TabletCanvas canvas, float x, float y, float size, int color) {
+        float u = size / GRID;
+        int n = 0;
+        // Fanned from the notch (vertex 0), like {@link #send}. 与 send 相同，从凹口（第 0 个顶点）扇形剖分。
+        n = put(n, x + 7.4f * u, y + 8.6f * u);
+        n = put(n, x + 2.4f * u, y + 7.4f * u);
+        n = put(n, x + 13.6f * u, y + 2.4f * u);
+        n = put(n, x + 8.6f * u, y + 13.6f * u);
+        canvas.fillPath(PATH, n, color);
+    }
+
     /** Shared door frame: floor + jambs + rounded lintel as one mitred stroke, round caps at the floor ends. */
     private static void doorFrame(TabletCanvas canvas, float x, float y, float u, float stroke, int color) {
         final float left = 4.4f;

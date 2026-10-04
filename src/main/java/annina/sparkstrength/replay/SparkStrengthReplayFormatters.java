@@ -2,6 +2,7 @@ package annina.sparkstrength.replay;
 
 import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.SparkStrengthItems;
+import annina.sparkstrength.role.bomber.drone.DroneKind;
 import annina.sparkstrength.role.toxicologist.ToxicologistBlueVitriolService;
 import dev.doctor4t.wathe.record.replay.ReplayGenerator;
 import dev.doctor4t.wathe.record.replay.ReplayRegistry;
@@ -39,6 +40,10 @@ public final class SparkStrengthReplayFormatters {
     public static final Identifier PERFUMER_COOLING_OIL_HIT = SparkStrength.id("perfumer_cooling_oil_hit");
     public static final Identifier PERFUMER_AROMA_HIT = SparkStrength.id("perfumer_aroma_hit");
     public static final Identifier PERFUMER_ZEPHYR_USED = SparkStrength.id("perfumer_zephyr_used");
+    public static final Identifier DRONE_PLACED = SparkStrength.id("drone_placed");
+    public static final Identifier DRONE_GRENADE_DROPPED = SparkStrength.id("drone_grenade_dropped");
+    public static final Identifier DRONE_DESTROYED = SparkStrength.id("drone_destroyed");
+    public static final Identifier BOMB_DRONE_DETONATED = SparkStrength.id("bomb_drone_detonated");
 
     private SparkStrengthReplayFormatters() {
     }
@@ -269,6 +274,27 @@ public final class SparkStrengthReplayFormatters {
                         match,
                         "replay.global.sparkstrength.perfumer_zephyr_used"
                 ));
+        ReplayRegistry.registerGlobalEventFormatter(DRONE_PLACED, (event, match, world) -> {
+            NbtCompound data = event.data();
+            return onePlayerEvent(data, match, "replay.global.sparkstrength.drone_placed." + droneKindId(data));
+        });
+        ReplayRegistry.registerGlobalEventFormatter(DRONE_GRENADE_DROPPED,
+                (event, match, world) -> onePlayerEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.drone_grenade_dropped"
+                ));
+        // Actor = who broke it (none when it crashed), target = the owner. / actor 为击毁者（坠毁时为空），target 为主人。
+        ReplayRegistry.registerGlobalEventFormatter(DRONE_DESTROYED, (event, match, world) -> {
+            NbtCompound data = event.data();
+            return throwableHitEvent(data, match, "replay.global.sparkstrength.drone_destroyed." + droneKindId(data));
+        });
+        ReplayRegistry.registerGlobalEventFormatter(BOMB_DRONE_DETONATED,
+                (event, match, world) -> onePlayerEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.bomb_drone_detonated"
+                ));
         // Wathe drops ITEM_USE events whose item has no registered formatter; the action comes from the vitriol service.
         // Wathe 会忽略没有注册格式化器的物品使用事件；action 由蓝矾服务写入。
         ReplayRegistry.registerItemUseFormatter(SparkStrengthItems.BLUE_VITRIOL_ID, (event, match, world) -> {
@@ -324,6 +350,11 @@ public final class SparkStrengthReplayFormatters {
                 ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache),
                 ReplayGenerator.formatPlayerName(targetUuid, playerInfoCache)
         );
+    }
+
+    /** Known drone kind id only, so a malformed event can never pick an arbitrary key. / 仅接受已知无人机型号 id。 */
+    private static String droneKindId(NbtCompound data) {
+        return DroneKind.BOMB.id().equals(data.getString("kind")) ? DroneKind.BOMB.id() : DroneKind.GRENADE.id();
     }
 
     private static Text formatPlayerNameWithFallback(

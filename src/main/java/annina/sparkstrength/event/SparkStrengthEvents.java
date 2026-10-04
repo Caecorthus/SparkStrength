@@ -14,6 +14,9 @@ import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.phantom.PhantomBackpackService;
 import annina.sparkstrength.role.attendant.AttendantFlashlightService;
 import annina.sparkstrength.role.attendant.DoorLogService;
+import annina.sparkstrength.role.bomber.drone.DroneCombatService;
+import annina.sparkstrength.role.bomber.drone.DronePilotService;
+import annina.sparkstrength.role.bomber.drone.DroneService;
 import annina.sparkstrength.role.coroner.CoronerEconomyService;
 import annina.sparkstrength.role.coroner.CoronerEngineerService;
 import annina.sparkstrength.role.coroner.CoronerService;
@@ -61,6 +64,9 @@ public final class SparkStrengthEvents {
 
     public static void register() {
         M67RoundService.initialize();
+        DroneService.register();
+        DroneCombatService.register();
+        DronePilotService.register();
         CorruptCopFeatureService.register();
         CoronerEngineerService.register();
         CoronerService.register();

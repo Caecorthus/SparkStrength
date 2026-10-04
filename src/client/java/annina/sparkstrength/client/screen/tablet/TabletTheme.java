@@ -1,6 +1,7 @@
 package annina.sparkstrength.client.screen.tablet;
 
 import annina.sparkstrength.tablet.TabletChannel;
+import annina.sparkstrength.tablet.TabletFeature;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -53,6 +54,13 @@ public final class TabletTheme {
      * 房门监控（乘务员房门记录）：监控青色，与各频道色及记录行使用的成功/警告/危险色区分。用于只有房门记录的持有者的外框。
      */
     public static final Accent MONITOR = new Accent(0xFF2EC4C9, 0xFFA9ECEE, 0xFF1C8C93);
+    /**
+     * Bomber drone link: fuse orange, warmer than WARNING and clear of the killer red, so drone cards, the connect
+     * button and a feature-only Bomber's frame read as "drones" whatever channel surrounds them.
+     * 炸弹客无人机链路：引信橙，比 WARNING 更暖、与杀手红区分；无人机卡片、连接按钮与仅有无人机功能的炸弹客外框
+     * 无论处于哪个频道都呈现为“无人机”。
+     */
+    public static final Accent DRONE = new Accent(0xFFFF8A3D, 0xFFFFCFAE, 0xFFD0601C);
 
     private TabletTheme() {
     }
@@ -65,6 +73,14 @@ public final class TabletTheme {
             case POLICE -> POLICE;
             case KILLER -> KILLER;
             case WITCH -> WITCH;
+        };
+    }
+
+    /** Accent of a feature section, independent of the channel. 功能分区的强调色，与频道无关。 */
+    public static Accent accentFor(TabletFeature feature) {
+        return switch (feature) {
+            case DOOR_LOG -> MONITOR;
+            case DRONE -> DRONE;
         };
     }
 

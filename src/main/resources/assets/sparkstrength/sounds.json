@@ -40,6 +40,58 @@
     ],
     "subtitle": "subtitle.sparkstrength.item.m67.explode"
   },
+  "entity.grenade_drone.loop": {
+    "sounds": [
+      {
+        "name": "sparkstrength:entity/grenade_drone_loop",
+        "attenuation_distance": 20
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.entity.grenade_drone.loop"
+  },
+  "entity.bomb_drone.loop": {
+    "sounds": [
+      {
+        "name": "sparkstrength:entity/bomb_drone_loop",
+        "attenuation_distance": 20
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.entity.bomb_drone.loop"
+  },
+  "entity.drone.place": {
+    "sounds": [
+      {
+        "name": "sparkstrength:entity/drone_place",
+        "volume": 0.8
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.entity.drone.place"
+  },
+  "entity.drone.break": {
+    "sounds": [
+      {
+        "name": "sparkstrength:entity/drone_break"
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.entity.drone.break"
+  },
+  "entity.drone.release": {
+    "sounds": [
+      {
+        "name": "sparkstrength:entity/drone_release"
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.entity.drone.release"
+  },
+  "item.drone.bind": {
+    "sounds": [
+      {
+        "name": "sparkstrength:item/drone_bind",
+        "volume": 0.8
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.item.drone.bind"
+  },
   "music.takediskrush": {
     "sounds": [
       {

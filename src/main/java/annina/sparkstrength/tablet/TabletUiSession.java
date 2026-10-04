@@ -16,6 +16,7 @@ public final class TabletUiSession {
     private int suspectFirstRow;
     private int connectionsFirstRow;
     private int doorLogFirstRow;
+    private int droneFirstRow;
     private int chatScroll;
 
     public TabletUiSession(String initialDraft) {
@@ -184,6 +185,27 @@ public final class TabletUiSession {
         doorLogFirstRow = TabletMeetingScrollRules.clampFirstRow(target, totalRows, visibleRows);
     }
 
+    public int droneFirstRow() {
+        return droneFirstRow;
+    }
+
+    public void scrollDrones(double verticalAmount, int totalRows, int visibleRows) {
+        droneFirstRow = TabletMeetingScrollRules.scrollFirstRow(
+                droneFirstRow,
+                verticalAmount,
+                totalRows,
+                visibleRows
+        );
+    }
+
+    public void clampDrones(int totalRows, int visibleRows) {
+        droneFirstRow = TabletMeetingScrollRules.clampFirstRow(
+                droneFirstRow,
+                totalRows,
+                visibleRows
+        );
+    }
+
     /**
      * Chat scroll in logical pixels measured from the bottom: 0 pins the newest message in view, larger values reveal
      * older messages. Positive {@code deltaPixels} scrolls towards older messages (mouse wheel up).
@@ -216,7 +238,8 @@ public final class TabletUiSession {
         MEETING("screen.sparkstrength.tablet.tab.meeting", true, null),
         SUSPECTS("screen.sparkstrength.tablet.tab.suspects", true, null),
         // Feature sections come last so channel sections keep their rail slots. 功能分区放在最后，频道分区的侧栏位置不变。
-        DOOR_LOG("screen.sparkstrength.tablet.tab.door_log", false, TabletFeature.DOOR_LOG);
+        DOOR_LOG("screen.sparkstrength.tablet.tab.door_log", false, TabletFeature.DOOR_LOG),
+        DRONE("screen.sparkstrength.tablet.tab.drone", false, TabletFeature.DRONE);
 
         private final String translationKey;
         private final boolean requiresMeetingFeatures;

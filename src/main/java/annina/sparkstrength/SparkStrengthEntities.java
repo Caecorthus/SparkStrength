@@ -4,6 +4,7 @@ import annina.sparkstrength.entity.AromaOrbEntity;
 import annina.sparkstrength.entity.CapsuleEntity;
 import annina.sparkstrength.entity.CaptureDeviceEntity;
 import annina.sparkstrength.entity.CoolingOilEntity;
+import annina.sparkstrength.entity.DroneEntity;
 import annina.sparkstrength.entity.M67GrenadeEntity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnGroup;
@@ -17,11 +18,15 @@ public final class SparkStrengthEntities {
     public static final Identifier M67_ID = SparkStrength.id("m67");
     public static final Identifier COOLING_OIL_ID = SparkStrength.id("cooling_oil");
     public static final Identifier AROMA_ORB_ID = SparkStrength.id("aroma_orb");
+    public static final Identifier GRENADE_DRONE_ID = SparkStrength.id("grenade_drone");
+    public static final Identifier BOMB_DRONE_ID = SparkStrength.id("bomb_drone");
     private static EntityType<M67GrenadeEntity> m67;
     private static EntityType<CapsuleEntity> capsule;
     private static EntityType<CaptureDeviceEntity> captureDevice;
     private static EntityType<CoolingOilEntity> coolingOil;
     private static EntityType<AromaOrbEntity> aromaOrb;
+    private static EntityType<DroneEntity> grenadeDrone;
+    private static EntityType<DroneEntity> bombDrone;
     private static boolean registered;
 
     private SparkStrengthEntities() {
@@ -82,6 +87,33 @@ public final class SparkStrengthEntities {
                         .disableSummon()
                         .build(AROMA_ORB_ID.toString())
         );
+        // Transient round entities; tracked every tick for smooth remote flight. Range is widened further for the
+        // pilot by the drone streaming hooks.
+        // 临时回合实体；每刻追踪以保证远端飞行平滑。驾驶者的追踪范围由无人机串流钩子进一步放宽。
+        grenadeDrone = Registry.register(
+                Registries.ENTITY_TYPE,
+                GRENADE_DRONE_ID,
+                EntityType.Builder.<DroneEntity>create(DroneEntity::new, SpawnGroup.MISC)
+                        .dimensions(0.7F, 0.3F)
+                        .maxTrackingRange(16)
+                        .trackingTickInterval(1)
+                        .alwaysUpdateVelocity(true)
+                        .disableSaving()
+                        .disableSummon()
+                        .build(GRENADE_DRONE_ID.toString())
+        );
+        bombDrone = Registry.register(
+                Registries.ENTITY_TYPE,
+                BOMB_DRONE_ID,
+                EntityType.Builder.<DroneEntity>create(DroneEntity::new, SpawnGroup.MISC)
+                        .dimensions(0.6F, 0.3F)
+                        .maxTrackingRange(16)
+                        .trackingTickInterval(1)
+                        .alwaysUpdateVelocity(true)
+                        .disableSaving()
+                        .disableSummon()
+                        .build(BOMB_DRONE_ID.toString())
+        );
         registered = true;
     }
 
@@ -118,5 +150,19 @@ public final class SparkStrengthEntities {
             throw new IllegalStateException("SparkStrength entities are not registered yet");
         }
         return aromaOrb;
+    }
+
+    public static EntityType<DroneEntity> grenadeDrone() {
+        if (grenadeDrone == null) {
+            throw new IllegalStateException("SparkStrength entities are not registered yet");
+        }
+        return grenadeDrone;
+    }
+
+    public static EntityType<DroneEntity> bombDrone() {
+        if (bombDrone == null) {
+            throw new IllegalStateException("SparkStrength entities are not registered yet");
+        }
+        return bombDrone;
     }
 }
