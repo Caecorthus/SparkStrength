@@ -108,8 +108,17 @@ public final class FlashlightBeamRules {
         return 1.0 - Math.exp(-EXPOSURE * Math.max(0.0, intensity));
     }
 
+    /**
+     * Block-light level whose vanilla lightmap brightness ({@code f / (4 - 3f)}, f = level / 15) matches the exposed
+     * light the receiver shader adds to terrain, so a player standing in the spot looks as lit as the wall behind
+     * them instead of a linear level that the lightmap curve would darken to about half.
+     * 选取原版光照贴图亮度（{@code f / (4 - 3f)}，f = 等级 / 15）与受光着色器加到地形上的曝光亮度一致的方块光等级，
+     * 使站在光斑里的玩家与身后墙面同样明亮，而不是用线性等级被光照曲线压暗到约一半。
+     */
     public static int entityBlockLight(double intensity) {
-        return (int) Math.max(0L, Math.min(15L, Math.round(15.0 * exposed(intensity))));
+        double brightness = exposed(intensity);
+        double fraction = 4.0 * brightness / (1.0 + 3.0 * brightness);
+        return (int) Math.max(0L, Math.min(15L, Math.round(15.0 * fraction)));
     }
 
     /** Tangent of the half-angle the ray grid spans on each axis. / 射线网格每个轴向所覆盖半角的正切值。 */

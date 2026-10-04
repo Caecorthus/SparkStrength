@@ -38,7 +38,14 @@ public final class FlashlightLights {
      */
     static final double TRACK_DISTANCE = FlashlightBeamRules.RANGE_BLOCKS + 48.0;
     private static final double TRACK_DISTANCE_SQ = TRACK_DISTANCE * TRACK_DISTANCE;
-    private static final int NO_OWNER = Integer.MIN_VALUE;
+    /**
+     * Heights (fractions of the bounding box) sampled on an entity's axis: eyes, chest and legs. The brightest sample
+     * a beam reaches lights the whole entity, so a seated or half-covered player whose centre sits inside a chair or
+     * behind a table edge is still lit by the part the light actually touches.
+     * 在实体中轴上采样的高度（碰撞箱比例）：眼部、胸口与腿部。光束能照到的最亮采样点决定整个实体的亮度，因此坐着或被半遮挡、
+     * 中心落在座椅里或桌沿后的玩家，仍会按光实际照到的部分被照亮。
+     */
+    static final double[] ENTITY_SAMPLE_HEIGHTS = {0.88, 0.5, 0.2};
     private static final double RANGE_SQ = FlashlightBeamRules.RANGE_BLOCKS * FlashlightBeamRules.RANGE_BLOCKS;
     private static final double COS_SPILL = FlashlightBeamRules.cosSpill();
 
@@ -129,19 +136,55 @@ public final class FlashlightLights {
 
     /**
      * Raises an entity's block light to the strongest unoccluded flashlight reaching it. A holder is never lit by its
-     * own beam but gets {@link FlashlightBeamRules#HOLDER_BLOCK_LIGHT} from the reflector spill.
+     * own beam but gets {@link FlashlightBeamRules#HOLDER_BLOCK_LIGHT} from the reflector spill. Each light is sampled
+     * at {@link #ENTITY_SAMPLE_HEIGHTS} and the brightest sample it reaches lights the whole entity.
      * 将实体方块光提升到照到它的最强未遮挡手电筒亮度。持有者不会被自己的光束照亮，但会获得反光杯溢光的下限亮度。
+     * 每个光源在 {@link #ENTITY_SAMPLE_HEIGHTS} 处采样，取其能照到的最亮采样点照亮整个实体。
      */
     public static int boostBlockLight(Entity entity, float tickDelta, int blockLight) {
         if (TRACKED.isEmpty() || blockLight >= 15) {
             return blockLight;
         }
-        // Bounding-box centre at the frame-interpolated position. / 逐帧插值位置处的碰撞箱中心。
+        MinecraftClient client = MinecraftClient.getInstance();
+        ClientWorld world = client.world;
+        if (world == null) {
+            return blockLight;
+        }
+        // Bounding-box axis at the frame-interpolated position. / 逐帧插值位置处的碰撞箱中轴。
         Box box = entity.getBoundingBox();
         double x = (box.minX + box.maxX) * 0.5 + MathHelper.lerp(tickDelta, entity.prevX, entity.getX()) - entity.getX();
-        double y = (box.minY + box.maxY) * 0.5 + MathHelper.lerp(tickDelta, entity.prevY, entity.getY()) - entity.getY();
+        double minY = box.minY + MathHelper.lerp(tickDelta, entity.prevY, entity.getY()) - entity.getY();
         double z = (box.minZ + box.maxZ) * 0.5 + MathHelper.lerp(tickDelta, entity.prevZ, entity.getZ()) - entity.getZ();
-        return boost(MinecraftClient.getInstance(), tickDelta, entity.getId(), entity, null, x, y, z, blockLight);
+        double height = box.maxY - box.minY;
+        List<FlashlightLight> lights = collect(client, tickDelta);
+        int best = blockLight;
+        for (int i = 0, size = lights.size(); i < size; i++) {
+            FlashlightLight light = lights.get(i);
+            if (light.ownerEntityId() == entity.getId()) {
+                best = Math.max(best, FlashlightBeamRules.HOLDER_BLOCK_LIGHT);
+                continue;
+            }
+            TrackedFlashlight tracked = null;
+            for (int sample = 0; sample < ENTITY_SAMPLE_HEIGHTS.length; sample++) {
+                double fraction = ENTITY_SAMPLE_HEIGHTS[sample];
+                int level = levelAt(light, x, minY + height * fraction, z);
+                if (level <= best) {
+                    continue;
+                }
+                if (tracked == null && (tracked = find(light.ownerEntityId())) == null) {
+                    break;
+                }
+                // Even camera-anchored lights test occlusion here: the camera may not see this object (e.g. through walls).
+                // 即使是相机锚定光源也在此检测遮挡：相机未必看得到该物体（例如隔墙）。
+                if (tracked.reachesEntity(CASTER, world, entity, sample, fraction, tickCount)) {
+                    best = level;
+                    if (best >= 15) {
+                        return best;
+                    }
+                }
+            }
+        }
+        return best;
     }
 
     /**
@@ -154,8 +197,30 @@ public final class FlashlightLights {
         if (TRACKED.isEmpty() || blockLight >= 15) {
             return blockLight;
         }
-        return boost(MinecraftClient.getInstance(), tickDelta, NO_OWNER, null, pos,
-                pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, blockLight);
+        MinecraftClient client = MinecraftClient.getInstance();
+        ClientWorld world = client.world;
+        if (world == null) {
+            return blockLight;
+        }
+        List<FlashlightLight> lights = collect(client, tickDelta);
+        int best = blockLight;
+        for (int i = 0, size = lights.size(); i < size; i++) {
+            FlashlightLight light = lights.get(i);
+            int level = levelAt(light, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+            if (level <= best) {
+                continue;
+            }
+            TrackedFlashlight tracked = find(light.ownerEntityId());
+            if (tracked == null || !tracked.reachesBlockEntity(CASTER, world, pos,
+                    client.gameRenderer.getCamera().getPos(), tickCount)) {
+                continue;
+            }
+            best = level;
+            if (best >= 15) {
+                break;
+            }
+        }
+        return best;
     }
 
     /** Client thread: a block changed, so beams that can see it recast next tick. / 方块变化，可能看到它的光束下一 tick 重投射。 */
@@ -166,62 +231,28 @@ public final class FlashlightLights {
     }
 
     /**
-     * Brightness comes from the frame-interpolated beam; occlusion is an exact segment test from the beam's tick
-     * origin, cached per target and light for the tick (at most a few short casts per tick).
-     * 亮度来自逐帧插值的光束；遮挡为从光束 tick 原点出发的精确线段检测，按目标与光源在本 tick 内缓存
-     * （每 tick 至多几次短距离投射）。
+     * Block-light level a light gives at a point before occlusion, or -1 outside its range and spill cone. Brightness
+     * comes from the frame-interpolated beam; callers then test occlusion exactly from the beam's tick origin, cached
+     * per target and light for the tick (at most a few short casts per tick).
+     * 某光源在某点给出的未计遮挡方块光等级，超出射程或溢光锥时为 -1。亮度来自逐帧插值的光束；调用方随后从光束 tick 原点
+     * 做精确遮挡检测，按目标与光源在本 tick 内缓存（每 tick 至多几次短距离投射）。
      */
-    private static int boost(MinecraftClient client, float tickDelta, int holderId, @Nullable Entity entity,
-                             @Nullable BlockPos blockPos, double x, double y, double z, int blockLight) {
-        ClientWorld world = client.world;
-        if (world == null) {
-            return blockLight;
+    private static int levelAt(FlashlightLight light, double x, double y, double z) {
+        Vec3d origin = light.origin();
+        double lx = x - origin.x;
+        double ly = y - origin.y;
+        double lz = z - origin.z;
+        double distanceSq = lx * lx + ly * ly + lz * lz;
+        if (distanceSq >= RANGE_SQ || distanceSq < 1.0e-8) {
+            return -1;
         }
-        List<FlashlightLight> lights = collect(client, tickDelta);
-        int best = blockLight;
-        for (int i = 0, size = lights.size(); i < size; i++) {
-            FlashlightLight light = lights.get(i);
-            if (light.ownerEntityId() == holderId) {
-                best = Math.max(best, FlashlightBeamRules.HOLDER_BLOCK_LIGHT);
-                continue;
-            }
-            Vec3d origin = light.origin();
-            double lx = x - origin.x;
-            double ly = y - origin.y;
-            double lz = z - origin.z;
-            double distanceSq = lx * lx + ly * ly + lz * lz;
-            if (distanceSq >= RANGE_SQ || distanceSq < 1.0e-8) {
-                continue;
-            }
-            double distance = Math.sqrt(distanceSq);
-            Vec3d direction = light.direction();
-            double cosAngle = (lx * direction.x + ly * direction.y + lz * direction.z) / distance;
-            if (cosAngle <= COS_SPILL) {
-                continue;
-            }
-            int level = FlashlightBeamRules.entityBlockLight(FlashlightBeamRules.intensity(cosAngle, distance));
-            if (level <= best) {
-                continue;
-            }
-            TrackedFlashlight tracked = find(light.ownerEntityId());
-            if (tracked == null) {
-                continue;
-            }
-            // Even camera-anchored lights test occlusion here: the camera may not see this object (e.g. through walls).
-            // 即使是相机锚定光源也在此检测遮挡：相机未必看得到该物体（例如隔墙）。
-            boolean reaches = entity != null
-                    ? tracked.reachesEntity(CASTER, world, entity, tickCount)
-                    : tracked.reachesBlockEntity(CASTER, world, blockPos, client.gameRenderer.getCamera().getPos(),
-                            tickCount);
-            if (!reaches) {
-                continue;
-            }
-            best = level;
-            if (best >= 15) {
-                break;
-            }
+        double distance = Math.sqrt(distanceSq);
+        Vec3d direction = light.direction();
+        double cosAngle = (lx * direction.x + ly * direction.y + lz * direction.z) / distance;
+        if (cosAngle <= COS_SPILL) {
+            return -1;
         }
-        return best;
+        return FlashlightBeamRules.entityBlockLight(FlashlightBeamRules.intensity(cosAngle, distance));
     }
 
     private static void tick(MinecraftClient client) {
