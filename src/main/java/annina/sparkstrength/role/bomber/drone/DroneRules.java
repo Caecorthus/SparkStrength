@@ -24,11 +24,11 @@ public final class DroneRules {
     /** Grenade drone cooldown after it is destroyed or runs flat. / 投弹无人机被毁或耗尽电量后的冷却。 */
     public static final int GRENADE_LOST_COOLDOWN_TICKS = 900;
 
-    /** Horizontal top speed in blocks per tick (5 and 7 blocks/s). / 水平最高速度（格/刻，即 5 与 7 格/秒）。 */
-    public static final double GRENADE_HORIZONTAL_SPEED = 0.25;
-    public static final double BOMB_HORIZONTAL_SPEED = 0.35;
-    /** Vertical speed in blocks per tick (4 blocks/s). / 垂直速度（格/刻，即 4 格/秒）。 */
-    public static final double VERTICAL_SPEED = 0.2;
+    /** Horizontal top speed in blocks per tick (10 and 14 blocks/s). / 水平最高速度（格/刻，即 10 与 14 格/秒）。 */
+    public static final double GRENADE_HORIZONTAL_SPEED = 0.5;
+    public static final double BOMB_HORIZONTAL_SPEED = 0.7;
+    /** Vertical speed in blocks per tick (8 blocks/s). / 垂直速度（格/刻，即 8 格/秒）。 */
+    public static final double VERTICAL_SPEED = 0.4;
     /** Unpowered fall. / 断电下坠。 */
     public static final double FALL_GRAVITY = 0.08;
     public static final double FALL_DRAG = 0.98;
@@ -36,12 +36,13 @@ public final class DroneRules {
     public static final int MAX_FALL_TICKS = 100;
     /**
      * Server tolerance for one pilot-reported step, per axis group on top of that axis' top speed (lag, float error).
-     * The move budget (see {@code DroneFlight}) holds the sustained speed to the same per-axis caps.
+     * The move budget (see {@code DroneFlight}) holds the sustained speed to the same per-axis caps. Scaled with the
+     * speeds (doubled with them) so honest pilots keep the same relative lag headroom.
      * 服务器对驾驶者上报单步位移的容差，按水平/垂直分别叠加在各自最高速度之上（延迟、浮点误差）。
-     * 移动预算（见 {@code DroneFlight}）把持续速度限制在同样的分轴上限内。
+     * 移动预算（见 {@code DroneFlight}）把持续速度限制在同样的分轴上限内。随速度同比缩放（随速度翻倍），使正常驾驶者的相对延迟余量不变。
      */
-    public static final double HORIZONTAL_STEP_TOLERANCE = 0.05;
-    public static final double VERTICAL_STEP_TOLERANCE = 0.05;
+    public static final double HORIZONTAL_STEP_TOLERANCE = 0.1;
+    public static final double VERTICAL_STEP_TOLERANCE = 0.1;
     /** Corrections are sent when the server's collided position differs by more than this. / 服务器碰撞后位置偏差超过此值时发送纠正。 */
     public static final double CORRECTION_EPSILON = 0.0625;
 
