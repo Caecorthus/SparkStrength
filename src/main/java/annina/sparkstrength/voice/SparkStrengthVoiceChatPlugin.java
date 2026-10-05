@@ -2,13 +2,18 @@ package annina.sparkstrength.voice;
 
 import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.component.morphling.MorphMarkPlayerComponent;
+import annina.sparkstrength.role.jester.JesterMomentService;
 import annina.sparkstrength.role.morphling.MorphlingService;
 import de.maxhenkel.voicechat.api.VoicechatApi;
 import de.maxhenkel.voicechat.api.VoicechatConnection;
 import de.maxhenkel.voicechat.api.VoicechatPlugin;
 import de.maxhenkel.voicechat.api.VoicechatServerApi;
+import de.maxhenkel.voicechat.api.events.EntitySoundPacketEvent;
 import de.maxhenkel.voicechat.api.events.EventRegistration;
+import de.maxhenkel.voicechat.api.events.LocationalSoundPacketEvent;
 import de.maxhenkel.voicechat.api.events.MicrophonePacketEvent;
+import de.maxhenkel.voicechat.api.events.PacketEvent;
+import de.maxhenkel.voicechat.api.events.StaticSoundPacketEvent;
 import de.maxhenkel.voicechat.api.packets.EntitySoundPacket;
 import net.minecraft.server.network.ServerPlayerEntity;
 import org.jetbrains.annotations.Nullable;
@@ -25,6 +30,8 @@ import java.util.UUID;
  * 1. 正在试剂变形成别人的玩家，自己的麦克风包直接取消，避免“外观像 B、声音却从 A 本体发出”。
  * 2. 被采样目标 B 说话时，复制一份同样的语音数据，但把声源实体改成所有正在变成 B 的玩家 A。
  * 这样 B 的原始语音仍然保留，同时 A 附近的玩家也会听见“从 A 身上传来的 B 声音”。</p>
+ *
+ * <p>小丑时刻：被触发时刻的小丑从中枪起到时刻结束既不能说话也听不到（见 {@link JesterMomentService#isVoiceBlocked}）。</p>
  */
 public final class SparkStrengthVoiceChatPlugin implements VoicechatPlugin {
     @Override
@@ -39,8 +46,29 @@ public final class SparkStrengthVoiceChatPlugin implements VoicechatPlugin {
 
     @Override
     public void registerEvents(EventRegistration registration) {
+        // Highest priority: Simple Voice Chat stops dispatching once an event is cancelled, so a muted Jester's voice
+        // never reaches Wathe's walkie-talkie relay, the Noisemaker broadcast or the morph relay below.
+        // 最高优先级：事件被取消后 Simple Voice Chat 不再分发，因此静音小丑的声音不会进入 Wathe 对讲机、喧哗者广播或下方的伪装转发。
+        registration.registerEvent(MicrophonePacketEvent.class, this::blockJesterMomentSpeaker, Integer.MAX_VALUE);
+        // Every server-to-client voice packet, including relays other plugins build, passes these per-listener events.
+        // 每个服务端发往客户端的语音包（包括其他插件构造的转发）都会经过这些逐接收者事件。
+        registration.registerEvent(EntitySoundPacketEvent.class, this::blockJesterMomentListener, Integer.MAX_VALUE);
+        registration.registerEvent(LocationalSoundPacketEvent.class, this::blockJesterMomentListener, Integer.MAX_VALUE);
+        registration.registerEvent(StaticSoundPacketEvent.class, this::blockJesterMomentListener, Integer.MAX_VALUE);
         registration.registerEvent(MicrophonePacketEvent.class, this::handleMicrophonePacket);
         VoicechatPlugin.super.registerEvents(registration);
+    }
+
+    private void blockJesterMomentSpeaker(MicrophonePacketEvent event) {
+        if (JesterMomentService.isVoiceBlocked(resolveServerPlayer(event.getSenderConnection()))) {
+            event.cancel();
+        }
+    }
+
+    private void blockJesterMomentListener(PacketEvent<?> event) {
+        if (JesterMomentService.isVoiceBlocked(resolveServerPlayer(event.getReceiverConnection()))) {
+            event.cancel();
+        }
     }
 
     private void handleMicrophonePacket(MicrophonePacketEvent event) {
