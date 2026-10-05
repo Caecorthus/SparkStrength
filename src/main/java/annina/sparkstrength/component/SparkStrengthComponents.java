@@ -20,6 +20,7 @@ import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
 import annina.sparkstrength.component.toxicologist.ToxicologistAntidoteComponent;
 import annina.sparkstrength.component.veteran.VeteranKnifeComponent;
 import annina.sparkstrength.component.shadowjester.ShadowJesterShowdownWorldComponent;
+import annina.sparkstrength.component.waiter.WaiterTaskRevealComponent;
 import dev.doctor4t.wathe.entity.PlayerBodyEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import org.jetbrains.annotations.NotNull;
@@ -83,6 +84,9 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.beginRegistration(PlayerEntity.class, ReporterCommunicationComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(ReporterCommunicationComponent::new);
+        registry.beginRegistration(PlayerEntity.class, WaiterTaskRevealComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(WaiterTaskRevealComponent::new);
         registry.registerFor(PlayerBodyEntity.class, CoronerBodySnapshotComponent.KEY, CoronerBodySnapshotComponent::new);
     }
 

@@ -42,6 +42,7 @@ import annina.sparkstrength.role.veteran.VeteranEconomyService;
 import annina.sparkstrength.role.veteran.VeteranKnifeService;
 import annina.sparkstrength.role.veteran.VeteranShopService;
 import annina.sparkstrength.role.shadowjester.ShadowJesterShowdownService;
+import annina.sparkstrength.role.waiter.WaiterTaskRevealService;
 import annina.sparkstrength.tablet.TabletShopService;
 import annina.sparkstrength.tablet.TabletStateService;
 import dev.doctor4t.wathe.api.event.GameEvents;
@@ -83,6 +84,8 @@ public final class SparkStrengthEvents {
         // 老兵经济服务同时注册死亡前阵营快照和死亡后金币结算。
         VeteranEconomyService.register();
         ShadowJesterShowdownService.register();
+        // 任务完成后记录 30 秒的服务员专属透视状态。
+        WaiterTaskRevealService.register();
         // 回溯者被动收入需要按世界 tick 定时结算，注册在服务端世界 tick 末尾。
         ServerTickEvents.END_WORLD_TICK.register(CoronerEconomyService::tick);
         ServerTickEvents.END_WORLD_TICK.register(CoronerService::tick);
@@ -115,6 +118,9 @@ public final class SparkStrengthEvents {
             ProfessorSerumUserComponent.KEY.get(player).reset();
             ProfessorSerumTargetComponent.KEY.get(player).reset();
             ReporterCommunicationComponent.KEY.get(player).reset();
+            if (player instanceof ServerPlayerEntity serverPlayer) {
+                WaiterTaskRevealService.reset(serverPlayer);
+            }
             CriminologistPlayerComponent.KEY.get(player).clearAll();
             DemonHunterSniffPlayerComponent.KEY.get(player).clearSniff();
             if (player instanceof ServerPlayerEntity serverPlayer) {
@@ -155,6 +161,7 @@ public final class SparkStrengthEvents {
                     ProfessorSerumUserComponent.KEY.get(player).reset();
                     ProfessorSerumTargetComponent.KEY.get(player).reset();
                     ReporterCommunicationComponent.KEY.get(player).reset();
+                    WaiterTaskRevealService.reset(player);
                     DemonHunterSniffService.clearPlayer(player);
                     VeteranKnifeService.reset(player);
                 }
@@ -167,6 +174,10 @@ public final class SparkStrengthEvents {
                 BomberTrapService.clearRoundState(serverWorld);
                 EngineerCaptureDeviceService.clearRoundState(serverWorld);
                 VeteranEconomyService.clearRoundState();
+                for (ServerPlayerEntity player : serverWorld.getPlayers()) {
+                    // 新一局初始化时清理上一局可能残留的服务员任务透视倒计时。
+                    WaiterTaskRevealService.reset(player);
+                }
             }
         });
     }
