@@ -38,6 +38,41 @@ public final class M67UseService {
     private M67UseService() {
     }
 
+    /**
+     * How the server treats a throw. The item is not role-bound; only a live match participant's throw has gameplay
+     * effects. Decided on the server for every check; the client never supplies it.
+     * 服务端对一次投掷的判定。物品不绑定角色；只有存活的对局参赛者投掷才有玩法效果。每次检查都由服务端判定，客户端无法指定。
+     */
+    enum ThrowMode {
+        /** ACTIVE match, live participant: opening lock, Bomber cooldown, kills. / 对局中存活的参赛者：开局锁、炸弹客冷却、击杀。 */
+        MATCH,
+        /**
+         * Everyone else holding it (INACTIVE, STARTING, STOPPING, or no role while ACTIVE): full visuals, no gameplay
+         * effect, no opening lock. / 其他任何持有者（INACTIVE、STARTING、STOPPING，或 ACTIVE 时无角色）：完整表现，无玩法效果，无开局锁。
+         */
+        PRESENTATION,
+        /** Dead or spectating, or a role holder no longer live in the ACTIVE match. / 死亡或旁观，或已不在对局中存活的角色持有者。 */
+        REFUSED
+    }
+
+    /**
+     * A role holder during ACTIVE is a participant: live means a match throw, anything else is refused. SparkWitch infers
+     * a match grenade at detonation from the same facts (ACTIVE and the thrower holds a role), so both must stay aligned.
+     * ACTIVE 期间持有角色即为参赛者：存活则为对局投掷，否则拒绝。SparkWitch 在引爆时以同样条件（ACTIVE 且投掷者持有角色）推断对局手雷，两边须保持一致。
+     */
+    static ThrowMode throwMode(ServerPlayerEntity player) {
+        if (!player.isAlive() || player.isSpectator()) {
+            return ThrowMode.REFUSED;
+        }
+        GameWorldComponent game = GameWorldComponent.KEY.get(player.getWorld());
+        if (game.getGameStatus() != GameWorldComponent.GameStatus.ACTIVE || !game.hasAnyRole(player)) {
+            // Creative stays allowed here, as lobby use always was. / 此处仍允许创造模式，与原大厅用法一致。
+            return ThrowMode.PRESENTATION;
+        }
+        return GameFunctions.isPlayerPlayingAndAlive(player) && GameFunctions.isPlayerAliveAndSurvival(player)
+                ? ThrowMode.MATCH : ThrowMode.REFUSED;
+    }
+
     public static boolean begin(ServerPlayerEntity player, Hand hand, ItemStack stack) {
         refreshEquipment(player);
         if (SESSIONS.containsKey(player)) {
@@ -45,8 +80,8 @@ public final class M67UseService {
             return false;
         }
         ServerWorld world = player.getServerWorld();
-        UUID roundId = M67RoundService.currentRoundId(world);
-        int opening = M67RoundService.openingRemaining(world);
+        UUID roundId = M67RoundService.throwRoundId(world);
+        int opening = throwMode(player) == ThrowMode.PRESENTATION ? 0 : M67RoundService.openingRemaining(world);
         if (opening > 0) {
             preserveCooldown(player, opening);
             player.sendMessage(Text.translatable("tip.sparkstrength.m67.opening_cooldown", (opening + 19) / 20), true);
@@ -80,6 +115,8 @@ public final class M67UseService {
             return;
         }
         boolean valid = valid(player, state) && player.getActiveItem() == stack;
+        // Decided at release, alongside validity; the grenade keeps it for its whole flight. / 与有效性一同在松手时判定，手雷整个飞行期间保留。
+        boolean presentation = throwMode(player) == ThrowMode.PRESENTATION;
         boolean authorized = RELEASE_SCOPES.get(player) == state;
         // Remove before spawn, decrement or clear callbacks can re-enter. / 先移除会话，避免生成、扣物品和清除回调重入。
         SESSIONS.remove(player);
@@ -91,7 +128,7 @@ public final class M67UseService {
         }
 
         ServerWorld world = player.getServerWorld();
-        M67GrenadeEntity grenade = new M67GrenadeEntity(world, player, state.roundId());
+        M67GrenadeEntity grenade = new M67GrenadeEntity(world, player, state.roundId(), presentation);
         grenade.setVelocity(player.getRotationVec(1.0F).multiply(M67Physics.LAUNCH_SPEED));
         // Vanilla item data syncs the thrown model on the projectile copy only.
         // 仅给投掷物副本设置模型数据，由原版同步；手中剩余物品保持原贴图。
@@ -114,9 +151,12 @@ public final class M67UseService {
         } else {
             EQUIPMENT.put(player, new Equipment(world, state.roundId(), player.getInventory().selectedSlot, main, off));
         }
-        preserveCooldown(player, throwCooldownTicks(player));
+        // Presentation throws take the normal cooldown and stay out of the match replay. / 表现投掷使用普通冷却，且不写入对局回放。
+        preserveCooldown(player, presentation ? M67Rules.THROW_COOLDOWN_TICKS : throwCooldownTicks(player));
         clearM67Use(player);
-        GameRecordManager.recordItemUse(player, SparkStrengthItems.M67_ID, null, null);
+        if (!presentation) {
+            GameRecordManager.recordItemUse(player, SparkStrengthItems.M67_ID, null, null);
+        }
         // Broadcast only after a successful throw; canceled sessions stay silent. / 仅成功投掷后广播，取消会话不播放投掷声。
         world.playSound(null, player.getX(), player.getY(), player.getZ(), SparkStrengthSounds.M67_THROW,
                 SoundCategory.PLAYERS, 1.0F, 1.0F);
@@ -170,8 +210,8 @@ public final class M67UseService {
     /** Compare references, not counts: successful consumption is not another equip.
      *  比较引用而非数量：成功投掷扣除数量不视为重新装备。 */
     public static void refreshEquipment(ServerPlayerEntity player) {
-        UUID round = M67RoundService.currentRoundId(player.getServerWorld());
-        if (round == null || !eligiblePlayer(player)) {
+        UUID round = M67RoundService.throwRoundId(player.getServerWorld());
+        if (round == null || throwMode(player) == ThrowMode.REFUSED) {
             forgetPlayer(player);
             return;
         }
@@ -258,30 +298,18 @@ public final class M67UseService {
         }
         ItemStack held = player.getStackInHand(player.getActiveHand());
         return held.isOf(SparkStrengthItems.m67()) && player.getActiveItem() == held
-                && state.matches(M67RoundService.currentRoundId(player.getServerWorld()), held,
+                && state.matches(M67RoundService.throwRoundId(player.getServerWorld()), held,
                 player.getActiveHand(), player.getInventory().selectedSlot, held.getCount());
     }
 
     private static boolean allowed(ServerPlayerEntity player) {
-        return M67RoundService.currentRoundId(player.getServerWorld()) != null
-                && M67RoundService.openingRemaining(player.getServerWorld()) == 0
-                && eligiblePlayer(player)
+        ThrowMode mode = throwMode(player);
+        return M67RoundService.throwRoundId(player.getServerWorld()) != null
+                && mode != ThrowMode.REFUSED
+                && (mode == ThrowMode.PRESENTATION || M67RoundService.openingRemaining(player.getServerWorld()) == 0)
                 && !player.getItemCooldownManager().isCoolingDown(SparkStrengthItems.m67())
                 && !EngineerStunnedPlayerComponent.KEY.get(player).isStunned()
                 && !SparkTraitsCompat.isKillerInteractionBlocked(player);
-    }
-
-    private static boolean eligiblePlayer(ServerPlayerEntity player) {
-        if (!player.isAlive() || player.isSpectator()) {
-            return false;
-        }
-        // Lobby use needs no assigned role; active matches keep their participant restrictions.
-        // 大厅使用不需要分配角色；正式对局仍保留参赛玩家限制。
-        GameWorldComponent.GameStatus status = GameWorldComponent.KEY.get(player.getWorld()).getGameStatus();
-        return status == GameWorldComponent.GameStatus.INACTIVE
-                || (status == GameWorldComponent.GameStatus.ACTIVE
-                && GameFunctions.isPlayerPlayingAndAlive(player)
-                && GameFunctions.isPlayerAliveAndSurvival(player));
     }
 
     private static void clearM67Use(ServerPlayerEntity player) {

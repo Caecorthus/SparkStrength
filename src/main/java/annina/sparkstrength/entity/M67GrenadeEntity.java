@@ -32,6 +32,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Server-ticked M67. Stable cross-mod contract (SparkWitch reflects it): this class name, the {@code sparkstrength:m67}
+ * id, public {@link #getDetonateAt()} and {@link #getThrowerUuid()}, and discard only after the blast's kills.
+ * 由服务端驱动的 M67。稳定的跨模组契约（SparkWitch 反射读取）：本类名、{@code sparkstrength:m67} id、public
+ * {@link #getDetonateAt()} 与 {@link #getThrowerUuid()}，以及爆炸击杀之后才移除自身。
+ */
 public final class M67GrenadeEntity extends ThrownItemEntity {
     private static final TrackedData<Long> DETONATE_AT = DataTracker.registerData(
             M67GrenadeEntity.class, TrackedDataHandlerRegistry.LONG);
@@ -45,6 +51,9 @@ public final class M67GrenadeEntity extends ThrownItemEntity {
 
     // Server-only thrower of a drone-dropped M67; never tracked or in the spawn packet. / 无人机投下的 M67 的投掷者，仅存服务器，不进追踪数据与生成包。
     private @Nullable UUID concealedThrowerUuid;
+    // Server-only, fixed at throw: a non-participant's grenade explodes with full visuals but affects no one.
+    // 仅存服务器，投掷时确定：非参赛者的手雷照常完整爆炸表现，但不影响任何人。
+    private boolean presentation;
     private boolean hasLanded;
     private boolean landSoundPending;
     private int interpolationTicks;
@@ -58,14 +67,17 @@ public final class M67GrenadeEntity extends ThrownItemEntity {
         super(type, world);
     }
 
-    public M67GrenadeEntity(ServerWorld world, ServerPlayerEntity owner, UUID roundId) {
-        this(world, owner, roundId, false);
+    /** Server: a hand-thrown M67; {@code presentation} is the server's throw-mode decision. / 服务器：手投 M67；presentation 由服务端投掷模式决定。 */
+    public M67GrenadeEntity(ServerWorld world, ServerPlayerEntity owner, UUID roundId, boolean presentation) {
+        this(world, owner, roundId, false, presentation);
         setPosition(owner.getX(), owner.getEyeY() - 0.1, owner.getZ());
         setRotation(owner.getYaw(), owner.getPitch());
     }
 
-    private M67GrenadeEntity(ServerWorld world, ServerPlayerEntity owner, UUID roundId, boolean concealThrower) {
+    private M67GrenadeEntity(ServerWorld world, ServerPlayerEntity owner, UUID roundId, boolean concealThrower,
+                             boolean presentation) {
         this(SparkStrengthEntities.m67(), world);
+        this.presentation = presentation;
         if (concealThrower) {
             concealedThrowerUuid = owner.getUuid();
         } else {
@@ -87,7 +99,9 @@ public final class M67GrenadeEntity extends ThrownItemEntity {
      */
     public static M67GrenadeEntity droppedConcealed(ServerWorld world, ServerPlayerEntity owner, UUID roundId,
                                                     Vec3d pos, float yaw, float pitch) {
-        M67GrenadeEntity grenade = new M67GrenadeEntity(world, owner, roundId, true);
+        // Drones exist only in the ACTIVE match and drop for their Bomber owner, so drops stay match grenades.
+        // 无人机只存在于 ACTIVE 对局并为其炸弹客主人投弹，因此投弹始终是对局手雷。
+        M67GrenadeEntity grenade = new M67GrenadeEntity(world, owner, roundId, true, false);
         grenade.setPosition(pos);
         grenade.setRotation(yaw, pitch);
         return grenade;
@@ -215,6 +229,11 @@ public final class M67GrenadeEntity extends ThrownItemEntity {
         world.spawnParticles(ParticleTypes.SMOKE, getX(), getY() + 0.1, getZ(), 100, 0, 0, 0, 0.2);
         world.spawnParticles(new ItemStackParticleEffect(ParticleTypes.ITEM, getStack()),
                 getX(), getY() + 0.1, getZ(), 100, 0, 0, 0, 1.0);
+        if (presentation) {
+            // Presentation ends here: no victim selection, kill attempt or drone break. / 表现手雷到此为止：不选目标、不击杀、不击毁无人机。
+            discard();
+            return;
+        }
 
         List<ServerPlayerEntity> candidates = List.copyOf(world.getPlayers(GameFunctions::isPlayerAliveAndSurvival));
         for (ServerPlayerEntity victim : GrenadeBlastService.filterVictims(world, this, candidates, M67Rules.BLAST_RADIUS)) {
@@ -240,6 +259,7 @@ public final class M67GrenadeEntity extends ThrownItemEntity {
         dataTracker.set(ROUND_ID, Optional.empty());
         dataTracker.set(THROWER_UUID, Optional.empty());
         concealedThrowerUuid = null;
+        presentation = true;
         dataTracker.set(DETONATE_AT, -1L);
     }
 
