@@ -14,6 +14,7 @@ import annina.sparkstrength.client.role.demonhunter.DemonHunterSniffClientHooks;
 import annina.sparkstrength.client.role.economy.RoleEconomyClientHooks;
 import annina.sparkstrength.client.role.economy.KillerTeamEconomyClientHooks;
 import annina.sparkstrength.client.role.engineer.EngineerClientHooks;
+import annina.sparkstrength.client.role.jester.JesterMomentClientHooks;
 import annina.sparkstrength.client.role.morphling.MorphlingClientHooks;
 import annina.sparkstrength.client.role.perfumer.PerfumerClientHooks;
 import annina.sparkstrength.client.role.professor.ProfessorSerumClientHooks;
@@ -47,6 +48,7 @@ public final class SparkStrengthClient implements ClientModInitializer {
         EngineerClientHooks.register();
         FlashlightLights.register();
         FlashlightRenderer.register();
+        JesterMomentClientHooks.register();
         MorphlingClientHooks.register();
         PerfumerClientHooks.register();
         ProfessorSerumClientHooks.register();
