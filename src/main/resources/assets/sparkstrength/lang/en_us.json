@@ -189,5 +189,11 @@
   "screen.sparkstrength.tablet.suspects.cancel": "Cancel Suggestion",
   "screen.sparkstrength.tablet.suspects.votes": "%s/%s suggestions",
   "commands.sparkstrength.emergency_meeting_chances.success": "Emergency meeting calls set to %s.",
-  "commands.sparkstrength.vote_time.success": "Vote time set to %s seconds."
+  "commands.sparkstrength.vote_time.success": "Vote time set to %s seconds.",
+  "commands.sparkstrength.player_alive.success": "Player %s was converted to alive.",
+  "commands.sparkstrength.player_dead.success": "Player %s was converted to non-alive.",
+  "commands.sparkstrength.player_state.already_alive": "Player %s is already alive.",
+  "commands.sparkstrength.player_state.already_dead": "Player %s is already non-alive.",
+  "commands.sparkstrength.player_state.no_role": "Player %s has no Wathe role, so the alive marker cannot be changed.",
+  "commands.sparkstrength.player_state.game_not_running": "No game is currently running; the state will take effect when a game starts."
 }

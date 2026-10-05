@@ -36,6 +36,7 @@
     "veteran.VeteranServerKnifeUseMixin",
     "waiter.WaiterFeedingRewardMixin",
     "wathe.GameFunctionsMixin",
+    "wathe.GameWorldComponentAccessor",
     "wathe.KillerPassiveMoneyCapMixin",
     "wathe.PlayerShopComponentAccessor",
     "wathe.ShadowJesterRevolverCooldownMixin"
