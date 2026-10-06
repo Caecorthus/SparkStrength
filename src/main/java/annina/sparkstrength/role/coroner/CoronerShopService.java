@@ -2,6 +2,7 @@ package annina.sparkstrength.role.coroner;
 
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.compat.SparkWitchCompat;
+import annina.sparkstrength.role.bartender.BartenderRules;
 import annina.sparkstrength.role.engineer.EngineerPowerRestorationService;
 import annina.sparkstrength.role.engineer.EngineerRules;
 import annina.sparkstrength.role.professor.ProfessorSerumRules;
@@ -180,7 +181,10 @@ public final class CoronerShopService {
                 CoronerRules.BODY_BAG_PRICE,
                 ShopEntry.Type.TOOL
         ).actualStack(SparkStrengthItems.coronerBodyBag().getDefaultStack()).build());
-        context.addEntry(new ShopEntry(ModItems.BASE_SPIRIT.getDefaultStack(), 50, ShopEntry.Type.POISON));
+        // Ingredient prices and spices A/B come from BartenderShopService, which rewrites every final Bartender list.
+        // 调剂价格与调料 A/B 由 BartenderShopService 统一改写最终酒保列表时提供。
+        context.addEntry(new ShopEntry(
+                ModItems.BASE_SPIRIT.getDefaultStack(), BartenderRules.BASE_SPIRIT_PRICE, ShopEntry.Type.POISON));
         addIngredientEntry(context, ModItems.RUM);
         addIngredientEntry(context, ModItems.GIN);
         addIngredientEntry(context, ModItems.VODKA);

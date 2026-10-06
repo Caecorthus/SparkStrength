@@ -9,7 +9,9 @@ import annina.sparkstrength.item.CoronerBodyBagItem;
 import annina.sparkstrength.item.AromaOrbItem;
 import annina.sparkstrength.item.CoolingOilItem;
 import annina.sparkstrength.item.DroneItem;
+import annina.sparkstrength.item.EmberSugarItem;
 import annina.sparkstrength.item.FlashlightItem;
+import annina.sparkstrength.item.GhostflameBittersItem;
 import annina.sparkstrength.item.M67Item;
 import annina.sparkstrength.item.MagnifierItem;
 import annina.sparkstrength.item.MorphDeviceItem;
@@ -27,6 +29,7 @@ import net.minecraft.item.Item;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.util.Identifier;
+import org.agmas.noellesroles.item.IngredientItem;
 
 public final class SparkStrengthItems {
     public static final Identifier CAPSULE_ID = SparkStrength.id("capsule");
@@ -52,6 +55,8 @@ public final class SparkStrengthItems {
     public static final Identifier GRENADE_DRONE_ID = SparkStrength.id("grenade_drone");
     public static final Identifier BOMB_DRONE_ID = SparkStrength.id("bomb_drone");
     public static final Identifier SKATEBOARD_ID = SparkStrength.id("skateboard");
+    public static final Identifier GHOSTFLAME_BITTERS_ID = SparkStrength.id("ghostflame_bitters");
+    public static final Identifier EMBER_SUGAR_ID = SparkStrength.id("ember_sugar");
     private static Item m67;
     private static Item capsule;
     private static Item flashlight;
@@ -75,6 +80,8 @@ public final class SparkStrengthItems {
     private static Item grenadeDrone;
     private static Item bombDrone;
     private static Item skateboard;
+    private static Item ghostflameBitters;
+    private static Item emberSugar;
     private static boolean registered;
 
     private SparkStrengthItems() {
@@ -200,6 +207,14 @@ public final class SparkStrengthItems {
                 Registries.ITEM,
                 SKATEBOARD_ID,
                 new SkateboardItem(new Item.Settings().maxCount(1))
+        );
+        ghostflameBitters = registerIngredient(
+                GHOSTFLAME_BITTERS_ID,
+                new GhostflameBittersItem(new Item.Settings().maxCount(1))
+        );
+        emberSugar = registerIngredient(
+                EMBER_SUGAR_ID,
+                new EmberSugarItem(new Item.Settings().maxCount(1))
         );
         registered = true;
     }
@@ -363,6 +378,31 @@ public final class SparkStrengthItems {
             throw new IllegalStateException("SparkStrength items are not registered yet");
         }
         return skateboard;
+    }
+
+    public static Item ghostflameBitters() {
+        if (ghostflameBitters == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return ghostflameBitters;
+    }
+
+    public static Item emberSugar() {
+        if (emberSugar == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return emberSugar;
+    }
+
+    /**
+     * Bartender spices also join NoellesRoles' ingredient registry, which a base spirit uses to resolve the ids in
+     * its NBT (effects, naming, tooltip).
+     * 酒保调料同时登记到 NoellesRoles 的调剂注册表；基酒靠它解析 NBT 里的 id（效果、命名、提示）。
+     */
+    private static Item registerIngredient(Identifier id, IngredientItem ingredient) {
+        Item item = Registry.register(Registries.ITEM, id, ingredient);
+        IngredientItem.register(ingredient);
+        return item;
     }
 
     public static Item drone(DroneKind kind) {
