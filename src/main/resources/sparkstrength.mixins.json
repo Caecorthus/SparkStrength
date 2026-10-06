@@ -54,6 +54,7 @@
     "vulture.SkateboardStepSoundMixin",
     "wathe.GameFunctionsMixin",
     "wathe.GrenadeExplosionMixin",
+    "wathe.JesterFakeDeathImmunityMixin",
     "wathe.KillerPassiveMoneyCapMixin",
     "wathe.KillerTeamPassiveIncomeMixin",
     "wathe.KillerTeamShopMixin",
