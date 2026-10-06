@@ -19,7 +19,9 @@ import annina.sparkstrength.item.MorphReagentItem;
 import annina.sparkstrength.item.PowerRestorationItem;
 import annina.sparkstrength.item.ProfessorSerumItem;
 import annina.sparkstrength.item.SkateboardItem;
+import annina.sparkstrength.item.TVirusItem;
 import annina.sparkstrength.item.TabletItem;
+import annina.sparkstrength.item.VirusItem;
 import annina.sparkstrength.item.ZephyrPerfumeItem;
 import annina.sparkstrength.role.bomber.drone.DroneKind;
 import annina.sparkstrength.role.perfumer.PerfumerRules;
@@ -57,6 +59,8 @@ public final class SparkStrengthItems {
     public static final Identifier SKATEBOARD_ID = SparkStrength.id("skateboard");
     public static final Identifier GHOSTFLAME_BITTERS_ID = SparkStrength.id("ghostflame_bitters");
     public static final Identifier EMBER_SUGAR_ID = SparkStrength.id("ember_sugar");
+    public static final Identifier VIRUS_ID = SparkStrength.id("virus");
+    public static final Identifier T_VIRUS_ID = SparkStrength.id("t_virus");
     private static Item m67;
     private static Item capsule;
     private static Item flashlight;
@@ -82,6 +86,8 @@ public final class SparkStrengthItems {
     private static Item skateboard;
     private static Item ghostflameBitters;
     private static Item emberSugar;
+    private static Item virus;
+    private static Item tVirus;
     private static boolean registered;
 
     private SparkStrengthItems() {
@@ -215,6 +221,16 @@ public final class SparkStrengthItems {
         emberSugar = registerIngredient(
                 EMBER_SUGAR_ID,
                 new EmberSugarItem(new Item.Settings().maxCount(1))
+        );
+        virus = Registry.register(
+                Registries.ITEM,
+                VIRUS_ID,
+                new VirusItem(new Item.Settings().maxCount(16))
+        );
+        tVirus = Registry.register(
+                Registries.ITEM,
+                T_VIRUS_ID,
+                new TVirusItem(new Item.Settings().maxCount(1))
         );
         registered = true;
     }
@@ -407,5 +423,19 @@ public final class SparkStrengthItems {
 
     public static Item drone(DroneKind kind) {
         return kind == DroneKind.BOMB ? bombDrone() : grenadeDrone();
+    }
+
+    public static Item virus() {
+        if (virus == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return virus;
+    }
+
+    public static Item tVirus() {
+        if (tVirus == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return tVirus;
     }
 }
