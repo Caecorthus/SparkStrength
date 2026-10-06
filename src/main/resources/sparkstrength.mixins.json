@@ -5,6 +5,12 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "attendant.SmallDoorBlockDoorLogMixin",
+    "bartender.BartenderCocktailRegistryMixin",
+    "bartender.BartenderCocktailUseTimeMixin",
+    "bartender.BartenderIngredientDurationMixin",
+    "bartender.BartenderIngredientTooltipMixin",
+    "bartender.BartenderStimulationCrashMixin",
+    "bartender.BartenderVodkaMixin",
     "bomber.DroneDemonHunterShootMixin",
     "bomber.DroneGunShootPayloadMixin",
     "bomber.DroneKnifeStabPayloadMixin",
