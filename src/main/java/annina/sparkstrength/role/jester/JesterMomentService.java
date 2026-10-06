@@ -1,9 +1,8 @@
 package annina.sparkstrength.role.jester;
 
+import annina.sparkstrength.component.engineer.EngineerStunnedPlayerComponent;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
-import dev.doctor4t.wathe.cca.MapEnhancementsWorldComponent;
-import dev.doctor4t.wathe.config.datapack.RoomConfig;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.record.GameRecordManager;
 import net.minecraft.nbt.NbtCompound;
@@ -11,6 +10,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.math.Vec3d;
 import org.agmas.noellesroles.Noellesroles;
 import org.agmas.noellesroles.jester.JesterPlayerComponent;
 import org.agmas.noellesroles.taotie.SwallowedPlayerComponent;
@@ -18,13 +18,16 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
- * Server side of the Jester Moment tweaks: voice cut-off for the Jester and the shooter's random room teleport.
- * The kill-driven grayscale is client-only and reads NoellesRoles' synced kill count directly.
- * 小丑时刻调整的服务端部分：切断小丑语音、把开枪者随机传送进房间。按击杀累积的灰度只在客户端，
- * 直接读取 NoellesRoles 同步的击杀数。
+ * Server side of the Jester Moment tweaks. An innocent's shot freezes everyone (no movement, locked view, no items or
+ * skills: the Engineer stun lock) through the Jester's fake death. When the Jester revives and starts transforming,
+ * everyone, the Jester included, is shuffled onto someone else's spot and set free to run before the moment begins;
+ * NoellesRoles' everyone-looks-like-the-Jester view starts at the same time (synced below and in the client mixin).
+ * The Jester is cut off from voice throughout. The kill-driven grayscale is client-only.
+ * 小丑时刻调整的服务端部分。好人一枪打中小丑后，全员立即定身（不能移动、视角锁定、不能用物品和技能，复用工程师定身），
+ * 持续整个假死阶段。小丑复活开始转变时，所有人（含小丑）被打乱到别人的位置并解除定身，可以在时刻开始前逃跑；
+ * NoellesRoles 的“所有人都像小丑”视角同时开启（见下方同步与客户端 mixin）。小丑全程听不到也说不出。按击杀的灰度只在客户端。
  */
 public final class JesterMomentService {
     private JesterMomentService() {
@@ -50,57 +53,71 @@ public final class JesterMomentService {
     }
 
     /**
-     * Server: the Jester Moment has just begun. The innocent whose shot triggered it is thrown into a random room
-     * (away from the Jester when possible); on a map without rooms they stay where they are.
-     * 服务端：小丑时刻刚刚开始。触发它的那名开枪者被随机传送进一个房间（尽量远离小丑）；地图没有房间则原地不动。
+     * Server: an innocent's shot just put the Jester into its fake death. Everyone else freezes until it revives.
+     * 服务端：好人的一枪刚让小丑进入假死。其余所有人定身，直到小丑复活。
      */
-    public static void onMomentStarted(ServerPlayerEntity jester, @Nullable UUID shooterUuid) {
-        if (shooterUuid == null) {
-            return;
+    public static void onFakeDeathStarted(ServerPlayerEntity jester, int fakeDeathTicks) {
+        int ticks = JesterMomentRules.freezeTicks(fakeDeathTicks);
+        for (ServerPlayerEntity player : participants(jester.getServerWorld())) {
+            if (player != jester) {
+                EngineerStunnedPlayerComponent.KEY.get(player).freeze(ticks);
+            }
         }
+    }
+
+    /**
+     * Server: the Jester has revived at its death spot and is about to enter stasis (the transformation). Everyone,
+     * the Jester included, moves to someone else's frozen spot and is released, so the others can run before the moment
+     * starts. Runs before NoellesRoles records the stasis point, so the Jester's stasis lock holds its new spot.
+     * 服务端：小丑已在死亡处复活，即将进入禁锢（转变）。所有人（含小丑）移到别人被定住的位置并解除定身，
+     * 其他人可以在时刻开始前逃跑。在 NoellesRoles 记录禁锢点之前执行，因此小丑的禁锢会锁在新位置。
+     */
+    public static void onTransformationStarted(ServerPlayerEntity jester) {
         ServerWorld world = jester.getServerWorld();
-        ServerPlayerEntity shooter = world.getServer().getPlayerManager().getPlayer(shooterUuid);
-        if (shooter == null || shooter == jester || shooter.getServerWorld() != world
-                || !GameFunctions.isPlayerPlayingAndAlive(shooter)
-                || !GameFunctions.isPlayerAliveAndSurvival(shooter)
-                // A swallowed shooter is inside a Taotie; pulling them out would break the stomach.
-                // 被吞的开枪者在饕餮腹中，把他拉出来会破坏吞噬状态。
-                || SwallowedPlayerComponent.isPlayerSwallowed(shooter)) {
-            return;
+        List<ServerPlayerEntity> players = participants(world);
+        if (!players.contains(jester)) {
+            players.add(jester);
         }
-
-        MapEnhancementsWorldComponent enhancements = MapEnhancementsWorldComponent.KEY.get(world);
-        List<JesterMomentRules.RoomSpot> spots = new ArrayList<>();
-        List<RoomConfig.SpawnPoint> points = new ArrayList<>();
-        int roomCount = enhancements.getRoomCount();
-        for (int room = 1; room <= roomCount; room++) {
-            int roomNumber = room;
-            enhancements.getRoomConfig(roomNumber).ifPresent(config -> {
-                for (RoomConfig.SpawnPoint point : config.spawnPoints()) {
-                    spots.add(new JesterMomentRules.RoomSpot(roomNumber, point.x(), point.y(), point.z()));
-                    points.add(point);
-                }
-            });
+        List<Spot> spots = new ArrayList<>(players.size());
+        for (ServerPlayerEntity player : players) {
+            spots.add(new Spot(player.getPos(), player.getYaw(), player.getPitch()));
         }
-        int index = JesterMomentRules.pickShooterSpot(spots, jester.getX(), jester.getY(), jester.getZ(),
-                bound -> world.getRandom().nextInt(bound));
-        if (index < 0) {
-            return;
+        int[] targets = JesterMomentRules.shuffleSpots(players.size(), bound -> world.getRandom().nextInt(bound));
+        for (int i = 0; i < players.size(); i++) {
+            ServerPlayerEntity player = players.get(i);
+            Spot spot = spots.get(targets[i]);
+            // Release before moving: a frozen player is pulled back to their lock point every tick.
+            // 先解除再传送：定身中的玩家每 tick 都会被拉回锁定点。
+            EngineerStunnedPlayerComponent.KEY.get(player).clear();
+            player.teleport(world, spot.pos().x, spot.pos().y, spot.pos().z, spot.yaw(), spot.pitch());
+            player.fallDistance = 0.0F;
+            if (player != jester) {
+                player.sendMessage(Text.translatable("message.sparkstrength.jester_moment.shuffled")
+                        .formatted(Formatting.LIGHT_PURPLE), true);
+            }
         }
-
-        int room = spots.get(index).room();
-        RoomConfig.SpawnPoint point = points.get(index);
-        String roomName = enhancements.getRoomConfig(room)
-                .map(config -> config.getName(room))
-                .orElse("Room " + room);
-        shooter.teleport(world, point.x(), point.y(), point.z(), point.yaw(), point.pitch());
-        shooter.fallDistance = 0.0F;
-        shooter.sendMessage(Text.translatable("message.sparkstrength.jester_moment.shooter_teleported", roomName)
-                .formatted(Formatting.LIGHT_PURPLE), true);
 
         NbtCompound extra = new NbtCompound();
-        extra.putUuid("target", jester.getUuid());
-        extra.putString("room", roomName);
-        GameRecordManager.recordGlobalEvent(world, SparkStrengthReplayFormatters.JESTER_SHOOTER_TELEPORTED, shooter, extra);
+        extra.putInt("players", players.size());
+        GameRecordManager.recordGlobalEvent(world, SparkStrengthReplayFormatters.JESTER_POSITIONS_SHUFFLED, jester, extra);
+    }
+
+    /**
+     * Living, in-round survival players; a player swallowed by a Taotie is inside it and stays there.
+     * 局内存活的生存模式玩家；被饕餮吞下的玩家在其腹中，不参与。
+     */
+    private static List<ServerPlayerEntity> participants(ServerWorld world) {
+        List<ServerPlayerEntity> players = new ArrayList<>();
+        for (ServerPlayerEntity player : world.getPlayers()) {
+            if (GameFunctions.isPlayerPlayingAndAlive(player)
+                    && GameFunctions.isPlayerAliveAndSurvival(player)
+                    && !SwallowedPlayerComponent.isPlayerSwallowed(player)) {
+                players.add(player);
+            }
+        }
+        return players;
+    }
+
+    private record Spot(Vec3d pos, float yaw, float pitch) {
     }
 }
