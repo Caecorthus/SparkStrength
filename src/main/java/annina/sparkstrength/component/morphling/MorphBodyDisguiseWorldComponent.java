@@ -51,6 +51,16 @@ public final class MorphBodyDisguiseWorldComponent implements AutoSyncedComponen
         return Optional.ofNullable(bodyDisguises.get(bodyOwnerUuid));
     }
 
+    /**
+     * A player revived by the Pathogen's T-Virus is no longer that corpse; a later death records afresh.
+     * 被病原体 T病毒复活的玩家不再是那具尸体；之后再次死亡会重新记录。
+     */
+    public void clearBodyDisguise(UUID bodyOwnerUuid) {
+        if (bodyOwnerUuid != null && bodyDisguises.remove(bodyOwnerUuid) != null) {
+            sync();
+        }
+    }
+
     public void clearRoundState() {
         if (bodyDisguises.isEmpty()) {
             return;

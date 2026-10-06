@@ -1,5 +1,7 @@
 package annina.sparkstrength.component;
 
+import annina.sparkstrength.component.pathogen.PathogenStrainComponent;
+import annina.sparkstrength.component.pathogen.VirusCarrierComponent;
 import annina.sparkstrength.component.corruptcop.CorruptCopAbilityComponent;
 import annina.sparkstrength.component.coroner.CoronerBodySnapshotComponent;
 import annina.sparkstrength.component.coroner.CoronerPlayerComponent;
@@ -90,6 +92,12 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.beginRegistration(PlayerEntity.class, SkateboardRideComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(SkateboardRideComponent::new);
+        registry.beginRegistration(PlayerEntity.class, PathogenStrainComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(PathogenStrainComponent::new);
+        registry.beginRegistration(PlayerEntity.class, VirusCarrierComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(VirusCarrierComponent::new);
         registry.registerFor(PlayerBodyEntity.class, CoronerBodySnapshotComponent.KEY, CoronerBodySnapshotComponent::new);
     }
 
