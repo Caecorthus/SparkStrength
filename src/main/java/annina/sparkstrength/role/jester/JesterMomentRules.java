@@ -58,6 +58,15 @@ public final class JesterMomentRules {
     }
 
     /**
+     * Nothing kills a Jester lying in its fake death, forced kills included. Leaving the game (disconnecting, falling
+     * out of the train) still does, as NoellesRoles allows during the stasis that follows.
+     * 处于假死的小丑不会被任何方式杀死（包括强制击杀）。离开游戏（断线、掉出列车）仍会死亡，与 NoellesRoles 在随后禁锢期间的规则一致。
+     */
+    public static boolean blocksKillDuringFakeDeath(boolean isJester, int fakeDeathTicks, boolean leavingGame) {
+        return isJester && fakeDeathTicks > 0 && !leavingGame;
+    }
+
+    /**
      * Where everyone goes when the Jester revives: {@code result[i]} is the index of the spot player {@code i} moves
      * to. Sattolo's algorithm draws a uniformly random single cycle, so with two or more players nobody keeps their
      * own spot; one player (or none) stays put.

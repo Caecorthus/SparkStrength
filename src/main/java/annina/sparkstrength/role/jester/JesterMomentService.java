@@ -3,6 +3,7 @@ package annina.sparkstrength.role.jester;
 import annina.sparkstrength.component.engineer.EngineerStunnedPlayerComponent;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
+import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.record.GameRecordManager;
 import net.minecraft.nbt.NbtCompound;
@@ -10,6 +11,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
 import org.agmas.noellesroles.Noellesroles;
 import org.agmas.noellesroles.jester.JesterPlayerComponent;
@@ -24,10 +26,12 @@ import java.util.List;
  * skills: the Engineer stun lock) through the Jester's fake death. When the Jester revives and starts transforming,
  * everyone, the Jester included, is shuffled onto someone else's spot and set free to run before the moment begins;
  * NoellesRoles' everyone-looks-like-the-Jester view starts at the same time (synced below and in the client mixin).
- * The Jester is cut off from voice throughout. The kill-driven grayscale is client-only.
+ * The Jester is cut off from voice throughout, and nothing kills its fake corpse. The kill-driven grayscale is
+ * client-only.
  * 小丑时刻调整的服务端部分。好人一枪打中小丑后，全员立即定身（不能移动、视角锁定、不能用物品和技能，复用工程师定身），
  * 持续整个假死阶段。小丑复活开始转变时，所有人（含小丑）被打乱到别人的位置并解除定身，可以在时刻开始前逃跑；
- * NoellesRoles 的“所有人都像小丑”视角同时开启（见下方同步与客户端 mixin）。小丑全程听不到也说不出。按击杀的灰度只在客户端。
+ * NoellesRoles 的“所有人都像小丑”视角同时开启（见下方同步与客户端 mixin）。小丑全程听不到也说不出，假死期间不会被杀死。
+ * 按击杀的灰度只在客户端。
  */
 public final class JesterMomentService {
     private JesterMomentService() {
@@ -50,6 +54,38 @@ public final class JesterMomentService {
         }
         boolean isJester = GameWorldComponent.KEY.get(player.getWorld()).isRole(player, Noellesroles.JESTER);
         return JesterMomentRules.isVoiceBlocked(isJester, inPsychoMode, transitioning);
+    }
+
+    /**
+     * Server, at the head of every kill: whether to drop it because the victim is a Jester lying in its fake death.
+     * NoellesRoles guards only the stasis after the revive, and Wathe still counts the spectating Jester as alive, so a
+     * bomb, poison, grenade or curse could finish off the fake corpse. Leaving the game still kills: the transition is
+     * reset first, so the Jester dies as an ordinary player and NoellesRoles' after-kill reset can't put it back in
+     * adventure mode.
+     * 服务端，每次击杀开头：受害者是处于假死的小丑时是否丢弃本次击杀。NoellesRoles 只保护复活后的禁锢阶段，
+     * Wathe 也仍把旁观中的小丑视为存活，所以炸弹、毒、手雷、诅咒都能杀死这具假尸体。离开游戏仍会死亡：先重置转变，
+     * 小丑按普通玩家死亡，NoellesRoles 的死后重置不会把它切回冒险模式。
+     */
+    public static boolean blocksFakeDeathKill(ServerPlayerEntity victim, Identifier deathReason) {
+        JesterPlayerComponent jester = JesterPlayerComponent.KEY.get(victim);
+        if (jester.spectatorTicks <= 0) {
+            return false;
+        }
+        boolean isJester = GameWorldComponent.KEY.get(victim.getWorld()).isRole(victim, Noellesroles.JESTER);
+        boolean leavingGame = GameConstants.DeathReasons.ESCAPED.equals(deathReason)
+                || GameConstants.DeathReasons.FELL_OUT_OF_TRAIN.equals(deathReason);
+        if (!JesterMomentRules.blocksKillDuringFakeDeath(isJester, jester.spectatorTicks, leavingGame)) {
+            if (isJester && leavingGame) {
+                jester.reset();
+            }
+            return false;
+        }
+
+        NbtCompound extra = new NbtCompound();
+        extra.putString("death_reason", deathReason.toString());
+        GameRecordManager.recordGlobalEvent(victim.getServerWorld(),
+                SparkStrengthReplayFormatters.JESTER_FAKE_DEATH_KILL_BLOCKED, victim, extra);
+        return true;
     }
 
     /**

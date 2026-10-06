@@ -46,6 +46,7 @@ public final class SparkStrengthReplayFormatters {
     public static final Identifier BOMB_DRONE_DETONATED = SparkStrength.id("bomb_drone_detonated");
     public static final Identifier SKATEBOARD_RIDE_STARTED = SparkStrength.id("skateboard_ride_started");
     public static final Identifier JESTER_POSITIONS_SHUFFLED = SparkStrength.id("jester_positions_shuffled");
+    public static final Identifier JESTER_FAKE_DEATH_KILL_BLOCKED = SparkStrength.id("jester_fake_death_kill_blocked");
 
     private SparkStrengthReplayFormatters() {
     }
@@ -288,6 +289,13 @@ public final class SparkStrengthReplayFormatters {
                         event.data(),
                         match,
                         "replay.global.sparkstrength.jester_positions_shuffled"
+                ));
+        // Actor = the Jester whose fake corpse shrugged off a kill. / actor 为假尸体挡下一次击杀的小丑。
+        ReplayRegistry.registerGlobalEventFormatter(JESTER_FAKE_DEATH_KILL_BLOCKED,
+                (event, match, world) -> onePlayerEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.jester_fake_death_kill_blocked"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(DRONE_PLACED, (event, match, world) -> {
             NbtCompound data = event.data();
