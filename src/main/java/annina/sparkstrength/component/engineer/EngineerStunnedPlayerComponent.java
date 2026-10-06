@@ -20,6 +20,8 @@ import org.ladysnake.cca.api.v3.component.tick.ServerTickingComponent;
  *
  * <p>客户端 mixin 会根据这个组件禁用键鼠输入；服务端这里每 tick 清速度并把玩家拉回锁定点。
  * 两边同时做，是为了防止单靠客户端输入拦截被网络移动包或延迟边缘情况绕过。</p>
+ *
+ * <p>小丑时刻的全员定身也复用这里（{@link #freeze}）：效果完全相同，只是自然到期时不记“捕捉装置释放”回放。</p>
  */
 public final class EngineerStunnedPlayerComponent implements AutoSyncedComponent, ServerTickingComponent {
     public static final ComponentKey<EngineerStunnedPlayerComponent> KEY = ComponentRegistry.getOrCreate(
@@ -32,12 +34,27 @@ public final class EngineerStunnedPlayerComponent implements AutoSyncedComponent
     private double lockedX;
     private double lockedY;
     private double lockedZ;
+    private boolean recordRelease;
 
     public EngineerStunnedPlayerComponent(PlayerEntity player) {
         this.player = player;
     }
 
     public void stun(int ticks) {
+        this.recordRelease = true;
+        lock(ticks);
+    }
+
+    /**
+     * Same lock as {@link #stun}, but its natural end is not replayed as a capture-device release (Jester Moment freeze).
+     * 与 {@link #stun} 相同的定身，但自然结束时不记为捕捉装置释放（小丑时刻全员定身）。
+     */
+    public void freeze(int ticks) {
+        this.recordRelease = isStunned() && this.recordRelease;
+        lock(ticks);
+    }
+
+    private void lock(int ticks) {
         this.stunTicks = Math.max(this.stunTicks, ticks);
         Vec3d pos = player.getPos();
         this.lockedX = pos.x;
@@ -82,7 +99,7 @@ public final class EngineerStunnedPlayerComponent implements AutoSyncedComponent
         stunTicks--;
         if (stunTicks <= 0) {
             stunTicks = 0;
-            if (player instanceof ServerPlayerEntity serverPlayer) {
+            if (recordRelease && player instanceof ServerPlayerEntity serverPlayer) {
                 GameRecordManager.recordGlobalEvent(
                         serverPlayer.getServerWorld(),
                         SparkStrengthReplayFormatters.CAPTURE_DEVICE_RELEASED,
@@ -100,6 +117,7 @@ public final class EngineerStunnedPlayerComponent implements AutoSyncedComponent
         tag.putDouble("LockedX", lockedX);
         tag.putDouble("LockedY", lockedY);
         tag.putDouble("LockedZ", lockedZ);
+        tag.putBoolean("RecordRelease", recordRelease);
     }
 
     @Override
@@ -108,6 +126,7 @@ public final class EngineerStunnedPlayerComponent implements AutoSyncedComponent
         lockedX = tag.getDouble("LockedX");
         lockedY = tag.getDouble("LockedY");
         lockedZ = tag.getDouble("LockedZ");
+        recordRelease = !tag.contains("RecordRelease") || tag.getBoolean("RecordRelease");
     }
 
     private void sync() {

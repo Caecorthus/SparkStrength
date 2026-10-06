@@ -39,7 +39,7 @@
     "minecraft.ItemCooldownManagerAccessor",
     "minecraft.RaycastShapeScopeMixin",
     "noellesroles.HiddenEquipmentHelperMixin",
-    "noellesroles.JesterMomentStartMixin",
+    "noellesroles.JesterMomentTransitionMixin",
     "noellesroles.ToxicologistAntidoteItemMixin",
     "perfumer.PerfumerZephyrMoodDrainMixin",
     "perfumer.SparkWitchPerfumerCorpseDrainMixin",

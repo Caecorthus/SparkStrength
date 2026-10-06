@@ -45,7 +45,7 @@ public final class SparkStrengthReplayFormatters {
     public static final Identifier DRONE_DESTROYED = SparkStrength.id("drone_destroyed");
     public static final Identifier BOMB_DRONE_DETONATED = SparkStrength.id("bomb_drone_detonated");
     public static final Identifier SKATEBOARD_RIDE_STARTED = SparkStrength.id("skateboard_ride_started");
-    public static final Identifier JESTER_SHOOTER_TELEPORTED = SparkStrength.id("jester_shooter_teleported");
+    public static final Identifier JESTER_POSITIONS_SHUFFLED = SparkStrength.id("jester_positions_shuffled");
 
     private SparkStrengthReplayFormatters() {
     }
@@ -282,19 +282,13 @@ public final class SparkStrengthReplayFormatters {
                         match,
                         "replay.global.sparkstrength.skateboard_ride_started"
                 ));
-        // Actor = the shooter who triggered the Jester Moment, room = where they landed. / actor 为触发小丑时刻的开枪者，room 为落点房间。
-        ReplayRegistry.registerGlobalEventFormatter(JESTER_SHOOTER_TELEPORTED, (event, match, world) -> {
-            NbtCompound data = event.data();
-            UUID actorUuid = data.containsUuid("actor") ? data.getUuid("actor") : null;
-            if (actorUuid == null) {
-                return null;
-            }
-            return Text.translatable(
-                    "replay.global.sparkstrength.jester_shooter_teleported",
-                    ReplayGenerator.formatPlayerName(actorUuid, ReplayGenerator.getPlayerInfoCache(match)),
-                    data.getString("room")
-            );
-        });
+        // Actor = the Jester whose transformation shuffled everyone. / actor 为开始转变、打乱所有人位置的小丑。
+        ReplayRegistry.registerGlobalEventFormatter(JESTER_POSITIONS_SHUFFLED,
+                (event, match, world) -> onePlayerEvent(
+                        event.data(),
+                        match,
+                        "replay.global.sparkstrength.jester_positions_shuffled"
+                ));
         ReplayRegistry.registerGlobalEventFormatter(DRONE_PLACED, (event, match, world) -> {
             NbtCompound data = event.data();
             return onePlayerEvent(data, match, "replay.global.sparkstrength.drone_placed." + droneKindId(data));

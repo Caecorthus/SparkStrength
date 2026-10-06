@@ -154,8 +154,9 @@ public final class DetectiveIdentityResolver {
     }
 
     /**
-     * Viewer-independent half of {@link #isAnonymised}: the target is in Wathe psycho mode, or a Jester moment is on.
-     * isAnonymised 中与观察者无关的部分：目标处于 Wathe 疯魔，或正处于小丑时刻。
+     * Viewer-independent half of {@link #isAnonymised}: the target is in Wathe psycho mode, or a Jester moment is on
+     * (from the Jester's transformation, as SparkStrength starts the moment view there).
+     * isAnonymised 中与观察者无关的部分：目标处于 Wathe 疯魔，或正处于小丑时刻（SparkStrength 让时刻视角从小丑转变时开始）。
      */
     public static boolean isSubjectAnonymised(ServerPlayerEntity target) {
         if (PlayerPsychoComponent.KEY.get(target).getPsychoTicks() > 0) {
@@ -164,7 +165,9 @@ public final class DetectiveIdentityResolver {
         ServerWorld world = target.getServerWorld();
         GameWorldComponent game = GameWorldComponent.KEY.get(world);
         for (ServerPlayerEntity player : world.getPlayers()) {
-            if (game.isRole(player, Noellesroles.JESTER) && JesterPlayerComponent.KEY.get(player).inPsychoMode) {
+            JesterPlayerComponent jester = JesterPlayerComponent.KEY.get(player);
+            // The moment's anonymity starts with the transformation (stasis). / 时刻的匿名从转变（禁锢）开始。
+            if (game.isRole(player, Noellesroles.JESTER) && (jester.inPsychoMode || jester.inStasis)) {
                 return true;
             }
         }
