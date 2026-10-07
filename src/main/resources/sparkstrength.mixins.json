@@ -58,6 +58,7 @@
     "silencer.SilencerGunShootPayloadMixin",
     "silencer.SilencerKnifeStabPayloadMixin",
     "silencer.SilencerKnifeUseMixin",
+    "taotie.TaotieHeadDazePayloadGuardMixin",
     "veteran.VeteranKnifeStabPayloadMixin",
     "veteran.VeteranServerKnifeUseMixin",
     "vulture.SkateboardStepSoundMixin",

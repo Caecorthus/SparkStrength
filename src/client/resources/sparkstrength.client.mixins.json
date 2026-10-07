@@ -37,6 +37,7 @@
     "professor.ProfessorInventoryScreenMixin",
     "professor.ProfessorSerumCrosshairMixin",
     "reporter.ReporterInventoryScreenMixin",
+    "taotie.TaotieHeadHudMixin",
     "detective.DetectiveMagnifierHudMixin",
     "demonhunter.DemonHunterSniffHudMixin",
     "economy.KillerTeamMoneyHudMixin",

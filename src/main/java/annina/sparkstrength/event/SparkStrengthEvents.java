@@ -35,6 +35,7 @@ import annina.sparkstrength.role.engineer.EngineerShopService;
 import annina.sparkstrength.role.morphling.MorphlingService;
 import annina.sparkstrength.role.morphling.MorphlingShopService;
 import annina.sparkstrength.role.pathogen.PathogenFeatureService;
+import annina.sparkstrength.role.taotie.TaotieHeadFeatureService;
 import annina.sparkstrength.role.poisoner.PoisonerEconomyService;
 import annina.sparkstrength.role.professor.ProfessorSerumShopService;
 import annina.sparkstrength.role.recaller.RecallerEconomyService;
@@ -91,6 +92,7 @@ public final class SparkStrengthEvents {
         MorphlingService.register();
         MorphlingShopService.register();
         PathogenFeatureService.register();
+        TaotieHeadFeatureService.register();
         PoisonerEconomyService.register();
         ProfessorSerumShopService.register();
         ReporterCommunicationManager.register();

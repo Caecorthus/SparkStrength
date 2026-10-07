@@ -70,6 +70,8 @@ public final class SparkStrengthReplayFormatters {
     public static final Identifier SHADOW_JESTER_SHOWDOWN_STARTED =
             SparkStrength.id("shadow_jester_showdown_started");
     public static final Identifier TIMEKEEPER_WATCH_USED = SparkStrength.id("timekeeper_watch_used");
+    /** Taotie head hit: actor = the shooter (recorded even when offline), target = the victim. / 饕餮头颅命中：actor 为发射者（离线也记录），target 为受害者。 */
+    public static final Identifier TAOTIE_HEAD_HIT = SparkStrength.id("taotie_head_hit");
 
     private SparkStrengthReplayFormatters() {
     }
@@ -339,6 +341,20 @@ public final class SparkStrengthReplayFormatters {
                         match,
                         "replay.global.sparkstrength.perfumer_aroma_hit"
                 ));
+        ReplayRegistry.registerGlobalEventFormatter(TAOTIE_HEAD_HIT, (event, match, world) -> {
+            NbtCompound data = event.data();
+            UUID actorUuid = data.containsUuid("actor") ? data.getUuid("actor") : null;
+            UUID targetUuid = data.containsUuid("target") ? data.getUuid("target") : null;
+            if (actorUuid == null || targetUuid == null) {
+                return null;
+            }
+            var playerInfoCache = ReplayGenerator.getPlayerInfoCache(match);
+            return Text.translatable(
+                    "replay.global.sparkstrength.taotie_head_hit",
+                    ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache),
+                    ReplayGenerator.formatPlayerName(targetUuid, playerInfoCache)
+            );
+        });
         ReplayRegistry.registerGlobalEventFormatter(PERFUMER_ZEPHYR_USED,
                 (event, match, world) -> onePlayerEvent(
                         event.data(),
