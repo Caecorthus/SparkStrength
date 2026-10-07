@@ -85,6 +85,15 @@ public final class DemonHunterSniffPlayerComponent implements AutoSyncedComponen
         sync();
     }
 
+    /** 只刷新嗅探技能冷却，保留本局标记和当前透视目标。 */
+    public void clearSniffCooldown() {
+        if (sniffCooldownTicks == 0) {
+            return;
+        }
+        sniffCooldownTicks = 0;
+        sync();
+    }
+
     public void clearSniff() {
         if (!hasSniffRuntime()) {
             return;

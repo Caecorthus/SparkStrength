@@ -29,7 +29,8 @@
     "morphling.MorphlingReagentCrosshairMixin",
     "morphling.MorphlingRendererDispatchMixin",
     "morphling.MorphlingRoleNameRendererMixin",
-    "veteran.VeteranInstantKnifeMixin"
+    "veteran.VeteranInstantKnifeMixin",
+    "timekeeper.TimekeeperWatchAttackMixin"
   ],
   "injectors": {
     "defaultRequire": 1

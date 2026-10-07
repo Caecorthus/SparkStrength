@@ -56,11 +56,24 @@ public final class SparkStrengthReplayFormatters {
      */
     public static final Identifier SHADOW_JESTER_SHOWDOWN_STARTED =
             SparkStrength.id("shadow_jester_showdown_started");
+    public static final Identifier TIMEKEEPER_WATCH_USED = SparkStrength.id("timekeeper_watch_used");
 
     private SparkStrengthReplayFormatters() {
     }
 
     public static void register() {
+        ReplayRegistry.registerGlobalEventFormatter(TIMEKEEPER_WATCH_USED, (event, match, world) -> {
+            var playerInfoCache = ReplayGenerator.getPlayerInfoCache(match);
+            NbtCompound data = event.data();
+            UUID actorUuid = data.containsUuid("actor") ? data.getUuid("actor") : null;
+            if (actorUuid == null) {
+                return null;
+            }
+            String mode = data.getString("mode");
+            String key = "replay.global.sparkstrength.timekeeper_watch_used."
+                    + ("ability_refresh".equals(mode) ? "ability" : "item");
+            return Text.translatable(key, ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache));
+        });
         // 新版双影谢幕是无特定触发者的全局事件，因此直接返回固定回放文案。
         // 文案中的 §d 和 §r 保留与 NoellesRoles 原版谢幕回放相同的紫色格式。
         ReplayRegistry.registerGlobalEventFormatter(

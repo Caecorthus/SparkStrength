@@ -29,6 +29,23 @@ public final class SparkTraitsCompat {
     }
 
     /**
+     * 计时员普通模式的目标判断：原始好人和善良杀手可以被刷新，内鬼好人不能被刷新。
+     * 该规则独立于通用“有效阵营”判断，避免改动其它职业已经依赖的优先级。
+     */
+    public static boolean isTimekeeperNormalTarget(Role role, PlayerEntity player) {
+        return role != null
+                && !hasImpostor(player)
+                && (role.isInnocent() || hasConscience(player));
+    }
+
+    /** 计时员拥有 impostor 时的反转目标：非善良杀手和其它内鬼好人。 */
+    public static boolean isTimekeeperReverseTarget(Role role, PlayerEntity player) {
+        return role != null
+                && !hasConscience(player)
+                && (role.canUseKiller() || hasImpostor(player));
+    }
+
+    /**
      * 判断玩家是否属于 SparkTraits 规则下的有效杀手阵营。
      *
      * <p>规则与 SparkTraits 的公开有效阵营实现保持一致：内鬼词条会把原始好人

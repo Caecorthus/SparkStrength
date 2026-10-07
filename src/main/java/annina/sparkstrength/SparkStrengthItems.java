@@ -9,8 +9,12 @@ import annina.sparkstrength.item.MorphReagentItem;
 import annina.sparkstrength.item.PowerRestorationItem;
 import annina.sparkstrength.item.ProfessorSerumItem;
 import annina.sparkstrength.item.TabletItem;
+import annina.sparkstrength.item.TimekeeperWatchItem;
 import annina.sparkstrength.role.professor.ProfessorSerumType;
+import com.mojang.serialization.Codec;
+import net.minecraft.component.ComponentType;
 import net.minecraft.item.Item;
+import net.minecraft.network.codec.PacketCodecs;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
 import net.minecraft.util.Identifier;
@@ -28,6 +32,17 @@ public final class SparkStrengthItems {
     public static final Identifier MORPH_REAGENT_ID = SparkStrength.id("morph_reagent");
     public static final Identifier MORPH_DEVICE_ID = SparkStrength.id("morph_device");
     public static final Identifier CORONER_BODY_BAG_ID = SparkStrength.id("coroner_body_bag");
+    public static final Identifier DYING_WATCH_ID = SparkStrength.id("dying_watch");
+
+    /** 怀表模式数据组件：0=刷新物品冷却，1=刷新技能冷却。 */
+    public static final ComponentType<Integer> TIMEKEEPER_WATCH_MODE = Registry.register(
+            Registries.DATA_COMPONENT_TYPE,
+            SparkStrength.id("timekeeper_watch_mode"),
+            ComponentType.<Integer>builder()
+                    .codec(Codec.INT)
+                    .packetCodec(PacketCodecs.INTEGER)
+                    .build()
+    );
     private static Item capsule;
     private static Item flashlight;
     private static Item tablet;
@@ -40,6 +55,7 @@ public final class SparkStrengthItems {
     private static Item morphReagent;
     private static Item morphDevice;
     private static Item coronerBodyBag;
+    private static Item dyingWatch;
     private static boolean registered;
 
     private SparkStrengthItems() {
@@ -108,6 +124,14 @@ public final class SparkStrengthItems {
                 Registries.ITEM,
                 CORONER_BODY_BAG_ID,
                 new CoronerBodyBagItem(new Item.Settings().maxCount(1))
+        );
+        // 计时员濒毁怀表：只保留两种刷新冷却模式，状态由 SparkStrength 数据组件保存。
+        dyingWatch = Registry.register(
+                Registries.ITEM,
+                DYING_WATCH_ID,
+                new TimekeeperWatchItem(new Item.Settings()
+                        .maxCount(1)
+                        .component(TIMEKEEPER_WATCH_MODE, 0))
         );
         registered = true;
     }
@@ -194,5 +218,12 @@ public final class SparkStrengthItems {
             throw new IllegalStateException("SparkStrength items are not registered yet");
         }
         return coronerBodyBag;
+    }
+
+    public static Item dyingWatch() {
+        if (dyingWatch == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return dyingWatch;
     }
 }

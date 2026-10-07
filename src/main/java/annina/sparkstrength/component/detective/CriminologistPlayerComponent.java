@@ -105,6 +105,15 @@ public final class CriminologistPlayerComponent implements AutoSyncedComponent, 
         sync();
     }
 
+    /** 只刷新犯罪学家技能冷却，保留当前追踪目标和显形状态。 */
+    public void clearCriminologistCooldown() {
+        if (criminologistCooldownTicks == 0) {
+            return;
+        }
+        criminologistCooldownTicks = 0;
+        sync();
+    }
+
     public void clearCriminologist() {
         if (criminologistCooldownTicks == 0
                 && criminologistPendingVictimUuid == null

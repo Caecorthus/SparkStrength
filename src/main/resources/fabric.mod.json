@@ -50,7 +50,8 @@
       "sparkstrength:tablet_world",
       "sparkstrength:morph_body_disguise_world",
       "sparkstrength:shadow_jester_showdown",
-      "sparkstrength:waiter_task_reveal"
+      "sparkstrength:waiter_task_reveal",
+      "sparkstrength:timekeeper_watch"
     ]
   },
   "mixins": [
