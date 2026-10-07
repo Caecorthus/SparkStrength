@@ -19,15 +19,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * feature list, the board's {@code SkateboardRenderer.Feature} included, never run. The outermost whole-method wrap
  * sees every HEAD cancel; when the vanilla body call was skipped, the board is drawn after the replacement body. Only
  * replacements cancel there; whole players are hidden earlier (SparkWitch's Blind gate wraps
- * {@code WorldRenderer#renderEntity}). Feature-loop gates (the Blind's feature skip, Wathe's psycho) never reach a
- * replaced body, so here the board follows the replacement body exactly like the Pig's own head and body do; normal
- * bodies keep the board in the feature loop under those gates.
+ * {@code WorldRenderer#renderEntity}). Feature-loop gates never reach a replaced body, so the Blind's feature skip is
+ * asked explicitly: {@code SkateboardRenderer.renderUnderReplacedBody} draws nothing while SparkWitch's public
+ * {@code hidesFeaturesFromBlind} holds (owner 2026-10-07: the Blind keeps the pig outline but never sees the board).
+ * Wathe's psycho feature filter is still not applied here. Normal bodies keep the board in the feature loop under both
+ * gates.
  * 让身体被其他模组替换绘制的骑手脚下仍有滑板。SparkTraits 的猪形态在 HEAD 取消 {@code PlayerEntityRenderer#render}
  * 并绘制猪身体，{@code LivingEntityRenderer#render} 及其特征列表（含滑板的 {@code SkateboardRenderer.Feature}）都不会
  * 运行。最外层的整方法包裹能看到所有 HEAD 取消；原版身体调用被跳过时，在替换身体之后绘制滑板。只有替换绘制会在此取消；
- * 整个玩家的隐藏发生得更早（SparkWitch 盲人闸门包裹 {@code WorldRenderer#renderEntity}）。特征循环内的闸门（盲人跳过
- * 特征、Wathe 疯魔）不会作用于替换身体，因此这里的滑板与猪自身的头和身体一样跟随替换身体显示；普通身体的滑板仍在特征
- * 循环内受这些闸门约束。
+ * 整个玩家的隐藏发生得更早（SparkWitch 盲人闸门包裹 {@code WorldRenderer#renderEntity}）。特征循环内的闸门不会作用于
+ * 替换身体，因此显式询问盲人的附加层跳过：SparkWitch 公开的 {@code hidesFeaturesFromBlind} 为真时，
+ * {@code SkateboardRenderer.renderUnderReplacedBody} 不绘制任何东西（所有者 2026-10-07：盲人保留猪形轮廓，但永远看不到
+ * 滑板）。Wathe 疯魔的附加层过滤在此仍不生效。普通身体的滑板仍在附加层循环内受这两个闸门约束。
  */
 @Mixin(PlayerEntityRenderer.class)
 public abstract class SkateboardReplacedBodyMixin {
