@@ -4,6 +4,7 @@ import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.compat.SparkTraitsDroneCompat;
+import annina.sparkstrength.compat.SparkWitchCompat;
 import annina.sparkstrength.component.engineer.EngineerStunnedPlayerComponent;
 import annina.sparkstrength.entity.DroneEntity;
 import annina.sparkstrength.network.drone.DronePilotActionC2SPacket;
@@ -37,12 +38,14 @@ import java.util.UUID;
  * <ul>
  *   <li>{@link #start}: the sender is alive, playing and in survival, standing on the ground with its own camera, its
  *   REAL role is Bomber, the tablet is in its main hand, and the drone is one of its own drones in its world, of the
- *   current round, not falling or empty; the opening lock is over and the sender is neither Engineer-stunned nor
- *   SparkTraits killer-interaction- or role-skill-blocked. A start for the drone already piloted is a no-op, and starts
- *   closer than {@link #START_COOLDOWN_TICKS} to the previous one are ignored. Any previous session ends first.
+ *   current round, not falling or empty; the opening lock is over and the sender is neither Engineer- nor SparkWitch
+ *   Control-Expert-stunned nor SparkTraits killer-interaction- or role-skill-blocked. A start for the drone already
+ *   piloted is a no-op, and starts closer than {@link #START_COOLDOWN_TICKS} to the previous one are ignored. Any
+ *   previous session ends first.
  *   Success sets {@link DroneEntity#setPilotUuid} and sends a start state; a refusal sends an end state with the reason.
  *   发送者存活、在局内且为生存模式，站在地面上且镜头为自身，真实身份为炸弹客，主手持平板；无人机属于发送者、位于其所在世界、
- *   属于本回合、未下坠且仍有电；开局锁已结束，且发送者未被工程师眩晕、未被 SparkTraits 禁止杀手交互或封锁职业技能。
+ *   属于本回合、未下坠且仍有电；开局锁已结束，且发送者未被工程师或 SparkWitch 控场专家眩晕、未被 SparkTraits 禁止杀手交互或
+ *   封锁职业技能。
  *   请求驾驶正在驾驶的无人机时不做任何事，距上次请求不足 START_COOLDOWN_TICKS 的请求被忽略。先结束旧会话；
  *   成功时设置驾驶者并发送开始状态，拒绝时发送带原因的结束状态。</li>
  *   <li>{@link #move}: only from the current pilot for its drone, at most {@link #MAX_MOVES_PER_TICK} per tick;
@@ -338,7 +341,7 @@ public final class DronePilotService {
         if (!holdsTablet(player)) {
             return DronePilotEndReason.NO_TABLET;
         }
-        if (EngineerStunnedPlayerComponent.KEY.get(player).isStunned()) {
+        if (isStunned(player)) {
             return DronePilotEndReason.STUNNED;
         }
         if (SparkTraitsCompat.isKillerInteractionBlocked(player)) {
@@ -386,7 +389,7 @@ public final class DronePilotService {
         if (!holdsTablet(pilot)) {
             return DronePilotEndReason.NO_TABLET;
         }
-        if (EngineerStunnedPlayerComponent.KEY.get(pilot).isStunned()) {
+        if (isStunned(pilot)) {
             return DronePilotEndReason.STUNNED;
         }
         if (SparkTraitsCompat.isKillerInteractionBlocked(pilot)) {
@@ -400,6 +403,16 @@ public final class DronePilotService {
             return DronePilotEndReason.DEPLETED;
         }
         return null;
+    }
+
+    /**
+     * Engineer stun or SparkWitch Control Expert stun. The CE stun's payload deny-list leaves drone moves and exit open,
+     * so the session itself must end here. / 工程师眩晕或 SparkWitch 控场专家眩晕。控场专家的数据包拦截放行无人机移动与退出，
+     * 因此须在此结束会话本身。
+     */
+    private static boolean isStunned(ServerPlayerEntity player) {
+        return EngineerStunnedPlayerComponent.KEY.get(player).isStunned()
+                || SparkWitchCompat.isControlExpertStunned(player);
     }
 
     private static boolean pilotAlive(ServerPlayerEntity player) {

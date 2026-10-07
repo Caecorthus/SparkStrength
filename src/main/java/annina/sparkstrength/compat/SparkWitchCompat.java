@@ -46,6 +46,24 @@ public final class SparkWitchCompat {
     }
 
     /**
+     * SparkWitch Control Expert stun, read through its public facade {@code SparkWitchApi.isControlExpertStunned}.
+     * False without SparkWitch, with an older facade, or when the call fails, so drones are then never stun-locked.
+     * SparkWitch 控场专家眩晕，经其公开门面 SparkWitchApi.isControlExpertStunned 读取。未安装 SparkWitch、门面较旧或调用失败时
+     * 返回 false，此时无人机不会被眩晕锁住。
+     */
+    public static boolean isControlExpertStunned(@Nullable PlayerEntity player) {
+        Method method = ControlExpertStunQuery.METHOD;
+        if (player == null || method == null) {
+            return false;
+        }
+        try {
+            return Boolean.TRUE.equals(method.invoke(null, player));
+        } catch (ReflectiveOperationException | IllegalArgumentException | LinkageError ignored) {
+            return false;
+        }
+    }
+
+    /**
      * Render thread, client presentation only: whether SparkWitch's Blind view on this client strips every feature from
      * {@code player}'s body right now ({@code SparkWitchApi#hidesFeaturesFromBlind}). A SparkStrength extra drawn
      * outside the feature loop skips itself while this holds; today that is the skateboard under a replaced (Pig) body.
@@ -100,6 +118,24 @@ public final class SparkWitchCompat {
             return compat.getMethod(methodName, parameterTypes).invoke(null, arguments);
         } catch (ReflectiveOperationException | LinkageError ignored) {
             return null;
+        }
+    }
+
+    /** Resolved once, on the first stun query. / 首次查询眩晕时解析一次。 */
+    private static final class ControlExpertStunQuery {
+        private static final @Nullable Method METHOD = resolve();
+
+        private static @Nullable Method resolve() {
+            if (!isLoaded()) {
+                return null;
+            }
+            try {
+                Method method = Class.forName(PUBLIC_API).getMethod("isControlExpertStunned", PlayerEntity.class);
+                return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == boolean.class
+                        ? method : null;
+            } catch (ReflectiveOperationException | SecurityException | LinkageError ignored) {
+                return null;
+            }
         }
     }
 }
