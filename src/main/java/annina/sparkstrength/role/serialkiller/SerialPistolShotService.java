@@ -2,6 +2,7 @@ package annina.sparkstrength.role.serialkiller;
 
 import annina.sparkstrength.compat.SparkFactionCompat;
 import annina.sparkstrength.compat.SparkTraitsCompat;
+import annina.sparkstrength.compat.SparkWitchCompat;
 import annina.sparkstrength.item.SerialPistolItem;
 import dev.doctor4t.wathe.api.event.ShouldPunishGunShooter;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -12,9 +13,11 @@ import dev.doctor4t.wathe.index.WatheSounds;
 import dev.doctor4t.wathe.record.GameRecordManager;
 import dev.doctor4t.wathe.util.Scheduler;
 import dev.doctor4t.wathe.util.ShootMuzzleS2CPayload;
+import net.fabricmc.fabric.api.entity.FakePlayer;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.MinecraftServer;
@@ -87,6 +90,15 @@ public final class SerialPistolShotService {
         world.playSound(null, shooter.getX(), shooter.getEyeY(), shooter.getZ(), WatheSounds.ITEM_REVOLVER_CLICK,
                 SoundCategory.PLAYERS, 0.5F, 1.0F + shooter.getRandom().nextFloat() * 0.1F - 0.05F);
 
+        if (candidate == null) {
+            // SparkWitch hooks Wathe's revolver at this point (before the record): a non-player id naming a Magician
+            // puppet or Seeker device ends or breaks it, and the shot below stays a recorded miss (D3: sound, muzzle,
+            // cooldown; no punishment, no mood loss), exactly as for the revolver.
+            // SparkWitch 在此处（记录之前）挂接 Wathe 左轮：非玩家 id 指向魔术师皮套或搜寻者设备时将其结束或打坏，下方这一枪
+            // 仍按未命中记录（D3：声音、枪口火光、冷却；无惩罚、不扣理智），与左轮完全一致。
+            hitSparkWitchWorldTarget(shooter, targetId, stack);
+        }
+
         ServerPlayerEntity target = candidate != null && isHittable(shooter, candidate) ? candidate : null;
         GameRecordManager.recordItemUse(shooter, Registries.ITEM.getId(stack.getItem()), target, null);
         if (target != null) {
@@ -134,9 +146,25 @@ public final class SerialPistolShotService {
     }
 
     /**
+     * The claimed entity when it is no player (a SparkWitch Magician puppet or Seeker device), handed to SparkWitch with
+     * the pistol's server range; nothing happens without SparkWitch.
+     * 声明的实体不是玩家时（SparkWitch 魔术师皮套或搜寻者设备）连同手枪的服务端射程交给 SparkWitch；未安装 SparkWitch 时无事发生。
+     */
+    private static void hitSparkWitchWorldTarget(ServerPlayerEntity shooter, int targetId, ItemStack stack) {
+        Entity entity = targetId < 0 ? null : shooter.getServerWorld().getEntityById(targetId);
+        if (entity != null && !(entity instanceof PlayerEntity)) {
+            SparkWitchCompat.hitGunWorldTarget(shooter, entity, stack,
+                    SerialKillerConstants.PISTOL_RANGE_BLOCKS + SERVER_RANGE_SLACK_BLOCKS);
+        }
+    }
+
+    /**
      * The client-claimed player, with the same gates SparkFactionAPI's revolver guard applies before its faction check
-     * (a non-spectator player in range); null means the shot is a miss.
+     * (a non-spectator player in range); null means the shot is a miss. A Fabric fake player (such as SparkWitch's
+     * server-only Magician replay proxy, which carries its owner's UUID) is never a target, so a pistol can never send
+     * one through killPlayer.
      * 客户端声明的目标玩家，门槛与 SparkFactionAPI 左轮防护在阵营检查前所用的一致（非旁观且在射程内）；null 表示空枪。
+     * Fabric 假玩家（例如 SparkWitch 仅存在于服务端、携带主人 UUID 的魔术师回放代理）永远不是目标，手枪绝不会让其进入 killPlayer。
      */
     private static @Nullable ServerPlayerEntity claimedTarget(ServerPlayerEntity shooter, int targetId) {
         if (targetId < 0) {
@@ -144,6 +172,7 @@ public final class SerialPistolShotService {
         }
         Entity entity = shooter.getServerWorld().getEntityById(targetId);
         if (!(entity instanceof ServerPlayerEntity target)
+                || target instanceof FakePlayer
                 || target == shooter
                 || target.isSpectator()
                 || target.distanceTo(shooter) > SerialKillerConstants.PISTOL_RANGE_BLOCKS + SERVER_RANGE_SLACK_BLOCKS) {
@@ -152,10 +181,19 @@ public final class SerialPistolShotService {
         return target;
     }
 
-    /** What Wathe trusts the client for: a living, playing survival target in clear line of sight. / Wathe 信任客户端的部分：目标存活、在局、生存模式且视线无遮挡。 */
+    /**
+     * What Wathe trusts the client for: a living, playing survival target in clear line of sight. The shooter's own
+     * bound SparkWitch Vendetta counts as playing though Wathe counts it as dead, because Wathe's revolver hands it to
+     * killPlayer, where SparkWitch resolves its terminal death (other Wraiths never reach here: SparkFactionAPI and
+     * SparkWitch's Vendetta packet guard drop those shots first).
+     * Wathe 信任客户端的部分：目标存活、在局、生存模式且视线无遮挡。射手自己绑定的 SparkWitch 仇杀客虽被 Wathe 视为已死亡，
+     * 仍算在局，因为 Wathe 左轮会把它交给 killPlayer，由 SparkWitch 结算其终局死亡（其他冤魂到不了这里：SparkFactionAPI 与
+     * SparkWitch 的仇杀客数据包防护会先丢弃这些射击）。
+     */
     private static boolean isHittable(ServerPlayerEntity shooter, ServerPlayerEntity target) {
         return GameFunctions.isPlayerAliveAndSurvival(target)
-                && GameFunctions.isPlayerPlayingAndAlive(target)
+                && (GameFunctions.isPlayerPlayingAndAlive(target)
+                || SparkWitchCompat.isBoundKillerTargetingVendetta(shooter, target))
                 && hasLineOfSight(shooter, target);
     }
 
