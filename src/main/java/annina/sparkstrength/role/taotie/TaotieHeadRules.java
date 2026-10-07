@@ -155,6 +155,9 @@ public final class TaotieHeadRules {
             Identifier.of("sparkstrength", "timekeeper_watch_mode"),
             Identifier.of("sparkstrength", "drone_pilot_start"),
             Identifier.of("sparkstrength", "drone_pilot_action"),
+            // Serial Killer psycho pistol shot: a payload-fired gun, classified like wathe:gunshoot.
+            // 连环杀手疯魔手枪开火：通过数据包开火的枪械，与 wathe:gunshoot 同类处理。
+            Identifier.of("sparkstrength", "serial_pistol_shoot"),
             FIRE_PAYLOAD_ID));
 
     private TaotieHeadRules() {

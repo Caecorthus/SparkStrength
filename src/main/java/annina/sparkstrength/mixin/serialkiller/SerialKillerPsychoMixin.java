@@ -1,6 +1,7 @@
 package annina.sparkstrength.mixin.serialkiller;
 
 import annina.sparkstrength.SparkStrengthItems;
+import annina.sparkstrength.role.serialkiller.SerialPistolGuardService;
 import dev.doctor4t.wathe.api.event.PsychoModeEvents;
 import dev.doctor4t.wathe.api.event.PsychoType;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -8,10 +9,8 @@ import dev.doctor4t.wathe.cca.PlayerPsychoComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.util.ShopEntry;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.s2c.play.UpdateSelectedSlotS2CPacket;
 import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.util.Hand;
 import org.agmas.noellesroles.Noellesroles;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -31,6 +30,9 @@ public abstract class SerialKillerPsychoMixin {
     @Shadow @Final private PlayerEntity player;
     @Shadow public int psychoTicks;
     @Shadow public int armour;
+    // Wathe's stopPsycho reads this to undo the psychosActive counter and to report ON_PSYCHO_END.
+    // Wathe 的 stopPsycho 依据此字段回退 psychosActive 计数并上报 ON_PSYCHO_END 的类型。
+    @Shadow private PsychoType psychoType;
     @Shadow public abstract void sync();
     @Shadow public abstract void setPsychoTicks(int ticks);
 
@@ -77,6 +79,11 @@ public abstract class SerialKillerPsychoMixin {
         player.getInventory().setStack(hotbarSlot, SparkStrengthItems.serialPistol().getDefaultStack());
         player.getInventory().setStack(40, SparkStrengthItems.serialLeftPistol().getDefaultStack());
         player.getInventory().selectedSlot = hotbarSlot;
+        // Record the type exactly like Wathe's startPsycho, so a VISIBLE_QUIET / SILENT stop does not
+        // decrement a counter it never raised and ON_PSYCHO_END reports the real type.
+        // 与 Wathe 原版 startPsycho 一样记录类型：否则 VISIBLE_QUIET / SILENT 结束时会扣减从未增加的计数，
+        // ON_PSYCHO_END 也会报告错误类型。
+        this.psychoType = type;
         this.psychoTicks = dev.doctor4t.wathe.game.GameConstants.PSYCHO_TIMER;
         this.armour = dev.doctor4t.wathe.game.GameConstants.PSYCHO_MODE_ARMOUR;
         setPsychoTicks(this.psychoTicks);
@@ -94,15 +101,16 @@ public abstract class SerialKillerPsychoMixin {
         cir.setReturnValue(true);
     }
 
+    /**
+     * Every psycho end (timer, killPlayer, reset) strips the pistols from wherever they are, whatever the current
+     * role: a role change before the end must not leave them behind. The client copy follows the server sync.
+     * 每次疯魔结束（计时结束、killPlayer、重置）都从任何位置收走手枪，不看当前身份：结束前换身份也不能遗留。
+     * 客户端副本随服务端同步移除。
+     */
     @Inject(method = "stopPsycho", at = @At("HEAD"))
     private void sparkstrength$removeSerialKillerWeapons(CallbackInfo ci) {
-        if (!isSerialKiller(player)) return;
-        player.getInventory().remove(stack -> stack.isOf(SparkStrengthItems.serialPistol())
-                || stack.isOf(SparkStrengthItems.serialLeftPistol()), Integer.MAX_VALUE,
-                player.playerScreenHandler.getCraftingInput());
-        if (player.getOffHandStack().isOf(SparkStrengthItems.serialLeftPistol())) {
-            player.setStackInHand(Hand.OFF_HAND, ItemStack.EMPTY);
-        }
+        if (player.getWorld().isClient) return;
+        SerialPistolGuardService.removeAll(player);
     }
 
     @Unique private static boolean isSerialKiller(PlayerEntity player) {

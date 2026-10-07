@@ -77,6 +77,13 @@
     "wathe.ShadowJesterRevolverCooldownMixin",
     "serialkiller.SerialKillerPsychoMixin",
     "serialkiller.SerialKillerServerSlotLockMixin",
+    "serialkiller.DecoratedPotBlockSerialPistolMixin",
+    "serialkiller.SerialPistolDeathDropMixin",
+    "serialkiller.SerialPistolDropGuardMixin",
+    "serialkiller.SerialPistolGunShootGuardMixin",
+    "serialkiller.SerialPistolHandSwapGuardMixin",
+    "serialkiller.SerialPistolSelectedDropMixin",
+    "serialkiller.SerialPistolSlotClickMixin",
     "serialkiller.SerialKillerComponentTickMixin"
   ],
   "injectors": {

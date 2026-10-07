@@ -66,6 +66,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import annina.sparkstrength.role.serialkiller.SerialKillerCooldownService;
+import annina.sparkstrength.role.serialkiller.SerialPistolGuardService;
 
 /**
  * 统一注册 SparkStrength 的服务端事件。
@@ -115,6 +116,9 @@ public final class SparkStrengthEvents {
         WaiterTaskRevealService.register();
         TimekeeperWatchService.register();
         SerialKillerCooldownService.register();
+        // Serial pistols exist only during their Serial Killer's psycho: sweep + world-use guard.
+        // 连环手枪只在其连环杀手疯魔期间存在：清扫与世界交互防护。
+        SerialPistolGuardService.register();
         // 回溯者被动收入需要按世界 tick 定时结算，注册在服务端世界 tick 末尾。
         ServerTickEvents.END_WORLD_TICK.register(CoronerEconomyService::tick);
         ServerTickEvents.END_WORLD_TICK.register(CoronerService::tick);
