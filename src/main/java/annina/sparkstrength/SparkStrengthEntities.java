@@ -6,6 +6,7 @@ import annina.sparkstrength.entity.CaptureDeviceEntity;
 import annina.sparkstrength.entity.CoolingOilEntity;
 import annina.sparkstrength.entity.DroneEntity;
 import annina.sparkstrength.entity.M67GrenadeEntity;
+import annina.sparkstrength.entity.TaotieHeadEntity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnGroup;
 import net.minecraft.registry.Registries;
@@ -20,6 +21,7 @@ public final class SparkStrengthEntities {
     public static final Identifier AROMA_ORB_ID = SparkStrength.id("aroma_orb");
     public static final Identifier GRENADE_DRONE_ID = SparkStrength.id("grenade_drone");
     public static final Identifier BOMB_DRONE_ID = SparkStrength.id("bomb_drone");
+    public static final Identifier TAOTIE_HEAD_ID = SparkStrength.id("taotie_head");
     private static EntityType<M67GrenadeEntity> m67;
     private static EntityType<CapsuleEntity> capsule;
     private static EntityType<CaptureDeviceEntity> captureDevice;
@@ -27,6 +29,7 @@ public final class SparkStrengthEntities {
     private static EntityType<AromaOrbEntity> aromaOrb;
     private static EntityType<DroneEntity> grenadeDrone;
     private static EntityType<DroneEntity> bombDrone;
+    private static EntityType<TaotieHeadEntity> taotieHead;
     private static boolean registered;
 
     private SparkStrengthEntities() {
@@ -114,6 +117,20 @@ public final class SparkStrengthEntities {
                         .disableSummon()
                         .build(BOMB_DRONE_ID.toString())
         );
+        // Transient round projectile; tracked every tick with velocity so remote clients can follow its homing.
+        // 临时回合弹射物；每刻追踪并同步速度，使远端客户端能跟上其追踪转向。
+        taotieHead = Registry.register(
+                Registries.ENTITY_TYPE,
+                TAOTIE_HEAD_ID,
+                EntityType.Builder.<TaotieHeadEntity>create(TaotieHeadEntity::new, SpawnGroup.MISC)
+                        .dimensions(0.5F, 0.5F)
+                        .maxTrackingRange(8)
+                        .trackingTickInterval(1)
+                        .alwaysUpdateVelocity(true)
+                        .disableSaving()
+                        .disableSummon()
+                        .build(TAOTIE_HEAD_ID.toString())
+        );
         registered = true;
     }
 
@@ -164,5 +181,12 @@ public final class SparkStrengthEntities {
             throw new IllegalStateException("SparkStrength entities are not registered yet");
         }
         return bombDrone;
+    }
+
+    public static EntityType<TaotieHeadEntity> taotieHead() {
+        if (taotieHead == null) {
+            throw new IllegalStateException("SparkStrength entities are not registered yet");
+        }
+        return taotieHead;
     }
 }
