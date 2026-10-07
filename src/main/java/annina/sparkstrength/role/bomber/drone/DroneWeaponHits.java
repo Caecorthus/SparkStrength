@@ -501,6 +501,48 @@ public final class DroneWeaponHits {
     }
 
     /**
+     * USEC sniper rifle match shot (SparkWitch {@code onUsecRifleFired}): {@code path} is the bullet's polyline from the
+     * eye in flight order, already bent and cut at blocks by SparkWitch (AP pierces up to two), so it is not re-clipped.
+     * The first live drone the path enters strictly before {@code reach} (path distance) breaks and absorbs the shot;
+     * returns its path distance (strictly less than {@code reach}), else {@code reach} unchanged. Eligibility follows the
+     * death ray (any live drone, no breaker gate), plus SparkWitch's own running-round guard for this entry.
+     * USEC 狙击步枪的对局射击（SparkWitch {@code onUsecRifleFired}）：{@code path} 是子弹自眼睛起、按飞行顺序的折线，已由
+     * SparkWitch 处理下坠并在方块处截断（AP 最多穿透两格），因此不再重新截断。路径在 {@code reach}（路径距离）之前严格先进入的
+     * 第一架存活无人机被击毁并吸收这一枪；返回其路径距离（严格小于 {@code reach}），否则原样返回 {@code reach}。资格判定与死光一致
+     * （任何存活无人机，不检查击毁者），另加 SparkWitch 此入口自身的“对局进行中”守卫。
+     */
+    public static double onSparkWitchUsecRifle(@Nullable ServerPlayerEntity shooter, @Nullable List<Vec3d> path,
+                                               double reach) {
+        if (shooter == null || path == null || path.size() < 2 || !(reach > 0.0) || !Double.isFinite(reach)
+                || shooter.getWorld().isClient() || !GameWorldComponent.KEY.get(shooter.getWorld()).isRunning()) {
+            return reach;
+        }
+        World world = shooter.getWorld();
+        double[] lengths = new double[path.size() - 1];
+        for (int index = 0; index < lengths.length; index++) {
+            Vec3d from = path.get(index);
+            Vec3d to = path.get(index + 1);
+            lengths[index] = from == null || to == null ? Double.NaN : from.distanceTo(to);
+        }
+        DroneHitGeometry.DroneHit[] probed = new DroneHitGeometry.DroneHit[1];
+        double distance = DroneWeaponRules.firstPathEntry(lengths, reach, (index, cut) -> {
+            Vec3d from = path.get(index);
+            Vec3d to = path.get(index + 1);
+            Vec3d end = cut < lengths[index] ? from.add(to.subtract(from).multiply(cut / lengths[index])) : to;
+            DroneHitGeometry.DroneHit hit = DroneHitGeometry.nearestDrone(world, from, end, cut * cut,
+                    DroneCombatService::usable);
+            probed[0] = hit;
+            return hit == null ? -1.0 : Math.sqrt(hit.distanceSquared());
+        });
+        // The walk stops at the accepted probe, so probed[0] is that segment's drone. / 遍历止于被接受的探测，probed[0] 即该段无人机。
+        if (!(distance >= 0.0) || probed[0] == null) {
+            return reach;
+        }
+        DroneCombatService.destroy(probed[0].drone(), shooter);
+        return distance;
+    }
+
+    /**
      * SparkWitch area blasts. Only its own (potion shell) blasts break drones here: Wathe grenades and M67s already break
      * drones through their own hooks, after their kills, so their SparkWitch reports are ignored.
      * SparkWitch 范围爆炸。此处只处理其自有（药炮手炮弹）爆炸：Wathe 手雷与 M67 已通过自身钩子在击杀之后击毁无人机，因此忽略它们的

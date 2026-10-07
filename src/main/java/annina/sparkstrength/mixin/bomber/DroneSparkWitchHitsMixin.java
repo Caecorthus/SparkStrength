@@ -15,6 +15,8 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.List;
+
 /**
  * Optional SparkWitch seam: its server-side hitscans and blasts already call one static entry each in
  * {@code SeekerDeviceHits} (nearest-wins against Seeker devices), so Bomber drones join the same contract at those
@@ -111,6 +113,24 @@ public abstract class DroneSparkWitchHitsMixin {
                                                          @Local(argsOnly = true) double reach) {
         if (DroneWeaponHits.onSparkWitchBackblast(gunner, start, direction, reach)) {
             cir.setReturnValue(true);
+        }
+    }
+
+    /**
+     * USEC sniper rifle: {@code onUsecRifleFired(ServerPlayerEntity, List<Vec3d>, double)} returns a path distance. A
+     * drone the bullet's polyline enters strictly before {@code reach} breaks; returning its shorter path distance skips
+     * SparkWitch's own device check and the player hit (the caller hits nobody).
+     * USEC 狙击步枪：该方法返回路径距离。子弹折线在 {@code reach} 之前严格先进入的无人机被击毁；返回其更短的路径距离即跳过
+     * SparkWitch 自身的设备判定与玩家命中（调用方不再命中任何人）。
+     */
+    @Inject(method = "onUsecRifleFired", at = @At("HEAD"), cancellable = true, require = 0)
+    private static void sparkstrength$usecRifleHitsDrone(CallbackInfoReturnable<Double> cir,
+                                                         @Local(argsOnly = true) ServerPlayerEntity shooter,
+                                                         @Local(argsOnly = true) List<Vec3d> path,
+                                                         @Local(argsOnly = true) double reach) {
+        double absorbed = DroneWeaponHits.onSparkWitchUsecRifle(shooter, path, reach);
+        if (absorbed < reach) {
+            cir.setReturnValue(absorbed);
         }
     }
 
