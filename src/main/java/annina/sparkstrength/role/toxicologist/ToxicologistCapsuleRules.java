@@ -16,8 +16,8 @@ public final class ToxicologistCapsuleRules {
             "sparkstrength_toxicologist_refresh_antidote_cooldown";
     /** 毒理学家商店里“解毒剂冷却刷新”的价格。 */
     public static final int REFRESH_ANTIDOTE_COOLDOWN_PRICE = 50;
-    /** 每有 1 名玩家从无毒状态进入中毒状态，所有存活毒理学家获得 120 秒冷却抵扣。 */
-    public static final int ANTIDOTE_REDUCTION_PER_NEW_POISON_TICKS = 120 * 20;
+    /** 每有 1 名玩家从无毒状态进入中毒状态，所有存活毒理学家获得 150 秒冷却抵扣。 */
+    public static final int ANTIDOTE_REDUCTION_PER_NEW_POISON_TICKS = 150 * 20;
     /** 毒理学家每成功治疗 1 名中毒玩家获得的金币奖励。 */
     public static final int ANTIDOTE_CURE_REWARD = 25;
 

@@ -14,7 +14,7 @@ public final class PoisonerEconomyRules {
     public static final Identifier POISONER_ID = Identifier.of("noellesroles", "poisoner");
 
     /** 目标从未中毒/已清毒状态成功进入中毒状态时，毒师获得的金币。 */
-    public static final int POISON_REWARD = 100;
+    public static final int POISON_REWARD = 75;
 
     private PoisonerEconomyRules() {
     }

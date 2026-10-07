@@ -99,6 +99,11 @@ public final class TimekeeperWatchService {
             return false;
         }
 
+        if (itemRefresh) {
+            // 物品刷新也作用于怀表使用者自己；怀表自身的 40 秒计时由独立组件维护，不会被这里误清除。
+            clearItemCooldowns(player);
+        }
+
         List<ServerPlayerEntity> targets = findTargets(player);
         for (ServerPlayerEntity target : targets) {
             if (itemRefresh) {

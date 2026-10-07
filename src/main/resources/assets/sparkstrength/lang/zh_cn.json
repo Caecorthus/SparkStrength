@@ -1,4 +1,8 @@
 {
+  "item.sparkstrength.serial_pistol": "连环手枪",
+  "item.sparkstrength.serial_pistol.tooltip": "连环杀手疯魔时手持，冷却极短",
+  "item.sparkstrength.serial_left_pistol": "连环左持手枪",
+  "item.sparkstrength.serial_left_pistol.tooltip": "连环杀手疯魔时左手手持，冷却极短",
   "itemGroup.sparkstrength.items": "SparkStrength：物品",
   "item.sparkstrength.m67": "M67 手雷",
   "item.sparkstrength.m67.tooltip.line1": "按住右键蓄力 1 秒，蓄满后松开投掷；扔出 5 秒后爆炸。",

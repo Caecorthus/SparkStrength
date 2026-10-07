@@ -76,7 +76,12 @@
     "vulture.SkateboardLimbsMixin",
     "vulture.SkateboardPresenceFootstepsMixin",
     "vulture.SkateboardReplacedBodyMixin",
-    "wathe.ShopRowOverflowMixin"
+    "wathe.ShopRowOverflowMixin",
+    "serialkiller.SerialKillerCrosshairMixin",
+    "serialkiller.SerialKillerClientUseMixin",
+    "serialkiller.SerialKillerClientSlotLockMixin",
+    "serialkiller.SerialKillerBipedEntityModelMixin",
+    "serialkiller.SerialKillerPlayerInventoryClientMixin"
   ],
   "injectors": {
     "defaultRequire": 1
