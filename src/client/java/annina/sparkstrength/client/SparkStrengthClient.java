@@ -19,6 +19,7 @@ import annina.sparkstrength.client.role.morphling.MorphlingClientHooks;
 import annina.sparkstrength.client.role.pathogen.PathogenClientHooks;
 import annina.sparkstrength.client.role.perfumer.PerfumerClientHooks;
 import annina.sparkstrength.client.role.professor.ProfessorSerumClientHooks;
+import annina.sparkstrength.client.role.spiritualist.SpiritPossessionClient;
 import annina.sparkstrength.client.role.taotie.TaotieHeadClientHooks;
 import annina.sparkstrength.client.role.veteran.VeteranClientHooks;
 import annina.sparkstrength.client.role.vulture.SkateboardClient;
@@ -70,6 +71,9 @@ public final class SparkStrengthClient implements ClientModInitializer {
         RoleEconomyClientHooks.register();
         SkateboardClient.register();
         TaotieHeadClientHooks.register();
+        // Spiritualist Wraith possession; the key and Wraith sight bind only with SparkWitch (reflection).
+        // 灵界行者附身冤魂；按键与冤魂可见仅在加载 SparkWitch 时挂接（反射）。
+        SpiritPossessionClient.register();
         TabletClientHighlights.register();
         VeteranClientHooks.register();
         WaiterTaskRevealClientHooks.register();

@@ -155,6 +155,25 @@ public final class SparkWitchCompat {
         }
     }
 
+    /**
+     * Whether {@code player} is an active SparkWitch Wraith, promoted forms included, read through the public facade
+     * {@code SparkWitchApi.isWraithActive}. The Wraith component syncs to every client, so this answers on both sides.
+     * False without SparkWitch, with an older facade, or when the call fails, so then nobody is a Wraith.
+     * {@code player} 是否为激活中的 SparkWitch 冤魂（含晋升形态），经公开门面 SparkWitchApi.isWraithActive 读取。冤魂组件同步给
+     * 所有客户端，因此两端都能回答。未安装 SparkWitch、门面较旧或调用失败时返回 false，此时没有人是冤魂。
+     */
+    public static boolean isWraithActive(@Nullable PlayerEntity player) {
+        Method method = WraithQuery.METHOD;
+        if (player == null || method == null) {
+            return false;
+        }
+        try {
+            return Boolean.TRUE.equals(method.invoke(null, player));
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            return false;
+        }
+    }
+
     private static @Nullable Method blindFeatureGate() {
         if (!blindFeatureGateResolved) {
             blindFeatureGateResolved = true;
@@ -213,6 +232,24 @@ public final class SparkWitchCompat {
             } catch (ReflectiveOperationException | SecurityException | LinkageError ignored) {
                 // SparkWitch builds before 2026-10-07 lack this seam; the pistols then ignore its entities.
                 // 2026-10-07 之前的 SparkWitch 没有此接缝；手枪随之忽略其实体。
+                return null;
+            }
+        }
+    }
+
+    /** Resolved once, on the first Wraith query. / 首次查询冤魂时解析一次。 */
+    private static final class WraithQuery {
+        private static final @Nullable Method METHOD = resolve();
+
+        private static @Nullable Method resolve() {
+            if (!isLoaded()) {
+                return null;
+            }
+            try {
+                Method method = Class.forName(PUBLIC_API).getMethod("isWraithActive", PlayerEntity.class);
+                return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == boolean.class
+                        ? method : null;
+            } catch (ReflectiveOperationException | SecurityException | LinkageError ignored) {
                 return null;
             }
         }

@@ -36,6 +36,7 @@ import annina.sparkstrength.role.engineer.EngineerShopService;
 import annina.sparkstrength.role.morphling.MorphlingService;
 import annina.sparkstrength.role.morphling.MorphlingShopService;
 import annina.sparkstrength.role.pathogen.PathogenFeatureService;
+import annina.sparkstrength.role.spiritualist.SpiritPossessionService;
 import annina.sparkstrength.role.taotie.TaotieHeadFeatureService;
 import annina.sparkstrength.role.poisoner.PoisonerEconomyService;
 import annina.sparkstrength.role.professor.ProfessorSerumShopService;
@@ -97,6 +98,9 @@ public final class SparkStrengthEvents {
         MorphlingShopService.register();
         PathogenFeatureService.register();
         TaotieHeadFeatureService.register();
+        // Spiritualist Wraith possession: opening cooldown, round cleanup and the far-view tick.
+        // 灵界行者附身冤魂：开局冷却、单局清理与远距离视野的每刻处理。
+        SpiritPossessionService.register();
         PoisonerEconomyService.register();
         ProfessorSerumShopService.register();
         ReporterCommunicationManager.register();
