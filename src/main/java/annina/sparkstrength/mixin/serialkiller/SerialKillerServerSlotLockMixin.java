@@ -22,6 +22,9 @@ public abstract class SerialKillerServerSlotLockMixin {
 
     @Inject(method = "onUpdateSelectedSlot", at = @At("HEAD"), cancellable = true)
     private void sparkstrength$lockSerialKillerSlot(UpdateSelectedSlotC2SPacket packet, CallbackInfo ci) {
+        // HEAD 会先在网络线程跑一次（原版随后才把包转交主线程）；只在主线程那一次读写背包。
+        // 若在网络线程取消，包就不会再转交主线程。
+        if (!player.getServerWorld().getServer().isOnThread()) return;
         PlayerInventory inventory = player.getInventory();
         if (!GameWorldComponent.KEY.get(player.getWorld()).isRole(player, Noellesroles.SERIAL_KILLER)
                 || PlayerPsychoComponent.KEY.get(player).getPsychoTicks() <= 0) {
