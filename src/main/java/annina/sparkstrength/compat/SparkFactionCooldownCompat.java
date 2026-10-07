@@ -2,6 +2,7 @@ package annina.sparkstrength.compat;
 
 import annina.sparkstrength.SparkStrength;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.item.Item;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 
@@ -11,6 +12,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.util.OptionalInt;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.ObjIntConsumer;
 import java.util.function.Predicate;
@@ -21,15 +23,44 @@ import java.util.function.ToIntFunction;
  * against it, so a {@link Proxy} implements {@code RoleSkillCooldownStore}'s abstract methods with the given functions
  * and forwards its default methods ({@code mayForce}, {@code raiseTo}, {@code extendBy}) to the interface's own code
  * through {@link InvocationHandler#invokeDefault}. Absent or incompatible SparkFactionAPI → nothing is registered.
+ * Role-mechanic item clears go through {@link #clearItemCooldownKeepingForced} (plain remove without the API).
  * SparkFactionAPI 公开 {@code api.cooldown.ForcedCooldowns} 的可选桥接：SparkStrength 不在编译期依赖它，因此用 {@link Proxy}
  * 以给定函数实现 {@code RoleSkillCooldownStore} 的抽象方法，其默认方法（{@code mayForce}、{@code raiseTo}、{@code extendBy}）
  * 经 {@link InvocationHandler#invokeDefault} 交给接口自身实现。未安装或不兼容的 SparkFactionAPI → 不注册任何内容。
+ * 职业机制的物品冷却清除经由 {@link #clearItemCooldownKeepingForced}（无该 API 时为普通 remove）。
  */
 public final class SparkFactionCooldownCompat {
     private static final String STORE_CLASS = "dev.caecorthus.sparkfactionapi.api.cooldown.RoleSkillCooldownStore";
     private static final String REGISTRY_CLASS = "dev.caecorthus.sparkfactionapi.api.cooldown.ForcedCooldowns";
+    private static final Method CLEAR_ITEM_KEEPING_FORCED = findClearItemKeepingForced();
+    private static final AtomicBoolean CLEAR_FAILURE_LOGGED = new AtomicBoolean();
 
     private SparkFactionCooldownCompat() {
+    }
+
+    /**
+     * Role-mechanic item clear (Serial Killer kill reset, Timekeeper item refresh): SparkFactionAPI's
+     * {@code ForcedCooldowns.clearItemKeepingForced} removes the natural cooldown but keeps a penalty another feature
+     * forced on the item (Fiend aura, Abyss Shriek, anti-tank shell). Without that API (absent or older
+     * SparkFactionAPI) or if the call fails, falls back to the old plain {@code remove}. Server thread only.
+     * 职业机制的物品冷却清除（连环杀手击杀重置、计时员物品刷新）：SparkFactionAPI 的
+     * {@code ForcedCooldowns.clearItemKeepingForced} 清除自然冷却，但保留其他功能强制施加在该物品上的惩罚（魔人光环、
+     * 聆渊尖啸、反坦克弹）。缺少该 API（未安装或旧版 SparkFactionAPI）或调用失败时，退回原先的普通 {@code remove}。
+     * 仅限服务端线程。
+     */
+    public static void clearItemCooldownKeepingForced(ServerPlayerEntity player, Item item) {
+        if (CLEAR_ITEM_KEEPING_FORCED != null) {
+            try {
+                CLEAR_ITEM_KEEPING_FORCED.invoke(null, player, item);
+                return;
+            } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException | LinkageError failure) {
+                if (CLEAR_FAILURE_LOGGED.compareAndSet(false, true)) {
+                    SparkStrength.LOGGER.warn("SparkFactionAPI clearItemKeepingForced failed; using a plain cooldown remove",
+                            failure);
+                }
+            }
+        }
+        player.getItemCooldownManager().remove(item);
     }
 
     /**
@@ -87,6 +118,19 @@ public final class SparkFactionCooldownCompat {
                  | InvocationTargetException | IllegalArgumentException | LinkageError failure) {
             SparkStrength.LOGGER.warn("Could not register SparkFactionAPI forced cooldown store {}", id, failure);
             return false;
+        }
+    }
+
+    private static Method findClearItemKeepingForced() {
+        if (!FabricLoader.getInstance().isModLoaded("sparkfactionapi")) {
+            return null;
+        }
+        try {
+            Method method = Class.forName(REGISTRY_CLASS)
+                    .getMethod("clearItemKeepingForced", ServerPlayerEntity.class, Item.class);
+            return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == int.class ? method : null;
+        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | LinkageError ignored) {
+            return null;
         }
     }
 }

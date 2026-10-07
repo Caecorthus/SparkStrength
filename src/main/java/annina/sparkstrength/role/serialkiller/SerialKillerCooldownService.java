@@ -1,9 +1,11 @@
 package annina.sparkstrength.role.serialkiller;
 
+import annina.sparkstrength.compat.SparkFactionCooldownCompat;
 import dev.doctor4t.wathe.api.event.KillPlayer;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheItems;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import org.agmas.noellesroles.Noellesroles;
 import org.agmas.noellesroles.serialkiller.SerialKillerPlayerComponent;
@@ -12,7 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-/** 连环杀手成功击杀目标后移除原版刀与左轮的冷却条目。 */
+/** 连环杀手成功击杀目标后移除原版刀与左轮的（自然）冷却条目。 */
 public final class SerialKillerCooldownService {
     /**
      * 击杀事件与 NoellesRoles 的延迟刀 CD 写入不在同一个调用点。
@@ -78,6 +80,13 @@ public final class SerialKillerCooldownService {
     private static void clearCooldowns(PlayerEntity player) {
         // set(item, 0) 不会明确删除 ItemCooldownManager.entries 中的旧条目；
         // remove 才会清除对应物品的冷却状态和客户端读条。
+        // Only the natural knife/revolver cooldowns reset: penalties other features forced through SparkFactionAPI keep
+        // running. / 只重置刀与左轮的自然冷却：其他功能经 SparkFactionAPI 强制施加的惩罚继续生效。
+        if (player instanceof ServerPlayerEntity serverPlayer) {
+            SparkFactionCooldownCompat.clearItemCooldownKeepingForced(serverPlayer, WatheItems.KNIFE);
+            SparkFactionCooldownCompat.clearItemCooldownKeepingForced(serverPlayer, WatheItems.REVOLVER);
+            return;
+        }
         player.getItemCooldownManager().remove(WatheItems.KNIFE);
         player.getItemCooldownManager().remove(WatheItems.REVOLVER);
     }

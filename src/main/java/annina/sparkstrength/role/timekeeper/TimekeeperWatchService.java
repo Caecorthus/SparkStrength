@@ -2,6 +2,7 @@ package annina.sparkstrength.role.timekeeper;
 
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
+import annina.sparkstrength.compat.SparkFactionCooldownCompat;
 import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.component.demonhunter.DemonHunterSniffPlayerComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
@@ -177,7 +178,11 @@ public final class TimekeeperWatchService {
                 ((ItemCooldownManagerAccessor) (Object) cooldownManager).sparkstrength$getEntries().keySet()
         );
         for (Item item : coolingItems) {
-            cooldownManager.remove(item);
+            // Serves the user and every target. Natural cooldowns (including owner timers released by remove hooks)
+            // clear; penalties forced through SparkFactionAPI keep running.
+            // 同时用于使用者自己与所有目标。清除自然冷却（含 remove 钩子释放的所属模组计时）；经 SparkFactionAPI
+            // 强制施加的惩罚继续生效。
+            SparkFactionCooldownCompat.clearItemCooldownKeepingForced(player, item);
         }
     }
 
