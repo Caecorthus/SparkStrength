@@ -8,6 +8,7 @@ import annina.sparkstrength.entity.M67GrenadeEntity;
 import annina.sparkstrength.item.grenade.GrenadeBlastService;
 import annina.sparkstrength.item.m67.M67RoundService;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
+import annina.sparkstrength.role.bodyguard.AttackOriginScope;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheParticles;
 import dev.doctor4t.wathe.item.KnifeItem;
@@ -241,7 +242,10 @@ public final class DroneCombatService {
                     // NoellesRoles pays the Bomber's bomb bounty only for its own DEATH_REASON_BOMB instance (reference
                     // compare), so pass that field itself, read at call time. / NoellesRoles 按引用比较其 DEATH_REASON_BOMB
                     // 才发放炸弹赏金，因此直接传入该字段（调用时读取）。
-                    GameFunctions.killPlayer(victim, true, owner, Noellesroles.DEATH_REASON_BOMB);
+                    // The blast scope tells this drone blast from the Bomber's carried bomb (same reason) and lets a
+                    // Bodyguard's shield face it. / 爆炸作用域把无人机爆炸与炸弹客随身炸弹（同一死因）区分开，并让保镖的盾按爆炸点判定方向。
+                    AttackOriginScope.runBlast(center, () ->
+                            GameFunctions.killPlayer(victim, true, owner, Noellesroles.DEATH_REASON_BOMB));
                 }
             }
             if (roundId.equals(DroneService.currentRoundId(world))) {
