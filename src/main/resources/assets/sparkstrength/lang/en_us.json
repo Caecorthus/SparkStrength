@@ -537,7 +537,7 @@
   "announcement.goals.pathogen": "Infect all surviving players to win! Tasks pay coins for the Virus and T-Virus.",
   "key.sparkstrength.secondary_skill": "Secondary Skill",
   "entity.sparkstrength.taotie_head": "Taotie Head",
-  "hud.sparkstrength.taotie_head.ready": "Press %s to launch a head",
+  "hud.sparkstrength.taotie_head.ready": "Press %s to launch your heads",
   "hud.sparkstrength.taotie_head.cooldown": "Head cooldown: %ss",
   "message.sparkstrength.taotie_head.no_head": "No living player in your stomach to launch",
   "message.sparkstrength.taotie_head.hit": "Your head bonked %s!",

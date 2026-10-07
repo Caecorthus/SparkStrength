@@ -21,9 +21,11 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
+import net.minecraft.util.Util;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.Box;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
 import org.agmas.noellesroles.Noellesroles;
@@ -32,19 +34,28 @@ import org.agmas.noellesroles.taotie.TaotiePlayerComponent;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
- * Server authority for the Taotie head: the fire gate (every condition re-checked from the empty request), the flight
- * (homing, swept collision) and the hit. NoellesRoles is read through named members only.
- * 饕餮头颅的服务端权威逻辑：发射校验（空请求到达后重新检查全部条件）、飞行（追踪、扫掠碰撞）与命中。
- * NoellesRoles 只通过具名成员读取。
+ * Server authority for the Taotie heads: the fire gate (every condition re-checked from the empty request) and the
+ * volley (one head per living swallowed player), each head's flight (homing with same-volley target claims, swept
+ * collision) and its hit. NoellesRoles is read through named members only.
+ * 饕餮头颅的服务端权威逻辑：发射校验（空请求到达后重新检查全部条件）与齐射（体内每名存活玩家一颗头颅）、每颗头颅的飞行
+ * （追踪并按同一齐射认领目标、扫掠碰撞）及其命中。NoellesRoles 只通过具名成员读取。
  */
 public final class TaotieHeadService {
     /** Candidates farther than this from the head can neither be tracked nor hit this tick. / 超出此距离的候选本 tick 既不能被追踪也不能被命中。 */
     private static final double CANDIDATE_RANGE_SQUARED = Math.pow(TaotieHeadRules.HOMING_RANGE + 3.0D, 2.0D);
+    /**
+     * A sibling's claim matters only if its target is trackable by both heads: within homing range of each, plus slack
+     * for one tick of head and player movement since the sibling last resolved.
+     * 兄弟头颅的认领只有在其目标同时可被两颗头颅追踪时才有意义：距两者都在追踪范围内，另加兄弟上次判定后一 tick 的头颅与玩家移动余量。
+     */
+    private static final double SIBLING_RANGE = TaotieHeadRules.HOMING_RANGE * 2.0D + 4.0D;
 
     private TaotieHeadService() {
     }
@@ -80,15 +91,31 @@ public final class TaotieHeadService {
             return;
         }
 
-        // Skin only: firing never touches the swallowed player. / 仅取皮肤：发射不会影响被吞玩家。
-        ServerPlayerEntity skinOwner = stomach.get(world.getRandom().nextInt(stomach.size()));
+        // One volley: every living swallowed player's face on exactly one head, shuffled so fan positions are random,
+        // all spawned this tick. Skins only: firing never touches the swallowed players.
+        // 一次齐射：每名体内存活玩家的面孔恰好出现在一颗头颅上，顺序打乱使扇形位置随机，全部在本 tick 生成。
+        // 仅取皮肤：发射不会影响被吞玩家。
+        Util.shuffle(stomach, world.getRandom());
+        double[] fan = TaotieHeadRules.fanYawOffsets(stomach.size());
+        UUID volleyId = MathHelper.randomUuid(world.getRandom());
         Vec3d eye = taotie.getEyePos();
-        Vec3d look = taotie.getRotationVector().normalize();
-        Vec3d centre = eye.add(look.multiply(TaotieHeadRules.SPAWN_FORWARD_OFFSET));
-        TaotieHeadEntity head = new TaotieHeadEntity(world, taotie, skinOwner, roundId, centre, look, eye);
-        if (!world.spawnEntity(head)) {
+        Heading look = heading(taotie.getRotationVector().normalize());
+        int spawned = 0;
+        for (int i = 0; i < fan.length; i++) {
+            Heading fanned = TaotieHeadRules.fanHeading(look, fan[i]);
+            Vec3d direction = new Vec3d(fanned.x(), fanned.y(), fanned.z());
+            Vec3d centre = eye.add(direction.multiply(TaotieHeadRules.SPAWN_FORWARD_OFFSET));
+            TaotieHeadEntity head = new TaotieHeadEntity(world, taotie, stomach.get(i), roundId, volleyId, centre,
+                    direction, eye);
+            if (world.spawnEntity(head)) {
+                spawned++;
+            }
+        }
+        if (spawned == 0) {
             return;
         }
+        // Once per volley: the tier of the count at fire time, and one launch sound for all heads.
+        // 每次齐射一次：按发射时人数分档的冷却，以及所有头颅共用的一次发射音效。
         cooldown.setCooldownTicks(TaotieHeadRules.cooldownTicksFor(stomach.size()));
         world.playSound(null, taotie.getX(), taotie.getEyeY(), taotie.getZ(), SoundEvents.ENTITY_LLAMA_SPIT,
                 SoundCategory.PLAYERS, TaotieHeadRules.LAUNCH_SPIT_VOLUME, TaotieHeadRules.LAUNCH_SPIT_PITCH);
@@ -147,7 +174,7 @@ public final class TaotieHeadService {
         List<ServerPlayerEntity> candidates = validTargets(world, head, shooter, centre);
 
         Vec3d velocity = head.getVelocity();
-        ServerPlayerEntity target = resolveTarget(head, candidates, centre, velocity);
+        ServerPlayerEntity target = resolveTarget(world, head, candidates, centre, velocity);
         if (target != null) {
             Heading steered = TaotieHeadRules.steer(heading(velocity), heading(bodyCentre(target).subtract(centre)),
                     TaotieHeadRules.MAX_TURN_DEGREES_PER_TICK);
@@ -240,11 +267,15 @@ public final class TaotieHeadService {
     }
 
     /**
-     * Keeps the current target while it stays trackable; otherwise reacquires the nearest trackable candidate.
-     * 当前目标仍可追踪时保持；否则重新锁定最近的可追踪候选。
+     * Keeps the current target while it stays trackable, even if a sibling holds it too. Otherwise reacquires: the
+     * nearest trackable candidate no live sibling of the same volley has claimed, else the nearest trackable one
+     * (doubling up).
+     * 当前目标仍可追踪时保持（即使兄弟头颅也锁定了它）。否则重新锁定：优先选择同一齐射中没有存活兄弟头颅认领的最近可追踪候选，
+     * 都被认领时退回最近的可追踪候选（允许重复锁定）。
      */
-    private static @Nullable ServerPlayerEntity resolveTarget(TaotieHeadEntity head, List<ServerPlayerEntity> candidates,
-                                                              Vec3d centre, Vec3d velocity) {
+    private static @Nullable ServerPlayerEntity resolveTarget(ServerWorld world, TaotieHeadEntity head,
+                                                              List<ServerPlayerEntity> candidates, Vec3d centre,
+                                                              Vec3d velocity) {
         UUID currentUuid = head.getTargetUuid();
         if (currentUuid != null) {
             for (ServerPlayerEntity candidate : candidates) {
@@ -253,17 +284,54 @@ public final class TaotieHeadService {
                 }
             }
         }
-        ServerPlayerEntity best = null;
-        double bestDistance = Double.POSITIVE_INFINITY;
+        Set<UUID> claimed = candidates.isEmpty() ? Set.of() : siblingClaims(world, head);
+        ServerPlayerEntity nearestFree = null;
+        ServerPlayerEntity nearestAny = null;
+        double freeDistance = Double.POSITIVE_INFINITY;
+        double anyDistance = Double.POSITIVE_INFINITY;
         for (ServerPlayerEntity candidate : candidates) {
             double distance = bodyCentre(candidate).squaredDistanceTo(centre);
-            if (distance < bestDistance && isTrackable(head, centre, velocity, candidate)) {
-                best = candidate;
-                bestDistance = distance;
+            boolean free = !claimed.contains(candidate.getUuid());
+            // Line of sight is a raycast: only test candidates that could improve either pick.
+            // 视线检查需要射线检测：只检查可能改变任一结果的候选。
+            if ((distance >= anyDistance && (!free || distance >= freeDistance))
+                    || !isTrackable(head, centre, velocity, candidate)) {
+                continue;
+            }
+            if (distance < anyDistance) {
+                nearestAny = candidate;
+                anyDistance = distance;
+            }
+            if (free && distance < freeDistance) {
+                nearestFree = candidate;
+                freeDistance = distance;
             }
         }
-        head.setTargetUuid(best == null ? null : best.getUuid());
-        return best;
+        ServerPlayerEntity chosen = nearestFree != null ? nearestFree : nearestAny;
+        head.setTargetUuid(chosen == null ? null : chosen.getUuid());
+        return chosen;
+    }
+
+    /**
+     * Targets currently held by the other live heads of this head's volley, read from the world each time (no static
+     * state). A head without a volley claims nothing and sees no claims.
+     * 本头颅所在齐射中其他存活头颅当前锁定的目标，每次都从世界中读取（无静态状态）。没有齐射 id 的头颅既不认领也看不到认领。
+     */
+    private static Set<UUID> siblingClaims(ServerWorld world, TaotieHeadEntity head) {
+        UUID volleyId = head.getVolleyId();
+        if (volleyId == null) {
+            return Set.of();
+        }
+        Set<UUID> claimed = new HashSet<>();
+        for (TaotieHeadEntity sibling : world.getEntitiesByClass(TaotieHeadEntity.class,
+                head.getBoundingBox().expand(SIBLING_RANGE),
+                sibling -> sibling != head && !sibling.isRemoved() && volleyId.equals(sibling.getVolleyId()))) {
+            UUID target = sibling.getTargetUuid();
+            if (target != null) {
+                claimed.add(target);
+            }
+        }
+        return claimed;
     }
 
     /** Within 8 blocks, inside the 90° cone around the heading, and in line of sight (COLLIDER). / 8 格内、朝向 90° 锥内且视线无遮挡。 */

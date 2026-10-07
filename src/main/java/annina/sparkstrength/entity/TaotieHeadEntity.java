@@ -48,6 +48,8 @@ public final class TaotieHeadEntity extends ThrownEntity {
 
     // Server-only flight state, never tracked or saved (the type disables saving). / 仅服务端的飞行状态，不同步也不存档。
     private @Nullable UUID roundId;
+    /** Shared by every head of one press, for target claims. / 同一次按键的所有头颅共享，用于目标认领。 */
+    private @Nullable UUID volleyId;
     private @Nullable UUID shooterUuid;
     private @Nullable UUID targetUuid;
     private @Nullable Vec3d pendingSegmentStart;
@@ -59,18 +61,20 @@ public final class TaotieHeadEntity extends ThrownEntity {
     }
 
     /**
-     * Server: a head launched by {@code shooter} wearing {@code skinOwner}'s face, centred on {@code centre} and flying
-     * along {@code heading} (unit). The first tick's sweep starts at {@code sweepStart} (the shooter's eye), so a wall
-     * between the eye and the spawn point still stops it.
-     * 服务端：由 {@code shooter} 发射、带 {@code skinOwner} 面孔的头颅，中心位于 {@code centre}，沿单位向量 {@code heading}
-     * 飞行。首个 tick 的扫掠从 {@code sweepStart}（发射者眼睛）开始，因此眼睛与生成点之间的墙仍会拦下它。
+     * Server: one head of the volley {@code volleyId}, launched by {@code shooter} wearing {@code skinOwner}'s face,
+     * centred on {@code centre} and flying along {@code heading} (unit, its own fan direction). The first tick's sweep
+     * starts at {@code sweepStart} (the shooter's eye), so a wall between the eye and the spawn point still stops it.
+     * 服务端：齐射 {@code volleyId} 中的一颗头颅，由 {@code shooter} 发射、带 {@code skinOwner} 面孔，中心位于
+     * {@code centre}，沿单位向量 {@code heading}（它自己的扇形方向）飞行。首个 tick 的扫掠从 {@code sweepStart}（发射者眼睛）
+     * 开始，因此眼睛与生成点之间的墙仍会拦下它。
      */
     public TaotieHeadEntity(ServerWorld world, ServerPlayerEntity shooter, ServerPlayerEntity skinOwner, UUID roundId,
-                            Vec3d centre, Vec3d heading, Vec3d sweepStart) {
+                            UUID volleyId, Vec3d centre, Vec3d heading, Vec3d sweepStart) {
         this(SparkStrengthEntities.taotieHead(), world);
         setOwner(shooter);
         this.shooterUuid = shooter.getUuid();
         this.roundId = roundId;
+        this.volleyId = volleyId;
         this.pendingSegmentStart = sweepStart;
         ItemStack head = new ItemStack(Items.PLAYER_HEAD);
         head.set(DataComponentTypes.PROFILE, new ProfileComponent(skinOwner.getGameProfile()));
@@ -100,6 +104,10 @@ public final class TaotieHeadEntity extends ThrownEntity {
 
     public @Nullable UUID getRoundId() {
         return roundId;
+    }
+
+    public @Nullable UUID getVolleyId() {
+        return volleyId;
     }
 
     public @Nullable UUID getShooterUuid() {
