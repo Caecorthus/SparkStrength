@@ -28,6 +28,7 @@ import annina.sparkstrength.component.vulture.SkateboardRideComponent;
 import annina.sparkstrength.component.shadowjester.ShadowJesterShowdownWorldComponent;
 import annina.sparkstrength.component.waiter.WaiterTaskRevealComponent;
 import annina.sparkstrength.component.timekeeper.TimekeeperWatchComponent;
+import annina.sparkstrength.component.spiritualist.SpiritPossessionPlayerComponent;
 import annina.sparkstrength.component.taotie.TaotieHeadDazeComponent;
 import annina.sparkstrength.component.taotie.TaotieHeadPlayerComponent;
 import dev.doctor4t.wathe.entity.PlayerBodyEntity;
@@ -114,6 +115,9 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.beginRegistration(PlayerEntity.class, TimekeeperWatchComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(TimekeeperWatchComponent::new);
+        registry.beginRegistration(PlayerEntity.class, SpiritPossessionPlayerComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(SpiritPossessionPlayerComponent::new);
         registry.beginRegistration(PlayerEntity.class, TaotieHeadPlayerComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(TaotieHeadPlayerComponent::new);

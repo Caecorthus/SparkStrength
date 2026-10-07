@@ -9,6 +9,7 @@ import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
 import annina.sparkstrength.component.phantom.PhantomBackpackUserComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
 import annina.sparkstrength.component.reporter.ReporterCommunicationComponent;
+import annina.sparkstrength.component.spiritualist.SpiritPossessionPlayerComponent;
 import annina.sparkstrength.component.taotie.TaotieHeadPlayerComponent;
 import annina.sparkstrength.component.timekeeper.TimekeeperWatchComponent;
 import annina.sparkstrength.role.coroner.CoronerService;
@@ -200,6 +201,7 @@ public final class TimekeeperWatchService {
         ReporterCommunicationComponent.KEY.get(player).setCooldownTicks(0);
         DemonHunterSniffPlayerComponent.KEY.get(player).clearSniffCooldown();
         TaotieHeadPlayerComponent.KEY.get(player).setCooldownTicks(0);
+        SpiritPossessionPlayerComponent.KEY.get(player).setCooldownTicks(0);
     }
 
     private static void rewardAliveTimekeepers(ServerPlayerEntity victim) {

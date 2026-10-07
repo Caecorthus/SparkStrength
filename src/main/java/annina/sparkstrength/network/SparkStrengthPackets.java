@@ -4,6 +4,7 @@ import annina.sparkstrength.network.coroner.CoronerMorphC2SPacket;
 import annina.sparkstrength.network.demonhunter.DemonHunterSniffC2SPacket;
 import annina.sparkstrength.network.detective.OpenDetectiveFolderS2CPacket;
 import annina.sparkstrength.network.drone.DronePackets;
+import annina.sparkstrength.network.spiritualist.SpiritPossessionPackets;
 import annina.sparkstrength.network.detective.SelectDetectiveCaseC2SPacket;
 import annina.sparkstrength.network.detective.SetDetectiveKillerGuessC2SPacket;
 import annina.sparkstrength.network.detective.SetDetectivePresumedKillerC2SPacket;
@@ -50,6 +51,7 @@ public final class SparkStrengthPackets {
     public static void registerServer() {
         M67Packets.initialize();
         DronePackets.initialize();
+        SpiritPossessionPackets.initialize();
         PayloadTypeRegistry.playC2S().register(NoisemakerGlowC2SPacket.ID, NoisemakerGlowC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(PhantomBackpackInvisibilityC2SPacket.ID, PhantomBackpackInvisibilityC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(CoronerMorphC2SPacket.ID, CoronerMorphC2SPacket.CODEC);
