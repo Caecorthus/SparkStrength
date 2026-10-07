@@ -1,6 +1,7 @@
 package annina.sparkstrength.mixin.serialkiller;
 
 import annina.sparkstrength.SparkStrengthItems;
+import annina.sparkstrength.role.serialkiller.SerialPistolGuardService;
 import dev.doctor4t.wathe.api.event.PsychoModeEvents;
 import dev.doctor4t.wathe.api.event.PsychoType;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -8,10 +9,8 @@ import dev.doctor4t.wathe.cca.PlayerPsychoComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.util.ShopEntry;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.s2c.play.UpdateSelectedSlotS2CPacket;
 import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.util.Hand;
 import org.agmas.noellesroles.Noellesroles;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -102,15 +101,16 @@ public abstract class SerialKillerPsychoMixin {
         cir.setReturnValue(true);
     }
 
+    /**
+     * Every psycho end (timer, killPlayer, reset) strips the pistols from wherever they are, whatever the current
+     * role: a role change before the end must not leave them behind. The client copy follows the server sync.
+     * 每次疯魔结束（计时结束、killPlayer、重置）都从任何位置收走手枪，不看当前身份：结束前换身份也不能遗留。
+     * 客户端副本随服务端同步移除。
+     */
     @Inject(method = "stopPsycho", at = @At("HEAD"))
     private void sparkstrength$removeSerialKillerWeapons(CallbackInfo ci) {
-        if (!isSerialKiller(player)) return;
-        player.getInventory().remove(stack -> stack.isOf(SparkStrengthItems.serialPistol())
-                || stack.isOf(SparkStrengthItems.serialLeftPistol()), Integer.MAX_VALUE,
-                player.playerScreenHandler.getCraftingInput());
-        if (player.getOffHandStack().isOf(SparkStrengthItems.serialLeftPistol())) {
-            player.setStackInHand(Hand.OFF_HAND, ItemStack.EMPTY);
-        }
+        if (player.getWorld().isClient) return;
+        SerialPistolGuardService.removeAll(player);
     }
 
     @Unique private static boolean isSerialKiller(PlayerEntity player) {
