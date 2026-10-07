@@ -45,5 +45,7 @@ public final class TVirusItem extends Item {
                 .styled(style -> style.withColor(0x808080).withItalic(false)));
         tooltip.add(Text.translatable("item.sparkstrength.t_virus.tooltip.line2")
                 .styled(style -> style.withColor(0x808080).withItalic(false)));
+        tooltip.add(Text.translatable("item.sparkstrength.t_virus.tooltip.line3")
+                .styled(style -> style.withColor(0x808080).withItalic(false)));
     }
 }
