@@ -2,8 +2,11 @@ package annina.sparkstrength.compat;
 
 import dev.doctor4t.wathe.util.ShopEntry;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.hit.HitResult;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Method;
@@ -87,6 +90,71 @@ public final class SparkWitchCompat {
         }
     }
 
+    /**
+     * Client pick for the Serial Killer pistols, through SparkWitch's frozen
+     * {@code SparkWitchApi.preferNearerGunWorldTarget(PlayerEntity, HitResult, double)}: the Seeker device step SparkWitch
+     * wraps inside Wathe's {@code RevolverItem#use}, which the pistols' own {@code use} never runs. Returns
+     * {@code gunTarget} unchanged without SparkWitch, with an older facade, or when the call fails.
+     * 连环杀手手枪的客户端选靶，经 SparkWitch 冻结的 {@code SparkWitchApi.preferNearerGunWorldTarget} 补上 SparkWitch 包装在
+     * Wathe {@code RevolverItem#use} 内、而手枪自己的 {@code use} 不会执行的搜寻者设备一步。未安装 SparkWitch、门面较旧或调用
+     * 失败时原样返回 {@code gunTarget}。
+     */
+    public static HitResult preferNearerGunWorldTarget(PlayerEntity shooter, HitResult gunTarget, double range) {
+        Method method = GunWorldHitQueries.PREFER_NEARER_TARGET;
+        if (method == null || shooter == null || gunTarget == null) {
+            return gunTarget;
+        }
+        try {
+            return method.invoke(null, shooter, gunTarget, range) instanceof HitResult result ? result : gunTarget;
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            return gunTarget;
+        }
+    }
+
+    /**
+     * Server thread: lets SparkWitch end a Magician puppet or break a Seeker device that a pistol shot's non-player
+     * target id names, exactly as for a Wathe revolver shot, through its frozen
+     * {@code SparkWitchApi.hitGunWorldTarget(ServerPlayerEntity, Entity, ItemStack, double)}. Call where Wathe's receiver
+     * records the shot (after the click, before the record and cooldown); the caller then finishes the shot as a miss.
+     * False (nothing happens) without SparkWitch, with an older facade, or when the call fails.
+     * 服务端线程：经 SparkWitch 冻结的 {@code SparkWitchApi.hitGunWorldTarget}，让 SparkWitch 像处理 Wathe 左轮射击一样结束
+     * 手枪射击中非玩家目标 id 所指的魔术师皮套或打坏搜寻者设备。在 Wathe 接收器记录这一枪的位置调用（扳机声之后、记录与冷却
+     * 之前）；调用方随后按未命中收尾。未安装 SparkWitch、门面较旧或调用失败时返回 false（无事发生）。
+     */
+    public static boolean hitGunWorldTarget(ServerPlayerEntity shooter, Entity target, ItemStack gun,
+                                            double maxDistance) {
+        Method method = GunWorldHitQueries.HIT_WORLD_TARGET;
+        if (method == null || shooter == null || target == null || gun == null) {
+            return false;
+        }
+        try {
+            return Boolean.TRUE.equals(method.invoke(null, shooter, target, gun, maxDistance));
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            return false;
+        }
+    }
+
+    /**
+     * Server authority: whether {@code target} is the active SparkWitch Vendetta bound to {@code actor}, through the
+     * frozen {@code SparkWitchApi.isBoundKillerTargetingVendetta(PlayerEntity, PlayerEntity)}. Wathe counts that
+     * Vendetta as dead, yet a revolver shot by its bound killer still reaches killPlayer, which resolves its terminal
+     * death. False without SparkWitch, with an older facade, or when the call fails.
+     * 以服务端为准：{@code target} 是否为与 {@code actor} 绑定的激活 SparkWitch 仇杀客，经冻结的
+     * {@code SparkWitchApi.isBoundKillerTargetingVendetta} 查询。Wathe 将该仇杀客视为已死亡，但其绑定凶手的左轮射击仍会进入
+     * killPlayer 并结算其终局死亡。未安装 SparkWitch、门面较旧或调用失败时返回 false。
+     */
+    public static boolean isBoundKillerTargetingVendetta(PlayerEntity actor, PlayerEntity target) {
+        Method method = GunWorldHitQueries.BOUND_VENDETTA;
+        if (method == null || actor == null || target == null) {
+            return false;
+        }
+        try {
+            return Boolean.TRUE.equals(method.invoke(null, actor, target));
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            return false;
+        }
+    }
+
     private static @Nullable Method blindFeatureGate() {
         if (!blindFeatureGateResolved) {
             blindFeatureGateResolved = true;
@@ -118,6 +186,35 @@ public final class SparkWitchCompat {
             return compat.getMethod(methodName, parameterTypes).invoke(null, arguments);
         } catch (ReflectiveOperationException | LinkageError ignored) {
             return null;
+        }
+    }
+
+    /**
+     * SparkWitch's add-on gun seam (2026-10-07), resolved once on first use; each method is null when SparkWitch is
+     * absent or older, or its signature or return type differs.
+     * SparkWitch 的附属模组枪械接缝（2026-10-07），首次使用时解析一次；SparkWitch 缺失、版本较旧或签名与返回类型不符时为 null。
+     */
+    private static final class GunWorldHitQueries {
+        private static final @Nullable Method PREFER_NEARER_TARGET = resolve("preferNearerGunWorldTarget",
+                HitResult.class, PlayerEntity.class, HitResult.class, double.class);
+        private static final @Nullable Method HIT_WORLD_TARGET = resolve("hitGunWorldTarget",
+                boolean.class, ServerPlayerEntity.class, Entity.class, ItemStack.class, double.class);
+        private static final @Nullable Method BOUND_VENDETTA = resolve("isBoundKillerTargetingVendetta",
+                boolean.class, PlayerEntity.class, PlayerEntity.class);
+
+        private static @Nullable Method resolve(String name, Class<?> returnType, Class<?>... parameterTypes) {
+            if (!isLoaded()) {
+                return null;
+            }
+            try {
+                Method method = Class.forName(PUBLIC_API).getMethod(name, parameterTypes);
+                return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == returnType
+                        ? method : null;
+            } catch (ReflectiveOperationException | SecurityException | LinkageError ignored) {
+                // SparkWitch builds before 2026-10-07 lack this seam; the pistols then ignore its entities.
+                // 2026-10-07 之前的 SparkWitch 没有此接缝；手枪随之忽略其实体。
+                return null;
+            }
         }
     }
 
