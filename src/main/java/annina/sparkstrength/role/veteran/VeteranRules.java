@@ -1,7 +1,9 @@
 package annina.sparkstrength.role.veteran;
 
+import annina.sparkstrength.compat.SparkTraitsCompat;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
 
@@ -38,10 +40,22 @@ public final class VeteranRules {
     }
 
     public static int killRewardForVictim(@Nullable Role victimRole) {
-        // Wathe 的 Role#isInnocent() 表示好人阵营；中立和杀手都按“非好人”给 100。
+        // 旧签名保留给潜在外部调用：没有玩家上下文时，仍按原始角色阵营结算。
         return victimRole != null && victimRole.isInnocent()
                 ? INNOCENT_KILL_REWARD
                 : NON_INNOCENT_KILL_REWARD;
+    }
+
+    public static int killRewardForVictim(@Nullable Role victimRole, @Nullable PlayerEntity victim) {
+        // 这里专门用于老兵击杀结算：善良词条仍按“好人”处理并不给奖励，
+        // 内鬼词条则按杀手阵营处理，允许正常击杀并给出非好人奖励。
+        return isEffectiveCivilian(victimRole, victim)
+                ? INNOCENT_KILL_REWARD
+                : NON_INNOCENT_KILL_REWARD;
+    }
+
+    public static boolean isEffectiveCivilian(@Nullable Role role, @Nullable PlayerEntity player) {
+        return SparkTraitsCompat.isEffectiveCivilian(role, player);
     }
 
     public static boolean shouldRemoveKnifeAfterUse(int remainingUses) {

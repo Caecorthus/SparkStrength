@@ -13,7 +13,8 @@ import java.util.UUID;
  * Wathe 私有 {@code GameWorldComponent.deadPlayers} 的精确 Adapter：Wathe 没有“复活”方法，病原体的 T病毒复活需要把玩家
  * 移出死亡名单（与 SparkTraits 背水一战的做法相同）。
  *
- * <p>Only the T-Virus revive writes through this accessor. / 只有 T病毒复活通过此 accessor 写入。</p>
+ * <p>Writers: the T-Virus revive and the admin {@code setPlayerAlive}/{@code setPlayerDead} debug commands.
+ * 写入方：T病毒复活，以及管理员调试命令 setPlayerAlive / setPlayerDead。</p>
  */
 @Mixin(value = GameWorldComponent.class, remap = false)
 public interface GameWorldComponentDeadPlayersAccessor {

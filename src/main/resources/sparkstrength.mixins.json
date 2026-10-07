@@ -20,6 +20,11 @@
     "bomber.DronePilotChunkDataSenderMixin",
     "bomber.DronePilotChunkLoadingManagerMixin",
     "bomber.DronePilotEntityTrackerMixin",
+    "bomber.BomberPlayerComponentAccessor",
+    "bomber.TimedBombBedStateMixin",
+    "bomber.TimedBombBedUseMixin",
+    "bomber.TimedBombTrayStateMixin",
+    "bomber.TimedBombTrayUseMixin",
     "coroner.CoronerBaseSpiritItemMixin",
     "coroner.CoronerBartenderComponentSyncMixin",
     "coroner.CoronerBomberComponentSyncMixin",
@@ -42,6 +47,8 @@
     "noellesroles.HiddenEquipmentHelperMixin",
     "noellesroles.JesterMomentTransitionMixin",
     "noellesroles.PathogenInfectedTeamMixin",
+    "noellesroles.ShadowJesterAllianceMixin",
+    "noellesroles.ShadowJesterWinPriorityMixin",
     "noellesroles.ToxicologistAntidoteItemMixin",
     "perfumer.PerfumerZephyrMoodDrainMixin",
     "perfumer.SparkWitchPerfumerCorpseDrainMixin",
@@ -54,6 +61,7 @@
     "veteran.VeteranKnifeStabPayloadMixin",
     "veteran.VeteranServerKnifeUseMixin",
     "vulture.SkateboardStepSoundMixin",
+    "waiter.WaiterFeedingRewardMixin",
     "wathe.GameFunctionsMixin",
     "wathe.GameWorldComponentDeadPlayersAccessor",
     "wathe.GrenadeExplosionMixin",
@@ -64,7 +72,8 @@
     "wathe.M67ShopEntriesMixin",
     "wathe.PathogenTeamWinMixin",
     "wathe.PlayerPoisonComponentAccessor",
-    "wathe.PlayerShopComponentAccessor"
+    "wathe.PlayerShopComponentAccessor",
+    "wathe.ShadowJesterRevolverCooldownMixin"
   ],
   "injectors": {
     "defaultRequire": 1

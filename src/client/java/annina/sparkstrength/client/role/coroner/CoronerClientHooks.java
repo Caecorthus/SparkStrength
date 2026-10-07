@@ -1,5 +1,6 @@
 package annina.sparkstrength.client.role.coroner;
 
+import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.role.coroner.CoronerService;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.api.event.ShouldShowCohort;
@@ -17,6 +18,7 @@ import org.agmas.noellesroles.bartender.BartenderPlayerComponent;
 import org.agmas.noellesroles.bomber.BomberPlayerComponent;
 import org.agmas.noellesroles.demonhunter.DemonHunterPlayerComponent;
 import org.agmas.noellesroles.professor.IronManPlayerComponent;
+import org.jetbrains.annotations.Nullable;
 
 import java.awt.Color;
 
@@ -38,14 +40,34 @@ public final class CoronerClientHooks {
         ShouldShowCohort.EVENT.register(CoronerClientHooks::cohortPrompt);
     }
 
-    private static GetInstinctHighlight.HighlightResult highlightKillerDisguise(Entity target) {
+    /**
+     * Returns the killer-coloured instinct result for a Coroner killer disguise.
+     *
+     * <p>This small public seam is intentionally kept on the client side. SparkTraits
+     * can discover it through an optional reflection bridge when its own early
+     * WatheClient mixin runs before Wathe dispatches {@code GetInstinctHighlight}.
+     * SparkStrength itself never acquires a hard dependency on SparkTraits.</p>
+     *
+     * <p>这里提供一个客户端公开接缝：当 SparkTraits 的 WatheClient 早期 Mixin
+     * 先于 Wathe 本能事件执行时，SparkTraits 可以通过可选反射调用这里的判断。
+     * SparkStrength 不会因此对 SparkTraits 形成硬依赖。</p>
+     */
+    public static @Nullable Integer resolveKillerDisguiseInstinctColor(Entity target) {
         ClientPlayerEntity viewer = MinecraftClient.getInstance().player;
         if (viewer == null || !(target instanceof PlayerEntity targetPlayer) || targetPlayer.isSpectator()) {
             return null;
         }
 
         GameWorldComponent game = GameWorldComponent.KEY.get(viewer.getWorld());
-        if (!game.canUseKillerFeatures(viewer)
+        /*
+         * 使用 SparkTraits 的公开软兼容门面判断观察者是否属于有效杀手阵营。
+         * 没有 SparkTraits 时，该门面会自动回退到 Wathe 原生 canUseKiller 结果，
+         * 因此原版 SparkStrength + Wathe 的行为不会改变。
+         *
+         * 使用有效阵营而不是 game.canUseKillerFeatures(viewer)，才能让“原始好人
+         * + 内鬼词条”的观察者也获得验尸官杀手伪装的红色本能和同伙提示。
+         */
+        if (!SparkTraitsCompat.isEffectiveKiller(game.getRole(viewer), viewer)
                 || !GameFunctions.isPlayerPlayingAndAlive(viewer)
                 || !GameFunctions.isPlayerPlayingAndAlive(targetPlayer)
                 || !(CoronerService.hasKillerFactionDisguise(targetPlayer)
@@ -53,8 +75,17 @@ public final class CoronerClientHooks {
             return null;
         }
 
+        return KILLER_COHORT_RED;
+    }
+
+    private static GetInstinctHighlight.HighlightResult highlightKillerDisguise(Entity target) {
+        Integer color = resolveKillerDisguiseInstinctColor(target);
+        if (color == null) {
+            return null;
+        }
+
         return GetInstinctHighlight.HighlightResult.withKeybind(
-                KILLER_COHORT_RED,
+                color,
                 GetInstinctHighlight.HighlightResult.PRIORITY_HIGH
         );
     }
@@ -65,7 +96,11 @@ public final class CoronerClientHooks {
         }
 
         GameWorldComponent game = GameWorldComponent.KEY.get(viewer.getWorld());
-        if (!game.canUseKillerFeatures(viewer)
+        /*
+         * 同伙提示必须与本能颜色使用同一套“有效杀手”判定，否则内鬼观察者
+         * 虽然能按键透视，却仍然无法看到变形验尸官下方的 Killer's Cohort。
+         */
+        if (!SparkTraitsCompat.isEffectiveKiller(game.getRole(viewer), viewer)
                 || !GameFunctions.isPlayerPlayingAndAlive(viewer)
                 || !GameFunctions.isPlayerPlayingAndAlive(target)
                 || !(CoronerService.hasKillerFactionDisguise(target)

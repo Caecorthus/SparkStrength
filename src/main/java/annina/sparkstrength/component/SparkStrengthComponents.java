@@ -17,12 +17,16 @@ import annina.sparkstrength.component.phantom.PhantomBackpackUserComponent;
 import annina.sparkstrength.component.perfumer.PerfumerScentComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumTargetComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
+import annina.sparkstrength.component.reporter.ReporterCommunicationComponent;
 import annina.sparkstrength.component.tablet.TabletWorldComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowTargetComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
 import annina.sparkstrength.component.toxicologist.ToxicologistAntidoteComponent;
 import annina.sparkstrength.component.veteran.VeteranKnifeComponent;
 import annina.sparkstrength.component.vulture.SkateboardRideComponent;
+import annina.sparkstrength.component.shadowjester.ShadowJesterShowdownWorldComponent;
+import annina.sparkstrength.component.waiter.WaiterTaskRevealComponent;
+import annina.sparkstrength.component.timekeeper.TimekeeperWatchComponent;
 import dev.doctor4t.wathe.entity.PlayerBodyEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import org.jetbrains.annotations.NotNull;
@@ -98,6 +102,15 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.beginRegistration(PlayerEntity.class, VirusCarrierComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(VirusCarrierComponent::new);
+        registry.beginRegistration(PlayerEntity.class, ReporterCommunicationComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(ReporterCommunicationComponent::new);
+        registry.beginRegistration(PlayerEntity.class, WaiterTaskRevealComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(WaiterTaskRevealComponent::new);
+        registry.beginRegistration(PlayerEntity.class, TimekeeperWatchComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(TimekeeperWatchComponent::new);
         registry.registerFor(PlayerBodyEntity.class, CoronerBodySnapshotComponent.KEY, CoronerBodySnapshotComponent::new);
     }
 
@@ -109,5 +122,9 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.register(DetectiveCaseWorldComponent.KEY, DetectiveCaseWorldComponent::new);
         registry.register(TabletWorldComponent.KEY, TabletWorldComponent::new);
         registry.register(MorphBodyDisguiseWorldComponent.KEY, MorphBodyDisguiseWorldComponent::new);
+        registry.register(
+                ShadowJesterShowdownWorldComponent.KEY,
+                ShadowJesterShowdownWorldComponent::new
+        );
     }
 }

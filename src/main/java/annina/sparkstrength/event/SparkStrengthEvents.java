@@ -10,6 +10,7 @@ import annina.sparkstrength.component.phantom.PhantomBackpackUserComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumTargetComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
 import annina.sparkstrength.item.m67.M67RoundService;
+import annina.sparkstrength.component.reporter.ReporterCommunicationComponent;
 import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.phantom.PhantomBackpackService;
 import annina.sparkstrength.role.attendant.AttendantFlashlightService;
@@ -17,6 +18,7 @@ import annina.sparkstrength.role.attendant.DoorLogService;
 import annina.sparkstrength.role.bomber.drone.DroneCombatService;
 import annina.sparkstrength.role.bomber.drone.DronePilotService;
 import annina.sparkstrength.role.bomber.drone.DroneService;
+import annina.sparkstrength.role.bomber.BomberTrapService;
 import annina.sparkstrength.role.coroner.CoronerEconomyService;
 import annina.sparkstrength.role.coroner.CoronerEngineerService;
 import annina.sparkstrength.role.coroner.CoronerService;
@@ -37,6 +39,7 @@ import annina.sparkstrength.role.poisoner.PoisonerEconomyService;
 import annina.sparkstrength.role.professor.ProfessorSerumShopService;
 import annina.sparkstrength.role.recaller.RecallerEconomyService;
 import annina.sparkstrength.role.recaller.RecallerShopService;
+import annina.sparkstrength.role.reporter.ReporterCommunicationManager;
 import annina.sparkstrength.role.toxicologist.ToxicologistAntidoteService;
 import annina.sparkstrength.role.toxicologist.ToxicologistBluePassiveService;
 import annina.sparkstrength.role.toxicologist.ToxicologistBlueVitriolService;
@@ -47,6 +50,10 @@ import annina.sparkstrength.role.veteran.VeteranEconomyService;
 import annina.sparkstrength.role.veteran.VeteranKnifeService;
 import annina.sparkstrength.role.veteran.VeteranShopService;
 import annina.sparkstrength.role.vulture.VultureSkateboardService;
+import annina.sparkstrength.role.shadowjester.ShadowJesterShowdownService;
+import annina.sparkstrength.role.waiter.WaiterTaskRevealService;
+import annina.sparkstrength.role.timekeeper.TimekeeperWatchService;
+import annina.sparkstrength.component.timekeeper.TimekeeperWatchComponent;
 import annina.sparkstrength.tablet.TabletShopService;
 import annina.sparkstrength.tablet.TabletStateService;
 import dev.doctor4t.wathe.api.event.GameEvents;
@@ -86,6 +93,7 @@ public final class SparkStrengthEvents {
         PathogenFeatureService.register();
         PoisonerEconomyService.register();
         ProfessorSerumShopService.register();
+        ReporterCommunicationManager.register();
         RecallerShopService.register();
         ToxicologistAntidoteService.register();
         ToxicologistBluePassiveService.register();
@@ -95,6 +103,12 @@ public final class SparkStrengthEvents {
         TabletStateService.register();
         VeteranShopService.register();
         VultureSkateboardService.register();
+        // 老兵经济服务同时注册死亡前阵营快照和死亡后金币结算。
+        VeteranEconomyService.register();
+        ShadowJesterShowdownService.register();
+        // 任务完成后记录 30 秒的服务员专属透视状态。
+        WaiterTaskRevealService.register();
+        TimekeeperWatchService.register();
         // 回溯者被动收入需要按世界 tick 定时结算，注册在服务端世界 tick 末尾。
         ServerTickEvents.END_WORLD_TICK.register(CoronerEconomyService::tick);
         ServerTickEvents.END_WORLD_TICK.register(CoronerService::tick);
@@ -120,6 +134,10 @@ public final class SparkStrengthEvents {
                 PhantomBackpackService.assignForRole(serverPlayer, role);
                 ToxicologistAntidoteService.clearPlayer(serverPlayer);
                 VeteranKnifeService.assignForRole(serverPlayer, role);
+                if (role == org.agmas.noellesroles.Noellesroles.TIMEKEEPER) {
+                    TimekeeperWatchComponent.KEY.get(serverPlayer).reset();
+                    serverPlayer.giveItemStack(annina.sparkstrength.SparkStrengthItems.dyingWatch().getDefaultStack());
+                }
             }
         });
 
@@ -134,6 +152,11 @@ public final class SparkStrengthEvents {
             PhantomBackpackTargetComponent.KEY.get(player).reset();
             ProfessorSerumUserComponent.KEY.get(player).reset();
             ProfessorSerumTargetComponent.KEY.get(player).reset();
+            ReporterCommunicationComponent.KEY.get(player).reset();
+            if (player instanceof ServerPlayerEntity serverPlayer) {
+                WaiterTaskRevealService.reset(serverPlayer);
+                TimekeeperWatchComponent.KEY.get(serverPlayer).reset();
+            }
             DetectiveCasePlayerComponent.KEY.get(player).clearAll();
             DemonHunterSniffPlayerComponent.KEY.get(player).clearSniff();
             if (player instanceof ServerPlayerEntity serverPlayer) {
@@ -153,16 +176,17 @@ public final class SparkStrengthEvents {
             CoronerService.afterKill(victim);
             MorphlingService.afterKill(victim, killer, deathReason);
             ToxicologistBluePassiveService.clearPlayer(victim);
-            VeteranEconomyService.afterKill(victim, killer, deathReason);
         });
 
         GameEvents.ON_FINISH_FINALIZE.register((world, gameComponent) -> {
             if (world instanceof ServerWorld serverWorld) {
                 DetectiveCaseService.clearRoundState(serverWorld);
                 MorphBodyDisguiseWorldComponent.KEY.get(serverWorld).clearRoundState();
+                BomberTrapService.clearRoundState(serverWorld);
                 EngineerCaptureDeviceService.clearRoundState(serverWorld);
                 TabletStateService.clearRoundState(serverWorld);
                 VeteranBlackoutService.clear(serverWorld);
+                VeteranEconomyService.clearRoundState();
                 for (ServerPlayerEntity player : serverWorld.getPlayers()) {
                     CorruptCopAbilityService.reset(player);
                     CoronerService.clearPlayer(player);
@@ -174,8 +198,11 @@ public final class SparkStrengthEvents {
                     ToxicologistBluePassiveService.clearPlayer(player);
                     ProfessorSerumUserComponent.KEY.get(player).reset();
                     ProfessorSerumTargetComponent.KEY.get(player).reset();
+                    ReporterCommunicationComponent.KEY.get(player).reset();
+                    WaiterTaskRevealService.reset(player);
                     DemonHunterSniffService.clearPlayer(player);
                     VeteranKnifeService.reset(player);
+                    TimekeeperWatchComponent.KEY.get(player).reset();
                 }
             }
         });
@@ -183,6 +210,7 @@ public final class SparkStrengthEvents {
         GameEvents.ON_FINISH_INITIALIZE.register((world, gameComponent) -> {
             if (world instanceof ServerWorld serverWorld) {
                 MorphBodyDisguiseWorldComponent.KEY.get(serverWorld).clearRoundState();
+                BomberTrapService.clearRoundState(serverWorld);
                 EngineerCaptureDeviceService.clearRoundState(serverWorld);
                 // Also clear at round start: an aborted round or restart must not carry tablet chat/suspects forward.
                 // 开局时也清理：异常结束或重启的对局不能把平板聊天/嫌疑人带入下一局。
@@ -194,6 +222,12 @@ public final class SparkStrengthEvents {
                 // 案发快照属于单局状态；先清空再发放侦探道具，保证新一局从空白开始。
                 DetectiveCaseService.clearRoundState(serverWorld);
                 DetectiveCaseService.grantStarterKits(serverWorld);
+                VeteranEconomyService.clearRoundState();
+                for (ServerPlayerEntity player : serverWorld.getPlayers()) {
+                    // 新一局初始化时清理上一局可能残留的服务员任务透视倒计时。
+                    WaiterTaskRevealService.reset(player);
+                    TimekeeperWatchComponent.KEY.get(player).reset();
+                }
             }
         });
     }

@@ -39,6 +39,12 @@ public abstract class HiddenEquipmentHelperMixin {
             return;
         }
 
+        if (stack.isOf(SparkStrengthItems.dyingWatch())) {
+            // 濒毁怀表属于计时员私有能力道具，手持时对其他存活玩家隐藏。
+            cir.setReturnValue(true);
+            return;
+        }
+
         if (EngineerCaptureReport.isCaptureReport(stack)) {
             // 捕捉报告属于工程师私有信息；NoellesRoles 的装备包过滤会让其他存活玩家看不到手持报告。
             cir.setReturnValue(true);

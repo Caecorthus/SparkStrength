@@ -14,9 +14,9 @@ import org.jetbrains.annotations.Nullable;
 public final class MorphlingRules {
     public static final Identifier MORPHLING_ID = Identifier.of("noellesroles", "morphling");
 
-    public static final double REAGENT_TARGET_RANGE = 1.5D;
-    public static final int REAGENT_ACTIVE_DURATION_TICKS = GameConstants.getInTicks(0, 50);
-    public static final int MORPH_REAGENT_PRICE = 25;
+    public static final double REAGENT_TARGET_RANGE = 2.5D;
+    public static final int REAGENT_ACTIVE_DURATION_TICKS = GameConstants.getInTicks(0, 60);
+    public static final int MORPH_REAGENT_PRICE = 10;
 
     public static final int SELF_MORPH_KILL_REWARD = 30;
     public static final int SELF_MORPH_TARGET_KILL_REWARD = 60;

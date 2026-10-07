@@ -101,5 +101,15 @@
       }
     ],
     "subtitle": "subtitle.sparkstrength.music.takediskrush"
+  },
+  "ambient.shadow_jester": {
+    "sounds": [
+      {
+        "name": "sparkstrength:ambient/shadow_jester",
+        "stream": true,
+        "volume": 0.8
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.ambient.shadow_jester"
   }
 }

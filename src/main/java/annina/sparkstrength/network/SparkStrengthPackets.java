@@ -13,6 +13,7 @@ import annina.sparkstrength.network.m67.M67Packets;
 import annina.sparkstrength.network.noisemaker.NoisemakerGlowC2SPacket;
 import annina.sparkstrength.network.phantom.PhantomBackpackInvisibilityC2SPacket;
 import annina.sparkstrength.network.professor.ProfessorRemoteFeedC2SPacket;
+import annina.sparkstrength.network.reporter.ReporterCommunicationC2SPacket;
 import annina.sparkstrength.network.tablet.ApproveSuspectRemovalC2SPacket;
 import annina.sparkstrength.network.tablet.CallTabletMeetingC2SPacket;
 import annina.sparkstrength.network.tablet.CastTabletVoteC2SPacket;
@@ -22,13 +23,17 @@ import annina.sparkstrength.network.tablet.RequestTabletSnapshotC2SPacket;
 import annina.sparkstrength.network.tablet.SelectTabletChannelC2SPacket;
 import annina.sparkstrength.network.tablet.SendTabletChatC2SPacket;
 import annina.sparkstrength.network.tablet.SyncTabletSnapshotS2CPacket;
+import annina.sparkstrength.network.shadowjester.SyncShadowJesterShowdownMusicS2CPacket;
 import annina.sparkstrength.network.veteran.SyncVeteranBlackoutS2CPacket;
+import annina.sparkstrength.network.timekeeper.TimekeeperWatchModeC2SPacket;
 import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.phantom.PhantomBackpackService;
 import annina.sparkstrength.role.coroner.CoronerService;
 import annina.sparkstrength.role.professor.ProfessorSerumService;
 import annina.sparkstrength.role.detective.DetectiveCaseService;
+import annina.sparkstrength.role.reporter.ReporterCommunicationService;
 import annina.sparkstrength.role.demonhunter.DemonHunterSniffService;
+import annina.sparkstrength.role.timekeeper.TimekeeperWatchService;
 import annina.sparkstrength.tablet.TabletStateService;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -47,6 +52,7 @@ public final class SparkStrengthPackets {
         PayloadTypeRegistry.playC2S().register(PhantomBackpackInvisibilityC2SPacket.ID, PhantomBackpackInvisibilityC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(CoronerMorphC2SPacket.ID, CoronerMorphC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(ProfessorRemoteFeedC2SPacket.ID, ProfessorRemoteFeedC2SPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(ReporterCommunicationC2SPacket.ID, ReporterCommunicationC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(SelectDetectiveCaseC2SPacket.ID, SelectDetectiveCaseC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(UpdateDetectiveCaseNotesC2SPacket.ID, UpdateDetectiveCaseNotesC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(SetDetectiveKillerGuessC2SPacket.ID, SetDetectiveKillerGuessC2SPacket.CODEC);
@@ -59,11 +65,16 @@ public final class SparkStrengthPackets {
         PayloadTypeRegistry.playC2S().register(ConfirmTabletVoteC2SPacket.ID, ConfirmTabletVoteC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(ApproveSuspectRemovalC2SPacket.ID, ApproveSuspectRemovalC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(SelectTabletChannelC2SPacket.ID, SelectTabletChannelC2SPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(TimekeeperWatchModeC2SPacket.ID, TimekeeperWatchModeC2SPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(OpenDetectiveFolderS2CPacket.ID, OpenDetectiveFolderS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(OpenTabletScreenS2CPacket.ID, OpenTabletScreenS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncTabletSnapshotS2CPacket.ID, SyncTabletSnapshotS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncVeteranBlackoutS2CPacket.ID, SyncVeteranBlackoutS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncKillerTeamEconomyS2CPacket.ID, SyncKillerTeamEconomyS2CPacket.CODEC);
+        PayloadTypeRegistry.playS2C().register(
+                SyncShadowJesterShowdownMusicS2CPacket.ID,
+                SyncShadowJesterShowdownMusicS2CPacket.CODEC
+        );
         ServerPlayNetworking.registerGlobalReceiver(NoisemakerGlowC2SPacket.ID, (payload, context) ->
                 NoisemakerGlowService.tryUseBackpackGlow(context.player(), payload.targetPlayer())
         );
@@ -75,6 +86,9 @@ public final class SparkStrengthPackets {
         );
         ServerPlayNetworking.registerGlobalReceiver(ProfessorRemoteFeedC2SPacket.ID, (payload, context) ->
                 ProfessorSerumService.tryRemoteFeed(context.player(), payload.targetPlayer(), payload.serumType())
+        );
+        ServerPlayNetworking.registerGlobalReceiver(ReporterCommunicationC2SPacket.ID, (payload, context) ->
+                ReporterCommunicationService.handle(payload, context.player())
         );
         // Detective folder edits: the service re-validates role, liveness and case ownership (client input is untrusted).
         // 侦探文件夹编辑：服务端重新校验身份、存活状态与案件归属，客户端输入不可信。
@@ -122,5 +136,7 @@ public final class SparkStrengthPackets {
                         payload.suspectUuid(),
                         payload.approved()
                 ));
+        ServerPlayNetworking.registerGlobalReceiver(TimekeeperWatchModeC2SPacket.ID,
+                (payload, context) -> TimekeeperWatchService.switchMode(context.player(), payload.modeOrdinal()));
     }
 }

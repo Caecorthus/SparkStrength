@@ -11,6 +11,7 @@ public final class PlayerSelectionPageState {
     private static int phantomPage;
     private static int professorPage;
     private static int coronerPage;
+    private static int reporterPage;
 
     private PlayerSelectionPageState() {
     }
@@ -45,5 +46,13 @@ public final class PlayerSelectionPageState {
 
     public static void setCoronerPage(int page) {
         coronerPage = Math.max(0, page);
+    }
+
+    public static int getReporterPage() {
+        return reporterPage;
+    }
+
+    public static void setReporterPage(int page) {
+        reporterPage = Math.max(0, page);
     }
 }

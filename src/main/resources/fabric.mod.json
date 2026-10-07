@@ -44,6 +44,7 @@
       "sparkstrength:engineer_stunned",
       "sparkstrength:morph_mark_player",
       "sparkstrength:toxicologist_antidote",
+      "sparkstrength:reporter_communication",
       "sparkstrength:perfumer_scent",
       "sparkstrength:skateboard_ride",
       "sparkstrength:detective_case_world",
@@ -51,7 +52,10 @@
       "sparkstrength:tablet_world",
       "sparkstrength:morph_body_disguise_world",
       "sparkstrength:pathogen_strain",
-      "sparkstrength:virus_carrier"
+      "sparkstrength:virus_carrier",
+      "sparkstrength:shadow_jester_showdown",
+      "sparkstrength:waiter_task_reveal",
+      "sparkstrength:timekeeper_watch"
     ]
   },
   "mixins": [

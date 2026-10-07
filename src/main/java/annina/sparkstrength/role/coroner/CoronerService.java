@@ -6,6 +6,7 @@ import annina.sparkstrength.component.coroner.CoronerBodySnapshotComponent;
 import annina.sparkstrength.component.coroner.CoronerPlayerComponent;
 import annina.sparkstrength.component.morphling.MorphBodyDisguiseWorldComponent;
 import annina.sparkstrength.component.morphling.MorphMarkPlayerComponent;
+import annina.sparkstrength.component.timekeeper.TimekeeperWatchComponent;
 import com.mojang.authlib.GameProfile;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.PsychoModeEvents;
@@ -93,6 +94,7 @@ public final class CoronerService {
 
     public static void clearPlayer(ServerPlayerEntity player) {
         removeTemporaryItems(player);
+        TimekeeperWatchComponent.KEY.get(player).reset();
         DemonHunterPlayerComponent.KEY.get(player).reset();
         CoronerPlayerComponent.KEY.get(player).clearAll();
     }
@@ -100,6 +102,7 @@ public final class CoronerService {
     public static void afterKill(ServerPlayerEntity victim) {
         removeTemporaryItems(victim);
         removeDroppedTemporaryItems(victim);
+        TimekeeperWatchComponent.KEY.get(victim).reset();
         DemonHunterPlayerComponent.KEY.get(victim).reset();
         CoronerPlayerComponent.KEY.get(victim).clearAll();
     }
@@ -150,6 +153,7 @@ public final class CoronerService {
         CoronerPlayerComponent component = CoronerPlayerComponent.KEY.get(coroner);
         if (targetUuid.equals(coroner.getUuid())) {
             removeTemporaryItems(coroner);
+            TimekeeperWatchComponent.KEY.get(coroner).reset();
             DemonHunterPlayerComponent.KEY.get(coroner).reset();
             component.clearDisguise();
             return true;
@@ -165,6 +169,7 @@ public final class CoronerService {
         }
 
         removeTemporaryItems(coroner);
+        TimekeeperWatchComponent.KEY.get(coroner).reset();
         DemonHunterPlayerComponent.KEY.get(coroner).reset();
         component.setActiveDisguise(targetUuid, snapshot);
         if (isHigherPriorityMorphActive(coroner)) {
@@ -327,6 +332,7 @@ public final class CoronerService {
                  * 外观已经由客户端优先级处理，这里同步收回尸体身份发放的刀、枪、钥匙。
                  */
                 removeTemporaryItems(player);
+                TimekeeperWatchComponent.KEY.get(player).reset();
                 component.setTemporaryEquipmentSuppressed(true);
             }
             return;
@@ -468,6 +474,10 @@ public final class CoronerService {
         }
         if (CoronerRules.isEngineer(role)) {
             giveTemporaryItem(player, ModItems.REPAIR_TOOL, disguiseUuid, snapshot.roleId(), "repair_tool");
+        }
+        if (CoronerRules.isTimekeeper(role)) {
+            // 计时员伪装获得完整的 SparkStrength 濒毁怀表；临时标记会随伪装结束自动回收。
+            giveTemporaryItem(player, SparkStrengthItems.dyingWatch(), disguiseUuid, snapshot.roleId(), "dying_watch");
         }
         if (CoronerRules.grantsTimedBomb(role)) {
             giveTemporaryItem(player, ModItems.TIMED_BOMB, disguiseUuid, snapshot.roleId(), "timed_bomb");
