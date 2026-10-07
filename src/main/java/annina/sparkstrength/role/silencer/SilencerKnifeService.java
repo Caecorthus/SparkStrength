@@ -2,8 +2,6 @@ package annina.sparkstrength.role.silencer;
 
 import annina.sparkstrength.compat.SparkFactionCompat;
 import annina.sparkstrength.compat.SparkTraitsCompat;
-import annina.sparkstrength.role.veteran.InnocentKnifeKillRules;
-import annina.sparkstrength.role.veteran.VeteranKnifeService;
 import dev.doctor4t.wathe.api.WatheGameModes;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameConstants;
@@ -65,12 +63,9 @@ public final class SilencerKnifeService {
                 null
         );
 
-        // A Coroner in a Silencer (killer-faction) body still gets the killer-body knife "小脑"; a real Silencer gets null.
-        // 验尸官顶着静语者（杀手阵营）尸体仍受杀手尸体借刀“小脑”规则约束；真正的静语者得到 null，不受影响。
-        InnocentKnifeKillRules.PreKill coronerPreKill = VeteranKnifeService.captureCoronerKillerDisguiseKnifeKill(
-                player, target, GameConstants.DeathReasons.KNIFE);
+        // A Coroner in a Silencer body stabs like a real Silencer: no innocent-kill "小脑".
+        // 验尸官顶着静语者尸体刀人与真静语者一致，杀到好人也不会“小脑”。
         GameFunctions.killPlayer(target, true, player, GameConstants.DeathReasons.KNIFE);
-        VeteranKnifeService.punishCoronerKillerDisguiseKnifeKill(player, target, coronerPreKill);
         player.swingHand(heldKnifeHand(player));
         applyWatheKnifeCooldown(player, gameComponent);
         return true;

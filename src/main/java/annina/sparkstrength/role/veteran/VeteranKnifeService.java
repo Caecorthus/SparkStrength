@@ -18,7 +18,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Hand;
-import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -132,11 +131,10 @@ public final class VeteranKnifeService {
         /*
          * 验尸官只从“老兵/清道夫尸体身份”借到无蓄力、无声音出刀，
          * 不接入老兵 2 次次数池；老兵尸体身份仍继承老兵“小脑惩罚”；
-         * 清道夫尸体身份不继承老兵规则，但它是杀手阵营尸体，改由“杀手尸体借刀”小脑规则覆盖
-         * （两者共用 InnocentKnifeKillRules，且尸体身份互斥，不会重复惩罚）；
+         * 清道夫等杀手阵营尸体借刀与真杀手一致，杀到好人也不会“小脑”；
          * 临时匕首会在解除/切换变形时统一回收。
-         * The Veteran body inherits the Veteran knife penalty; the Scavenger body does not, but as a killer-faction
-         * body it is covered by the Coroner killer-body knife rule (same shared rule, mutually exclusive bodies).
+         * Only the Veteran body inherits the Veteran knife penalty; killer-faction bodies (Scavenger) stab like the
+         * real killer and are never punished for innocent kills.
          */
         Hand usedHand = heldKnifeHand(player);
         if (!SparkFactionCompat.canAffectPlayer(player, target, GameConstants.DeathReasons.KNIFE)
@@ -151,7 +149,7 @@ public final class VeteranKnifeService {
         );
         InnocentKnifeKillRules.PreKill preKill = CoronerService.hasVeteranDisguise(player)
                 ? captureInnocentKnifeKill(game, player, target)
-                : captureCoronerKillerDisguiseKnifeKill(player, target, GameConstants.DeathReasons.KNIFE);
+                : null;
         GameFunctions.killPlayer(target, true, player, GameConstants.DeathReasons.KNIFE);
         punishVeteranForStabbingInnocent(game, player, target, preKill);
         player.swingHand(usedHand);
@@ -163,47 +161,6 @@ public final class VeteranKnifeService {
         VeteranKnifeComponent knife = VeteranKnifeComponent.KEY.get(player);
         knife.addKnife();
         syncWatheVeteranGuard(player, knife);
-    }
-
-    /**
-     * Coroner killer-body knife rule for stab paths outside this service (Wathe's plain knife receiver and the
-     * Silencer body). A Coroner is a Wathe civilian: a killer-faction corpse disguise lends the knife, not the killer
-     * faction. Call BEFORE {@code GameFunctions.killPlayer}; null means the rule does not apply (not a Coroner, no
-     * killer-faction disguise, or not a knife death). Veteran bodies are civilian and never match here.
-     * 验尸官杀手尸体借刀规则入口，供本服务以外的刺杀路径使用（Wathe 普通刀包、静语者尸体）。验尸官是 Wathe 好人：
-     * 杀手阵营尸体伪装只借出匕首，不借出杀手阵营。须在 killPlayer 之前调用；返回 null 表示不适用
-     * （不是验尸官、没有杀手阵营伪装或不是匕首死亡）。老兵尸体属于好人阵营，永远不会在这里命中。
-     */
-    public static @Nullable InnocentKnifeKillRules.PreKill captureCoronerKillerDisguiseKnifeKill(
-            @Nullable ServerPlayerEntity attacker,
-            @Nullable ServerPlayerEntity target,
-            Identifier deathReason
-    ) {
-        if (attacker == null
-                || target == null
-                || attacker == target
-                || !GameConstants.DeathReasons.KNIFE.equals(deathReason)
-                || !CoronerService.isActualCoroner(attacker)
-                || !CoronerService.hasKillerFactionDisguise(attacker)) {
-            return null;
-        }
-        return captureInnocentKnifeKill(GameWorldComponent.KEY.get(attacker.getWorld()), attacker, target);
-    }
-
-    /**
-     * Applies the captured Coroner killer-body knife rule right after the stab's kill returns (same timing as the
-     * Veteran knife); a null snapshot is a no-op.
-     * 在刺杀击杀返回后立即结算已记录的验尸官杀手尸体借刀规则（与老兵匕首时序一致）；快照为 null 时不做任何事。
-     */
-    public static void punishCoronerKillerDisguiseKnifeKill(
-            @Nullable ServerPlayerEntity attacker,
-            @Nullable ServerPlayerEntity target,
-            @Nullable InnocentKnifeKillRules.PreKill preKill
-    ) {
-        if (attacker == null || target == null || preKill == null) {
-            return;
-        }
-        punishVeteranForStabbingInnocent(GameWorldComponent.KEY.get(attacker.getWorld()), attacker, target, preKill);
     }
 
     private static InnocentKnifeKillRules.PreKill captureInnocentKnifeKill(
