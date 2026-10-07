@@ -18,7 +18,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Hand;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * 老兵匕首的服务端规则。
@@ -55,7 +54,7 @@ public final class VeteranKnifeService {
         GameWorldComponent game = GameWorldComponent.KEY.get(player.getWorld());
         Role role = game.getRole(player);
         if (!VeteranRules.isVeteran(role) && CoronerService.hasInstantSilentKnifeDisguise(player)) {
-            return handleCoronerInstantSilentKnifeDisguise(payload, player, game);
+            return handleCoronerInstantSilentKnifeDisguise(payload, player);
         }
         if (!VeteranRules.isVeteran(role)) {
             return false;
@@ -110,11 +109,7 @@ public final class VeteranKnifeService {
         return true;
     }
 
-    private static boolean handleCoronerInstantSilentKnifeDisguise(
-            KnifeStabPayload payload,
-            ServerPlayerEntity player,
-            GameWorldComponent game
-    ) {
+    private static boolean handleCoronerInstantSilentKnifeDisguise(KnifeStabPayload payload, ServerPlayerEntity player) {
         if (SparkTraitsCompat.isKillerInteractionBlocked(player) || player.isSpectator()) {
             return true;
         }
@@ -130,11 +125,10 @@ public final class VeteranKnifeService {
 
         /*
          * 验尸官只从“老兵/清道夫尸体身份”借到无蓄力、无声音出刀，
-         * 不接入老兵 2 次次数池；老兵尸体身份仍继承老兵“小脑惩罚”；
-         * 清道夫等杀手阵营尸体借刀与真杀手一致，杀到好人也不会“小脑”；
+         * 不接入老兵 2 次次数池，也不继承老兵“小脑惩罚”：无论老兵还是清道夫尸体，借刀杀到好人都不会“小脑”；
          * 临时匕首会在解除/切换变形时统一回收。
-         * Only the Veteran body inherits the Veteran knife penalty; killer-faction bodies (Scavenger) stab like the
-         * real killer and are never punished for innocent kills.
+         * Neither the Veteran nor the Scavenger body inherits the Veteran knife penalty: a Coroner is never punished
+         * for a borrowed-knife innocent kill.
          */
         Hand usedHand = heldKnifeHand(player);
         if (!SparkFactionCompat.canAffectPlayer(player, target, GameConstants.DeathReasons.KNIFE)
@@ -147,11 +141,7 @@ public final class VeteranKnifeService {
                 target,
                 null
         );
-        InnocentKnifeKillRules.PreKill preKill = CoronerService.hasVeteranDisguise(player)
-                ? captureInnocentKnifeKill(game, player, target)
-                : null;
         GameFunctions.killPlayer(target, true, player, GameConstants.DeathReasons.KNIFE);
-        punishVeteranForStabbingInnocent(game, player, target, preKill);
         player.swingHand(usedHand);
         player.getItemCooldownManager().remove(WatheItems.KNIFE);
         return true;
@@ -182,7 +172,7 @@ public final class VeteranKnifeService {
             GameWorldComponent game,
             ServerPlayerEntity veteran,
             ServerPlayerEntity target,
-            @Nullable InnocentKnifeKillRules.PreKill preKill
+            InnocentKnifeKillRules.PreKill preKill
     ) {
         if (!InnocentKnifeKillRules.shouldPunish(
                 preKill,

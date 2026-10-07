@@ -1,9 +1,9 @@
 package annina.sparkstrength.role.veteran;
 
 /**
- * Pure knife "小脑" (death reason {@code wathe:shot_innocent}) rule shared by the Veteran knife and the
- * Coroner's borrowed Veteran-body knife.
- * 老兵匕首与验尸官老兵尸体借刀共用的“小脑”（死因 wathe:shot_innocent）纯规则。
+ * Pure knife "小脑" (death reason {@code wathe:shot_innocent}) rule for the real Veteran's knife. A Coroner's
+ * borrowed knife (any corpse disguise) is never punished.
+ * 真老兵匕首的“小脑”（死因 wathe:shot_innocent）纯规则；验尸官借刀（任何尸体伪装）都不会小脑。
  *
  * <p>It mirrors the revolver: the victim side follows SparkTraits {@code EffectiveAlignment.isEffectiveCivilian}
  * (Conscience counts as innocent, Impostor does not, otherwise the raw Wathe role decides), and an Impostor attacker
