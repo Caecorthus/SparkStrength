@@ -1,5 +1,6 @@
 package annina.sparkstrength.component;
 
+import annina.sparkstrength.component.collision.PlayerCollisionGraceWorldComponent;
 import annina.sparkstrength.component.corruptcop.CorruptCopAbilityComponent;
 import annina.sparkstrength.component.coroner.CoronerBodySnapshotComponent;
 import annina.sparkstrength.component.coroner.CoronerPlayerComponent;
@@ -96,6 +97,7 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
 
     @Override
     public void registerWorldComponentFactories(@NotNull WorldComponentFactoryRegistry registry) {
+        registry.register(PlayerCollisionGraceWorldComponent.KEY, PlayerCollisionGraceWorldComponent::new);
         registry.register(CriminologistWorldComponent.KEY, CriminologistWorldComponent::new);
         registry.register(TabletWorldComponent.KEY, TabletWorldComponent::new);
         registry.register(MorphBodyDisguiseWorldComponent.KEY, MorphBodyDisguiseWorldComponent::new);

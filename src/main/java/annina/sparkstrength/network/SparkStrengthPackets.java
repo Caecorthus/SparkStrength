@@ -53,6 +53,7 @@ public final class SparkStrengthPackets {
         PayloadTypeRegistry.playC2S().register(ConfirmTabletVoteC2SPacket.ID, ConfirmTabletVoteC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(ApproveSuspectRemovalC2SPacket.ID, ApproveSuspectRemovalC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(TimekeeperWatchModeC2SPacket.ID, TimekeeperWatchModeC2SPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(SerialPistolShootC2SPayload.ID, SerialPistolShootC2SPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(OpenCriminologistScreenS2CPacket.ID, OpenCriminologistScreenS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(OpenTabletScreenS2CPacket.ID, OpenTabletScreenS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncTabletSnapshotS2CPacket.ID, SyncTabletSnapshotS2CPacket.CODEC);
@@ -102,5 +103,7 @@ public final class SparkStrengthPackets {
                 ));
         ServerPlayNetworking.registerGlobalReceiver(TimekeeperWatchModeC2SPacket.ID,
                 (payload, context) -> TimekeeperWatchService.switchMode(context.player(), payload.modeOrdinal()));
+        ServerPlayNetworking.registerGlobalReceiver(SerialPistolShootC2SPayload.ID,
+                SerialPistolShootC2SPayload::receive);
     }
 }

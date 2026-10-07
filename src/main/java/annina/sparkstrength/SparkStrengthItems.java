@@ -10,6 +10,7 @@ import annina.sparkstrength.item.PowerRestorationItem;
 import annina.sparkstrength.item.ProfessorSerumItem;
 import annina.sparkstrength.item.TabletItem;
 import annina.sparkstrength.item.TimekeeperWatchItem;
+import annina.sparkstrength.item.SerialPistolItem;
 import annina.sparkstrength.role.professor.ProfessorSerumType;
 import com.mojang.serialization.Codec;
 import net.minecraft.component.ComponentType;
@@ -33,6 +34,8 @@ public final class SparkStrengthItems {
     public static final Identifier MORPH_DEVICE_ID = SparkStrength.id("morph_device");
     public static final Identifier CORONER_BODY_BAG_ID = SparkStrength.id("coroner_body_bag");
     public static final Identifier DYING_WATCH_ID = SparkStrength.id("dying_watch");
+    public static final Identifier SERIAL_PISTOL_ID = SparkStrength.id("serial_pistol");
+    public static final Identifier SERIAL_LEFT_PISTOL_ID = SparkStrength.id("serial_left_pistol");
 
     /** 怀表模式数据组件：0=刷新物品冷却，1=刷新技能冷却。 */
     public static final ComponentType<Integer> TIMEKEEPER_WATCH_MODE = Registry.register(
@@ -56,6 +59,8 @@ public final class SparkStrengthItems {
     private static Item morphDevice;
     private static Item coronerBodyBag;
     private static Item dyingWatch;
+    private static Item serialPistol;
+    private static Item serialLeftPistol;
     private static boolean registered;
 
     private SparkStrengthItems() {
@@ -132,6 +137,16 @@ public final class SparkStrengthItems {
                 new TimekeeperWatchItem(new Item.Settings()
                         .maxCount(1)
                         .component(TIMEKEEPER_WATCH_MODE, 0))
+        );
+        serialPistol = Registry.register(
+                Registries.ITEM,
+                SERIAL_PISTOL_ID,
+                new SerialPistolItem(new Item.Settings().maxCount(1), false)
+        );
+        serialLeftPistol = Registry.register(
+                Registries.ITEM,
+                SERIAL_LEFT_PISTOL_ID,
+                new SerialPistolItem(new Item.Settings().maxCount(1), true)
         );
         registered = true;
     }
@@ -225,5 +240,15 @@ public final class SparkStrengthItems {
             throw new IllegalStateException("SparkStrength items are not registered yet");
         }
         return dyingWatch;
+    }
+
+    public static Item serialPistol() {
+        if (serialPistol == null) throw new IllegalStateException("SparkStrength items are not registered yet");
+        return serialPistol;
+    }
+
+    public static Item serialLeftPistol() {
+        if (serialLeftPistol == null) throw new IllegalStateException("SparkStrength items are not registered yet");
+        return serialLeftPistol;
     }
 }

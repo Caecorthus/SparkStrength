@@ -1,4 +1,8 @@
 {
+  "item.sparkstrength.serial_pistol": "Serial Pistol",
+  "item.sparkstrength.serial_pistol.tooltip": "Held by the Serial Killer during Psycho Mode; very short cooldown",
+  "item.sparkstrength.serial_left_pistol": "Serial Offhand Pistol",
+  "item.sparkstrength.serial_left_pistol.tooltip": "Held in the Serial Killer's offhand during Psycho Mode; very short cooldown",
   "tip.sparkstrength.corrupt_cop.active": "Arrogant ASF: ON (%s to turn off)",
   "tip.sparkstrength.corrupt_cop.inactive": "Arrogant ASF: OFF (%s to turn on)",
   "tip.sparkstrength.corrupt_cop.music_resume_remaining": "Music resume remaining: %s s",

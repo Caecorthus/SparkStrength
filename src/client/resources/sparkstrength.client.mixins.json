@@ -30,7 +30,12 @@
     "morphling.MorphlingRendererDispatchMixin",
     "morphling.MorphlingRoleNameRendererMixin",
     "veteran.VeteranInstantKnifeMixin",
-    "timekeeper.TimekeeperWatchAttackMixin"
+    "timekeeper.TimekeeperWatchAttackMixin",
+    "serialkiller.SerialKillerCrosshairMixin",
+    "serialkiller.SerialKillerClientUseMixin",
+    "serialkiller.SerialKillerClientSlotLockMixin",
+    "serialkiller.SerialKillerBipedEntityModelMixin",
+    "serialkiller.SerialKillerPlayerInventoryClientMixin"
   ],
   "injectors": {
     "defaultRequire": 1

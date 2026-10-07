@@ -52,6 +52,9 @@
       "sparkstrength:shadow_jester_showdown",
       "sparkstrength:waiter_task_reveal",
       "sparkstrength:timekeeper_watch"
+      ,"sparkstrength:player_collision_grace"
+      ,"sparkstrength:serial_pistol"
+      ,"sparkstrength:serial_left_pistol"
     ]
   },
   "mixins": [

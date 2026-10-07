@@ -37,9 +37,13 @@
     "waiter.WaiterFeedingRewardMixin",
     "wathe.GameFunctionsMixin",
     "wathe.GameWorldComponentAccessor",
+    "wathe.PlayerCollisionGraceMixin",
     "wathe.KillerPassiveMoneyCapMixin",
     "wathe.PlayerShopComponentAccessor",
     "wathe.ShadowJesterRevolverCooldownMixin"
+    ,"serialkiller.SerialKillerPsychoMixin"
+    ,"serialkiller.SerialKillerServerSlotLockMixin"
+    ,"serialkiller.SerialKillerComponentTickMixin"
   ],
   "injectors": {
     "defaultRequire": 1
