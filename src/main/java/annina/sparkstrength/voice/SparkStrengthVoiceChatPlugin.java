@@ -3,6 +3,7 @@ package annina.sparkstrength.voice;
 import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.component.morphling.MorphMarkPlayerComponent;
 import annina.sparkstrength.role.jester.JesterMomentService;
+import annina.sparkstrength.role.pathogen.PathogenVisibility;
 import annina.sparkstrength.component.reporter.ReporterCommunicationComponent;
 import annina.sparkstrength.role.morphling.MorphlingService;
 import annina.sparkstrength.role.reporter.ReporterCommunicationManager;
@@ -36,6 +37,8 @@ import java.util.UUID;
  * 这样 B 的原始语音仍然保留，同时 A 附近的玩家也会听见“从 A 身上传来的 B 声音”。</p>
  *
  * <p>小丑时刻：被触发时刻的小丑从中枪起到时刻结束既不能说话也听不到（见 {@link JesterMomentService#isVoiceBlocked}）。</p>
+ *
+ * <p>病原体：被 T病毒复活的存活病原体不能说话，但仍能听见（见 {@link PathogenVisibility#isMuted}）。</p>
  */
 public final class SparkStrengthVoiceChatPlugin implements VoicechatPlugin {
     @Override
@@ -54,6 +57,8 @@ public final class SparkStrengthVoiceChatPlugin implements VoicechatPlugin {
         // never reaches Wathe's walkie-talkie relay, the Noisemaker broadcast or the morph relay below.
         // 最高优先级：事件被取消后 Simple Voice Chat 不再分发，因此静音小丑的声音不会进入 Wathe 对讲机、喧哗者广播或下方的伪装转发。
         registration.registerEvent(MicrophonePacketEvent.class, this::blockJesterMomentSpeaker, Integer.MAX_VALUE);
+        // A living Pathogen revived by a T-Virus never speaks; it still hears. / T病毒复活的存活病原体不能说话，但仍能听见。
+        registration.registerEvent(MicrophonePacketEvent.class, this::blockMutedPathogenSpeaker, Integer.MAX_VALUE);
         // Every server-to-client voice packet, including relays other plugins build, passes these per-listener events.
         // 每个服务端发往客户端的语音包（包括其他插件构造的转发）都会经过这些逐接收者事件。
         registration.registerEvent(EntitySoundPacketEvent.class, this::blockJesterMomentListener, Integer.MAX_VALUE);
@@ -65,6 +70,12 @@ public final class SparkStrengthVoiceChatPlugin implements VoicechatPlugin {
 
     private void blockJesterMomentSpeaker(MicrophonePacketEvent event) {
         if (JesterMomentService.isVoiceBlocked(resolveServerPlayer(event.getSenderConnection()))) {
+            event.cancel();
+        }
+    }
+
+    private void blockMutedPathogenSpeaker(MicrophonePacketEvent event) {
+        if (PathogenVisibility.isMuted(resolveServerPlayer(event.getSenderConnection()))) {
             event.cancel();
         }
     }

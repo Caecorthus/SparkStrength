@@ -1,7 +1,9 @@
 package annina.sparkstrength.role.pathogen;
 
+import annina.sparkstrength.component.pathogen.PathogenStrainComponent;
 import annina.sparkstrength.role.coroner.CoronerService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
+import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.player.PlayerEntity;
 import org.agmas.noellesroles.Noellesroles;
 import org.jetbrains.annotations.Nullable;
@@ -32,5 +34,20 @@ public final class PathogenVisibility {
 
     public static boolean seesCarriers(@Nullable PlayerEntity player) {
         return isPathogen(player) || isToxicologistViewer(player);
+    }
+
+    /**
+     * A living Pathogen revived by a T-Virus. The converted flag is synced to its owner only, so on a client this answers
+     * for the local player alone.
+     * 被 T病毒复活的存活病原体。转化标记只同步给本人，因此在客户端只对本地玩家有效。
+     */
+    public static boolean isLivingConvertedPathogen(@Nullable PlayerEntity player) {
+        return player != null && PathogenRules.isMuted(isPathogen(player),
+                PathogenStrainComponent.KEY.get(player).isConverted(), GameFunctions.isPlayerPlayingAndAlive(player));
+    }
+
+    /** Server: true when this player may not speak, by voice or text. / 服务端：该玩家不能说话（语音或文字）时为 true。 */
+    public static boolean isMuted(@Nullable PlayerEntity player) {
+        return isLivingConvertedPathogen(player);
     }
 }

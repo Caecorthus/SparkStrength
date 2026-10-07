@@ -218,6 +218,38 @@ public final class PathogenRules {
     }
 
     /**
+     * 2026-10-07: a living converted Pathogen (revived by a T-Virus) cannot speak, by voice or by text. The original
+     * Pathogen is never muted, and a converted one that dies again talks with the dead as usual.
+     * 2026-10-07：存活的转化病原体（被 T病毒复活者）不能说话（语音与文字）。原生病原体从不被禁言，转化病原体再次死亡后
+     * 照常与死者交流。
+     */
+    public static boolean isMuted(boolean pathogenRole, boolean converted, boolean playingAndAlive) {
+        return pathogenRole && converted && playingAndAlive;
+    }
+
+    /**
+     * 2026-10-07: a living converted Pathogen sees every other non-Pathogen (players and corpses) as a gray Steve.
+     * 2026-10-07：存活的转化病原体眼中，除病原体以外的其他人（玩家与尸体）都显示为灰色史蒂夫。
+     */
+    public static boolean seesAsGrayCrowd(boolean viewerIsLivingConvertedPathogen, boolean targetIsViewer,
+                                          boolean targetIsPathogen) {
+        return viewerIsLivingConvertedPathogen && !targetIsViewer && !targetIsPathogen;
+    }
+
+    /**
+     * One ABGR pixel (NativeImage order) turned gray by luminance; alpha is kept, so the overlay layer stays sparse.
+     * 将一个 ABGR 像素（NativeImage 顺序）按亮度转为灰色；保留透明度，外层贴图仍保持镂空。
+     */
+    public static int grayPixel(int abgr) {
+        int alpha = (abgr >>> 24) & 0xFF;
+        int blue = (abgr >>> 16) & 0xFF;
+        int green = (abgr >>> 8) & 0xFF;
+        int red = abgr & 0xFF;
+        int luminance = Math.min(255, (int) Math.round(0.299 * red + 0.587 * green + 0.114 * blue));
+        return (alpha << 24) | (luminance << 16) | (luminance << 8) | luminance;
+    }
+
+    /**
      * The antidote may start on a target that is poisoned or carries the virus (Q3).
      * 解毒剂可以对中毒或带毒的目标使用（Q3）。
      */
