@@ -70,6 +70,7 @@ public final class SparkStrengthPackets {
         PayloadTypeRegistry.playC2S().register(TimekeeperWatchModeC2SPacket.ID, TimekeeperWatchModeC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(TaotieHeadFireC2SPacket.ID, TaotieHeadFireC2SPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(OpenDetectiveFolderS2CPacket.ID, OpenDetectiveFolderS2CPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(SerialPistolShootC2SPayload.ID, SerialPistolShootC2SPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(OpenTabletScreenS2CPacket.ID, OpenTabletScreenS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncTabletSnapshotS2CPacket.ID, SyncTabletSnapshotS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncVeteranBlackoutS2CPacket.ID, SyncVeteranBlackoutS2CPacket.CODEC);
@@ -145,5 +146,7 @@ public final class SparkStrengthPackets {
         // 空请求：服务端重新校验身份、对局、存活、各类锁定、冷却与体内玩家。
         ServerPlayNetworking.registerGlobalReceiver(TaotieHeadFireC2SPacket.ID,
                 (payload, context) -> TaotieHeadService.tryFire(context.player()));
+        ServerPlayNetworking.registerGlobalReceiver(SerialPistolShootC2SPayload.ID,
+                SerialPistolShootC2SPayload::receive);
     }
 }

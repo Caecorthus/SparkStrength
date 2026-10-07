@@ -66,6 +66,7 @@
     "wathe.GameWorldComponentDeadPlayersAccessor",
     "wathe.GrenadeExplosionMixin",
     "wathe.JesterFakeDeathImmunityMixin",
+    "wathe.PlayerCollisionGraceMixin",
     "wathe.KillerPassiveMoneyCapMixin",
     "wathe.KillerTeamPassiveIncomeMixin",
     "wathe.KillerTeamShopMixin",
@@ -73,7 +74,10 @@
     "wathe.PathogenTeamWinMixin",
     "wathe.PlayerPoisonComponentAccessor",
     "wathe.PlayerShopComponentAccessor",
-    "wathe.ShadowJesterRevolverCooldownMixin"
+    "wathe.ShadowJesterRevolverCooldownMixin",
+    "serialkiller.SerialKillerPsychoMixin",
+    "serialkiller.SerialKillerServerSlotLockMixin",
+    "serialkiller.SerialKillerComponentTickMixin"
   ],
   "injectors": {
     "defaultRequire": 1

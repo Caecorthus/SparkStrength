@@ -57,7 +57,8 @@
       "sparkstrength:waiter_task_reveal",
       "sparkstrength:timekeeper_watch",
       "sparkstrength:taotie_head",
-      "sparkstrength:taotie_head_daze"
+      "sparkstrength:taotie_head_daze",
+      "sparkstrength:player_collision_grace"
     ]
   },
   "mixins": [

@@ -2,6 +2,7 @@ package annina.sparkstrength.component;
 
 import annina.sparkstrength.component.pathogen.PathogenStrainComponent;
 import annina.sparkstrength.component.pathogen.VirusCarrierComponent;
+import annina.sparkstrength.component.collision.PlayerCollisionGraceWorldComponent;
 import annina.sparkstrength.component.corruptcop.CorruptCopAbilityComponent;
 import annina.sparkstrength.component.coroner.CoronerBodySnapshotComponent;
 import annina.sparkstrength.component.coroner.CoronerPlayerComponent;
@@ -128,6 +129,7 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         // Replaces the retired sparkstrength:criminologist_world; its saved NBT is likewise ignored by CCA.
         // 取代已移除的 criminologist_world；其旧存档 NBT 同样会被 CCA 忽略。
         registry.register(DetectiveCaseWorldComponent.KEY, DetectiveCaseWorldComponent::new);
+        registry.register(PlayerCollisionGraceWorldComponent.KEY, PlayerCollisionGraceWorldComponent::new);
         registry.register(TabletWorldComponent.KEY, TabletWorldComponent::new);
         registry.register(MorphBodyDisguiseWorldComponent.KEY, MorphBodyDisguiseWorldComponent::new);
         registry.register(

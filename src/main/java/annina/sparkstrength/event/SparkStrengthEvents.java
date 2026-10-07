@@ -1,6 +1,7 @@
 package annina.sparkstrength.event;
 
 import annina.sparkstrength.component.detective.DetectiveCasePlayerComponent;
+import annina.sparkstrength.component.collision.PlayerCollisionGraceWorldComponent;
 import annina.sparkstrength.component.demonhunter.DemonHunterSniffPlayerComponent;
 import annina.sparkstrength.component.morphling.MorphBodyDisguiseWorldComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowTargetComponent;
@@ -64,6 +65,7 @@ import dev.doctor4t.wathe.api.event.RoleAssigned;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import annina.sparkstrength.role.serialkiller.SerialKillerCooldownService;
 
 /**
  * 统一注册 SparkStrength 的服务端事件。
@@ -112,6 +114,7 @@ public final class SparkStrengthEvents {
         // 任务完成后记录 30 秒的服务员专属透视状态。
         WaiterTaskRevealService.register();
         TimekeeperWatchService.register();
+        SerialKillerCooldownService.register();
         // 回溯者被动收入需要按世界 tick 定时结算，注册在服务端世界 tick 末尾。
         ServerTickEvents.END_WORLD_TICK.register(CoronerEconomyService::tick);
         ServerTickEvents.END_WORLD_TICK.register(CoronerService::tick);
@@ -184,6 +187,8 @@ public final class SparkStrengthEvents {
         GameEvents.ON_FINISH_FINALIZE.register((world, gameComponent) -> {
             if (world instanceof ServerWorld serverWorld) {
                 DetectiveCaseService.clearRoundState(serverWorld);
+                // 对局结束后清掉开局 tick，避免下一局开始前沿用上一局的保护时间。
+                PlayerCollisionGraceWorldComponent.KEY.get(serverWorld).clearRoundState();
                 MorphBodyDisguiseWorldComponent.KEY.get(serverWorld).clearRoundState();
                 BomberTrapService.clearRoundState(serverWorld);
                 EngineerCaptureDeviceService.clearRoundState(serverWorld);
@@ -212,6 +217,8 @@ public final class SparkStrengthEvents {
 
         GameEvents.ON_FINISH_INITIALIZE.register((world, gameComponent) -> {
             if (world instanceof ServerWorld serverWorld) {
+                // 该事件发生在 Wathe 完成角色/地图初始化、切换 ACTIVE 之前，正好作为本局保护期起点。
+                PlayerCollisionGraceWorldComponent.KEY.get(serverWorld).markRoundStart(serverWorld.getTime());
                 MorphBodyDisguiseWorldComponent.KEY.get(serverWorld).clearRoundState();
                 BomberTrapService.clearRoundState(serverWorld);
                 EngineerCaptureDeviceService.clearRoundState(serverWorld);
