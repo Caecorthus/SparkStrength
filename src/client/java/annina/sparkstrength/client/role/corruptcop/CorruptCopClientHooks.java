@@ -91,6 +91,7 @@ public final class CorruptCopClientHooks {
 
         GameWorldComponent gameComponent = GameWorldComponent.KEY.get(viewer.getWorld());
         Role role = gameComponent.getRole(viewer);
+        boolean corruptCop = CorruptCopRules.isCorruptCop(role);
         return CorruptCopRules.instinctHighlight(
                 role,
                 GameFunctions.isPlayerPlayingAndAlive(viewer),
@@ -99,8 +100,8 @@ public final class CorruptCopClientHooks {
                 GameFunctions.isPlayerPlayingAndAlive(targetPlayer),
                 GameFunctions.isPlayerSpectatingOrCreative(targetPlayer),
                 targetPlayer.isInvisible(),
-                CorruptCopRules.isCorruptCop(role)
-                        && CorruptCopPlayerComponent.KEY.get(viewer).canSeePlayersThroughWalls()
+                corruptCop && CorruptCopPlayerComponent.KEY.get(viewer).canSeePlayersThroughWalls(),
+                corruptCop && CorruptCopAbilityComponent.KEY.get(viewer).isUnlocked()
         );
     }
 }

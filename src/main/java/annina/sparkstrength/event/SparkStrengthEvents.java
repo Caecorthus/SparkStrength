@@ -78,6 +78,7 @@ public final class SparkStrengthEvents {
         DroneCombatService.register();
         DronePilotService.register();
         CorruptCopFeatureService.register();
+        CorruptCopAbilityService.register();
         CoronerEngineerService.register();
         CoronerService.register();
         CoronerShopService.register();

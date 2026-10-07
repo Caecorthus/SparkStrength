@@ -35,9 +35,16 @@ public final class CorruptCopRules {
             boolean targetAlive,
             boolean targetSpectatingOrCreative,
             boolean targetInvisible,
-            boolean throughWallsVision
+            boolean throughWallsVision,
+            boolean taskUnlocked
     ) {
+        /*
+         * Before the task unlock this x-ray stays silent: SparkWitch's own priority-93 answer still outlines the Insider
+         * for the cop, and NoellesRoles' priority-0 Moment window answer is left untouched.
+         * 任务解锁前本透视不作答：SparkWitch 自身优先级 93 的答复仍会为黑警描出内应，NoellesRoles 优先级 0 的黑警时刻窗口也不受影响。
+         */
         if (!isCorruptCop(viewerRole)
+                || !taskUnlocked
                 || !viewerAlive
                 || viewerSpectatingOrCreative
                 || samePlayer
