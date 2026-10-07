@@ -31,6 +31,9 @@ public abstract class SerialKillerPsychoMixin {
     @Shadow @Final private PlayerEntity player;
     @Shadow public int psychoTicks;
     @Shadow public int armour;
+    // Wathe's stopPsycho reads this to undo the psychosActive counter and to report ON_PSYCHO_END.
+    // Wathe 的 stopPsycho 依据此字段回退 psychosActive 计数并上报 ON_PSYCHO_END 的类型。
+    @Shadow private PsychoType psychoType;
     @Shadow public abstract void sync();
     @Shadow public abstract void setPsychoTicks(int ticks);
 
@@ -77,6 +80,11 @@ public abstract class SerialKillerPsychoMixin {
         player.getInventory().setStack(hotbarSlot, SparkStrengthItems.serialPistol().getDefaultStack());
         player.getInventory().setStack(40, SparkStrengthItems.serialLeftPistol().getDefaultStack());
         player.getInventory().selectedSlot = hotbarSlot;
+        // Record the type exactly like Wathe's startPsycho, so a VISIBLE_QUIET / SILENT stop does not
+        // decrement a counter it never raised and ON_PSYCHO_END reports the real type.
+        // 与 Wathe 原版 startPsycho 一样记录类型：否则 VISIBLE_QUIET / SILENT 结束时会扣减从未增加的计数，
+        // ON_PSYCHO_END 也会报告错误类型。
+        this.psychoType = type;
         this.psychoTicks = dev.doctor4t.wathe.game.GameConstants.PSYCHO_TIMER;
         this.armour = dev.doctor4t.wathe.game.GameConstants.PSYCHO_MODE_ARMOUR;
         setPsychoTicks(this.psychoTicks);
