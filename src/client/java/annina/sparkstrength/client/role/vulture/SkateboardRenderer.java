@@ -1,6 +1,7 @@
 package annina.sparkstrength.client.role.vulture;
 
 import annina.sparkstrength.SparkStrengthItems;
+import annina.sparkstrength.compat.SparkWitchCompat;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
@@ -96,9 +97,14 @@ public final class SkateboardRenderer {
     /**
      * Board under a player whose whole body another mod drew in place of the player model (SparkTraits' Pig body), so
      * {@link Feature} never ran. Called in the frame {@code EntityRenderDispatcher} hands the player renderer: origin
-     * at the feet plus the position offset, world units, unrotated.
+     * at the feet plus the position offset, world units, unrotated. Skipped while SparkWitch's Blind view strips that
+     * body's features ({@link SparkWitchCompat#hidesFeaturesFromBlind}). Its feature-loop gate already drops the board
+     * from normal bodies, so this keeps a Pig rider's board out of the Blind's line art and silhouette too. The pig
+     * outline itself stays (owner 2026-10-07).
      * 为身体被其他模组整体替换绘制的玩家（SparkTraits 猪形态）绘制滑板，此时 {@link Feature} 不会运行。调用时处于
-     * {@code EntityRenderDispatcher} 交给玩家渲染器的坐标系：原点在脚下加位置偏移，世界单位，未旋转。
+     * {@code EntityRenderDispatcher} 交给玩家渲染器的坐标系：原点在脚下加位置偏移，世界单位，未旋转。SparkWitch 的盲人
+     * 视图去掉该身体的附加层时跳过（{@link SparkWitchCompat#hidesFeaturesFromBlind}）。其附加层循环闸门已经去掉普通身体的
+     * 滑板，因此这里让骑板的猪也不会在盲人的线稿与轮廓中露出滑板。猪形轮廓本身保留（所有者 2026-10-07）。
      */
     public static void renderUnderReplacedBody(
             PlayerEntityRenderer renderer,
@@ -109,7 +115,8 @@ public final class SkateboardRenderer {
             int light
     ) {
         float scale = player.getScale();
-        if (player.isInvisible() || scale <= 0.0F || !standsOnBoard(player)) {
+        if (player.isInvisible() || scale <= 0.0F || !standsOnBoard(player)
+                || SparkWitchCompat.hidesFeaturesFromBlind(player)) {
             return;
         }
         float bodyYaw = MathHelper.lerpAngleDegrees(tickDelta, player.prevBodyYaw, player.bodyYaw);
