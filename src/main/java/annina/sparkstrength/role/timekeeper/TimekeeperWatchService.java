@@ -8,6 +8,7 @@ import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
 import annina.sparkstrength.component.phantom.PhantomBackpackUserComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
 import annina.sparkstrength.component.reporter.ReporterCommunicationComponent;
+import annina.sparkstrength.component.taotie.TaotieHeadPlayerComponent;
 import annina.sparkstrength.component.timekeeper.TimekeeperWatchComponent;
 import annina.sparkstrength.role.coroner.CoronerService;
 import annina.sparkstrength.mixin.minecraft.ItemCooldownManagerAccessor;
@@ -188,6 +189,7 @@ public final class TimekeeperWatchService {
         ProfessorSerumUserComponent.KEY.get(player).setCooldownTicks(0);
         ReporterCommunicationComponent.KEY.get(player).setCooldownTicks(0);
         DemonHunterSniffPlayerComponent.KEY.get(player).clearSniffCooldown();
+        TaotieHeadPlayerComponent.KEY.get(player).setCooldownTicks(0);
     }
 
     private static void rewardAliveTimekeepers(ServerPlayerEntity victim) {

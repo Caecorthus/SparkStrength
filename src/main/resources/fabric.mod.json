@@ -55,7 +55,9 @@
       "sparkstrength:virus_carrier",
       "sparkstrength:shadow_jester_showdown",
       "sparkstrength:waiter_task_reveal",
-      "sparkstrength:timekeeper_watch"
+      "sparkstrength:timekeeper_watch",
+      "sparkstrength:taotie_head",
+      "sparkstrength:taotie_head_daze"
     ]
   },
   "mixins": [

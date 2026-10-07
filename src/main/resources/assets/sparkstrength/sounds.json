@@ -83,6 +83,14 @@
     ],
     "subtitle": "subtitle.sparkstrength.entity.drone.release"
   },
+  "entity.taotie_head.bonk": {
+    "sounds": [
+      {
+        "name": "sparkstrength:entity/taotie_head_bonk"
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.entity.taotie_head.bonk"
+  },
   "item.drone.bind": {
     "sounds": [
       {

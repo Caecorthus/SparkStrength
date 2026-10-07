@@ -5,6 +5,7 @@ import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.compat.SparkTraitsDroneCompat;
 import annina.sparkstrength.entity.DroneEntity;
 import annina.sparkstrength.role.coroner.CoronerService;
+import annina.sparkstrength.role.taotie.TaotieHeadDazeGuards;
 import annina.sparkstrength.role.veteran.VeteranRules;
 import dev.doctor4t.wathe.api.WatheGameModes;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -61,17 +62,18 @@ import java.util.UUID;
  */
 public final class DroneWeaponHits {
     /**
-     * Fabric callback phase for the left-click and use-item hooks: after SparkWitch's lock phases (session, stun,
-     * rift; created on demand, inert without SparkWitch) and before the default phase, where SparkWitch's ceremonial
-     * sword answers SUCCESS and its shuriken FAIL for any entity.
-     * 左键与使用物品钩子的 Fabric 回调阶段：在 SparkWitch 各锁定阶段（会话、眩晕、裂隙；按需创建，未安装 SparkWitch 时无效）之后、
-     * 默认阶段之前（默认阶段中 SparkWitch 仪礼剑对任何实体返回 SUCCESS，手里剑返回 FAIL）。
+     * Fabric callback phase for the left-click and use-item hooks: after the lock phases (SparkWitch's session, stun,
+     * rift, created on demand and inert without SparkWitch; SparkStrength's Taotie head daze) and before the default
+     * phase, where SparkWitch's ceremonial sword answers SUCCESS and its shuriken FAIL for any entity.
+     * 左键与使用物品钩子的 Fabric 回调阶段：在各锁定阶段（SparkWitch 的会话、眩晕、裂隙，按需创建，未安装 SparkWitch 时无效；
+     * SparkStrength 的饕餮头颅眩晕）之后、默认阶段之前（默认阶段中 SparkWitch 仪礼剑对任何实体返回 SUCCESS，手里剑返回 FAIL）。
      */
     public static final Identifier PHASE = SparkStrength.id("drone_weapon");
     private static final Identifier[] LOCK_PHASES = {
             Identifier.of("sparkwitch", "seeker_session_lock"),
             Identifier.of("sparkwitch", "control_expert_stun"),
-            Identifier.of("sparkwitch", "rift_session_lock")
+            Identifier.of("sparkwitch", "rift_session_lock"),
+            TaotieHeadDazeGuards.DAZE_PHASE
     };
     /**
      * Thrown weapons with their own (player-only) hit logic that should still break a drone on contact; optional
