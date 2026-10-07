@@ -74,6 +74,7 @@
     "vulture.SkateboardLiftMixin",
     "vulture.SkateboardLimbsMixin",
     "vulture.SkateboardPresenceFootstepsMixin",
+    "vulture.SkateboardReplacedBodyMixin",
     "wathe.ShopRowOverflowMixin"
   ],
   "injectors": {
