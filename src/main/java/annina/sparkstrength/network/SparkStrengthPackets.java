@@ -4,6 +4,7 @@ import annina.sparkstrength.network.coroner.CoronerMorphC2SPacket;
 import annina.sparkstrength.network.demonhunter.DemonHunterSniffC2SPacket;
 import annina.sparkstrength.network.detective.OpenDetectiveFolderS2CPacket;
 import annina.sparkstrength.network.drone.DronePackets;
+import annina.sparkstrength.network.spiritualist.SpiritPossessionPackets;
 import annina.sparkstrength.network.detective.SelectDetectiveCaseC2SPacket;
 import annina.sparkstrength.network.detective.SetDetectiveKillerGuessC2SPacket;
 import annina.sparkstrength.network.detective.SetDetectivePresumedKillerC2SPacket;
@@ -27,6 +28,7 @@ import annina.sparkstrength.network.shadowjester.SyncShadowJesterShowdownMusicS2
 import annina.sparkstrength.network.veteran.SyncVeteranBlackoutS2CPacket;
 import annina.sparkstrength.network.timekeeper.TimekeeperWatchModeC2SPacket;
 import annina.sparkstrength.network.vulture.VultureSuperCurseC2SPacket;
+import annina.sparkstrength.network.taotie.TaotieHeadFireC2SPacket;
 import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.phantom.PhantomBackpackService;
 import annina.sparkstrength.role.coroner.CoronerService;
@@ -36,6 +38,7 @@ import annina.sparkstrength.role.reporter.ReporterCommunicationService;
 import annina.sparkstrength.role.demonhunter.DemonHunterSniffService;
 import annina.sparkstrength.role.timekeeper.TimekeeperWatchService;
 import annina.sparkstrength.role.vulture.VultureSuperCurseService;
+import annina.sparkstrength.role.taotie.TaotieHeadService;
 import annina.sparkstrength.tablet.TabletStateService;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -50,6 +53,7 @@ public final class SparkStrengthPackets {
     public static void registerServer() {
         M67Packets.initialize();
         DronePackets.initialize();
+        SpiritPossessionPackets.initialize();
         PayloadTypeRegistry.playC2S().register(NoisemakerGlowC2SPacket.ID, NoisemakerGlowC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(PhantomBackpackInvisibilityC2SPacket.ID, PhantomBackpackInvisibilityC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(CoronerMorphC2SPacket.ID, CoronerMorphC2SPacket.CODEC);
@@ -69,7 +73,9 @@ public final class SparkStrengthPackets {
         PayloadTypeRegistry.playC2S().register(ApproveSuspectRemovalC2SPacket.ID, ApproveSuspectRemovalC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(SelectTabletChannelC2SPacket.ID, SelectTabletChannelC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(TimekeeperWatchModeC2SPacket.ID, TimekeeperWatchModeC2SPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(TaotieHeadFireC2SPacket.ID, TaotieHeadFireC2SPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(OpenDetectiveFolderS2CPacket.ID, OpenDetectiveFolderS2CPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(SerialPistolShootC2SPayload.ID, SerialPistolShootC2SPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(OpenTabletScreenS2CPacket.ID, OpenTabletScreenS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncTabletSnapshotS2CPacket.ID, SyncTabletSnapshotS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncVeteranBlackoutS2CPacket.ID, SyncVeteranBlackoutS2CPacket.CODEC);
@@ -145,5 +151,11 @@ public final class SparkStrengthPackets {
                 ));
         ServerPlayNetworking.registerGlobalReceiver(TimekeeperWatchModeC2SPacket.ID,
                 (payload, context) -> TimekeeperWatchService.switchMode(context.player(), payload.modeOrdinal()));
+        // Empty request: the service re-validates role, round, liveness, locks, cooldown and the stomach.
+        // 空请求：服务端重新校验身份、对局、存活、各类锁定、冷却与体内玩家。
+        ServerPlayNetworking.registerGlobalReceiver(TaotieHeadFireC2SPacket.ID,
+                (payload, context) -> TaotieHeadService.tryFire(context.player()));
+        ServerPlayNetworking.registerGlobalReceiver(SerialPistolShootC2SPayload.ID,
+                SerialPistolShootC2SPayload::receive);
     }
 }

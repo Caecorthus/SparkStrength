@@ -5,6 +5,7 @@ import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.compat.SparkTraitsDroneCompat;
 import annina.sparkstrength.entity.DroneEntity;
 import annina.sparkstrength.role.coroner.CoronerService;
+import annina.sparkstrength.role.taotie.TaotieHeadDazeGuards;
 import annina.sparkstrength.role.veteran.VeteranRules;
 import dev.doctor4t.wathe.api.WatheGameModes;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -61,17 +62,18 @@ import java.util.UUID;
  */
 public final class DroneWeaponHits {
     /**
-     * Fabric callback phase for the left-click and use-item hooks: after SparkWitch's lock phases (session, stun,
-     * rift; created on demand, inert without SparkWitch) and before the default phase, where SparkWitch's ceremonial
-     * sword answers SUCCESS and its shuriken FAIL for any entity.
-     * 左键与使用物品钩子的 Fabric 回调阶段：在 SparkWitch 各锁定阶段（会话、眩晕、裂隙；按需创建，未安装 SparkWitch 时无效）之后、
-     * 默认阶段之前（默认阶段中 SparkWitch 仪礼剑对任何实体返回 SUCCESS，手里剑返回 FAIL）。
+     * Fabric callback phase for the left-click and use-item hooks: after the lock phases (SparkWitch's session, stun,
+     * rift, created on demand and inert without SparkWitch; SparkStrength's Taotie head daze) and before the default
+     * phase, where SparkWitch's ceremonial sword answers SUCCESS and its shuriken FAIL for any entity.
+     * 左键与使用物品钩子的 Fabric 回调阶段：在各锁定阶段（SparkWitch 的会话、眩晕、裂隙，按需创建，未安装 SparkWitch 时无效；
+     * SparkStrength 的饕餮头颅眩晕）之后、默认阶段之前（默认阶段中 SparkWitch 仪礼剑对任何实体返回 SUCCESS，手里剑返回 FAIL）。
      */
     public static final Identifier PHASE = SparkStrength.id("drone_weapon");
     private static final Identifier[] LOCK_PHASES = {
             Identifier.of("sparkwitch", "seeker_session_lock"),
             Identifier.of("sparkwitch", "control_expert_stun"),
-            Identifier.of("sparkwitch", "rift_session_lock")
+            Identifier.of("sparkwitch", "rift_session_lock"),
+            TaotieHeadDazeGuards.DAZE_PHASE
     };
     /**
      * Thrown weapons with their own (player-only) hit logic that should still break a drone on contact; optional
@@ -496,6 +498,48 @@ public final class DroneWeaponHits {
         }
         DroneCombatService.destroy(hit.drone(), gunner);
         return true;
+    }
+
+    /**
+     * USEC sniper rifle match shot (SparkWitch {@code onUsecRifleFired}): {@code path} is the bullet's polyline from the
+     * eye in flight order, already bent and cut at blocks by SparkWitch (AP pierces up to two), so it is not re-clipped.
+     * The first live drone the path enters strictly before {@code reach} (path distance) breaks and absorbs the shot;
+     * returns its path distance (strictly less than {@code reach}), else {@code reach} unchanged. Eligibility follows the
+     * death ray (any live drone, no breaker gate), plus SparkWitch's own running-round guard for this entry.
+     * USEC 狙击步枪的对局射击（SparkWitch {@code onUsecRifleFired}）：{@code path} 是子弹自眼睛起、按飞行顺序的折线，已由
+     * SparkWitch 处理下坠并在方块处截断（AP 最多穿透两格），因此不再重新截断。路径在 {@code reach}（路径距离）之前严格先进入的
+     * 第一架存活无人机被击毁并吸收这一枪；返回其路径距离（严格小于 {@code reach}），否则原样返回 {@code reach}。资格判定与死光一致
+     * （任何存活无人机，不检查击毁者），另加 SparkWitch 此入口自身的“对局进行中”守卫。
+     */
+    public static double onSparkWitchUsecRifle(@Nullable ServerPlayerEntity shooter, @Nullable List<Vec3d> path,
+                                               double reach) {
+        if (shooter == null || path == null || path.size() < 2 || !(reach > 0.0) || !Double.isFinite(reach)
+                || shooter.getWorld().isClient() || !GameWorldComponent.KEY.get(shooter.getWorld()).isRunning()) {
+            return reach;
+        }
+        World world = shooter.getWorld();
+        double[] lengths = new double[path.size() - 1];
+        for (int index = 0; index < lengths.length; index++) {
+            Vec3d from = path.get(index);
+            Vec3d to = path.get(index + 1);
+            lengths[index] = from == null || to == null ? Double.NaN : from.distanceTo(to);
+        }
+        DroneHitGeometry.DroneHit[] probed = new DroneHitGeometry.DroneHit[1];
+        double distance = DroneWeaponRules.firstPathEntry(lengths, reach, (index, cut) -> {
+            Vec3d from = path.get(index);
+            Vec3d to = path.get(index + 1);
+            Vec3d end = cut < lengths[index] ? from.add(to.subtract(from).multiply(cut / lengths[index])) : to;
+            DroneHitGeometry.DroneHit hit = DroneHitGeometry.nearestDrone(world, from, end, cut * cut,
+                    DroneCombatService::usable);
+            probed[0] = hit;
+            return hit == null ? -1.0 : Math.sqrt(hit.distanceSquared());
+        });
+        // The walk stops at the accepted probe, so probed[0] is that segment's drone. / 遍历止于被接受的探测，probed[0] 即该段无人机。
+        if (!(distance >= 0.0) || probed[0] == null) {
+            return reach;
+        }
+        DroneCombatService.destroy(probed[0].drone(), shooter);
+        return distance;
     }
 
     /**

@@ -1,7 +1,9 @@
 package annina.sparkstrength.component;
 
+import annina.sparkstrength.component.bodyguard.BodyguardGearComponent;
 import annina.sparkstrength.component.pathogen.PathogenStrainComponent;
 import annina.sparkstrength.component.pathogen.VirusCarrierComponent;
+import annina.sparkstrength.component.collision.PlayerCollisionGraceWorldComponent;
 import annina.sparkstrength.component.corruptcop.CorruptCopAbilityComponent;
 import annina.sparkstrength.component.coroner.CoronerBodySnapshotComponent;
 import annina.sparkstrength.component.coroner.CoronerPlayerComponent;
@@ -28,6 +30,9 @@ import annina.sparkstrength.component.vulture.VultureSuperCursePlayerComponent;
 import annina.sparkstrength.component.shadowjester.ShadowJesterShowdownWorldComponent;
 import annina.sparkstrength.component.waiter.WaiterTaskRevealComponent;
 import annina.sparkstrength.component.timekeeper.TimekeeperWatchComponent;
+import annina.sparkstrength.component.spiritualist.SpiritPossessionPlayerComponent;
+import annina.sparkstrength.component.taotie.TaotieHeadDazeComponent;
+import annina.sparkstrength.component.taotie.TaotieHeadPlayerComponent;
 import dev.doctor4t.wathe.entity.PlayerBodyEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import org.jetbrains.annotations.NotNull;
@@ -94,6 +99,9 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.beginRegistration(PlayerEntity.class, PerfumerScentComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(PerfumerScentComponent::new);
+        registry.beginRegistration(PlayerEntity.class, BodyguardGearComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(BodyguardGearComponent::new);
         registry.beginRegistration(PlayerEntity.class, SkateboardRideComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(SkateboardRideComponent::new);
@@ -115,6 +123,15 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.beginRegistration(PlayerEntity.class, TimekeeperWatchComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(TimekeeperWatchComponent::new);
+        registry.beginRegistration(PlayerEntity.class, SpiritPossessionPlayerComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(SpiritPossessionPlayerComponent::new);
+        registry.beginRegistration(PlayerEntity.class, TaotieHeadPlayerComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(TaotieHeadPlayerComponent::new);
+        registry.beginRegistration(PlayerEntity.class, TaotieHeadDazeComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(TaotieHeadDazeComponent::new);
         registry.registerFor(PlayerBodyEntity.class, CoronerBodySnapshotComponent.KEY, CoronerBodySnapshotComponent::new);
     }
 
@@ -124,6 +141,7 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         // Replaces the retired sparkstrength:criminologist_world; its saved NBT is likewise ignored by CCA.
         // 取代已移除的 criminologist_world；其旧存档 NBT 同样会被 CCA 忽略。
         registry.register(DetectiveCaseWorldComponent.KEY, DetectiveCaseWorldComponent::new);
+        registry.register(PlayerCollisionGraceWorldComponent.KEY, PlayerCollisionGraceWorldComponent::new);
         registry.register(TabletWorldComponent.KEY, TabletWorldComponent::new);
         registry.register(MorphBodyDisguiseWorldComponent.KEY, MorphBodyDisguiseWorldComponent::new);
         registry.register(

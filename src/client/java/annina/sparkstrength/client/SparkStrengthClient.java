@@ -6,6 +6,7 @@ import annina.sparkstrength.client.item.M67Client;
 import annina.sparkstrength.client.item.PerfumerItemsClient;
 import annina.sparkstrength.client.role.attendant.flashlight.FlashlightLights;
 import annina.sparkstrength.client.role.attendant.flashlight.FlashlightRenderer;
+import annina.sparkstrength.client.role.bodyguard.BodyguardClient;
 import annina.sparkstrength.client.role.bomber.BomberDroneClient;
 import annina.sparkstrength.client.role.coroner.CoronerClientHooks;
 import annina.sparkstrength.client.role.corruptcop.CorruptCopClientHooks;
@@ -19,6 +20,8 @@ import annina.sparkstrength.client.role.morphling.MorphlingClientHooks;
 import annina.sparkstrength.client.role.pathogen.PathogenClientHooks;
 import annina.sparkstrength.client.role.perfumer.PerfumerClientHooks;
 import annina.sparkstrength.client.role.professor.ProfessorSerumClientHooks;
+import annina.sparkstrength.client.role.spiritualist.SpiritPossessionClient;
+import annina.sparkstrength.client.role.taotie.TaotieHeadClientHooks;
 import annina.sparkstrength.client.role.veteran.VeteranClientHooks;
 import annina.sparkstrength.client.role.vulture.SkateboardClient;
 import annina.sparkstrength.client.role.vulture.VultureSuperCurseClientHooks;
@@ -51,6 +54,7 @@ import annina.sparkstrength.role.timekeeper.TimekeeperWatchMode;
 public final class SparkStrengthClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
+        BodyguardClient.register();
         CapsuleClient.register();
         FlashlightModelClient.register();
         M67Client.initialize();
@@ -69,6 +73,10 @@ public final class SparkStrengthClient implements ClientModInitializer {
         ProfessorSerumClientHooks.register();
         RoleEconomyClientHooks.register();
         SkateboardClient.register();
+        TaotieHeadClientHooks.register();
+        // Spiritualist Wraith possession; the key and Wraith sight bind only with SparkWitch (reflection).
+        // 灵界行者附身冤魂；按键与冤魂可见仅在加载 SparkWitch 时挂接（反射）。
+        SpiritPossessionClient.register();
         TabletClientHighlights.register();
         VeteranClientHooks.register();
         // Binds only when SparkWitch is loaded (reflection, no compile dependency).

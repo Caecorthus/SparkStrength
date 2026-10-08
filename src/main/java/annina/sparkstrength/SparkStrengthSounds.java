@@ -26,6 +26,8 @@ public final class SparkStrengthSounds {
     public static final SoundEvent DRONE_BREAK = REGISTRAR.create("entity.drone.break");
     public static final SoundEvent DRONE_RELEASE = REGISTRAR.create("entity.drone.release");
     public static final SoundEvent DRONE_BIND = REGISTRAR.create("item.drone.bind");
+    /** Taotie head hitting a player. / 饕餮头颅砸中玩家。 */
+    public static final SoundEvent TAOTIE_HEAD_BONK = REGISTRAR.create("entity.taotie_head.bonk");
     public static final Identifier SHADOW_JESTER_ID = SparkStrength.id("ambient.shadow_jester");
     public static final SoundEvent SHADOW_JESTER = REGISTRAR.create("ambient.shadow_jester");
     /**

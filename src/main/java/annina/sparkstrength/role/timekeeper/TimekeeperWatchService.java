@@ -2,6 +2,7 @@ package annina.sparkstrength.role.timekeeper;
 
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
+import annina.sparkstrength.compat.SparkFactionCooldownCompat;
 import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.component.demonhunter.DemonHunterSniffPlayerComponent;
 import annina.sparkstrength.component.vulture.VultureSuperCursePlayerComponent;
@@ -9,6 +10,8 @@ import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
 import annina.sparkstrength.component.phantom.PhantomBackpackUserComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
 import annina.sparkstrength.component.reporter.ReporterCommunicationComponent;
+import annina.sparkstrength.component.spiritualist.SpiritPossessionPlayerComponent;
+import annina.sparkstrength.component.taotie.TaotieHeadPlayerComponent;
 import annina.sparkstrength.component.timekeeper.TimekeeperWatchComponent;
 import annina.sparkstrength.role.coroner.CoronerService;
 import annina.sparkstrength.mixin.minecraft.ItemCooldownManagerAccessor;
@@ -99,6 +102,11 @@ public final class TimekeeperWatchService {
             return false;
         }
 
+        if (itemRefresh) {
+            // 物品刷新也作用于怀表使用者自己；怀表自身的 40 秒计时由独立组件维护，不会被这里误清除。
+            clearItemCooldowns(player);
+        }
+
         List<ServerPlayerEntity> targets = findTargets(player);
         for (ServerPlayerEntity target : targets) {
             if (itemRefresh) {
@@ -172,7 +180,11 @@ public final class TimekeeperWatchService {
                 ((ItemCooldownManagerAccessor) (Object) cooldownManager).sparkstrength$getEntries().keySet()
         );
         for (Item item : coolingItems) {
-            cooldownManager.remove(item);
+            // Serves the user and every target. Natural cooldowns (including owner timers released by remove hooks)
+            // clear; penalties forced through SparkFactionAPI keep running.
+            // 同时用于使用者自己与所有目标。清除自然冷却（含 remove 钩子释放的所属模组计时）；经 SparkFactionAPI
+            // 强制施加的惩罚继续生效。
+            SparkFactionCooldownCompat.clearItemCooldownKeepingForced(player, item);
         }
     }
 
@@ -190,6 +202,8 @@ public final class TimekeeperWatchService {
         ReporterCommunicationComponent.KEY.get(player).setCooldownTicks(0);
         DemonHunterSniffPlayerComponent.KEY.get(player).clearSniffCooldown();
         VultureSuperCursePlayerComponent.KEY.get(player).clearCooldown();
+        TaotieHeadPlayerComponent.KEY.get(player).setCooldownTicks(0);
+        SpiritPossessionPlayerComponent.KEY.get(player).setCooldownTicks(0);
     }
 
     private static void rewardAliveTimekeepers(ServerPlayerEntity victim) {

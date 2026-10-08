@@ -9,6 +9,8 @@
     "attendant.FlashlightBlockEntityLightMixin",
     "attendant.FlashlightEntityLightMixin",
     "attendant.FlashlightReceiverInvalidationMixin",
+    "bodyguard.BodyguardHudMixin",
+    "bodyguard.DemocracyShieldSprintMixin",
     "bomber.DroneCrosshairHintMixin",
     "bomber.DroneDemonHunterTargetMixin",
     "bomber.DroneGunTargetMixin",
@@ -37,6 +39,14 @@
     "professor.ProfessorInventoryScreenMixin",
     "professor.ProfessorSerumCrosshairMixin",
     "reporter.ReporterInventoryScreenMixin",
+    "spiritualist.SpiritPossessionBodyMixin",
+    "spiritualist.SpiritPossessionCameraAccessor",
+    "spiritualist.SpiritPossessionCameraPacketMixin",
+    "spiritualist.SpiritPossessionHudMixin",
+    "spiritualist.SpiritPossessionMouseMixin",
+    "spiritualist.SpiritPossessionSpiritCameraMixin",
+    "spiritualist.SpiritPossessionTerrainGridMixin",
+    "taotie.TaotieHeadHudMixin",
     "detective.DetectiveMagnifierHudMixin",
     "demonhunter.DemonHunterSniffHudMixin",
     "economy.KillerTeamMoneyHudMixin",
@@ -75,7 +85,13 @@
     "vulture.SkateboardLiftMixin",
     "vulture.SkateboardLimbsMixin",
     "vulture.SkateboardPresenceFootstepsMixin",
-    "wathe.ShopRowOverflowMixin"
+    "vulture.SkateboardReplacedBodyMixin",
+    "wathe.ShopRowOverflowMixin",
+    "serialkiller.SerialKillerCrosshairMixin",
+    "serialkiller.SerialKillerClientUseMixin",
+    "serialkiller.SerialKillerClientSlotLockMixin",
+    "serialkiller.SerialKillerBipedEntityModelMixin",
+    "serialkiller.SerialKillerPlayerInventoryClientMixin"
   ],
   "injectors": {
     "defaultRequire": 1

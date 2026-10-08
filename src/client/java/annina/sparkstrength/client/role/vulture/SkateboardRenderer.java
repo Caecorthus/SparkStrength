@@ -1,6 +1,7 @@
 package annina.sparkstrength.client.role.vulture;
 
 import annina.sparkstrength.SparkStrengthItems;
+import annina.sparkstrength.compat.SparkWitchCompat;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
@@ -21,11 +22,12 @@ import net.minecraft.util.math.Vec3d;
 /**
  * Draws the skateboard item under a riding player's feet, at real size with its nose (model +Z) along the body yaw
  * and its wheels (model y = 0) on the ground. Other players get it from a player-renderer feature; the camera's own
- * player, which first person never renders, gets it in world space. Both paths end in the same frame: origin at the
- * entity's feet, +Y up, +Z = facing, scaled by the entity scale.
+ * player, which first person never renders, gets it in world space; a player whose body another mod replaced (Pig)
+ * gets it right after that body. All paths end in the same frame: origin at the entity's feet, +Y up, +Z = facing,
+ * scaled by the entity scale.
  * 在滑行玩家脚下绘制滑板物品：真实尺寸，板头（模型 +Z）朝向身体朝向，轮子（模型 y = 0）贴地。其他玩家由玩家渲染器特征
- * 绘制；第一人称不渲染的镜头玩家本人改在世界空间绘制。两条路径最终坐标系一致：原点在实体脚下，+Y 向上，+Z 为朝向，
- * 按实体缩放比例缩放。
+ * 绘制；第一人称不渲染的镜头玩家本人改在世界空间绘制；身体被其他模组替换（猪形态）的玩家在替换身体之后绘制。所有路径
+ * 最终坐标系一致：原点在实体脚下，+Y 向上，+Z 为朝向，按实体缩放比例缩放。
  */
 public final class SkateboardRenderer {
     /**
@@ -86,6 +88,43 @@ public final class SkateboardRenderer {
         matrices.translate(x, y, z);
         // rotY(-yaw) sends +Z to (-sin yaw, 0, cos yaw), Minecraft's facing vector for that yaw.
         // rotY(-yaw) 把 +Z 转到 (-sin yaw, 0, cos yaw)，即该偏航角的朝向向量。
+        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-bodyYaw));
+        matrices.scale(scale, scale, scale);
+        drawBoard(matrices, consumers, light, player);
+        matrices.pop();
+    }
+
+    /**
+     * Board under a player whose whole body another mod drew in place of the player model (SparkTraits' Pig body), so
+     * {@link Feature} never ran. Called in the frame {@code EntityRenderDispatcher} hands the player renderer: origin
+     * at the feet plus the position offset, world units, unrotated. Skipped while SparkWitch's Blind view strips that
+     * body's features ({@link SparkWitchCompat#hidesFeaturesFromBlind}). Its feature-loop gate already drops the board
+     * from normal bodies, so this keeps a Pig rider's board out of the Blind's line art and silhouette too. The pig
+     * outline itself stays (owner 2026-10-07).
+     * 为身体被其他模组整体替换绘制的玩家（SparkTraits 猪形态）绘制滑板，此时 {@link Feature} 不会运行。调用时处于
+     * {@code EntityRenderDispatcher} 交给玩家渲染器的坐标系：原点在脚下加位置偏移，世界单位，未旋转。SparkWitch 的盲人
+     * 视图去掉该身体的附加层时跳过（{@link SparkWitchCompat#hidesFeaturesFromBlind}）。其附加层循环闸门已经去掉普通身体的
+     * 滑板，因此这里让骑板的猪也不会在盲人的线稿与轮廓中露出滑板。猪形轮廓本身保留（所有者 2026-10-07）。
+     */
+    public static void renderUnderReplacedBody(
+            PlayerEntityRenderer renderer,
+            AbstractClientPlayerEntity player,
+            float tickDelta,
+            MatrixStack matrices,
+            VertexConsumerProvider consumers,
+            int light
+    ) {
+        float scale = player.getScale();
+        if (player.isInvisible() || scale <= 0.0F || !standsOnBoard(player)
+                || SparkWitchCompat.hidesFeaturesFromBlind(player)) {
+            return;
+        }
+        float bodyYaw = MathHelper.lerpAngleDegrees(tickDelta, player.prevBodyYaw, player.bodyYaw);
+        matrices.push();
+        // Same as Feature: drop the offset's height (deck lift, sneak drop) so the wheels rest on the ground while
+        // the replacement body stays on the deck.
+        // 与 Feature 相同：减去偏移的高度（板面抬高、潜行下沉），轮子贴地，替换身体仍站在板面上。
+        matrices.translate(0.0D, -renderer.getPositionOffset(player, tickDelta).y, 0.0D);
         matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-bodyYaw));
         matrices.scale(scale, scale, scale);
         drawBoard(matrices, consumers, light, player);

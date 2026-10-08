@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    "#wathe:guns",
+    "wathe:knife",
+    "wathe:grenade",
+    "wathe:bat",
+    "wathe:crowbar",
+    "wathe:lockpick",
+    "sparkstrength:m67",
+    { "id": "noellesroles:throwing_axe", "required": false }
+  ]
+}

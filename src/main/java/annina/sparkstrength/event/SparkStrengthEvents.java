@@ -1,6 +1,7 @@
 package annina.sparkstrength.event;
 
 import annina.sparkstrength.component.detective.DetectiveCasePlayerComponent;
+import annina.sparkstrength.component.collision.PlayerCollisionGraceWorldComponent;
 import annina.sparkstrength.component.demonhunter.DemonHunterSniffPlayerComponent;
 import annina.sparkstrength.component.vulture.VultureSuperCursePlayerComponent;
 import annina.sparkstrength.component.morphling.MorphBodyDisguiseWorldComponent;
@@ -16,6 +17,10 @@ import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.phantom.PhantomBackpackService;
 import annina.sparkstrength.role.attendant.AttendantFlashlightService;
 import annina.sparkstrength.role.attendant.DoorLogService;
+import annina.sparkstrength.role.bodyguard.BodyguardEconomyService;
+import annina.sparkstrength.role.bodyguard.BodyguardProtectionService;
+import annina.sparkstrength.role.bodyguard.BodyguardShieldService;
+import annina.sparkstrength.role.bodyguard.BodyguardShopService;
 import annina.sparkstrength.role.bomber.drone.DroneCombatService;
 import annina.sparkstrength.role.bomber.drone.DronePilotService;
 import annina.sparkstrength.role.bomber.drone.DroneService;
@@ -36,6 +41,8 @@ import annina.sparkstrength.role.engineer.EngineerShopService;
 import annina.sparkstrength.role.morphling.MorphlingService;
 import annina.sparkstrength.role.morphling.MorphlingShopService;
 import annina.sparkstrength.role.pathogen.PathogenFeatureService;
+import annina.sparkstrength.role.spiritualist.SpiritPossessionService;
+import annina.sparkstrength.role.taotie.TaotieHeadFeatureService;
 import annina.sparkstrength.role.poisoner.PoisonerEconomyService;
 import annina.sparkstrength.role.professor.ProfessorSerumShopService;
 import annina.sparkstrength.role.recaller.RecallerEconomyService;
@@ -65,6 +72,8 @@ import dev.doctor4t.wathe.api.event.RoleAssigned;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import annina.sparkstrength.role.serialkiller.SerialKillerCooldownService;
+import annina.sparkstrength.role.serialkiller.SerialPistolGuardService;
 
 /**
  * 统一注册 SparkStrength 的服务端事件。
@@ -79,6 +88,7 @@ public final class SparkStrengthEvents {
         DroneCombatService.register();
         DronePilotService.register();
         CorruptCopFeatureService.register();
+        CorruptCopAbilityService.register();
         CoronerEngineerService.register();
         CoronerService.register();
         CoronerShopService.register();
@@ -93,6 +103,10 @@ public final class SparkStrengthEvents {
         MorphlingService.register();
         MorphlingShopService.register();
         PathogenFeatureService.register();
+        TaotieHeadFeatureService.register();
+        // Spiritualist Wraith possession: opening cooldown, round cleanup and the far-view tick.
+        // 灵界行者附身冤魂：开局冷却、单局清理与远距离视野的每刻处理。
+        SpiritPossessionService.register();
         PoisonerEconomyService.register();
         ProfessorSerumShopService.register();
         ReporterCommunicationManager.register();
@@ -114,6 +128,14 @@ public final class SparkStrengthEvents {
         // 任务完成后记录 30 秒的服务员专属透视状态。
         WaiterTaskRevealService.register();
         TimekeeperWatchService.register();
+        SerialKillerCooldownService.register();
+        // 保镖：商店（防弹衣/民主盾牌）、目标死亡罚款、盾挡下的左轮不惩罚射手。
+        BodyguardShopService.register();
+        BodyguardEconomyService.register();
+        BodyguardProtectionService.register();
+        // Serial pistols exist only during their Serial Killer's psycho: sweep + world-use guard.
+        // 连环手枪只在其连环杀手疯魔期间存在：清扫与世界交互防护。
+        SerialPistolGuardService.register();
         // 回溯者被动收入需要按世界 tick 定时结算，注册在服务端世界 tick 末尾。
         ServerTickEvents.END_WORLD_TICK.register(CoronerEconomyService::tick);
         ServerTickEvents.END_WORLD_TICK.register(CoronerService::tick);
@@ -126,6 +148,9 @@ public final class SparkStrengthEvents {
         // 必须挂在 END_WORLD_TICK：它读取同一世界 tick 内 SparkTraits 玩家组件刚做的结果。
         ServerTickEvents.END_WORLD_TICK.register(ToxicologistBluePassiveService::tick);
         ServerTickEvents.END_WORLD_TICK.register(VeteranBlackoutService::tick);
+        // After packet handling in the same tick: sees hotbar switches and raises opened this tick.
+        // 位于同一 tick 的数据包处理之后：能看到本 tick 的快捷栏切换与举盾。
+        ServerTickEvents.END_WORLD_TICK.register(BodyguardShieldService::tick);
 
         RoleAssigned.EVENT.register((player, role) -> {
             if (player instanceof ServerPlayerEntity serverPlayer) {
@@ -140,6 +165,7 @@ public final class SparkStrengthEvents {
                 PhantomBackpackService.assignForRole(serverPlayer, role);
                 ToxicologistAntidoteService.clearPlayer(serverPlayer);
                 VeteranKnifeService.assignForRole(serverPlayer, role);
+                BodyguardShieldService.resetRound(serverPlayer);
                 if (role == org.agmas.noellesroles.Noellesroles.TIMEKEEPER) {
                     TimekeeperWatchComponent.KEY.get(serverPlayer).reset();
                     serverPlayer.giveItemStack(annina.sparkstrength.SparkStrengthItems.dyingWatch().getDefaultStack());
@@ -174,6 +200,7 @@ public final class SparkStrengthEvents {
                 ToxicologistAntidoteService.clearPlayer(serverPlayer);
                 ToxicologistBluePassiveService.clearPlayer(serverPlayer);
                 VeteranKnifeService.reset(serverPlayer);
+                BodyguardShieldService.resetRound(serverPlayer);
             }
         });
 
@@ -183,11 +210,15 @@ public final class SparkStrengthEvents {
             CoronerService.afterKill(victim);
             MorphlingService.afterKill(victim, killer, deathReason);
             ToxicologistBluePassiveService.clearPlayer(victim);
+            // The vest and shield die with the Bodyguard: nothing to loot or keep. / 防弹衣与盾随保镖死亡消失，无从拾取或保留。
+            BodyguardShieldService.clearGear(victim, true);
         });
 
         GameEvents.ON_FINISH_FINALIZE.register((world, gameComponent) -> {
             if (world instanceof ServerWorld serverWorld) {
                 DetectiveCaseService.clearRoundState(serverWorld);
+                // 对局结束后清掉开局 tick，避免下一局开始前沿用上一局的保护时间。
+                PlayerCollisionGraceWorldComponent.KEY.get(serverWorld).clearRoundState();
                 MorphBodyDisguiseWorldComponent.KEY.get(serverWorld).clearRoundState();
                 BomberTrapService.clearRoundState(serverWorld);
                 EngineerCaptureDeviceService.clearRoundState(serverWorld);
@@ -211,12 +242,15 @@ public final class SparkStrengthEvents {
                     VultureSuperCurseService.clearPlayer(player);
                     VeteranKnifeService.reset(player);
                     TimekeeperWatchComponent.KEY.get(player).reset();
+                    BodyguardShieldService.resetRound(player);
                 }
             }
         });
 
         GameEvents.ON_FINISH_INITIALIZE.register((world, gameComponent) -> {
             if (world instanceof ServerWorld serverWorld) {
+                // 该事件发生在 Wathe 完成角色/地图初始化、切换 ACTIVE 之前，正好作为本局保护期起点。
+                PlayerCollisionGraceWorldComponent.KEY.get(serverWorld).markRoundStart(serverWorld.getTime());
                 MorphBodyDisguiseWorldComponent.KEY.get(serverWorld).clearRoundState();
                 BomberTrapService.clearRoundState(serverWorld);
                 EngineerCaptureDeviceService.clearRoundState(serverWorld);
