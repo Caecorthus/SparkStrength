@@ -62,6 +62,25 @@ public final class BodyguardProtectionRules {
     }
 
     /**
+     * Stamina points a shield block of this kill costs, given the round of the SparkWitch shield-piercing shot being
+     * settled (null when there is none): the AXMC never pierces the shield, but a blocked FMJ round costs
+     * {@link BodyguardRules#SHIELD_AXMC_FMJ_POINTS} and an AP round {@link BodyguardRules#SHIELD_AXMC_AP_POINTS}
+     * (owner 2026-10-07). Null or any other id keeps the table's cost, so revolvers and every other weapon are unchanged.
+     * 本次击杀被盾挡下时消耗的体力点数，取决于正在结算的 SparkWitch 穿盾射击的弹种（没有则为 null）：AXMC 从不击穿盾牌，但 FMJ
+     * 子弹消耗 {@link BodyguardRules#SHIELD_AXMC_FMJ_POINTS} 点，AP 子弹消耗 {@link BodyguardRules#SHIELD_AXMC_AP_POINTS} 点
+     * （所有者 2026-10-07）。null 或其他 id 保持表中的消耗，因此左轮与其他所有武器不变。
+     */
+    public static int shieldPoints(Protection protection, @Nullable String piercingRoundId) {
+        if (BodyguardRules.AXMC_FMJ_ROUND_ID.equals(piercingRoundId)) {
+            return BodyguardRules.SHIELD_AXMC_FMJ_POINTS;
+        }
+        if (BodyguardRules.AXMC_AP_ROUND_ID.equals(piercingRoundId)) {
+            return BodyguardRules.SHIELD_AXMC_AP_POINTS;
+        }
+        return protection.shieldPoints();
+    }
+
+    /**
      * @param inBlastScope whether the kill runs inside an {@link AttackOriginScope} blast (grenade, M67, drone)
      *                     / 击杀是否发生在爆炸作用域内（手雷、M67、无人机）
      */
