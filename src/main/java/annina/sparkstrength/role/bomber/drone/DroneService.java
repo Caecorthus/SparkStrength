@@ -175,12 +175,12 @@ public final class DroneService {
 
     /**
      * Admin path only: SparkFactionAPI {@code /sparkfactionapi:clearCooldown} just removed {@code item}'s vanilla
-     * cooldown (called from {@code DroneAdminClearCooldownMixin}). During the opening that remove alone does not stick
+     * cooldown (called through {@code SparkFactionAdminClear}). During the opening that remove alone does not stick
      * (the lock is re-synced every tick and placement/piloting read the round clock), so for the rest of this round the
      * player's drones of that kind ignore the opening lock (no re-sync, may be placed and piloted). Clearing a grenade
      * drone also ends the loss cooldown of any queued return, which would otherwise come back on delivery. No-op for
      * other items and outside an ACTIVE match; role mechanics that remove cooldowns never call this.
-     * 仅管理员路径：SparkFactionAPI /sparkfactionapi:clearCooldown 刚移除了该物品的原版冷却（由 DroneAdminClearCooldownMixin
+     * 仅管理员路径：SparkFactionAPI /sparkfactionapi:clearCooldown 刚移除了该物品的原版冷却（经由 SparkFactionAdminClear
      * 调用）。开局锁期间仅移除原版冷却无效（开局锁每刻重新同步，放置与驾驶读取回合时钟），因此本回合剩余时间内该玩家此型号的
      * 无人机不再受开局锁约束（不再同步冷却，可放置与驾驶）。清除投弹无人机时还会结束排队归还的损毁冷却，否则交付时会重新写入。
      * 其他物品或对局未处于 ACTIVE 时不做任何事；移除冷却的职业机制不会调用此方法。

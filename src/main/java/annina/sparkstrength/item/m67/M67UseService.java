@@ -81,7 +81,7 @@ public final class M67UseService {
         }
         ServerWorld world = player.getServerWorld();
         UUID roundId = M67RoundService.throwRoundId(world);
-        int opening = throwMode(player) == ThrowMode.PRESENTATION ? 0 : M67RoundService.openingRemaining(world);
+        int opening = throwMode(player) == ThrowMode.PRESENTATION ? 0 : M67RoundService.openingRemaining(player);
         if (opening > 0) {
             preserveCooldown(player, opening);
             player.sendMessage(Text.translatable("tip.sparkstrength.m67.opening_cooldown", (opening + 19) / 20), true);
@@ -306,7 +306,7 @@ public final class M67UseService {
         ThrowMode mode = throwMode(player);
         return M67RoundService.throwRoundId(player.getServerWorld()) != null
                 && mode != ThrowMode.REFUSED
-                && (mode == ThrowMode.PRESENTATION || M67RoundService.openingRemaining(player.getServerWorld()) == 0)
+                && (mode == ThrowMode.PRESENTATION || M67RoundService.openingRemaining(player) == 0)
                 && !player.getItemCooldownManager().isCoolingDown(SparkStrengthItems.m67())
                 && !EngineerStunnedPlayerComponent.KEY.get(player).isStunned()
                 && !SparkTraitsCompat.isKillerInteractionBlocked(player);
