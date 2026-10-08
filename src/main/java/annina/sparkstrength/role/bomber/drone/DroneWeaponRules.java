@@ -75,4 +75,49 @@ public final class DroneWeaponRules {
         int excessPlayers = Math.max(0, totalPlayers - killerCount * killerDividend);
         return Math.max(minimumTicks, baseTicks - excessPlayers * reductionPerExcess);
     }
+
+    /**
+     * Per-segment probe for {@link #firstPathEntry}: distance from the start of segment {@code index} to where its first
+     * {@code cutLength} blocks enter the nearest eligible drone, or a negative value when none does.
+     * {@link #firstPathEntry} 的逐段探测：第 {@code index} 段前 {@code cutLength} 格内进入最近合格无人机处、距该段起点的距离；
+     * 没有时返回负数。
+     */
+    @FunctionalInterface
+    public interface SegmentProbe {
+        double entryDistance(int index, double cutLength);
+    }
+
+    /**
+     * Polyline nearest-wins (SparkWitch USEC rifle, whose AP rounds pierce blocks and sink). Walks the segments in flight
+     * order, cutting the one that crosses {@code reach} (a path distance), and accepts the first probe entry strictly
+     * inside its cut. Returns that path distance (travelled segment lengths plus the entry), always strictly less than
+     * {@code reach}; -1 when nothing is entered before {@code reach} or the input is unusable. Zero-length, negative or
+     * non-finite segments are skipped and add no distance, like SparkWitch's own walk.
+     * 折线的最近者命中（SparkWitch USEC 步枪，其 AP 子弹会穿透方块并下坠）。按飞行顺序逐段检查，在跨过 {@code reach}（路径距离）
+     * 的那一段处截断，接受第一个严格位于截断长度之内的探测结果。返回该路径距离（已走过的各段长度加段内距离），始终严格小于
+     * {@code reach}；在 {@code reach} 之前没有命中或输入不可用时返回 -1。长度为零、为负或非有限的段被跳过且不计距离，
+     * 与 SparkWitch 自身的遍历一致。
+     */
+    public static double firstPathEntry(double[] segmentLengths, double reach, SegmentProbe probe) {
+        if (segmentLengths == null || probe == null || !(reach > 0.0) || !Double.isFinite(reach)) {
+            return -1.0;
+        }
+        double travelled = 0.0;
+        for (int index = 0; index < segmentLengths.length && travelled < reach; index++) {
+            double length = segmentLengths[index];
+            if (!(length > 0.0) || !Double.isFinite(length)) {
+                continue;
+            }
+            double cut = Math.min(length, reach - travelled);
+            double entry = probe.entryDistance(index, cut);
+            if (entry >= 0.0 && entry < cut) {
+                double distance = travelled + entry;
+                // Rounding must never hand back reach itself (that would read as "not absorbed").
+                // 舍入误差绝不能返回 reach 本身（那会被视为“未吸收”）。
+                return distance < reach ? distance : -1.0;
+            }
+            travelled += length;
+        }
+        return -1.0;
+    }
 }
