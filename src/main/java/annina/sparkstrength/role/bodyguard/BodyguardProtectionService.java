@@ -1,6 +1,5 @@
 package annina.sparkstrength.role.bodyguard;
 
-import annina.sparkstrength.component.bodyguard.BodyguardGearComponent;
 import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.compat.SparkWitchCompat;
 import dev.doctor4t.wathe.api.event.ShouldPunishGunShooter;
@@ -61,9 +60,8 @@ public final class BodyguardProtectionService {
         if (!protection.shieldBlocks() && !protection.vest()) {
             return false;
         }
-        BodyguardGearComponent gear = BodyguardGearComponent.KEY.get(victim);
         boolean shieldApplies = protection.shieldBlocks() && shieldFaces(victim, killer, protection.source(), blast);
-        if (!shieldApplies && !(protection.vest() && gear.isVestWorn())) {
+        if (!shieldApplies && !(protection.vest() && BodyguardVestService.isWorn(victim))) {
             return false;
         }
 
@@ -81,7 +79,7 @@ public final class BodyguardProtectionService {
                 int points = BodyguardProtectionRules.shieldPoints(protection,
                         SparkWitchCompat.piercingShotAmmoId(victim, killer, deathReason));
                 blockWithShield(victim, killer, points, deathReason.toString());
-            } else if (protection.vest() && gear.isVestWorn()) {
+            } else if (protection.vest() && BodyguardVestService.isWorn(victim)) {
                 // The vest is one shield layer to SparkWitch's AXMC (owner 2026-10-07): a shot with pierce budget left
                 // spends it like a pierced whiskey layer, and this same killPlayer goes on to the remaining protections
                 // with one pierce fewer. A spent vest is never worn again, so no retry or replay re-checks it.
@@ -89,7 +87,7 @@ public final class BodyguardProtectionService {
                 // 那样把它报废，同一次 killPlayer 带着少一次的穿透继续交给其余保护。报废的防弹衣不会再穿上，因此任何重试或
                 // 重放都不会再检查它。
                 boolean pierced = SparkWitchCompat.tryPierceShieldLayer(victim, killer, deathReason);
-                breakVest(victim, killer, gear, deathReason);
+                breakVest(victim, killer, deathReason);
                 if (pierced) {
                     return false;
                 }
@@ -187,12 +185,9 @@ public final class BodyguardProtectionService {
     private static void breakVest(
             ServerPlayerEntity wearer,
             @Nullable ServerPlayerEntity attacker,
-            BodyguardGearComponent gear,
             Identifier deathReason
     ) {
-        gear.breakVest();
-        wearer.getServerWorld().playSound(null, wearer.getX(), wearer.getY(), wearer.getZ(),
-                SoundEvents.ENTITY_ITEM_BREAK, SoundCategory.PLAYERS, 1.0F, 0.8F);
+        BodyguardVestService.breakWorn(wearer);
         recordBlock(wearer, attacker, VEST_SOURCE, deathReason.toString());
     }
 

@@ -11,15 +11,12 @@ import net.minecraft.component.type.LoreComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 
 import java.util.List;
 
 /**
- * The Bodyguard's shop: the vest (200, worn on purchase) and the Democracy Shield (100), each once per round.
+ * The Bodyguard's shop: the vest (200, chest armour) and the Democracy Shield (100), each once per round.
  * Wathe opens a shop for any role that gets entries, and buys by index, so the list only depends on the synced role.
  * Not gated on being alive: Wathe caches stock(1) from this list before the round turns ACTIVE.
  * 保镖商店：防弹衣（200，买下即穿）与民主盾牌（100），每局各限购一次。Wathe 只要构建出条目就开放商店，并按下标购买，
@@ -49,7 +46,8 @@ public final class BodyguardShopService {
                 displayStack(vest, "bodyguard_vest"),
                 BodyguardRules.VEST_PRICE,
                 ShopEntry.Type.TOOL
-        ).stock(BodyguardRules.ENTRY_STOCK).onBuy(BodyguardShopService::buyVest).build()));
+        ).actualStack(vest.getDefaultStack()).stock(BodyguardRules.ENTRY_STOCK)
+                .onBuy(BodyguardShopService::buyVest).build()));
         Item shield = SparkStrengthItems.democracyShield();
         context.addEntry(SparkTraitsCompat.discountShopEntryForCharisma(player, new ShopEntry.Builder(
                 BodyguardRules.SHIELD_ENTRY_ID,
@@ -67,13 +65,17 @@ public final class BodyguardShopService {
      * 未缓存库存的玩家同样有效。
      */
     private static boolean buyVest(PlayerEntity buyer) {
-        if (!BodyguardGearComponent.KEY.get(buyer).wearVest()) {
+        // A real chest piece: it lands in the hotbar and only protects once right-clicked on (owner rule 2026-10-08).
+        // 真正的胸甲：放进快捷栏，右键穿上后才生效（所有者规则 2026-10-08）。
+        BodyguardGearComponent gear = BodyguardGearComponent.KEY.get(buyer);
+        Item vest = SparkStrengthItems.bodyguardVest();
+        if (gear.isVestBought() || buyer.getInventory().contains(stack -> stack.isOf(vest))) {
             return false;
         }
-        if (buyer instanceof ServerPlayerEntity player) {
-            // Only the wearer hears it: the vest stays secret (owner rule). / 只有穿戴者听得到：防弹衣保持隐秘（所有者规则）。
-            player.playSoundToPlayer(SoundEvents.ITEM_ARMOR_EQUIP_CHAIN.value(), SoundCategory.PLAYERS, 1.0F, 1.0F);
+        if (!ShopEntry.insertStackInFreeSlot(buyer, vest.getDefaultStack())) {
+            return false;
         }
+        gear.markVestBought();
         return true;
     }
 

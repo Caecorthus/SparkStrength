@@ -149,19 +149,20 @@ public final class BodyguardShieldService {
     }
 
     /** Death or round cleanup: no raise, no speed, no vest, no shield left behind. / 死亡或回合清理：不留举盾、移速、防弹衣与盾。 */
-    public static void clearGear(ServerPlayerEntity player, boolean removeShieldItems) {
+    public static void clearGear(ServerPlayerEntity player, boolean removeGearItems) {
         BodyguardGearComponent gear = BodyguardGearComponent.KEY.get(player);
         gear.endRaise();
-        gear.breakVest();
         removeRaisedSpeed(player);
-        if (removeShieldItems) {
+        if (removeGearItems) {
             Item shield = SparkStrengthItems.democracyShield();
+            Item vest = SparkStrengthItems.bodyguardVest();
             if (player.getActiveItem().isOf(shield)) {
                 player.clearActiveItem();
             }
             PlayerInventory inventory = player.getInventory();
             for (int slot = 0; slot < inventory.size(); slot++) {
-                if (inventory.getStack(slot).isOf(shield)) {
+                // Covers the armour slots too, so a worn vest goes as well. / 同时覆盖护甲栏，穿着的防弹衣也一并移除。
+                if (inventory.getStack(slot).isOf(shield) || inventory.getStack(slot).isOf(vest)) {
                     inventory.setStack(slot, ItemStack.EMPTY);
                 }
             }
