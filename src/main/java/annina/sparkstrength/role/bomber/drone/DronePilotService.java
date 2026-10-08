@@ -350,7 +350,10 @@ public final class DronePilotService {
         if (SparkTraitsDroneCompat.isRoleSkillBlocked(player)) {
             return DronePilotEndReason.SKILL_BLOCKED;
         }
-        if (DroneService.openingRemaining(world) > 0) {
+        // An admin cooldown clear of this drone's kind lifts the lock for that player (the owner check follows).
+        // 管理员清除该型号冷却后，该玩家不再受开局锁限制（随后仍校验主人）。
+        if (drone == null ? DroneService.openingRemaining(world) > 0
+                : DroneService.openingRemaining(player, drone.kind()) > 0) {
             return DronePilotEndReason.OPENING;
         }
         UUID roundId = DroneService.currentRoundId(world);

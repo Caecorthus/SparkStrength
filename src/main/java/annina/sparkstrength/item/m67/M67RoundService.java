@@ -108,8 +108,10 @@ public final class M67RoundService {
     }
 
     /**
-     * Remaining match opening lock in ticks. For the M67 it binds match throws only; Bomber drones read it unchanged.
-     * 剩余开局锁刻数。对 M67 只约束对局投掷；炸弹客无人机按原样读取。
+     * Remaining match opening lock in ticks. For the M67 it binds match throws only; Bomber drones read it through
+     * {@code DroneService.openingRemaining(player, kind)}, which an admin cooldown clear can lift per player and kind.
+     * 剩余开局锁刻数。对 M67 只约束对局投掷；炸弹客无人机经由 DroneService.openingRemaining(player, kind) 读取，
+     * 管理员清除冷却可按玩家与型号解除。
      */
     public static int openingRemaining(ServerWorld world) {
         Round round = ROUNDS.get(world);

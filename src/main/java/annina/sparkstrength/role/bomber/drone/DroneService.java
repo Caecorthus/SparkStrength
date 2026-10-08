@@ -32,6 +32,7 @@ import net.minecraft.text.Text;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -55,8 +56,9 @@ import java.util.UUID;
  *   one anywhere (cursor included), have one placed, or have one waiting to be returned.
  *   开局发放：每名真实炸弹客获得一架投弹无人机（仅快捷栏），在开局时发放，并在 ACTIVE 期间每 20 刻对账补发；每人每局一次，
  *   若已持有（含光标）、已放置或正在等待归还则跳过。</li>
- *   <li>Opening lock: both drone items carry the M67 opening cooldown (90 s), kept synced every tick.
- *   开局锁：两种无人机物品带有 M67 开局冷却（90 秒），每刻同步。</li>
+ *   <li>Opening lock: both drone items carry the M67 opening cooldown (90 s), kept synced every tick. An admin
+ *   cooldown clear lifts it per player and drone kind for the rest of the round ({@link #onAdminCooldownCleared}).
+ *   开局锁：两种无人机物品带有 M67 开局冷却（90 秒），每刻同步。管理员清除冷却后，按玩家与型号在本回合剩余时间内解除。</li>
  *   <li>{@link #returnGrenadeDrone}: a destroyed/depleted grenade drone goes back into the owner's hotbar, queued until a
  *   hotbar slot frees up (or the owner is back in survival); queued returns show on the owner's tablet.
  *   被毁或耗尽的投弹无人机回到主人快捷栏，无空位（或主人暂不在生存模式）时排队等待；排队中的归还显示在主人平板上。</li>
@@ -155,6 +157,53 @@ public final class DroneService {
         return M67RoundService.openingRemaining(world);
     }
 
+    /**
+     * Round-start lock this player's drones of {@code kind} still obey: the world lock, or 0 once an admin cleared that
+     * drone item this round. Placing, piloting and the per-tick cooldown sync read this.
+     * 该玩家此型号无人机仍受的开局锁：即世界开局锁；本回合管理员清除过该无人机物品后为 0。放置、驾驶与每刻冷却同步读取此值。
+     */
+    public static int openingRemaining(ServerPlayerEntity player, DroneKind kind) {
+        ServerWorld world = player.getServerWorld();
+        int remaining = openingRemaining(world);
+        if (remaining <= 0) {
+            return 0;
+        }
+        Round round = activeRound(world);
+        Set<DroneKind> released = round == null ? null : round.openingReleased.get(player.getUuid());
+        return released != null && released.contains(kind) ? 0 : remaining;
+    }
+
+    /**
+     * Admin path only: SparkFactionAPI {@code /sparkfactionapi:clearCooldown} just removed {@code item}'s vanilla
+     * cooldown (called from {@code DroneAdminClearCooldownMixin}). During the opening that remove alone does not stick
+     * (the lock is re-synced every tick and placement/piloting read the round clock), so for the rest of this round the
+     * player's drones of that kind ignore the opening lock (no re-sync, may be placed and piloted). Clearing a grenade
+     * drone also ends the loss cooldown of any queued return, which would otherwise come back on delivery. No-op for
+     * other items and outside an ACTIVE match; role mechanics that remove cooldowns never call this.
+     * 仅管理员路径：SparkFactionAPI /sparkfactionapi:clearCooldown 刚移除了该物品的原版冷却（由 DroneAdminClearCooldownMixin
+     * 调用）。开局锁期间仅移除原版冷却无效（开局锁每刻重新同步，放置与驾驶读取回合时钟），因此本回合剩余时间内该玩家此型号的
+     * 无人机不再受开局锁约束（不再同步冷却，可放置与驾驶）。清除投弹无人机时还会结束排队归还的损毁冷却，否则交付时会重新写入。
+     * 其他物品或对局未处于 ACTIVE 时不做任何事；移除冷却的职业机制不会调用此方法。
+     */
+    public static void onAdminCooldownCleared(ServerPlayerEntity player, Item item) {
+        if (player == null || !(item instanceof DroneItem drone)) {
+            return;
+        }
+        ServerWorld world = player.getServerWorld();
+        Round round = activeRound(world);
+        if (round == null) {
+            return;
+        }
+        round.openingReleased.computeIfAbsent(player.getUuid(), uuid -> EnumSet.noneOf(DroneKind.class))
+                .add(drone.kind());
+        List<PendingReturn> queue = round.returns.get(player.getUuid());
+        if (drone.kind() == DroneKind.GRENADE && queue != null) {
+            long now = world.getTime();
+            queue.replaceAll(pending -> pending.readyAt() <= now ? pending
+                    : new PendingReturn(pending.charge(), pending.queuedAt(), now));
+        }
+    }
+
     /** Register a freshly spawned drone; drones of another round are discarded. / 登记刚生成的无人机；其他回合的无人机直接移除。 */
     public static void track(DroneEntity drone) {
         if (!(drone.getWorld() instanceof ServerWorld world)) {
@@ -186,7 +235,7 @@ public final class DroneService {
     /** Opening lock over and fewer than the allowed undetonated bomb drones in play. / 开局锁已过且场上未引爆炸弹无人机未达上限。 */
     public static boolean canPlaceBombDrone(ServerPlayerEntity player) {
         ServerWorld world = player.getServerWorld();
-        if (openingRemaining(world) > 0) {
+        if (openingRemaining(player, DroneKind.BOMB) > 0) {
             return false;
         }
         int live = 0;
@@ -495,12 +544,16 @@ public final class DroneService {
     }
 
     private static void syncOpening(ServerPlayerEntity player) {
-        int remaining = openingRemaining(player.getServerWorld());
-        if (remaining > 0) {
-            // Native cooldown is sent even without an owned stack, so a bought bomb drone shows it immediately.
-            // 即使未持有也发送原版冷却，购买的炸弹无人机会立即显示。
-            preserveCooldown(player, SparkStrengthItems.grenadeDrone(), remaining);
-            preserveCooldown(player, SparkStrengthItems.bombDrone(), remaining);
+        // Native cooldown is sent even without an owned stack, so a bought bomb drone shows it immediately; a kind an
+        // admin released is skipped, so the cleared cooldown stays cleared.
+        // 即使未持有也发送原版冷却，购买的炸弹无人机会立即显示；管理员已解除的型号跳过，清除的冷却不会被重新写回。
+        int grenade = openingRemaining(player, DroneKind.GRENADE);
+        if (grenade > 0) {
+            preserveCooldown(player, SparkStrengthItems.grenadeDrone(), grenade);
+        }
+        int bomb = openingRemaining(player, DroneKind.BOMB);
+        if (bomb > 0) {
+            preserveCooldown(player, SparkStrengthItems.bombDrone(), bomb);
         }
     }
 
@@ -561,5 +614,7 @@ public final class DroneService {
         private final Set<UUID> settled = new HashSet<>();
         private final Set<DroneEntity> drones = new LinkedHashSet<>();
         private final Map<UUID, List<PendingReturn>> returns = new HashMap<>();
+        /** Drone kinds an admin cooldown clear released from the opening lock, per player. / 管理员清除冷却后按玩家解除开局锁的型号。 */
+        private final Map<UUID, Set<DroneKind>> openingReleased = new HashMap<>();
     }
 }

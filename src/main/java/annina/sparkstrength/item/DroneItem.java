@@ -81,10 +81,11 @@ public class DroneItem extends Item implements AdventureUsable {
     }
 
     /**
-     * Place on the top face of a block. Server-authoritative: only an active real Bomber, after the opening lock, off
-     * cooldown, not stunned, not piloting a drone; a bomb drone also needs no other live bomb drone of theirs.
-     * 放在方块顶面。由服务器判定：仅限开局锁结束、物品未冷却、未被定身、未在驾驶无人机的在场真实炸弹客；
-     * 炸弹无人机还要求其场上没有其他未引爆的炸弹无人机。
+     * Place on the top face of a block. Server-authoritative: only an active real Bomber, after the opening lock (unless
+     * an admin cooldown clear released this kind for them), off cooldown, not stunned, not piloting a drone; a bomb
+     * drone also needs no other live bomb drone of theirs.
+     * 放在方块顶面。由服务器判定：仅限开局锁结束（管理员清除冷却解除该型号者除外）、物品未冷却、未被定身、未在驾驶无人机的
+     * 在场真实炸弹客；炸弹无人机还要求其场上没有其他未引爆的炸弹无人机。
      */
     @Override
     public ActionResult useOnBlock(ItemUsageContext context) {
@@ -107,7 +108,7 @@ public class DroneItem extends Item implements AdventureUsable {
                 || DronePilotService.isPiloting(serverPlayer)) {
             return ActionResult.FAIL;
         }
-        int opening = DroneService.openingRemaining(world);
+        int opening = DroneService.openingRemaining(serverPlayer, kind);
         if (opening > 0) {
             serverPlayer.sendMessage(Text.translatable("tip.sparkstrength.drone.opening_cooldown", (opening + 19) / 20), true);
             return ActionResult.FAIL;
