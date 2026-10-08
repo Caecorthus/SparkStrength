@@ -22,7 +22,8 @@ public final class TimekeeperConstants {
             "professor_serum_user",
             "reporter_communication",
             "criminologist_player",
-            "demon_hunter_sniff"
+            "demon_hunter_sniff",
+            "vulture_super_curse"
     );
 
     private TimekeeperConstants() {
