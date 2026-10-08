@@ -119,5 +119,42 @@
       }
     ],
     "subtitle": "subtitle.sparkstrength.ambient.shadow_jester"
+  },
+  "vulture.super_curse": {
+    "sounds": [
+      {
+        "name": "sparkstrength:vulture/super_curse",
+        "stream": true
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.vulture.super_curse"
+  },
+  "vulture.super_curse_helium": {
+    "sounds": [
+      {
+        "name": "sparkstrength:vulture/super_curse_helium",
+        "stream": true
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.vulture.super_curse"
+  },
+  "vulture.death_scream": {
+    "sounds": [
+      {
+        "name": "sparkstrength:vulture/death_scream"
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.vulture.death_scream"
+  },
+  "vulture.death_scream_helium": {
+    "sounds": [
+      {
+        "name": "sparkstrength:vulture/death_scream_helium_1"
+      },
+      {
+        "name": "sparkstrength:vulture/death_scream_helium_2"
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.vulture.death_scream"
   }
 }

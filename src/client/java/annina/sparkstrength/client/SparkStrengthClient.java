@@ -24,6 +24,7 @@ import annina.sparkstrength.client.role.spiritualist.SpiritPossessionClient;
 import annina.sparkstrength.client.role.taotie.TaotieHeadClientHooks;
 import annina.sparkstrength.client.role.veteran.VeteranClientHooks;
 import annina.sparkstrength.client.role.vulture.SkateboardClient;
+import annina.sparkstrength.client.role.vulture.VultureSuperCurseClientHooks;
 import annina.sparkstrength.client.role.waiter.WaiterTaskRevealClientHooks;
 import annina.sparkstrength.client.role.timekeeper.TimekeeperWatchClientHooks;
 import annina.sparkstrength.client.role.shadowjester.ShadowJesterShowdownMusicController;
@@ -78,6 +79,9 @@ public final class SparkStrengthClient implements ClientModInitializer {
         SpiritPossessionClient.register();
         TabletClientHighlights.register();
         VeteranClientHooks.register();
+        // Binds only when SparkWitch is loaded (reflection, no compile dependency).
+        // 仅在加载了 SparkWitch 时挂接按键（反射，无编译依赖）。
+        VultureSuperCurseClientHooks.register();
         WaiterTaskRevealClientHooks.register();
         ClientTickEvents.END_CLIENT_TICK.register(CorruptCopMusicController::tick);
         ClientTickEvents.END_CLIENT_TICK.register(client ->

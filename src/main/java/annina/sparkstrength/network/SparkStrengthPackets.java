@@ -27,6 +27,7 @@ import annina.sparkstrength.network.tablet.SyncTabletSnapshotS2CPacket;
 import annina.sparkstrength.network.shadowjester.SyncShadowJesterShowdownMusicS2CPacket;
 import annina.sparkstrength.network.veteran.SyncVeteranBlackoutS2CPacket;
 import annina.sparkstrength.network.timekeeper.TimekeeperWatchModeC2SPacket;
+import annina.sparkstrength.network.vulture.VultureSuperCurseC2SPacket;
 import annina.sparkstrength.network.taotie.TaotieHeadFireC2SPacket;
 import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.phantom.PhantomBackpackService;
@@ -36,6 +37,7 @@ import annina.sparkstrength.role.detective.DetectiveCaseService;
 import annina.sparkstrength.role.reporter.ReporterCommunicationService;
 import annina.sparkstrength.role.demonhunter.DemonHunterSniffService;
 import annina.sparkstrength.role.timekeeper.TimekeeperWatchService;
+import annina.sparkstrength.role.vulture.VultureSuperCurseService;
 import annina.sparkstrength.role.taotie.TaotieHeadService;
 import annina.sparkstrength.tablet.TabletStateService;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -62,6 +64,7 @@ public final class SparkStrengthPackets {
         PayloadTypeRegistry.playC2S().register(SetDetectiveKillerGuessC2SPacket.ID, SetDetectiveKillerGuessC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(SetDetectivePresumedKillerC2SPacket.ID, SetDetectivePresumedKillerC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(DemonHunterSniffC2SPacket.ID, DemonHunterSniffC2SPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(VultureSuperCurseC2SPacket.ID, VultureSuperCurseC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(RequestTabletSnapshotC2SPacket.ID, RequestTabletSnapshotC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(SendTabletChatC2SPacket.ID, SendTabletChatC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(CallTabletMeetingC2SPacket.ID, CallTabletMeetingC2SPacket.CODEC);
@@ -120,6 +123,10 @@ public final class SparkStrengthPackets {
                 ));
         ServerPlayNetworking.registerGlobalReceiver(DemonHunterSniffC2SPacket.ID,
                 (payload, context) -> DemonHunterSniffService.trySniff(context.player()));
+        // Runs on the server thread; the service re-checks round, role, liveness, skill locks and cooldown.
+        // 在服务端主线程执行；服务层重新校验回合、职业、存活、技能封锁与冷却。
+        ServerPlayNetworking.registerGlobalReceiver(VultureSuperCurseC2SPacket.ID,
+                (payload, context) -> VultureSuperCurseService.tryCurse(context.player()));
         ServerPlayNetworking.registerGlobalReceiver(RequestTabletSnapshotC2SPacket.ID,
                 (payload, context) -> TabletStateService.requestSnapshot(context.player()));
         ServerPlayNetworking.registerGlobalReceiver(SendTabletChatC2SPacket.ID,
