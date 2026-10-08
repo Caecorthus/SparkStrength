@@ -9,6 +9,8 @@
     "attendant.FlashlightBlockEntityLightMixin",
     "attendant.FlashlightEntityLightMixin",
     "attendant.FlashlightReceiverInvalidationMixin",
+    "bodyguard.BodyguardHudMixin",
+    "bodyguard.DemocracyShieldSprintMixin",
     "bomber.DroneCrosshairHintMixin",
     "bomber.DroneDemonHunterTargetMixin",
     "bomber.DroneGunTargetMixin",

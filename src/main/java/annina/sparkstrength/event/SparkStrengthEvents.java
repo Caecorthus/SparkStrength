@@ -16,6 +16,10 @@ import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.phantom.PhantomBackpackService;
 import annina.sparkstrength.role.attendant.AttendantFlashlightService;
 import annina.sparkstrength.role.attendant.DoorLogService;
+import annina.sparkstrength.role.bodyguard.BodyguardEconomyService;
+import annina.sparkstrength.role.bodyguard.BodyguardProtectionService;
+import annina.sparkstrength.role.bodyguard.BodyguardShieldService;
+import annina.sparkstrength.role.bodyguard.BodyguardShopService;
 import annina.sparkstrength.role.bomber.drone.DroneCombatService;
 import annina.sparkstrength.role.bomber.drone.DronePilotService;
 import annina.sparkstrength.role.bomber.drone.DroneService;
@@ -120,6 +124,10 @@ public final class SparkStrengthEvents {
         WaiterTaskRevealService.register();
         TimekeeperWatchService.register();
         SerialKillerCooldownService.register();
+        // 保镖：商店（防弹衣/民主盾牌）、目标死亡罚款、盾挡下的左轮不惩罚射手。
+        BodyguardShopService.register();
+        BodyguardEconomyService.register();
+        BodyguardProtectionService.register();
         // Serial pistols exist only during their Serial Killer's psycho: sweep + world-use guard.
         // 连环手枪只在其连环杀手疯魔期间存在：清扫与世界交互防护。
         SerialPistolGuardService.register();
@@ -135,6 +143,9 @@ public final class SparkStrengthEvents {
         // 必须挂在 END_WORLD_TICK：它读取同一世界 tick 内 SparkTraits 玩家组件刚做的结果。
         ServerTickEvents.END_WORLD_TICK.register(ToxicologistBluePassiveService::tick);
         ServerTickEvents.END_WORLD_TICK.register(VeteranBlackoutService::tick);
+        // After packet handling in the same tick: sees hotbar switches and raises opened this tick.
+        // 位于同一 tick 的数据包处理之后：能看到本 tick 的快捷栏切换与举盾。
+        ServerTickEvents.END_WORLD_TICK.register(BodyguardShieldService::tick);
 
         RoleAssigned.EVENT.register((player, role) -> {
             if (player instanceof ServerPlayerEntity serverPlayer) {
@@ -148,6 +159,7 @@ public final class SparkStrengthEvents {
                 PhantomBackpackService.assignForRole(serverPlayer, role);
                 ToxicologistAntidoteService.clearPlayer(serverPlayer);
                 VeteranKnifeService.assignForRole(serverPlayer, role);
+                BodyguardShieldService.resetRound(serverPlayer);
                 if (role == org.agmas.noellesroles.Noellesroles.TIMEKEEPER) {
                     TimekeeperWatchComponent.KEY.get(serverPlayer).reset();
                     serverPlayer.giveItemStack(annina.sparkstrength.SparkStrengthItems.dyingWatch().getDefaultStack());
@@ -181,6 +193,7 @@ public final class SparkStrengthEvents {
                 ToxicologistAntidoteService.clearPlayer(serverPlayer);
                 ToxicologistBluePassiveService.clearPlayer(serverPlayer);
                 VeteranKnifeService.reset(serverPlayer);
+                BodyguardShieldService.resetRound(serverPlayer);
             }
         });
 
@@ -190,6 +203,8 @@ public final class SparkStrengthEvents {
             CoronerService.afterKill(victim);
             MorphlingService.afterKill(victim, killer, deathReason);
             ToxicologistBluePassiveService.clearPlayer(victim);
+            // The vest and shield die with the Bodyguard: nothing to loot or keep. / 防弹衣与盾随保镖死亡消失，无从拾取或保留。
+            BodyguardShieldService.clearGear(victim, true);
         });
 
         GameEvents.ON_FINISH_FINALIZE.register((world, gameComponent) -> {
@@ -219,6 +234,7 @@ public final class SparkStrengthEvents {
                     DemonHunterSniffService.clearPlayer(player);
                     VeteranKnifeService.reset(player);
                     TimekeeperWatchComponent.KEY.get(player).reset();
+                    BodyguardShieldService.resetRound(player);
                 }
             }
         });

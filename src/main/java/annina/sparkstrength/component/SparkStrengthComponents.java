@@ -1,5 +1,6 @@
 package annina.sparkstrength.component;
 
+import annina.sparkstrength.component.bodyguard.BodyguardGearComponent;
 import annina.sparkstrength.component.pathogen.PathogenStrainComponent;
 import annina.sparkstrength.component.pathogen.VirusCarrierComponent;
 import annina.sparkstrength.component.collision.PlayerCollisionGraceWorldComponent;
@@ -97,6 +98,9 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.beginRegistration(PlayerEntity.class, PerfumerScentComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(PerfumerScentComponent::new);
+        registry.beginRegistration(PlayerEntity.class, BodyguardGearComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(BodyguardGearComponent::new);
         registry.beginRegistration(PlayerEntity.class, SkateboardRideComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(SkateboardRideComponent::new);

@@ -6,6 +6,7 @@ import annina.sparkstrength.client.item.M67Client;
 import annina.sparkstrength.client.item.PerfumerItemsClient;
 import annina.sparkstrength.client.role.attendant.flashlight.FlashlightLights;
 import annina.sparkstrength.client.role.attendant.flashlight.FlashlightRenderer;
+import annina.sparkstrength.client.role.bodyguard.BodyguardClient;
 import annina.sparkstrength.client.role.bomber.BomberDroneClient;
 import annina.sparkstrength.client.role.coroner.CoronerClientHooks;
 import annina.sparkstrength.client.role.corruptcop.CorruptCopClientHooks;
@@ -52,6 +53,7 @@ import annina.sparkstrength.role.timekeeper.TimekeeperWatchMode;
 public final class SparkStrengthClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
+        BodyguardClient.register();
         CapsuleClient.register();
         FlashlightModelClient.register();
         M67Client.initialize();

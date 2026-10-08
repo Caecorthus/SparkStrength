@@ -2,6 +2,7 @@ package annina.sparkstrength.mixin.wathe;
 
 import annina.sparkstrength.item.grenade.GrenadeBlastRules;
 import annina.sparkstrength.item.grenade.GrenadeBlastService;
+import annina.sparkstrength.role.bodyguard.AttackOriginScope;
 import annina.sparkstrength.role.bomber.drone.DroneCombatService;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
@@ -40,8 +41,10 @@ public abstract class GrenadeExplosionMixin {
     // 不会在 Wathe 击杀之前击毁无人机；改由下方 TAIL 钩子在之后处理。
     @WrapMethod(method = "onCollision(Lnet/minecraft/util/hit/HitResult;)V")
     private void sparkstrength$guardOwnBlast(HitResult hitResult, Operation<Void> original) {
-        if (((GrenadeEntity) (Object) this).getWorld() instanceof ServerWorld) {
-            DroneCombatService.runOwnBlast(() -> original.call(hitResult));
+        GrenadeEntity grenade = (GrenadeEntity) (Object) this;
+        if (grenade.getWorld() instanceof ServerWorld) {
+            // The blast scope lets a Bodyguard's shield face the blast itself. / 爆炸作用域让保镖的盾按爆炸点判定方向。
+            DroneCombatService.runOwnBlast(() -> AttackOriginScope.runBlast(grenade.getPos(), () -> original.call(hitResult)));
         } else {
             original.call(hitResult);
         }

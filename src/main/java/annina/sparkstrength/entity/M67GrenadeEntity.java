@@ -7,6 +7,7 @@ import annina.sparkstrength.item.grenade.GrenadeBlastService;
 import annina.sparkstrength.item.m67.M67Physics;
 import annina.sparkstrength.item.m67.M67RoundService;
 import annina.sparkstrength.item.m67.M67Rules;
+import annina.sparkstrength.role.bodyguard.AttackOriginScope;
 import annina.sparkstrength.role.bomber.drone.DroneCombatService;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
@@ -240,9 +241,11 @@ public final class M67GrenadeEntity extends ThrownItemEntity {
             if (isRemoved() || !validRound(world)) {
                 break;
             }
-            // Exactly one ordinary kill attempt; protection/rewards belong to Wathe. / 仅调用一次普通击杀流程，保护与奖励交给 Wathe。
+            // Exactly one ordinary kill attempt; protection/rewards belong to Wathe. The blast scope lets a Bodyguard's
+            // shield face the blast itself. / 仅调用一次普通击杀流程，保护与奖励交给 Wathe。爆炸作用域让保镖的盾按爆炸点判定方向。
             if (GameFunctions.isPlayerAliveAndSurvival(victim)) {
-                GameFunctions.killPlayer(victim, true, owner, GameConstants.DeathReasons.GRENADE);
+                AttackOriginScope.runBlast(getPos(), () ->
+                        GameFunctions.killPlayer(victim, true, owner, GameConstants.DeathReasons.GRENADE));
             }
         }
         if (!isRemoved() && validRound(world)) {
