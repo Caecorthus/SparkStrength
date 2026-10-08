@@ -121,7 +121,7 @@ public final class VultureSkateboardService {
         }
         Round round = ROUNDS.get(world);
         long now = world.getTime();
-        int opening = round == null ? 0 : VultureSkateboardRules.openingRemaining(round.startTick, now);
+        int opening = round == null ? 0 : round.openingRemaining(player.getUuid(), now);
         if (opening > 0) {
             preserveCooldown(player, skateboard, opening);
             player.sendMessage(Text.translatable("tip.sparkstrength.skateboard.opening_cooldown", (opening + 19) / 20), true);
@@ -154,6 +154,25 @@ public final class VultureSkateboardService {
                 SoundCategory.PLAYERS, 0.7F, 1.3F);
         GameRecordManager.recordGlobalEvent(world, SparkStrengthReplayFormatters.SKATEBOARD_RIDE_STARTED, player, null);
         return true;
+    }
+
+    /**
+     * Admin path only: SparkFactionAPI {@code /sparkfactionapi:clearCooldown} just removed this player's skateboard
+     * cooldown (called through {@code SparkFactionAdminClear}). That remove alone does not stick (the opening lock
+     * and the ride cooldown are re-synced every tick from the round), so the player's board ignores the opening lock
+     * for the rest of this round and the current ride + cooldown is over now. A ride in progress keeps going; the next
+     * ride sets a normal cooldown. No-op outside a round; role mechanics that remove cooldowns never call this.
+     * 仅管理员路径：SparkFactionAPI /sparkfactionapi:clearCooldown 刚移除了该玩家的滑板冷却（经由 SparkFactionAdminClear
+     * 调用）。仅移除原版冷却无效（开局锁与滑行冷却每刻按回合状态重新同步），因此本回合剩余时间内该玩家的滑板不再受开局锁约束，
+     * 当前的“滑行 + 冷却”也立即结束。进行中的滑行继续；下一次滑行照常设置冷却。不在回合中时不做任何事；移除冷却的职业机制
+     * 不会调用此方法。
+     */
+    public static void onAdminCooldownCleared(ServerPlayerEntity player) {
+        Round round = ROUNDS.get(player.getServerWorld());
+        if (round != null) {
+            round.openingReleased.add(player.getUuid());
+            round.readyAt.remove(player.getUuid());
+        }
     }
 
     /**
@@ -226,7 +245,7 @@ public final class VultureSkateboardService {
                 // Vulture without a RoleAssigned we can rely on, so new Vultures are found by polling.
                 // 局中对账，同 DroneService：冤魂晋升与 SparkWitch 招募可能产生秃鹫而不触发可依赖的 RoleAssigned，因此靠轮询发现。
                 settleStarter(round, player);
-                int lock = Math.max(VultureSkateboardRules.openingRemaining(round.startTick, now),
+                int lock = Math.max(round.openingRemaining(player.getUuid(), now),
                         round.cooldownRemaining(player.getUuid(), now));
                 if (lock > 0) {
                     preserveCooldown(player, SparkStrengthItems.skateboard(), lock);
@@ -324,9 +343,15 @@ public final class VultureSkateboardService {
         private final Set<UUID> settled = new HashSet<>();
         /** World time each player's board is ready again (ride + cooldown). / 每名玩家滑板再次可用的世界时间（滑行 + 冷却）。 */
         private final Map<UUID, Long> readyAt = new HashMap<>();
+        /** Players an admin cooldown clear released from the opening lock. / 管理员清除冷却后解除开局锁的玩家。 */
+        private final Set<UUID> openingReleased = new HashSet<>();
 
         private Round(long startTick) {
             this.startTick = startTick;
+        }
+
+        private int openingRemaining(UUID uuid, long now) {
+            return openingReleased.contains(uuid) ? 0 : VultureSkateboardRules.openingRemaining(startTick, now);
         }
 
         private int cooldownRemaining(UUID uuid, long now) {

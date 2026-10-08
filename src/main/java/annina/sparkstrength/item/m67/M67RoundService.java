@@ -108,14 +108,44 @@ public final class M67RoundService {
     }
 
     /**
-     * Remaining match opening lock in ticks. For the M67 it binds match throws only; Bomber drones read it through
-     * {@code DroneService.openingRemaining(player, kind)}, which an admin cooldown clear can lift per player and kind.
-     * 剩余开局锁刻数。对 M67 只约束对局投掷；炸弹客无人机经由 DroneService.openingRemaining(player, kind) 读取，
-     * 管理员清除冷却可按玩家与型号解除。
+     * Remaining match opening lock in ticks. M67 match throws read it through
+     * {@link #openingRemaining(ServerPlayerEntity)}, Bomber drones through {@code DroneService.openingRemaining(player,
+     * kind)}; an admin cooldown clear can lift either per player (and drone kind).
+     * 剩余开局锁刻数。M67 对局投掷经由 {@link #openingRemaining(ServerPlayerEntity)} 读取；炸弹客无人机经由
+     * DroneService.openingRemaining(player, kind) 读取。管理员清除冷却可按玩家（及无人机型号）解除。
      */
     public static int openingRemaining(ServerWorld world) {
         Round round = ROUNDS.get(world);
         return round == null || !round.inGame() || !active(world) ? 0 : round.clock.openingRemaining(world.getTime());
+    }
+
+    /**
+     * Opening lock this player's M67 match throws still obey: the world lock, or 0 once an admin cleared their M67 this
+     * round. Throwing and the per-tick cooldown sync read this.
+     * 该玩家 M67 对局投掷仍受的开局锁：即世界开局锁；本回合管理员清除过其 M67 后为 0。投掷与每刻冷却同步读取此值。
+     */
+    public static int openingRemaining(ServerPlayerEntity player) {
+        ServerWorld world = player.getServerWorld();
+        int remaining = openingRemaining(world);
+        return remaining > 0 && ROUNDS.get(world).openingReleased.contains(player.getUuid()) ? 0 : remaining;
+    }
+
+    /**
+     * Admin path only: SparkFactionAPI {@code /sparkfactionapi:clearCooldown} just removed this player's M67 cooldown
+     * (called through {@code SparkFactionAdminClear}). During the opening that remove alone does not stick (the lock is
+     * re-synced every tick and throws read the round clock), so for the rest of this match round the player's M67
+     * throws ignore the opening lock and count as normal match throws; other players stay locked. No-op outside an
+     * ACTIVE match; role mechanics that remove cooldowns never call this.
+     * 仅管理员路径：SparkFactionAPI /sparkfactionapi:clearCooldown 刚移除了该玩家的 M67 冷却（经由 SparkFactionAdminClear
+     * 调用）。开局锁期间仅移除原版冷却无效（开局锁每刻重新同步，投掷读取回合时钟），因此本对局回合剩余时间内该玩家的 M67 投掷
+     * 不再受开局锁约束，按正常对局投掷结算；其他玩家仍被锁定。对局未处于 ACTIVE 时不做任何事；移除冷却的职业机制不会调用此方法。
+     */
+    public static void onAdminCooldownCleared(ServerPlayerEntity player) {
+        ServerWorld world = player.getServerWorld();
+        Round round = ROUNDS.get(world);
+        if (round != null && round.inGame() && active(world)) {
+            round.openingReleased.add(player.getUuid());
+        }
     }
 
     private static void startRound(ServerWorld world) {
@@ -177,10 +207,11 @@ public final class M67RoundService {
 
     private static void syncOpening(ServerPlayerEntity player) {
         ServerWorld world = player.getServerWorld();
-        int remaining = openingRemaining(world);
+        int remaining = openingRemaining(player);
         if (remaining > 0) {
-            // Native cooldown is sent even without an owned stack, so a first purchase shows it immediately.
-            // 即使尚未持有也发送原版冷却，首次购买即可显示，且不限制购买。
+            // Native cooldown is sent even without an owned stack, so a first purchase shows it immediately; a player
+            // an admin released is skipped, so the cleared cooldown stays cleared.
+            // 即使尚未持有也发送原版冷却，首次购买即可显示，且不限制购买；管理员已解除的玩家跳过，清除的冷却不会被重新写回。
             lockOpening(world, ROUNDS.get(world), player, remaining);
         }
     }
@@ -212,6 +243,8 @@ public final class M67RoundService {
         private final GameWorldComponent.GameStatus phase;
         private final Set<M67GrenadeEntity> grenades = new HashSet<>();
         private final Set<UUID> openingLocked = new HashSet<>();
+        /** Players an admin cooldown clear released from the opening lock. / 管理员清除冷却后解除开局锁的玩家。 */
+        private final Set<UUID> openingReleased = new HashSet<>();
 
         private Round(M67RoundClock clock, GameWorldComponent.GameStatus phase) {
             this.clock = clock;

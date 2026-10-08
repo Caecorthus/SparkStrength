@@ -148,6 +148,19 @@ public final class BodyguardShieldService {
         }
     }
 
+    /**
+     * Admin path only: SparkFactionAPI {@code /sparkfactionapi:clearCooldown} just removed this player's shield
+     * cooldown (called through {@code SparkFactionAdminClear}). The stored cooldown would put it back on the next tick,
+     * so it ends now too. A raised shield stays up; the next lower, break or switch sets a normal cooldown. Role
+     * mechanics that remove cooldowns (Timekeeper refresh) never call this, so their clears are still put back.
+     * 仅管理员路径：SparkFactionAPI /sparkfactionapi:clearCooldown 刚移除了该玩家的盾冷却（经由 SparkFactionAdminClear 调用）。
+     * 记录的冷却会在下一刻把它补回，因此一并立即结束。已举起的盾保持举起；下一次放下、破盾或切换照常设置冷却。移除冷却的职业机制
+     * （计时员刷新）不会调用此方法，其清除仍会被补回。
+     */
+    public static void onAdminCooldownCleared(ServerPlayerEntity player) {
+        BodyguardGearComponent.KEY.get(player).setShieldCooldownUntil(0L);
+    }
+
     /** Death or round cleanup: no raise, no speed, no vest, no shield left behind. / 死亡或回合清理：不留举盾、移速、防弹衣与盾。 */
     public static void clearGear(ServerPlayerEntity player, boolean removeGearItems) {
         BodyguardGearComponent gear = BodyguardGearComponent.KEY.get(player);
