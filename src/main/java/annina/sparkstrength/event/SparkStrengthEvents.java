@@ -2,6 +2,7 @@ package annina.sparkstrength.event;
 
 import annina.sparkstrength.component.detective.DetectiveCasePlayerComponent;
 import annina.sparkstrength.component.demonhunter.DemonHunterSniffPlayerComponent;
+import annina.sparkstrength.component.vulture.VultureSuperCursePlayerComponent;
 import annina.sparkstrength.component.morphling.MorphBodyDisguiseWorldComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowTargetComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
@@ -50,6 +51,7 @@ import annina.sparkstrength.role.veteran.VeteranEconomyService;
 import annina.sparkstrength.role.veteran.VeteranKnifeService;
 import annina.sparkstrength.role.veteran.VeteranShopService;
 import annina.sparkstrength.role.vulture.VultureSkateboardService;
+import annina.sparkstrength.role.vulture.VultureSuperCurseService;
 import annina.sparkstrength.role.shadowjester.ShadowJesterShowdownService;
 import annina.sparkstrength.role.waiter.WaiterTaskRevealService;
 import annina.sparkstrength.role.timekeeper.TimekeeperWatchService;
@@ -103,6 +105,9 @@ public final class SparkStrengthEvents {
         TabletStateService.register();
         VeteranShopService.register();
         VultureSkateboardService.register();
+        // Super Curse death scream / curse stop on KillPlayer.AFTER and round end; registered after the skateboard.
+        // 超级骂的死亡惨叫与停止逻辑挂在 KillPlayer.AFTER 与回合结束上；注册在滑板之后。
+        VultureSuperCurseService.register();
         // 老兵经济服务同时注册死亡前阵营快照和死亡后金币结算。
         VeteranEconomyService.register();
         ShadowJesterShowdownService.register();
@@ -130,6 +135,7 @@ public final class SparkStrengthEvents {
                 AttendantFlashlightService.assignForRole(serverPlayer, role);
                 DetectiveCaseService.assignForRole(serverPlayer, role);
                 DemonHunterSniffService.assignForRole(serverPlayer, role);
+                VultureSuperCurseService.assignForRole(serverPlayer, role);
                 MorphlingService.assignForRole(serverPlayer, role);
                 PhantomBackpackService.assignForRole(serverPlayer, role);
                 ToxicologistAntidoteService.clearPlayer(serverPlayer);
@@ -159,6 +165,7 @@ public final class SparkStrengthEvents {
             }
             DetectiveCasePlayerComponent.KEY.get(player).clearAll();
             DemonHunterSniffPlayerComponent.KEY.get(player).clearSniff();
+            VultureSuperCursePlayerComponent.KEY.get(player).clear();
             if (player instanceof ServerPlayerEntity serverPlayer) {
                 CorruptCopAbilityService.reset(serverPlayer);
                 CoronerService.clearPlayer(serverPlayer);
@@ -201,6 +208,7 @@ public final class SparkStrengthEvents {
                     ReporterCommunicationComponent.KEY.get(player).reset();
                     WaiterTaskRevealService.reset(player);
                     DemonHunterSniffService.clearPlayer(player);
+                    VultureSuperCurseService.clearPlayer(player);
                     VeteranKnifeService.reset(player);
                     TimekeeperWatchComponent.KEY.get(player).reset();
                 }

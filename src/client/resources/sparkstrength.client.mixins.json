@@ -71,6 +71,7 @@
     "vulture.SkateboardFovMixin",
     "vulture.SkateboardHeldItemMixin",
     "vulture.SkateboardHudMixin",
+    "vulture.VultureSuperCurseHudMixin",
     "vulture.SkateboardLiftMixin",
     "vulture.SkateboardLimbsMixin",
     "vulture.SkateboardPresenceFootstepsMixin",

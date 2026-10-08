@@ -24,6 +24,7 @@ import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
 import annina.sparkstrength.component.toxicologist.ToxicologistAntidoteComponent;
 import annina.sparkstrength.component.veteran.VeteranKnifeComponent;
 import annina.sparkstrength.component.vulture.SkateboardRideComponent;
+import annina.sparkstrength.component.vulture.VultureSuperCursePlayerComponent;
 import annina.sparkstrength.component.shadowjester.ShadowJesterShowdownWorldComponent;
 import annina.sparkstrength.component.waiter.WaiterTaskRevealComponent;
 import annina.sparkstrength.component.timekeeper.TimekeeperWatchComponent;
@@ -96,6 +97,9 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.beginRegistration(PlayerEntity.class, SkateboardRideComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(SkateboardRideComponent::new);
+        registry.beginRegistration(PlayerEntity.class, VultureSuperCursePlayerComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(VultureSuperCursePlayerComponent::new);
         registry.beginRegistration(PlayerEntity.class, PathogenStrainComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(PathogenStrainComponent::new);
