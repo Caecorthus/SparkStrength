@@ -1,5 +1,6 @@
 package annina.sparkstrength.role.economy;
 
+import annina.sparkstrength.role.bodyguard.BodyguardRules;
 import annina.sparkstrength.role.detective.DetectiveRules;
 import annina.sparkstrength.role.coroner.CoronerRules;
 import annina.sparkstrength.role.engineer.EngineerRules;
@@ -29,7 +30,8 @@ public final class RoleEconomyRules {
                 || ToxicologistCapsuleRules.isToxicologist(role)
                 || ProfessorSerumRules.isProfessor(role)
                 || EngineerRules.isEngineer(role)
-                || VeteranRules.isVeteran(role);
+                || VeteranRules.isVeteran(role)
+                || BodyguardRules.isBodyguard(role);
     }
 
     public static boolean shouldInitializeGoodMoney(@Nullable Role role) {

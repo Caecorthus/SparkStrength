@@ -1,5 +1,6 @@
 package annina.sparkstrength.component;
 
+import annina.sparkstrength.component.bodyguard.BodyguardGearComponent;
 import annina.sparkstrength.component.pathogen.PathogenStrainComponent;
 import annina.sparkstrength.component.pathogen.VirusCarrierComponent;
 import annina.sparkstrength.component.collision.PlayerCollisionGraceWorldComponent;
@@ -28,6 +29,7 @@ import annina.sparkstrength.component.vulture.SkateboardRideComponent;
 import annina.sparkstrength.component.shadowjester.ShadowJesterShowdownWorldComponent;
 import annina.sparkstrength.component.waiter.WaiterTaskRevealComponent;
 import annina.sparkstrength.component.timekeeper.TimekeeperWatchComponent;
+import annina.sparkstrength.component.spiritualist.SpiritPossessionPlayerComponent;
 import annina.sparkstrength.component.taotie.TaotieHeadDazeComponent;
 import annina.sparkstrength.component.taotie.TaotieHeadPlayerComponent;
 import dev.doctor4t.wathe.entity.PlayerBodyEntity;
@@ -96,6 +98,9 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.beginRegistration(PlayerEntity.class, PerfumerScentComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(PerfumerScentComponent::new);
+        registry.beginRegistration(PlayerEntity.class, BodyguardGearComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(BodyguardGearComponent::new);
         registry.beginRegistration(PlayerEntity.class, SkateboardRideComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(SkateboardRideComponent::new);
@@ -114,6 +119,9 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.beginRegistration(PlayerEntity.class, TimekeeperWatchComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(TimekeeperWatchComponent::new);
+        registry.beginRegistration(PlayerEntity.class, SpiritPossessionPlayerComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(SpiritPossessionPlayerComponent::new);
         registry.beginRegistration(PlayerEntity.class, TaotieHeadPlayerComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(TaotieHeadPlayerComponent::new);

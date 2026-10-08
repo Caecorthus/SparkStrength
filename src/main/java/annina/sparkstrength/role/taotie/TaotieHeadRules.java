@@ -149,6 +149,8 @@ public final class TaotieHeadRules {
             // Vulture Super Curse (key 2), mirrored from SparkWitch #101; an unregistered id never matches.
             // 秃鹫超级骂（技能键 2），同步自 SparkWitch #101；未注册时该 id 永远不会命中。
             Identifier.of("sparkstrength", "vulture_super_curse"),
+            // Spiritualist Wraith possession start (key 2); its exit stays allowed. / 灵界行者附身冤魂（技能键 2）；退出放行。
+            Identifier.of("sparkstrength", "spirit_possess"),
             Identifier.of("sparkstrength", "call_tablet_meeting"),
             Identifier.of("sparkstrength", "cast_tablet_vote"),
             Identifier.of("sparkstrength", "confirm_tablet_vote"),

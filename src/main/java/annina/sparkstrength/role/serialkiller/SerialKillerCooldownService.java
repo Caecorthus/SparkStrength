@@ -2,6 +2,7 @@ package annina.sparkstrength.role.serialkiller;
 
 import annina.sparkstrength.compat.SparkFactionCooldownCompat;
 import dev.doctor4t.wathe.api.event.KillPlayer;
+import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheItems;
 import net.minecraft.entity.player.PlayerEntity;
@@ -22,6 +23,8 @@ public final class SerialKillerCooldownService {
      * 每次成功标记后连续保留数个 tick 的重试窗口。
      */
     private static final Map<UUID, Integer> PENDING_RESET = new HashMap<>();
+    /** BEFORE 看到的“击杀当前目标”候选（连环杀手 → 目标），等 AFTER 确认击杀成立。Guarded by PENDING_RESET. */
+    private static final Map<UUID, UUID> TARGET_KILL_CANDIDATES = new HashMap<>();
     private static final int RESET_RETRY_TICKS = 4;
     private static boolean registered;
 
@@ -32,18 +35,31 @@ public final class SerialKillerCooldownService {
         registered = true;
         // BEFORE 先记录旧目标：NoellesRoles 自身的 AFTER 会立即重分配目标，
         // 若在 AFTER 才读取 currentTarget，看到的可能已经是新 UUID。
+        // This listener only observes, so it must defer with null: BEFORE stops at the first non-null result, and
+        // returning allow() silently skipped every protection listener registered after it.
+        // 本监听器只做记录，必须返回 null：BEFORE 取第一个非 null 结果，返回 allow() 会让之后注册的所有免死监听器失效。
         KillPlayer.BEFORE.register((victim, killer, reason) -> {
-            if (killer == null || !(killer.getWorld() instanceof ServerWorld)) return dev.doctor4t.wathe.api.event.KillPlayer.KillResult.allow();
-            if (!GameFunctions.isPlayerPlayingAndAlive(killer)) return dev.doctor4t.wathe.api.event.KillPlayer.KillResult.allow();
-            if (!org.agmas.noellesroles.Noellesroles.SERIAL_KILLER.equals(
-                    dev.doctor4t.wathe.cca.GameWorldComponent.KEY.get(killer.getWorld()).getRole(killer))) return dev.doctor4t.wathe.api.event.KillPlayer.KillResult.allow();
-            SerialKillerPlayerComponent comp = SerialKillerPlayerComponent.KEY.get(killer);
-            if (comp.isCurrentTarget(victim.getUuid())) {
-                synchronized (PENDING_RESET) {
+            if (killer == null || !(killer.getWorld() instanceof ServerWorld)) return null;
+            boolean targetKill = isLivingSerialKiller(killer)
+                    && SerialKillerPlayerComponent.KEY.get(killer).isCurrentTarget(victim.getUuid());
+            synchronized (PENDING_RESET) {
+                if (targetKill) {
+                    TARGET_KILL_CANDIDATES.put(killer.getUuid(), victim.getUuid());
+                } else {
+                    TARGET_KILL_CANDIDATES.remove(killer.getUuid());
+                }
+            }
+            return null;
+        });
+        // A later protection listener may still cancel the kill, so the reset waits for AFTER, which only fires for a
+        // kill that went through. / 之后的免死监听器仍可能取消击杀，所以要等到只在击杀成立时触发的 AFTER 再标记重置。
+        KillPlayer.AFTER.register((victim, killer, reason) -> {
+            if (killer == null) return;
+            synchronized (PENDING_RESET) {
+                if (victim.getUuid().equals(TARGET_KILL_CANDIDATES.remove(killer.getUuid()))) {
                     PENDING_RESET.put(killer.getUuid(), RESET_RETRY_TICKS);
                 }
             }
-            return dev.doctor4t.wathe.api.event.KillPlayer.KillResult.allow();
         });
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_WORLD_TICK.register(world -> {
             synchronized (PENDING_RESET) {
@@ -75,6 +91,11 @@ public final class SerialKillerCooldownService {
             if (!PENDING_RESET.containsKey(player.getUuid())) return;
         }
         clearCooldowns(player);
+    }
+
+    private static boolean isLivingSerialKiller(PlayerEntity killer) {
+        return GameFunctions.isPlayerPlayingAndAlive(killer)
+                && Noellesroles.SERIAL_KILLER.equals(GameWorldComponent.KEY.get(killer.getWorld()).getRole(killer));
     }
 
     private static void clearCooldowns(PlayerEntity player) {
