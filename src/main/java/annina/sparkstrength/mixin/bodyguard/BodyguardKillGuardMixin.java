@@ -17,12 +17,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /**
  * Bodyguard hooks on the one killPlayer overload every Wathe kill funnels into:
  * - HEAD: the Democracy Shield and vest. Here the force flag is known, and the gear is spent before any KillPlayer.BEFORE
- *   listener (NoellesRoles' Iron Man / whiskey) or Wathe's psycho armour.
+ *   listener (NoellesRoles' Iron Man / whiskey) or Wathe's psycho armour. SparkWitch's AXMC may pierce the vest; the
+ *   kill then goes on past HEAD instead of being cancelled (BodyguardProtectionService).
  * - BEFORE / AFTER dispatch: NoellesRoles' Bodyguard sacrifice is decided inside its BEFORE listener, so that dispatch
  *   runs with the sacrifice suppressed and AFTER runs unsuppressed (see SacrificeSuppressionScope).
  * 保镖在 killPlayer 唯一汇总重载上的钩子：
  * - HEAD：民主盾牌与防弹衣。此处能看到 force 标记，并且装备先于任何 KillPlayer.BEFORE 监听（NoellesRoles 铁人/威士忌）
- *   与 Wathe 疯魔护甲消耗。
+ *   与 Wathe 疯魔护甲消耗。SparkWitch 的 AXMC 可以击穿防弹衣，此时击杀不在 HEAD 取消而是继续（BodyguardProtectionService）。
  * - BEFORE / AFTER 分发：NoellesRoles 在其 BEFORE 监听中判定保镖替死，所以该分发在抑制替死的状态下执行，
  *   AFTER 则不抑制（见 SacrificeSuppressionScope）。
  */

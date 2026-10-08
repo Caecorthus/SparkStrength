@@ -6,6 +6,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.HitResult;
 import org.jetbrains.annotations.Nullable;
 
@@ -156,6 +157,57 @@ public final class SparkWitchCompat {
     }
 
     /**
+     * Server thread, Bodyguard vest: asks SparkWitch's frozen
+     * {@code SparkWitchApi.tryPierceShieldLayer(PlayerEntity, PlayerEntity, Identifier)} whether the shot being settled
+     * against exactly this victim, killer and death reason pierces one more shield layer (today only the USEC AXMC's
+     * {@code wathe:gun_shot}: FMJ 2 layers, AP 5). True has already spent that pierce: the vest is then spent and the
+     * same kill goes on. False without SparkWitch, with an older facade, when the call fails, and for every other
+     * kill, so the vest then stops it as before.
+     * 服务端线程，保镖防弹衣：经 SparkWitch 冻结的 {@code SparkWitchApi.tryPierceShieldLayer} 询问正对确切的受害者、击杀者与
+     * 死因结算的这一枪能否再击穿一层护盾（目前只有 USEC AXMC 的 {@code wathe:gun_shot}：FMJ 2 层，AP 5 层）。返回 true 时该次
+     * 穿透已被花费：防弹衣随之报废，同一次击杀继续。未安装 SparkWitch、门面较旧、调用失败以及其他任何击杀时返回 false，防弹衣
+     * 照旧挡下。
+     */
+    public static boolean tryPierceShieldLayer(@Nullable ServerPlayerEntity victim, @Nullable ServerPlayerEntity killer,
+                                               @Nullable Identifier deathReason) {
+        Method method = ShieldPierceQueries.TRY_PIERCE;
+        if (method == null || victim == null || killer == null || deathReason == null) {
+            return false;
+        }
+        try {
+            return Boolean.TRUE.equals(method.invoke(null, victim, killer, deathReason));
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            return false;
+        }
+    }
+
+    /**
+     * Server thread, Democracy Shield: the stable round id ({@code "fmj"} / {@code "ap"}) of the shield-piercing shot
+     * SparkWitch is settling against exactly this victim, killer and death reason, through its frozen
+     * {@code SparkWitchApi.piercingShotAmmoId(PlayerEntity, PlayerEntity, Identifier)}. Spends nothing; the shield is
+     * never pierced and only prices its block by this round ({@code BodyguardProtectionRules.shieldPoints}). Null
+     * without SparkWitch, with an older facade, when the call fails, and for every other kill (revolvers included),
+     * so the block then keeps its usual cost.
+     * 服务端线程，民主盾牌：经 SparkWitch 冻结的 {@code SparkWitchApi.piercingShotAmmoId} 读取 SparkWitch 正对确切的受害者、
+     * 击杀者与死因结算的穿盾射击的稳定弹种 id（{@code "fmj"} / {@code "ap"}）。不花费任何预算；盾牌从不被击穿，只按弹种为格挡
+     * 定价（{@code BodyguardProtectionRules.shieldPoints}）。未安装 SparkWitch、门面较旧、调用失败以及其他任何击杀（含左轮）时
+     * 返回 null，格挡保持原有消耗。
+     */
+    public static @Nullable String piercingShotAmmoId(@Nullable ServerPlayerEntity victim,
+                                                      @Nullable ServerPlayerEntity killer,
+                                                      @Nullable Identifier deathReason) {
+        Method method = ShieldPierceQueries.AMMO_ID;
+        if (method == null || victim == null || killer == null || deathReason == null) {
+            return null;
+        }
+        try {
+            return method.invoke(null, victim, killer, deathReason) instanceof String id ? id : null;
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            return null;
+        }
+    }
+
+    /**
      * Whether {@code player} is an active SparkWitch Wraith, promoted forms included, read through the public facade
      * {@code SparkWitchApi.isWraithActive}. The Wraith component syncs to every client, so this answers on both sides.
      * False without SparkWitch, with an older facade, or when the call fails, so then nobody is a Wraith.
@@ -232,6 +284,32 @@ public final class SparkWitchCompat {
             } catch (ReflectiveOperationException | SecurityException | LinkageError ignored) {
                 // SparkWitch builds before 2026-10-07 lack this seam; the pistols then ignore its entities.
                 // 2026-10-07 之前的 SparkWitch 没有此接缝；手枪随之忽略其实体。
+                return null;
+            }
+        }
+    }
+
+    /**
+     * SparkWitch's shield pierce seam (2026-10-07), resolved once on the first Bodyguard gear check; each method is
+     * null when SparkWitch is absent or older, or its signature or return type differs.
+     * SparkWitch 的穿盾接缝（2026-10-07），首次检查保镖装备时解析一次；SparkWitch 缺失、版本较旧或签名与返回类型不符时为 null。
+     */
+    private static final class ShieldPierceQueries {
+        private static final @Nullable Method TRY_PIERCE = resolve("tryPierceShieldLayer", boolean.class);
+        private static final @Nullable Method AMMO_ID = resolve("piercingShotAmmoId", String.class);
+
+        private static @Nullable Method resolve(String name, Class<?> returnType) {
+            if (!isLoaded()) {
+                return null;
+            }
+            try {
+                Method method = Class.forName(PUBLIC_API).getMethod(name,
+                        PlayerEntity.class, PlayerEntity.class, Identifier.class);
+                return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == returnType
+                        ? method : null;
+            } catch (ReflectiveOperationException | SecurityException | LinkageError ignored) {
+                // SparkWitch builds before 2026-10-07 lack this seam; the vest and shield keep their usual rules.
+                // 2026-10-07 之前的 SparkWitch 没有此接缝；防弹衣与盾牌保持原有规则。
                 return null;
             }
         }
