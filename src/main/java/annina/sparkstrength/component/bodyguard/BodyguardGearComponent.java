@@ -4,34 +4,30 @@ import annina.sparkstrength.SparkStrength;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.nbt.NbtCompound;
-import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.registry.RegistryWrapper;
-import net.minecraft.server.network.ServerPlayerEntity;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.ladysnake.cca.api.v3.component.ComponentKey;
 import org.ladysnake.cca.api.v3.component.ComponentRegistry;
-import org.ladysnake.cca.api.v3.component.sync.AutoSyncedComponent;
+import org.ladysnake.cca.api.v3.component.Component;
 
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
 /**
- * The Bodyguard's round gear. Only the worn vest syncs, and only to its owner: the vest is invisible to everyone else
- * (owner rule). The rest is server bookkeeping: purchase caps, the shield's authoritative cooldown (so a Timekeeper
- * refresh cannot clear it), the held item for switch detection and the targets already penalised.
- * 保镖的本局装备。只同步“已穿防弹衣”，且只同步给本人：防弹衣对其他人不可见（所有者规则）。其余是服务端记账：
- * 购买上限、盾的权威冷却（计时员刷新无法清掉）、用于检测切换的手持物品，以及已扣过罚款的目标。
+ * The Bodyguard's round bookkeeping, server side only: purchase caps, the shield's authoritative cooldown (so a
+ * Timekeeper refresh cannot clear it), the held item for switch detection and the targets already penalised. The vest
+ * itself is chest armour (BodyguardVestService), so vanilla equipment sync already shows it to everyone.
+ * 保镖的本局记账，仅服务端使用：购买上限、盾的权威冷却（计时员刷新无法清掉）、用于检测切换的手持物品，以及已扣过罚款的目标。
+ * 防弹衣本身是胸甲（BodyguardVestService），原版装备同步已让所有人看到。
  */
-public final class BodyguardGearComponent implements AutoSyncedComponent {
+public final class BodyguardGearComponent implements Component {
     public static final ComponentKey<BodyguardGearComponent> KEY = ComponentRegistry.getOrCreate(
             SparkStrength.id("bodyguard_gear"),
             BodyguardGearComponent.class
     );
 
-    private final PlayerEntity player;
-    private boolean vestWorn;
     private boolean vestBought;
     private boolean shieldBought;
     /** World time the shield's cooldown ends; 0 when ready. / 盾冷却结束的世界时间；就绪时为 0。 */
@@ -42,30 +38,14 @@ public final class BodyguardGearComponent implements AutoSyncedComponent {
     private final Set<UUID> penalizedTargets = new HashSet<>();
 
     public BodyguardGearComponent(PlayerEntity player) {
-        this.player = player;
     }
 
-    public boolean isVestWorn() {
-        return vestWorn;
+    public boolean isVestBought() {
+        return vestBought;
     }
 
-    /** Puts the vest on once per round; false when it was already bought. / 每局穿上一次防弹衣；已买过时返回 false。 */
-    public boolean wearVest() {
-        if (vestBought) {
-            return false;
-        }
+    public void markVestBought() {
         vestBought = true;
-        vestWorn = true;
-        sync();
-        return true;
-    }
-
-    public void breakVest() {
-        if (!vestWorn) {
-            return;
-        }
-        vestWorn = false;
-        sync();
     }
 
     public boolean isShieldBought() {
@@ -119,37 +99,12 @@ public final class BodyguardGearComponent implements AutoSyncedComponent {
 
     /** Clears every per-round field; called at round start and end and on reset. / 清空所有单局字段；开局、结束与重置时调用。 */
     public void reset() {
-        boolean wasWorn = vestWorn;
-        vestWorn = false;
         vestBought = false;
         shieldBought = false;
         shieldCooldownUntil = 0L;
         lastMainHandItem = null;
         raiseStartTick = 0L;
         penalizedTargets.clear();
-        if (wasWorn) {
-            sync();
-        }
-    }
-
-    private void sync() {
-        KEY.sync(player);
-    }
-
-    @Override
-    public boolean shouldSyncWith(ServerPlayerEntity recipient) {
-        // The vest is invisible to others (owner rule). / 防弹衣对他人不可见（所有者规则）。
-        return recipient == player;
-    }
-
-    @Override
-    public void writeSyncPacket(RegistryByteBuf buf, ServerPlayerEntity recipient) {
-        buf.writeBoolean(vestWorn);
-    }
-
-    @Override
-    public void applySyncPacket(RegistryByteBuf buf) {
-        vestWorn = buf.readBoolean();
     }
 
     @Override
@@ -159,6 +114,6 @@ public final class BodyguardGearComponent implements AutoSyncedComponent {
 
     @Override
     public void readFromNbt(@NotNull NbtCompound tag, RegistryWrapper.WrapperLookup registryLookup) {
-        vestWorn = false;
+        // Nothing persisted. / 不持久化任何内容。
     }
 }

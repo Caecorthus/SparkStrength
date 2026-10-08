@@ -33,12 +33,20 @@ import annina.sparkstrength.role.professor.ProfessorSerumType;
 import annina.sparkstrength.role.toxicologist.ToxicologistBlueRules;
 import com.mojang.serialization.Codec;
 import net.minecraft.component.ComponentType;
+import net.minecraft.item.ArmorItem;
+import net.minecraft.item.ArmorMaterial;
 import net.minecraft.item.Item;
 import net.minecraft.network.codec.PacketCodecs;
+import net.minecraft.recipe.Ingredient;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
+import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.Identifier;
 import org.agmas.noellesroles.item.IngredientItem;
+
+import java.util.List;
+import java.util.Map;
 
 public final class SparkStrengthItems {
     public static final Identifier CAPSULE_ID = SparkStrength.id("capsule");
@@ -282,10 +290,25 @@ public final class SparkStrengthItems {
                 DEMOCRACY_SHIELD_ID,
                 new DemocracyShieldItem(new Item.Settings().maxCount(1))
         );
+        // Zero defence: the vest only matters to Wathe kills (BodyguardVestService), and no vanilla armour bar shows.
+        // 护甲值为 0：防弹衣只对 Wathe 击杀生效（BodyguardVestService），也不会显示原版护甲条。
+        RegistryEntry<ArmorMaterial> vestMaterial = Registry.registerReference(
+                Registries.ARMOR_MATERIAL,
+                BODYGUARD_VEST_ID,
+                new ArmorMaterial(
+                        Map.of(ArmorItem.Type.CHESTPLATE, 0),
+                        0,
+                        SoundEvents.ITEM_ARMOR_EQUIP_CHAIN,
+                        () -> Ingredient.EMPTY,
+                        List.of(new ArmorMaterial.Layer(BODYGUARD_VEST_ID)),
+                        0.0F,
+                        0.0F
+                )
+        );
         bodyguardVest = Registry.register(
                 Registries.ITEM,
                 BODYGUARD_VEST_ID,
-                new BodyguardVestItem(new Item.Settings().maxCount(1))
+                new BodyguardVestItem(vestMaterial, new Item.Settings().maxCount(1))
         );
         registered = true;
     }
