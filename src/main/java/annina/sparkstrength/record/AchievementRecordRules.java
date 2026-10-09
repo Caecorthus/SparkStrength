@@ -55,4 +55,14 @@ public final class AchievementRecordRules {
     public static boolean disguiseChanged(UUID previousUuid, String previousRoleId, UUID nextUuid, String nextRoleId) {
         return !Objects.equals(previousUuid, nextUuid) || !Objects.equals(previousRoleId, nextRoleId);
     }
+
+    /**
+     * Coins an income actually added to the killer team purse: purse after - before, or 0 when the purse did not grow
+     * (closed purse, a share that rounds down to 0, a purse already at the int cap). Overflow-safe.
+     * 一笔收入实际计入杀手团队钱包的金币：入账后 - 入账前；钱包未增加（未开启、份额向下取整为 0、已达 int 上限）时为 0。不会溢出。
+     */
+    public static int purseIncrease(int purseBefore, int purseAfter) {
+        long added = (long) purseAfter - purseBefore;
+        return added > 0 ? (int) Math.min(Integer.MAX_VALUE, added) : 0;
+    }
 }
