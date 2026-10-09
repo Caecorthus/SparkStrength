@@ -2,6 +2,9 @@ package annina.sparkstrength.role.toxicologist;
 
 import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.compat.SparkTraitsBluePoisonCompat;
+import annina.sparkstrength.record.AchievementRecords;
+import annina.sparkstrength.record.EntryDebounce;
+import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerMoodComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.effect.StatusEffectInstance;
@@ -38,8 +41,15 @@ import java.util.UUID;
  */
 public final class ToxicologistBluePassiveService {
     private static final String HIDDEN_EFFECT_NBT_KEY = "hidden_effect";
+    /**
+     * Achievement record only: gas renewals can flicker the blue state off for a tick or so, so a new blue-state entry
+     * needs this many inactive ticks in a row first.
+     * 仅用于成就记录：毒气续期可能让蓝毒状态闪断一两个 tick，因此需先连续熄灭这么多 tick 才算新的一次进入。
+     */
+    private static final int BLUE_ENTRY_QUIET_TICKS = 20;
     private static final Map<UUID, OwnedSpeed> OWNED_SPEED = new HashMap<>();
     private static final Set<UUID> DRAIN_SKIPPED_THIS_TICK = new HashSet<>();
+    private static final EntryDebounce BLUE_ENTRIES = new EntryDebounce(BLUE_ENTRY_QUIET_TICKS);
     private static boolean registered;
     private static boolean supported;
 
@@ -66,6 +76,12 @@ public final class ToxicologistBluePassiveService {
             boolean drainSkipped = DRAIN_SKIPPED_THIS_TICK.remove(player.getUuid());
             boolean active = isEligible(player) && ToxicologistBlueRules.isBlueStateActive(
                     SparkTraitsBluePoisonCompat.getBlueSanityDrainTicks(player), drainSkipped);
+            // Achievement record: every blue-state tick feeds the debounce; only real Toxicologists (not Coroners
+            // disguised as one) are recorded, once per entry.
+            // 成就记录：每个蓝毒状态 tick 都参与去抖；只记录真正的毒理学家（不含伪装成毒理学家的验尸官），每次进入记一次。
+            if (BLUE_ENTRIES.observe(player.getUuid(), active, world.getTime()) && isRealToxicologist(player)) {
+                AchievementRecords.toxicologistBlue(player);
+            }
             if (active) {
                 PlayerMoodComponent mood = PlayerMoodComponent.KEY.get(player);
                 mood.setMood(ToxicologistBlueRules.regeneratedMood(mood.getMood()));
@@ -83,6 +99,7 @@ public final class ToxicologistBluePassiveService {
      *  对局结束、死亡或重置：只移除自己给的速度并清除该玩家记录。 */
     public static void clearPlayer(ServerPlayerEntity player) {
         DRAIN_SKIPPED_THIS_TICK.remove(player.getUuid());
+        BLUE_ENTRIES.forget(player.getUuid());
         releaseOwnedSpeed(player);
     }
 
@@ -106,6 +123,10 @@ public final class ToxicologistBluePassiveService {
                 ToxicologistBlueRules.isToxicologistLike(player),
                 GameFunctions.isPlayerPlayingAndAlive(player),
                 GameFunctions.isPlayerSpectatingOrCreative(player));
+    }
+
+    private static boolean isRealToxicologist(ServerPlayerEntity player) {
+        return ToxicologistCapsuleRules.isToxicologist(GameWorldComponent.KEY.get(player.getWorld()).getRole(player));
     }
 
     private static void refreshOwnedSpeed(ServerPlayerEntity player) {

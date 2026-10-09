@@ -7,6 +7,7 @@ import annina.sparkstrength.component.engineer.EngineerStunnedPlayerComponent;
 import annina.sparkstrength.component.vulture.SkateboardRideComponent;
 import annina.sparkstrength.mixin.minecraft.ItemCooldownEntryAccessor;
 import annina.sparkstrength.mixin.minecraft.ItemCooldownManagerAccessor;
+import annina.sparkstrength.record.AchievementRecords;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
 import dev.doctor4t.wathe.api.event.GameEvents;
 import dev.doctor4t.wathe.api.event.KillPlayer;
@@ -152,7 +153,10 @@ public final class VultureSkateboardService {
         }
         world.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.BLOCK_BAMBOO_WOOD_PLACE,
                 SoundCategory.PLAYERS, 0.7F, 1.3F);
-        GameRecordManager.recordGlobalEvent(world, SparkStrengthReplayFormatters.SKATEBOARD_RIDE_STARTED, player, null);
+        // has_speed / speed_amplifier (vanilla Speed at ride start) are read by SparkAssist's achievements.
+        // has_speed / speed_amplifier（上板时的原版速度效果）供 SparkAssist 成就读取。
+        GameRecordManager.recordGlobalEvent(world, SparkStrengthReplayFormatters.SKATEBOARD_RIDE_STARTED, player,
+                AchievementRecords.skateboardRideExtra(player));
         return true;
     }
 

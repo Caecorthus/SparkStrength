@@ -6,6 +6,7 @@ import annina.sparkstrength.compat.SparkFactionCompat;
 import annina.sparkstrength.component.detective.DetectiveCasePlayerComponent;
 import annina.sparkstrength.component.detective.DetectiveCaseWorldComponent;
 import annina.sparkstrength.network.detective.OpenDetectiveFolderS2CPacket;
+import annina.sparkstrength.record.AchievementRecords;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -468,6 +469,9 @@ public final class DetectiveCaseService {
         }
         sendActionBar(user, "clue", displayText(identity), distanceBlocks);
         folder.sync();
+        // Achievement record: the real suspect and the snapshot's real victim, never the displayed identities.
+        // 成就记录：使用真实嫌疑人与快照中的真实死者，而不是显示身份。
+        AchievementRecords.detectiveInterrogate(user, suspect, snapshot.victimUuid());
     }
 
     private static @Nullable DetectiveCasePlayerComponent editableFolder(ServerPlayerEntity player, UUID caseId) {
