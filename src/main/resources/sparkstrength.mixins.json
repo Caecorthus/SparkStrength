@@ -74,6 +74,7 @@
     "wathe.GameWorldComponentDeadPlayersAccessor",
     "wathe.GrenadeExplosionMixin",
     "wathe.JesterFakeDeathImmunityMixin",
+    "wathe.JumpStaminaCostMixin",
     "wathe.PlayerCollisionGraceMixin",
     "wathe.KillerPassiveMoneyCapMixin",
     "wathe.KillerTeamPassiveIncomeMixin",
