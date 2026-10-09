@@ -1,13 +1,14 @@
 package annina.sparkstrength.role.jester;
 
+import java.util.List;
 import java.util.function.IntUnaryOperator;
 
 /**
  * Pure rules for SparkStrength's tweaks to the NoellesRoles Jester Moment: the kill-driven screen grayscale, who is
- * cut off from voice chat, how long the shot freezes everyone, and how everyone is shuffled when the Jester revives.
- * No Minecraft types, so local tests run it as is.
+ * cut off from voice chat, how long the shot freezes everyone, how everyone is shuffled when the Jester revives, and
+ * how high a shuffled spot's feet must be to stand on it. No Minecraft types, so local tests run it as is.
  * SparkStrength 对 NoellesRoles 小丑时刻的调整规则：按击杀累积的屏幕灰度、谁被切断语音、中枪后全员定身多久、
- * 小丑复活时如何打乱所有人的位置。不依赖 Minecraft 类型，本地测试可直接运行。
+ * 小丑复活时如何打乱所有人的位置、打乱后的位置脚要多高才能站住。不依赖 Minecraft 类型，本地测试可直接运行。
  */
 public final class JesterMomentRules {
     /** Each Jester Moment kill greys the Jester's screen by another 10%. / 小丑时刻每击杀一人，屏幕灰度再加 10%。 */
@@ -24,8 +25,22 @@ public final class JesterMomentRules {
      * 中枪后全员定身时长 = 小丑假死时长 + 此余量。复活时会准时解除；余量只用于 NoellesRoles 中途放弃转变时兜底。
      */
     public static final int FREEZE_MARGIN_TICKS = 40;
+    /**
+     * How far a shuffled spot's feet may be raised out of the blocks around them. Wathe's couches sink a seated
+     * player's feet at most 0.15 into the floor.
+     * 打乱后的位置最多把脚从方块里抬高多少。Wathe 沙发让坐着的玩家脚最多陷入地板 0.15。
+     */
+    public static final double MAX_FEET_LIFT = 1.0D;
+    private static final double FEET_EPSILON = 1.0E-4D;
 
     private JesterMomentRules() {
+    }
+
+    /**
+     * Vertical extent of one block collision box under a spot's standing footprint.
+     * 位置站立范围内一个方块碰撞箱的竖直范围。
+     */
+    public record Span(double minY, double maxY) {
     }
 
     /** Target grayscale for a kill count: 10% per kill, capped at 50%. / 击杀数对应的目标灰度：每人 10%，上限 50%。 */
@@ -87,5 +102,30 @@ public final class JesterMomentRules {
             spots[j] = swap;
         }
         return spots;
+    }
+
+    /**
+     * Feet height at which a player can stand on a spot. A block the feet are already inside does not hold a player up
+     * (Minecraft only collides with blocks it is about to enter), so a player put there falls through it, and under a
+     * train floor that means out of the train. The feet rise to the top of every box they are inside, as long as that
+     * stays within {@link #MAX_FEET_LIFT}; a box that only touches the feet, ending or starting there, is left alone.
+     * 玩家能站住的脚高。脚已经陷入的方块托不住玩家（Minecraft 只与即将进入的方块碰撞），玩家会穿过它坠落，
+     * 列车地板下面就是车外。脚抬到所陷入的每个碰撞箱顶部，总抬高不超过 {@link #MAX_FEET_LIFT}；
+     * 只与脚接触（在脚处结束或开始）的碰撞箱不算陷入。
+     */
+    public static double standingFeetY(double feetY, List<Span> spans) {
+        double y = feetY;
+        boolean lifted = true;
+        while (lifted) {
+            lifted = false;
+            for (Span span : spans) {
+                if (span.minY() < y - FEET_EPSILON && span.maxY() > y + FEET_EPSILON
+                        && span.maxY() - feetY <= MAX_FEET_LIFT + FEET_EPSILON) {
+                    y = span.maxY();
+                    lifted = true;
+                }
+            }
+        }
+        return y;
     }
 }

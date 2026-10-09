@@ -6,13 +6,16 @@ import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.record.GameRecordManager;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.shape.VoxelShape;
 import org.agmas.noellesroles.Noellesroles;
 import org.agmas.noellesroles.jester.JesterPlayerComponent;
 import org.agmas.noellesroles.taotie.SwallowedPlayerComponent;
@@ -105,8 +108,11 @@ public final class JesterMomentService {
      * Server: the Jester has revived at its death spot and is about to enter stasis (the transformation). Everyone,
      * the Jester included, moves to someone else's frozen spot and is released, so the others can run before the moment
      * starts. Runs before NoellesRoles records the stasis point, so the Jester's stasis lock holds its new spot.
+     * Everyone gets up first and every spot is one a player can stand on: Wathe couches and ottomans sink a seated
+     * player's feet into the floor, and whoever was sent there fell through it and out of the train.
      * 服务端：小丑已在死亡处复活，即将进入禁锢（转变）。所有人（含小丑）移到别人被定住的位置并解除定身，
      * 其他人可以在时刻开始前逃跑。在 NoellesRoles 记录禁锢点之前执行，因此小丑的禁锢会锁在新位置。
+     * 所有人先起身，每个位置都能站住：Wathe 的沙发和脚凳让坐着的玩家脚陷进地板，被换过去的人会穿过地板掉出列车。
      */
     public static void onTransformationStarted(ServerPlayerEntity jester) {
         ServerWorld world = jester.getServerWorld();
@@ -116,7 +122,8 @@ public final class JesterMomentService {
         }
         List<Spot> spots = new ArrayList<>(players.size());
         for (ServerPlayerEntity player : players) {
-            spots.add(new Spot(player.getPos(), player.getYaw(), player.getPitch()));
+            standUp(player);
+            spots.add(new Spot(standingSpot(world, player), player.getYaw(), player.getPitch()));
         }
         int[] targets = JesterMomentRules.shuffleSpots(players.size(), bound -> world.getRandom().nextInt(bound));
         for (int i = 0; i < players.size(); i++) {
@@ -136,6 +143,44 @@ public final class JesterMomentService {
         NbtCompound extra = new NbtCompound();
         extra.putInt("players", players.size());
         GameRecordManager.recordGlobalEvent(world, SparkStrengthReplayFormatters.JESTER_POSITIONS_SHUFFLED, jester, extra);
+    }
+
+    /**
+     * Server: out of bed and off any seat, as NoellesRoles' Swapper does before a swap. A sleeper would otherwise be
+     * moved still lying down, and a seated player's position is not a standing spot. Vanilla puts a sleeper beside its
+     * bed and a sitter on top of its seat.
+     * 服务端：下床、离座，与 NoellesRoles 换位者交换前的做法相同。否则睡着的人会躺着被传走，坐着的人的位置也不是站立点。
+     * 原版会把睡着的人放到床边，把坐着的人放到座位上面。
+     */
+    private static void standUp(ServerPlayerEntity player) {
+        if (player.isSleeping()) {
+            player.wakeUp();
+        }
+        if (player.hasVehicle()) {
+            player.stopRiding();
+        }
+    }
+
+    /**
+     * The player's position with the feet raised out of any block they are inside (see
+     * {@link JesterMomentRules#standingFeetY}). The footprint is pulled in a hair so a wall the player is pressed
+     * against does not count.
+     * 玩家位置，脚从陷入的方块中抬出（见 {@link JesterMomentRules#standingFeetY}）。站立范围略微内缩，
+     * 贴着的墙不算在内。
+     */
+    private static Vec3d standingSpot(ServerWorld world, ServerPlayerEntity player) {
+        Vec3d pos = player.getPos();
+        Box footprint = PlayerEntity.STANDING_DIMENSIONS.getBoxAt(pos).contract(1.0E-4D, 0.0D, 1.0E-4D);
+        Box scan = footprint.withMinY(pos.y).withMaxY(pos.y + JesterMomentRules.MAX_FEET_LIFT);
+        List<JesterMomentRules.Span> spans = new ArrayList<>();
+        for (VoxelShape shape : world.getBlockCollisions(player, scan)) {
+            shape.forEachBox((minX, minY, minZ, maxX, maxY, maxZ) -> {
+                if (maxX > scan.minX && minX < scan.maxX && maxZ > scan.minZ && minZ < scan.maxZ) {
+                    spans.add(new JesterMomentRules.Span(minY, maxY));
+                }
+            });
+        }
+        return new Vec3d(pos.x, JesterMomentRules.standingFeetY(pos.y, spans), pos.z);
     }
 
     /**
