@@ -7,6 +7,8 @@ import annina.sparkstrength.component.coroner.CoronerPlayerComponent;
 import annina.sparkstrength.component.morphling.MorphBodyDisguiseWorldComponent;
 import annina.sparkstrength.component.morphling.MorphMarkPlayerComponent;
 import annina.sparkstrength.component.timekeeper.TimekeeperWatchComponent;
+import annina.sparkstrength.record.AchievementRecordRules;
+import annina.sparkstrength.record.AchievementRecords;
 import com.mojang.authlib.GameProfile;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.PsychoModeEvents;
@@ -151,11 +153,14 @@ public final class CoronerService {
         }
 
         CoronerPlayerComponent component = CoronerPlayerComponent.KEY.get(coroner);
+        UUID previousUuid = component.activeDisguiseUuid();
+        Identifier previousRoleId = component.activeDisguiseRoleId();
         if (targetUuid.equals(coroner.getUuid())) {
             removeTemporaryItems(coroner);
             TimekeeperWatchComponent.KEY.get(coroner).reset();
             DemonHunterPlayerComponent.KEY.get(coroner).reset();
             component.clearDisguise();
+            recordDisguiseChange(coroner, previousUuid, previousRoleId, null, null);
             return true;
         }
 
@@ -181,7 +186,25 @@ public final class CoronerService {
         } else {
             grantTemporaryEquipment(coroner, targetUuid, snapshot);
         }
+        recordDisguiseChange(coroner, previousUuid, previousRoleId, targetUuid, component.activeDisguiseRoleId());
         return true;
+    }
+
+    /**
+     * Achievement record for the Coroner's own disguise choice: only a real change (re-selecting the same body or
+     * clearing nothing records nothing); a null role means the disguise was cleared.
+     * 验尸官主动选择伪装时的成就记录：只记录真实变化（重选同一具尸体或无伪装时清除都不记录）；role 为 null 表示已清除。
+     */
+    private static void recordDisguiseChange(ServerPlayerEntity coroner, @Nullable UUID previousUuid,
+                                             @Nullable Identifier previousRoleId, @Nullable UUID nextUuid,
+                                             @Nullable Identifier nextRoleId) {
+        if (AchievementRecordRules.disguiseChanged(previousUuid, idString(previousRoleId), nextUuid, idString(nextRoleId))) {
+            AchievementRecords.coronerDisguise(coroner, nextRoleId);
+        }
+    }
+
+    private static @Nullable String idString(@Nullable Identifier id) {
+        return id == null ? null : id.toString();
     }
 
     public static @Nullable UUID activeDisguiseUuid(PlayerEntity player) {

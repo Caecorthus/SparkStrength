@@ -7,6 +7,7 @@ import annina.sparkstrength.component.engineer.EngineerStunnedPlayerComponent;
 import annina.sparkstrength.component.taotie.TaotieHeadPlayerComponent;
 import annina.sparkstrength.entity.TaotieHeadEntity;
 import annina.sparkstrength.item.m67.M67RoundService;
+import annina.sparkstrength.record.AchievementRecords;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
 import annina.sparkstrength.role.taotie.TaotieHeadRules.Heading;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -121,6 +122,8 @@ public final class TaotieHeadService {
                 SoundCategory.PLAYERS, TaotieHeadRules.LAUNCH_SPIT_VOLUME, TaotieHeadRules.LAUNCH_SPIT_PITCH);
         world.playSound(null, taotie.getX(), taotie.getEyeY(), taotie.getZ(), SoundEvents.ENTITY_GHAST_SHOOT,
                 SoundCategory.PLAYERS, TaotieHeadRules.LAUNCH_GHAST_VOLUME, TaotieHeadRules.LAUNCH_GHAST_PITCH);
+        // Achievement record: the heads that really spawned, not the stomach size. / 成就记录：实际生成的头颅数，而非体内人数。
+        AchievementRecords.taotieVolley(taotie, spawned);
     }
 
     /**
