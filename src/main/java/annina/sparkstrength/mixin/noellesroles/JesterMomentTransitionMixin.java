@@ -48,6 +48,18 @@ public abstract class JesterMomentTransitionMixin {
     @Unique
     private boolean sparkstrength$othersSawMoment;
 
+    /**
+     * A Jester shot while seated would have its death spot (where its body lies and where it revives) recorded at
+     * seated height, inside the floor. Get it up first, as the spectator switch that follows would anyway.
+     * 坐着被击中的小丑，死亡处（尸体所在、复活所在）会按坐姿高度记录在地板里。先让它起身，随后切换旁观模式本来也会让它离座。
+     */
+    @Inject(method = "beginFakeDeath", at = @At("HEAD"))
+    private void sparkstrength$standUpBeforeDeathSpot(CallbackInfo ci) {
+        if (this.player instanceof ServerPlayerEntity serverJester && serverJester.hasVehicle()) {
+            serverJester.stopRiding();
+        }
+    }
+
     @Inject(method = "beginFakeDeath", at = @At("RETURN"))
     private void sparkstrength$freezeEveryone(CallbackInfo ci) {
         JesterPlayerComponent jester = (JesterPlayerComponent) (Object) this;
