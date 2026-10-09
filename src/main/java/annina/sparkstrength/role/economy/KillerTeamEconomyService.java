@@ -3,6 +3,7 @@ package annina.sparkstrength.role.economy;
 import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.component.economy.KillerTeamEconomyWorldComponent;
 import annina.sparkstrength.network.economy.SyncKillerTeamEconomyS2CPacket;
+import annina.sparkstrength.record.AchievementRecords;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.GameEvents;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -96,9 +97,13 @@ public final class KillerTeamEconomyService {
             return;
         }
         ServerWorld world = serverPlayer.getServerWorld();
-        if (KillerTeamEconomyWorldComponent.KEY.get(world).recordIncome(
-                actualIncome, SparkTraitsCompat.hasTeamFirst(serverPlayer))) {
+        KillerTeamEconomyWorldComponent purse = KillerTeamEconomyWorldComponent.KEY.get(world);
+        int purseBefore = purse.getBalance();
+        if (purse.recordIncome(actualIncome, SparkTraitsCompat.hasTeamFirst(serverPlayer))) {
             syncWorld(world);
+            // Achievement record S7 for SparkAssist: this killer's income raised the purse (amount = after - before).
+            // 成就记录 S7（供 SparkAssist）：该杀手的收入使团队钱包增加（amount = 入账后 - 入账前）。
+            AchievementRecords.teamContribution(serverPlayer, purseBefore, purse.getBalance());
         }
     }
 

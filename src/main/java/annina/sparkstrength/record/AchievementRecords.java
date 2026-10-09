@@ -16,10 +16,10 @@ import java.util.UUID;
 
 /**
  * Extra match-record data that SparkAssist reads for its local hidden achievements (achievement record contract,
- * SparkStrength part S1-S6). Event types and field names are binding. Server only: every caller runs on the logical
+ * SparkStrength part S1-S7). Event types and field names are binding. Server only: every caller runs on the logical
  * server, and Wathe's builder already drops events outside an active match. No replay formatter is registered for
  * these types, so Wathe's replay skips them. A recording failure is logged and swallowed: it never breaks gameplay.
- * SparkAssist 本地隐藏成就读取的额外对局记录数据（成就记录契约 SparkStrength 部分 S1-S6）。事件类型与字段名不可更改。
+ * SparkAssist 本地隐藏成就读取的额外对局记录数据（成就记录契约 SparkStrength 部分 S1-S7）。事件类型与字段名不可更改。
  * 仅服务端：所有调用方都在逻辑服务端，且 Wathe 的构建器会丢弃对局外的事件。这些类型不注册回放格式化器，
  * Wathe 回放会跳过它们。记录失败只写日志并吞掉异常，绝不影响玩法。
  */
@@ -34,6 +34,8 @@ public final class AchievementRecords {
     public static final String CORRUPT_COP_SHOW_OFF = "sparkstrength:corrupt_cop_show_off";
     /** S5. actor = the Coroner; role string ("" when cleared), killer bool. / actor 为验尸官；清除时 role 为空串。 */
     public static final String CORONER_DISGUISE = "sparkstrength:coroner_disguise";
+    /** S7. actor = the killer whose income it was; amount int = coins it added to the purse. / actor 为收入所属杀手；amount 为计入团队钱包的金币。 */
+    public static final String TEAM_CONTRIBUTION = "sparkstrength:team_contribution";
 
     private AchievementRecords() {
     }
@@ -91,6 +93,20 @@ public final class AchievementRecords {
                 .put("role", roleId == null ? "" : roleId.toString())
                 .putBool("killer", roleId != null && CoronerRules.isKillerFaction(CoronerRules.resolveRole(roleId)))
                 .record());
+    }
+
+    /**
+     * S7: a killer's income moved the killer team purse from {@code purseBefore} to {@code purseAfter}; records
+     * {@code amount} = the increase, and nothing when the purse did not grow. One event per contribution.
+     * 杀手的收入使杀手团队钱包从 purseBefore 变为 purseAfter；记录 amount = 增加量，钱包未增加时不记录。每笔贡献一条事件。
+     */
+    public static void teamContribution(ServerPlayerEntity killer, int purseBefore, int purseAfter) {
+        safely(TEAM_CONTRIBUTION, () -> {
+            int amount = AchievementRecordRules.purseIncrease(purseBefore, purseAfter);
+            if (amount > 0) {
+                GameRecordManager.event(TEAM_CONTRIBUTION).actor(killer).putInt("amount", amount).record();
+            }
+        });
     }
 
     /**
