@@ -17,8 +17,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(value = Noellesroles.class, remap = false)
 public abstract class CorruptCopAbilityPacketMixin {
-    // Two authorized NoellesRoles 1.7.6 builds exist: SparkStrength's historical jar uses $36,
-    // while the shared SparkTraits/SparkWitch runtime baseline uses $5 for the same packet handler.
+    // Two authorized NoellesRoles 1.7.6 builds exist: the historical Windows build uses $36,
+    // while the runtime baseline that libs/, SparkTraits and SparkWitch share uses $5 for the same packet handler.
     // The group requires exactly one binary-specific seam to resolve at runtime.
     // 两个已授权的 NoellesRoles 1.7.6 构建分别在 $36 与 $5 处理同一个技能包；运行时必须且只能命中一个。
     @Group(name = "sparkstrength$corruptCopAbility", min = 1, max = 1)
