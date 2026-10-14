@@ -2,6 +2,7 @@ package annina.sparkstrength.entity;
 
 import annina.sparkstrength.SparkStrengthEntities;
 import annina.sparkstrength.component.engineer.EngineerStunnedPlayerComponent;
+import annina.sparkstrength.record.AchievementRecords;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
 import annina.sparkstrength.role.engineer.EngineerCaptureReport;
 import annina.sparkstrength.role.engineer.EngineerRules;
@@ -161,6 +162,7 @@ public final class CaptureDeviceEntity extends Entity {
     }
 
     private void trigger(List<ServerPlayerEntity> capturedPlayers) {
+        UUID ownerUuid = getOwnerUuid();
         for (ServerPlayerEntity player : capturedPlayers) {
             // CCA stores and syncs stun state; the client blocks input while the server locks position and velocity.
             // 定身状态由 CCA 组件保存并同步：客户端负责禁输入，服务端负责锁位置与清速度。
@@ -168,11 +170,12 @@ public final class CaptureDeviceEntity extends Entity {
             player.sendMessage(Text.translatable("message.sparkstrength.capture_device.captured")
                     .formatted(Formatting.RED), true);
             player.playSoundToPlayer(SoundEvents.BLOCK_ANVIL_LAND, SoundCategory.PLAYERS, 1.0F, 1.0F);
+            // Achievement record (S10): the device owner rides along as an extra uuid. / 成就记录（S10）：附带装置主人 UUID。
             GameRecordManager.recordGlobalEvent(
                     player.getServerWorld(),
                     SparkStrengthReplayFormatters.CAPTURE_DEVICE_TRIGGERED,
                     player,
-                    null
+                    AchievementRecords.captureDeviceTriggeredExtra(ownerUuid)
             );
         }
 

@@ -1,6 +1,7 @@
 package annina.sparkstrength.role.engineer;
 
 import annina.sparkstrength.mixin.wathe.PlayerShopComponentAccessor;
+import annina.sparkstrength.record.BlackoutRecorder;
 import dev.doctor4t.wathe.api.event.ShopPurchase;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerShopComponent;
@@ -51,6 +52,9 @@ public final class EngineerPowerRestorationService {
             for (ServerPlayerEntity player : serverWorld.getPlayers()) {
                 player.playSoundToPlayer(WatheSounds.BLOCK_LIGHT_TOGGLE, SoundCategory.PLAYERS, 1.0F, 1.0F);
             }
+        }
+        if (buyer instanceof ServerPlayerEntity restorer) {
+            BlackoutRecorder.restored(restorer);
         }
         return true;
     }

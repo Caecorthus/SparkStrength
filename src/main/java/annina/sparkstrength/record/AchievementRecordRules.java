@@ -65,4 +65,13 @@ public final class AchievementRecordRules {
         long added = (long) purseAfter - purseBefore;
         return added > 0 ? (int) Math.min(Integer.MAX_VALUE, added) : 0;
     }
+
+    /**
+     * A throwing axe hit killed its victim: alive (not marked dead) before the kill call and marked dead after it.
+     * A cancelled kill (shield, vest, fake death) or an already dead victim is a hit without a kill.
+     * 飞斧命中杀死了受害者：击杀调用前存活（未标记死亡）且调用后被标记死亡。被取消的击杀（护盾、防弹衣、假死）或本已死亡的受害者只算命中不算击杀。
+     */
+    public static boolean killedByHit(boolean deadBefore, boolean deadAfter) {
+        return !deadBefore && deadAfter;
+    }
 }
