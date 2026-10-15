@@ -303,8 +303,8 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
         meetingCalls.merge(playerUuid, 1, Integer::sum);
     }
 
-    public void startMeeting() {
-        meeting = new Meeting(meetingDurationTicks);
+    public void startMeeting(UUID caller) {
+        meeting = new Meeting(meetingDurationTicks, caller);
     }
 
     public void clearMeeting() {
@@ -561,12 +561,19 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
 
     public static final class Meeting {
         private int ticksRemaining;
+        /** Who called it, for the achievement record (S12); null in saves from before the field. 召开者，供成就记录（S12）；旧存档为 null。 */
+        private final @Nullable UUID caller;
         private final LinkedHashMap<UUID, UUID> votes = new LinkedHashMap<>();
         private final LinkedHashSet<UUID> abstentions = new LinkedHashSet<>();
         private final LinkedHashSet<UUID> confirmed = new LinkedHashSet<>();
 
-        private Meeting(int ticksRemaining) {
+        private Meeting(int ticksRemaining, @Nullable UUID caller) {
             this.ticksRemaining = Math.max(0, ticksRemaining);
+            this.caller = caller;
+        }
+
+        public @Nullable UUID caller() {
+            return caller;
         }
 
         public int ticksRemaining() {
@@ -637,6 +644,9 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
         private NbtCompound toNbt() {
             NbtCompound tag = new NbtCompound();
             tag.putInt("TicksRemaining", ticksRemaining);
+            if (caller != null) {
+                tag.putUuid("Caller", caller);
+            }
 
             NbtList voteTags = new NbtList();
             for (Map.Entry<UUID, UUID> entry : votes.entrySet()) {
@@ -653,7 +663,8 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
         }
 
         private static Meeting fromNbt(NbtCompound tag) {
-            Meeting meeting = new Meeting(tag.getInt("TicksRemaining"));
+            Meeting meeting = new Meeting(tag.getInt("TicksRemaining"),
+                    tag.containsUuid("Caller") ? tag.getUuid("Caller") : null);
 
             NbtList voteTags = tag.getList("Votes", NbtElement.COMPOUND_TYPE);
             for (int i = 0; i < voteTags.size(); i++) {

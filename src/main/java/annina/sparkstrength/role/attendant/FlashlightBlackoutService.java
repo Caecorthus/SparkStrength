@@ -1,6 +1,7 @@
 package annina.sparkstrength.role.attendant;
 
 import annina.sparkstrength.item.FlashlightItem;
+import annina.sparkstrength.record.BlackoutRecorder;
 import dev.doctor4t.wathe.api.event.BlackoutEffect;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
@@ -41,6 +42,8 @@ public final class FlashlightBlackoutService {
 
         removeCurrentBlackoutBlindness(player, durationTicks);
         RECENT_BLACKOUT_BLINDNESS.remove(player.getUuid());
+        // Wathe passes the blackout's remaining ticks as the blindness duration. / Wathe 以停电剩余 tick 作为失明时长传入。
+        BlackoutRecorder.flashlightCancelled(player, durationTicks);
         return BlackoutEffect.BlackoutResult.cancel();
     }
 
