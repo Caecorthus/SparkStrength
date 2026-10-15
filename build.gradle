@@ -105,10 +105,13 @@ def providerBaselines = [
                 version  : "1.5.6-spark-1.21.1",
                 sha256   : "95d7c0666cca71644067493eadb3a9e079c6631d35eb9853ceb77c7783bc643c"
         ],
+        // The runtime baseline build (sha1 b2302b9…). Its AbilityC2SPacket handler is $5; the historical
+        // Windows build of the same sources numbers it $36. 运行时基线构建；同一源码的旧 Windows 构建编号为 $36。
         noellesroles: [
-                fileName : "noellesroles-1.7.6-h1.5.6-spark.jar",
-                version  : "1.7.6-h1.5.6-spark",
-                sha256   : "05109fdfa2d7d50fcbd1c559d229377cd8fdbceaeb67a0b530fa368bcc62730c"
+                fileName       : "noellesroles-1.7.6-h1.5.6-spark.jar",
+                version        : "1.7.6-h1.5.6-spark",
+                sha256         : "fcb0da6995197afff8637dd9236f96d9d07cfc0e26484ad3777e5cf3de37d8b7",
+                abilityHandler : "lambda\$registerPackets\$5"
         ]
 ]
 def supersededProviderJars = [
@@ -429,15 +432,20 @@ tasks.register("verifyCompatibilityArtifact") {
                 }
             }
 
+            // Like the mixin's @Group(min = 1, max = 1): of both selectors, only the pinned jar's handler may resolve.
+            // 与 mixin 的 @Group(min = 1, max = 1) 一致：两个入口中只能命中锁定 jar 的那一个。
             def verifyProviderSeam = { File providerJar, String handlerName ->
                 def providerZip = new java.util.zip.ZipFile(providerJar)
                 try {
                     def noellesRoles = readClassNode(providerZip, "org/agmas/noellesroles/Noellesroles.class")
-                    if (noellesRoles.methods.find {
-                        it.name == handlerName && it.desc == packetDescriptor
-                    } == null) {
+                    def expectedSelector = "${handlerName}${packetDescriptor}".toString()
+                    def resolvedSelectors = binarySelectors.values().collect { it.toString() }.findAll { selector ->
+                        noellesRoles.methods.any { it.name + it.desc == selector }
+                    }
+                    if (resolvedSelectors != [expectedSelector]) {
                         throw new GradleException(
-                                "${providerJar.name} is missing ${handlerName}${packetDescriptor}"
+                                "${providerJar.name} must resolve exactly ${expectedSelector} among the CorruptCop " +
+                                        "selectors; found ${resolvedSelectors}"
                         )
                     }
                 } finally {
@@ -446,7 +454,7 @@ tasks.register("verifyCompatibilityArtifact") {
             }
             verifyProviderSeam(
                     file("libs/${providerBaselines.noellesroles.fileName}"),
-                    "lambda\$registerPackets\$36"
+                    providerBaselines.noellesroles.abilityHandler
             )
 
             def nestedProviderBinary = zipFile.entries().find { entry ->
