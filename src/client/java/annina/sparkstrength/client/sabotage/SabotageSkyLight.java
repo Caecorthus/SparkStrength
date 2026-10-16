@@ -80,10 +80,6 @@ public final class SabotageSkyLight {
         return partial;
     }
 
-    public static boolean isActive() {
-        return area != null;
-    }
-
     /** Turns the block on over {@code box}, or off with null, rebuilding the affected sections. / 在 box 范围内开启屏蔽，传 null 关闭，并重建受影响的区段。 */
     static void set(MinecraftClient client, @Nullable Box box) {
         Area previous = area;

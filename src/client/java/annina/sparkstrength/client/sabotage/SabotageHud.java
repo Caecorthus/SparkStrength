@@ -4,32 +4,23 @@ import annina.sparkstrength.client.screen.tablet.TabletCanvas;
 import annina.sparkstrength.client.screen.tablet.TabletTheme;
 import annina.sparkstrength.network.sabotage.ChannelProgressS2CPacket;
 import annina.sparkstrength.sabotage.SabotageRules;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.RenderTickCounter;
-import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.text.Text;
 
-import java.lang.reflect.Method;
-
 /**
- * HUD of the sabotage system: the prying/hacking bar under the crosshair, and a darkness veil while an Iris shader pack
- * is active (packs add their own minimum light and may let sunlight through windows, which the sky-light block alone
- * cannot remove).
- * 破坏系统的 HUD：准星下方的撬开/入侵进度条，以及 Iris 光影包启用时的黑暗遮罩（光影包会加入自己的最低亮度，
- * 还可能让阳光穿过车窗，仅靠屏蔽天空光照无法去除）。
+ * HUD of the sabotage system: the prying/hacking bar under the crosshair. Darkness comes only from the sky-light block
+ * ({@link SabotageSkyLight}), shader packs included; a screen-wide veil would also dim the daytime windows and the
+ * breaker outline players need to find the repair.
+ * 破坏系统的 HUD：准星下方的撬开/入侵进度条。黑暗只来自屏蔽天空光照（{@link SabotageSkyLight}），光影包下也一样；
+ * 全屏遮罩会连白天的车窗和玩家找电闸要靠的红框一起压暗。
  */
 final class SabotageHud {
     private static final int BAR_WIDTH = 92;
     private static final int BAR_HEIGHT = 5;
-    private static final int SHADER_VEIL = 0x99000000;
-
-    private static boolean irisResolved;
-    private static Object irisApi;
-    private static Method irisShaderPackInUse;
 
     private SabotageHud() {
     }
@@ -39,9 +30,6 @@ final class SabotageHud {
         ClientPlayerEntity player = client.player;
         if (player == null || client.world == null || client.options.hudHidden) {
             return;
-        }
-        if (SabotageSkyLight.isActive() && !player.hasStatusEffect(StatusEffects.NIGHT_VISION) && shaderPackInUse()) {
-            context.fill(0, 0, context.getScaledWindowWidth(), context.getScaledWindowHeight(), SHADER_VEIL);
         }
         SabotageClientState.Channel channel = SabotageClientState.channel();
         if (channel != null) {
@@ -80,30 +68,5 @@ final class SabotageHud {
         }
         canvas.textCentered(textRenderer, label.getString(), w / 2, (int) (y + BAR_HEIGHT + 4), TabletTheme.TEXT);
         canvas.flush();
-    }
-
-    private static boolean shaderPackInUse() {
-        if (!irisResolved) {
-            irisResolved = true;
-            if (FabricLoader.getInstance().isModLoaded("iris")) {
-                try {
-                    Class<?> api = Class.forName("net.irisshaders.iris.api.v0.IrisApi");
-                    irisApi = api.getMethod("getInstance").invoke(null);
-                    irisShaderPackInUse = api.getMethod("isShaderPackInUse");
-                } catch (ReflectiveOperationException | LinkageError ignored) {
-                    irisApi = null;
-                    irisShaderPackInUse = null;
-                }
-            }
-        }
-        if (irisShaderPackInUse == null) {
-            return false;
-        }
-        try {
-            // Asked every frame: the player can toggle shaders at any time. / 每帧询问：玩家随时可以开关光影。
-            return Boolean.TRUE.equals(irisShaderPackInUse.invoke(irisApi));
-        } catch (ReflectiveOperationException | LinkageError ignored) {
-            return false;
-        }
     }
 }
