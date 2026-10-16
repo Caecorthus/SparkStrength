@@ -1,6 +1,7 @@
 package annina.sparkstrength.block;
 
 import annina.sparkstrength.SparkStrengthItems;
+import annina.sparkstrength.sabotage.JunctionBoxCircuit;
 import annina.sparkstrength.sabotage.JunctionBoxService;
 import annina.sparkstrength.sabotage.JunctionBoxState;
 import annina.sparkstrength.sabotage.SabotageAccess;
@@ -26,6 +27,7 @@ import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
 import org.agmas.noellesroles.ModItems;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 
@@ -43,7 +45,7 @@ import java.util.Map;
 public final class JunctionBoxBlock extends HorizontalFacingBlock {
     public static final MapCodec<JunctionBoxBlock> CODEC = createCodec(JunctionBoxBlock::new);
     public static final EnumProperty<JunctionBoxState> STATE = EnumProperty.of("state", JunctionBoxState.class);
-    public static final EnumProperty<SabotageType> SABOTAGE = EnumProperty.of("sabotage", SabotageType.class);
+    public static final EnumProperty<JunctionBoxCircuit> SABOTAGE = EnumProperty.of("sabotage", JunctionBoxCircuit.class);
     private static final Map<Direction, VoxelShape> SHAPES = WallMountedShapes.build(
             new double[]{3, 3, 12, 13, 13, 16}
     );
@@ -53,7 +55,12 @@ public final class JunctionBoxBlock extends HorizontalFacingBlock {
         setDefaultState(getStateManager().getDefaultState()
                 .with(FACING, Direction.NORTH)
                 .with(STATE, JunctionBoxState.CLOSED)
-                .with(SABOTAGE, SabotageType.LIGHTS));
+                .with(SABOTAGE, JunctionBoxCircuit.LIGHTS));
+    }
+
+    /** The sabotage this box unlocks, or null for a decorative box. / 该箱子解锁的破坏；装饰用箱子为 null。 */
+    public static @Nullable SabotageType typeOf(BlockState state) {
+        return state.get(SABOTAGE).type();
     }
 
     @Override

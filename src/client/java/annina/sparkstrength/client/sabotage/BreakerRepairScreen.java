@@ -28,7 +28,7 @@ import java.util.Random;
  * 并重新校验会话。
  */
 final class BreakerRepairScreen extends Screen {
-    private static final int PANEL_W = 268;
+    private static final int PANEL_W = 300;
     private static final int PANEL_H = 176;
     private static final int SWITCH_W = 26;
     private static final int SWITCH_H = 40;
@@ -36,9 +36,16 @@ final class BreakerRepairScreen extends Screen {
     private static final int LEVER_W = 40;
     private static final int LEVER_H = 104;
     private static final int CLOSE_DELAY_TICKS = 16;
+    /** No answer this long after submitting: the packet was dropped (e.g. dazed), so let the player try again. / 提交后这么久没有回复：包被丢弃（例如被眩晕），允许玩家重试。 */
+    private static final int REPLY_TIMEOUT_TICKS = 40;
+    /** Margin over the server's minimum time. / 相对服务端最短用时的余量。 */
+    private static final int SUBMIT_MARGIN_TICKS = 2;
 
     private final int sessionId;
     private final int holdTicks;
+    private final int minTicks;
+    private int openTicks;
+    private int awaitTicks;
     private final boolean[] tripped = new boolean[SabotageRules.REPAIR_SWITCH_SLOTS];
     private final float[] flip = new float[SabotageRules.REPAIR_SWITCH_SLOTS];
     private float charge;
@@ -53,6 +60,7 @@ final class BreakerRepairScreen extends Screen {
         super(Text.translatable("screen.sparkstrength.breaker.title"));
         this.sessionId = packet.sessionId();
         this.holdTicks = Math.max(1, packet.holdTicks());
+        this.minTicks = SabotageRules.repairMinTicks(packet.switches(), this.holdTicks);
         List<Integer> slots = new ArrayList<>();
         for (int i = 0; i < tripped.length; i++) {
             slots.add(i);
@@ -89,7 +97,7 @@ final class BreakerRepairScreen extends Screen {
     }
 
     private int leverX() {
-        return left() + PANEL_W - 16 - LEVER_W - 40;
+        return left() + PANEL_W - 24 - LEVER_W - 40;
     }
 
     private int leverY() {
@@ -107,6 +115,7 @@ final class BreakerRepairScreen extends Screen {
 
     @Override
     public void tick() {
+        openTicks++;
         prevCharge = charge;
         for (int i = 0; i < flip.length; i++) {
             float target = tripped[i] ? 0.0F : 1.0F;
@@ -119,6 +128,15 @@ final class BreakerRepairScreen extends Screen {
             return;
         }
         if (submitted) {
+            if (awaitTicks > 0 && --awaitTicks == 0) {
+                // The completion never arrived; the server session is still open, so start the lever again.
+                // 完成包没有送达；服务端会话仍然有效，重新拉闸即可。
+                submitted = false;
+                charge = 0.0F;
+                prevCharge = 0.0F;
+                banner = Text.translatable("screen.sparkstrength.breaker.retry");
+                bannerColor = TabletTheme.DANGER;
+            }
             return;
         }
         if (holding && allReset()) {
@@ -126,9 +144,13 @@ final class BreakerRepairScreen extends Screen {
         } else {
             charge = Math.max(0.0F, charge - 2.0F);
         }
-        if (charge >= holdTicks) {
+        // Full but faster than the server's minimum: hold the needle until that time has passed (the server starts its
+        // clock before this screen opens, so waiting here is always enough).
+        // 已拉满但快于服务端最短用时：指针保持在顶，直到时间够了（服务端的计时早于界面打开，因此在这里等就足够）。
+        if (charge >= holdTicks && openTicks >= minTicks + SUBMIT_MARGIN_TICKS) {
             submitted = true;
             holding = false;
+            awaitTicks = REPLY_TIMEOUT_TICKS;
             banner = Text.translatable("screen.sparkstrength.breaker.restoring");
             bannerColor = TabletTheme.SUCCESS;
             ClientPlayNetworking.send(new CompleteBreakerRepairC2SPacket(sessionId));

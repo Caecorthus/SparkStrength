@@ -16,6 +16,10 @@ import org.jetbrains.annotations.Nullable;
  * 灯光破坏期间在客户端屏蔽天空光照：车厢内客户端的天空光照读数为 0，灯熄灭后即使是白天地图车厢里也是黑的。
  * 在光照源头而不是光照贴图里处理，所以 Sodium 网格、实体以及 Iris 光影包（它们读原始光照等级，不读原版光照贴图）都能看到。
  * 只影响客户端世界的天空光照提供者；内置服务端的光照引擎是另一个对象。
+ *
+ * <p>Whole-section reads (Sodium meshing) and per-position reads agree: a section fully inside reads all zero, a
+ * boundary section keeps its real light outside the area.
+ * 整段读取（Sodium 网格）与按位置读取结果一致：完全在区域内的区段全为零，边界区段在区域外保留真实光照。</p>
  */
 public final class SabotageSkyLight {
     private record Area(Object skyView, int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
@@ -23,10 +27,16 @@ public final class SabotageSkyLight {
             return x >= minX && x <= maxX && y >= minY && y <= maxY && z >= minZ && z <= maxZ;
         }
 
-        boolean intersectsSection(ChunkSectionPos pos) {
+        boolean intersects(ChunkSectionPos pos) {
             return pos.getMaxX() >= minX && pos.getMinX() <= maxX
                     && pos.getMaxY() >= minY && pos.getMinY() <= maxY
                     && pos.getMaxZ() >= minZ && pos.getMinZ() <= maxZ;
+        }
+
+        boolean covers(ChunkSectionPos pos) {
+            return pos.getMinX() >= minX && pos.getMaxX() <= maxX
+                    && pos.getMinY() >= minY && pos.getMaxY() <= maxY
+                    && pos.getMinZ() >= minZ && pos.getMaxZ() <= maxZ;
         }
     }
 
@@ -41,13 +51,33 @@ public final class SabotageSkyLight {
                 && current.contains(pos.getX(), pos.getY(), pos.getZ());
     }
 
-    /** An all-zero section, never null: Sodium turns a null sky section into full sky light. / 全零区段，绝不返回 null：Sodium 会把 null 的天空区段当成满天光。 */
-    public static @Nullable ChunkNibbleArray darkSection(Object provider, ChunkSectionPos pos) {
+    /**
+     * The section to hand out instead of {@code original}, or null to keep it. Never returns null for an affected
+     * section: Sodium turns a null sky section into full sky light.
+     * 用来代替 original 的区段；返回 null 表示保留原值。受影响的区段绝不返回 null：Sodium 会把 null 的天空区段当成满天光。
+     */
+    public static @Nullable ChunkNibbleArray darkSection(Object provider, ChunkSectionPos pos,
+                                                         @Nullable ChunkNibbleArray original) {
         Area current = area;
-        if (current == null || provider != current.skyView() || !current.intersectsSection(pos)) {
+        if (current == null || provider != current.skyView() || !current.intersects(pos)) {
             return null;
         }
-        return new ChunkNibbleArray(0);
+        if (current.covers(pos)) {
+            return new ChunkNibbleArray(0);
+        }
+        // A missing sky section means open sky (15), like Sodium assumes. / 缺失的天空区段表示露天（15），与 Sodium 的假设一致。
+        ChunkNibbleArray partial = original == null ? new ChunkNibbleArray(15) : original.copy();
+        int x0 = Math.max(current.minX(), pos.getMinX()), x1 = Math.min(current.maxX(), pos.getMaxX());
+        int y0 = Math.max(current.minY(), pos.getMinY()), y1 = Math.min(current.maxY(), pos.getMaxY());
+        int z0 = Math.max(current.minZ(), pos.getMinZ()), z1 = Math.min(current.maxZ(), pos.getMaxZ());
+        for (int y = y0; y <= y1; y++) {
+            for (int z = z0; z <= z1; z++) {
+                for (int x = x0; x <= x1; x++) {
+                    partial.set(x & 15, y & 15, z & 15, 0);
+                }
+            }
+        }
+        return partial;
     }
 
     public static boolean isActive() {
@@ -81,14 +111,15 @@ public final class SabotageSkyLight {
 
     /**
      * Calls (never injects into) WorldRenderer#scheduleBlockRenders, which Sodium overwrites; avoids reload(), which
-     * rebuilds everything.
+     * rebuilds everything. One block of margin covers the smooth lighting of neighbours.
      * 调用（而不是注入）被 Sodium 覆写的 WorldRenderer#scheduleBlockRenders；不用 reload()，它会重建全部区段。
+     * 多一格余量以覆盖相邻方块的平滑光照。
      */
     private static void rebuild(MinecraftClient client, @Nullable Area target) {
         if (target == null || client.worldRenderer == null) {
             return;
         }
-        client.worldRenderer.scheduleBlockRenders(target.minX(), target.minY(), target.minZ(),
-                target.maxX(), target.maxY(), target.maxZ());
+        client.worldRenderer.scheduleBlockRenders(target.minX() - 1, target.minY() - 1, target.minZ() - 1,
+                target.maxX() + 1, target.maxY() + 1, target.maxZ() + 1);
     }
 }

@@ -39,7 +39,7 @@ public final class SabotageTabletSnapshots {
             int hacked = 0;
             for (BlockPos pos : sabotage.junctionBoxes()) {
                 BlockState box = world.getBlockState(pos);
-                if (!box.isOf(SparkStrengthBlocks.junctionBox()) || box.get(JunctionBoxBlock.SABOTAGE) != type) {
+                if (!box.isOf(SparkStrengthBlocks.junctionBox()) || JunctionBoxBlock.typeOf(box) != type) {
                     continue;
                 }
                 boxes++;

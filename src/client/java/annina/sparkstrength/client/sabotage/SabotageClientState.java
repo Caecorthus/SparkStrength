@@ -22,6 +22,7 @@ public final class SabotageClientState {
 
     /** The local prying/hacking bar. / 本地的撬开/入侵进度条。 */
     public static final class Channel {
+        public final int id;
         public final int kind;
         public final BlockPos pos;
         public final int total;
@@ -32,6 +33,7 @@ public final class SabotageClientState {
         public int finishedFlashTicks;
 
         Channel(ChannelProgressS2CPacket packet, long now) {
+            this.id = packet.channelId();
             this.kind = packet.kind();
             this.pos = packet.pos();
             this.total = Math.max(1, packet.total());
@@ -52,6 +54,8 @@ public final class SabotageClientState {
 
     private static SabotageStatusS2CPacket status = SabotageStatusS2CPacket.NONE;
     private static @Nullable Channel channel;
+    /** The last channel this client cancelled; its late packets are ignored. / 本客户端最近取消的读条；其迟到的包会被忽略。 */
+    private static int cancelledChannelId;
     private static List<Fixture> fixtures = List.of();
 
     private SabotageClientState() {
@@ -78,12 +82,12 @@ public final class SabotageClientState {
     }
 
     static void onProgress(ChannelProgressS2CPacket packet, long now) {
+        if (packet.channelId() == cancelledChannelId) {
+            return;
+        }
         if (packet.state() == ChannelProgressS2CPacket.STATE_RUNNING) {
             Channel current = channel;
-            if (current != null && current.kind == packet.kind() && current.pos.equals(packet.pos())
-                    && current.finishedFlashTicks == 0) {
-                // A resync keeps the cancel flag, so a released button is not cancelled twice.
-                // 重新同步时保留取消标记，松开按键不会被取消两次。
+            if (current != null && current.id == packet.channelId() && current.finishedFlashTicks == 0) {
                 current.progress = packet.progress();
                 current.receivedTick = now;
                 return;
@@ -93,13 +97,21 @@ public final class SabotageClientState {
             Channel finished = new Channel(packet, now);
             finished.finishedFlashTicks = 10;
             channel = finished;
-        } else {
+        } else if (channel != null && channel.id == packet.channelId()) {
             channel = null;
         }
     }
 
     static void clearChannel() {
         channel = null;
+    }
+
+    /** Remembers the cancelled channel and drops it locally. / 记住被取消的读条并在本地移除。 */
+    static void cancelChannel(Channel cancelled) {
+        cancelledChannelId = cancelled.id;
+        if (channel == cancelled) {
+            channel = null;
+        }
     }
 
     public static List<Fixture> fixtures() {
@@ -113,6 +125,7 @@ public final class SabotageClientState {
     static void reset() {
         status = SabotageStatusS2CPacket.NONE;
         channel = null;
+        cancelledChannelId = 0;
         fixtures = List.of();
     }
 

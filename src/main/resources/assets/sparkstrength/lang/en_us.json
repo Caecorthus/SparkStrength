@@ -609,7 +609,7 @@
   "message.sparkstrength.sabotage.box_intact": "This junction box is intact.",
   "message.sparkstrength.sabotage.box_repaired": "Junction box repaired.",
   "message.sparkstrength.sabotage.box_pried": "Junction box pried open! Aim your tablet at it to hack it.",
-  "message.sparkstrength.sabotage.lights_out_hint": "⚡ The train's power has been sabotaged! Repair the circuit breaker outlined in red · %s",
+  "message.sparkstrength.sabotage.lights_out_hint": "⚡ Power sabotaged! Fix the breaker outlined in red · %s",
   "message.sparkstrength.sabotage.power_back": "⚡ Power restored",
   "message.sparkstrength.sabotage.breaker_normal": "Power is normal.",
   "message.sparkstrength.sabotage.breaker_timed": "Power will come back on its own.",
@@ -630,7 +630,7 @@
   "hud.sparkstrength.sabotage.hacked": "Hack complete",
   "screen.sparkstrength.breaker.title": "Circuit Breaker Repair",
   "screen.sparkstrength.breaker.hint_switches": "Flip every tripped switch (red light) back to ON",
-  "screen.sparkstrength.breaker.hint_lever": "Hold the main lever until the voltage reaches the green",
+  "screen.sparkstrength.breaker.hint_lever": "Hold the main lever until the gauge is green",
   "screen.sparkstrength.breaker.lever_hold": "Hold",
   "screen.sparkstrength.breaker.lever_locked": "Not ready",
   "screen.sparkstrength.breaker.restoring": "Restoring power…",
@@ -675,5 +675,8 @@
   "subtitle.sparkstrength.block.junction_box.repair": "Junction box repaired",
   "subtitle.sparkstrength.block.circuit_breaker.trip": "Circuit breaker trips",
   "subtitle.sparkstrength.block.circuit_breaker.switch": "Breaker switch clicks",
-  "subtitle.sparkstrength.block.circuit_breaker.restore": "Power restored"
+  "subtitle.sparkstrength.block.circuit_breaker.restore": "Power restored",
+  "sabotage.sparkstrength.none": "Not wired",
+  "message.sparkstrength.sabotage.box_unwired": "This junction box isn't wired to anything.",
+  "screen.sparkstrength.breaker.retry": "Power not restored. Pull the lever again"
 }

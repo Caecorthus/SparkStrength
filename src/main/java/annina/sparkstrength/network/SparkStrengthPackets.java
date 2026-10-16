@@ -184,7 +184,7 @@ public final class SparkStrengthPackets {
         ServerPlayNetworking.registerGlobalReceiver(TriggerSabotageC2SPacket.ID,
                 (payload, context) -> SabotageService.handleTrigger(context.player(), payload.typeWire()));
         ServerPlayNetworking.registerGlobalReceiver(CancelChannelC2SPacket.ID,
-                (payload, context) -> JunctionBoxService.handleCancel(context.player()));
+                (payload, context) -> JunctionBoxService.handleCancel(context.player(), payload.channelId()));
         ServerPlayNetworking.registerGlobalReceiver(CompleteBreakerRepairC2SPacket.ID,
                 (payload, context) -> BreakerRepairService.handleComplete(context.player(), payload.sessionId()));
         ServerPlayNetworking.registerGlobalReceiver(CancelBreakerRepairC2SPacket.ID,

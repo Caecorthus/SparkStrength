@@ -609,7 +609,7 @@
   "message.sparkstrength.sabotage.box_intact": "接线箱完好无损。",
   "message.sparkstrength.sabotage.box_repaired": "接线箱已修复。",
   "message.sparkstrength.sabotage.box_pried": "接线箱撬开了！用平板对准它入侵。",
-  "message.sparkstrength.sabotage.lights_out_hint": "⚡ 列车供电系统遭到破坏！前往红框标出的电闸维修 · 已持续 %s",
+  "message.sparkstrength.sabotage.lights_out_hint": "⚡ 供电遭到破坏！去修红框标出的电闸 · %s",
   "message.sparkstrength.sabotage.power_back": "⚡ 电力已恢复",
   "message.sparkstrength.sabotage.breaker_normal": "电力正常。",
   "message.sparkstrength.sabotage.breaker_timed": "供电会自动恢复。",
@@ -630,7 +630,7 @@
   "hud.sparkstrength.sabotage.hacked": "入侵成功",
   "screen.sparkstrength.breaker.title": "电闸维修",
   "screen.sparkstrength.breaker.hint_switches": "把跳闸的空开（亮红灯）逐个拨回 ON",
-  "screen.sparkstrength.breaker.hint_lever": "按住主闸，直到电压升进绿区",
+  "screen.sparkstrength.breaker.hint_lever": "按住主闸，直到电压表进入绿区",
   "screen.sparkstrength.breaker.lever_hold": "按住",
   "screen.sparkstrength.breaker.lever_locked": "未就绪",
   "screen.sparkstrength.breaker.restoring": "正在恢复供电…",
@@ -675,5 +675,8 @@
   "subtitle.sparkstrength.block.junction_box.repair": "接线箱被修复",
   "subtitle.sparkstrength.block.circuit_breaker.trip": "电闸跳闸",
   "subtitle.sparkstrength.block.circuit_breaker.switch": "电闸开关",
-  "subtitle.sparkstrength.block.circuit_breaker.restore": "电力恢复"
+  "subtitle.sparkstrength.block.circuit_breaker.restore": "电力恢复",
+  "sabotage.sparkstrength.none": "未接入",
+  "message.sparkstrength.sabotage.box_unwired": "这个接线箱没有接入任何系统。",
+  "screen.sparkstrength.breaker.retry": "没能恢复供电，请再拉一次主闸"
 }

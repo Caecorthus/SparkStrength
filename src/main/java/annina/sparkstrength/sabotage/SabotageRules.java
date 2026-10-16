@@ -54,8 +54,12 @@ public final class SabotageRules {
     public static final int REPAIR_SESSION_TIMEOUT_TICKS = 1_200;
     public static final double REPAIR_RANGE = 6.0;
 
-    /** Wait for the train copy this long before initializing from the world as it is. / 等待车厢复制这么久仍未完成时，直接按当前世界初始化。 */
-    public static final int MAP_READY_FALLBACK_TICKS = 100;
+    /**
+     * Wait for the train copy this long (and for the play area to be loaded) before initializing from the world as it
+     * is, for maps whose copy never succeeds.
+     * 等待车厢复制这么久（且对局区已加载）仍未完成时，直接按当前世界初始化，用于复制始终不成功的地图。
+     */
+    public static final int MAP_READY_FALLBACK_TICKS = 200;
     public static final int LOG_LIMIT = 30;
 
     private SabotageRules() {

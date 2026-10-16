@@ -168,6 +168,13 @@ public final class LightsSabotageService {
                 sabotage.log(now, SabotageWorldComponent.LogKind.EXPIRED, "", outage.type());
             }
             case ROUND_END -> {
+                // Wathe keeps its blackout running through the end screen until finalize; end it now, or Blindness
+                // would return once our suppression is gone.
+                // Wathe 的停电会持续到结算画面结束（finalize）；现在就结束它，否则失明抑制消失后失明会重新出现。
+                WorldBlackoutComponent blackout = WorldBlackoutComponent.KEY.get(world);
+                if (blackout.isBlackoutActive()) {
+                    blackout.reset();
+                }
             }
         }
         SabotageService.markStatusDirty(world);

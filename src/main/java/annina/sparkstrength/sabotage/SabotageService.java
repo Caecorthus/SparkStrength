@@ -131,7 +131,9 @@ public final class SabotageService {
         restoreLooks(world, boxes, breakers);
         boolean autoUnlocked = sabotage.isAutoUnlocked();
         sabotage.markMapReady(boxes, breakers);
-        if (SabotageRules.startsWithLightsUnlocked(!boxes.isEmpty())) {
+        boolean lightsBoxes = boxes.stream()
+                .anyMatch(pos -> JunctionBoxBlock.typeOf(world.getBlockState(pos)) == SabotageType.LIGHTS);
+        if (SabotageRules.startsWithLightsUnlocked(lightsBoxes)) {
             // Made before junction boxes existed: lights work as before, from the tablet, after the usual wait.
             // 在接线箱出现之前做的地图：灯光照旧可用，入口在平板，同样要等待解锁时间。
             sabotage.autoUnlock(SabotageType.LIGHTS, world.getTime() + SabotageRules.UNLOCK_DELAY_TICKS);
@@ -165,7 +167,10 @@ public final class SabotageService {
         GameWorldComponent game = GameWorldComponent.KEY.get(world);
         if (game.getGameStatus() == GameWorldComponent.GameStatus.ACTIVE) {
             if (!sabotage.isMapReady() && sabotage.isAwaitingMapReset()
-                    && world.getTime() - sabotage.roundStartTick() >= SabotageRules.MAP_READY_FALLBACK_TICKS) {
+                    && world.getTime() - sabotage.roundStartTick() >= SabotageRules.MAP_READY_FALLBACK_TICKS
+                    && playAreaLoaded(world)) {
+                // Only for maps whose copy keeps failing; a copy that succeeds later re-initializes (onTrainReset).
+                // 只用于复制一直失败的地图；之后若复制成功会重新初始化（onTrainReset）。
                 initializeMap(world, sabotage);
             }
             if (sabotage.isMapReady()) {
@@ -176,6 +181,13 @@ public final class SabotageService {
             }
         }
         syncStatus(world, sabotage);
+    }
+
+    /** A partial scan of unloaded chunks would miss junction boxes. / 扫描未加载的区块会漏掉接线箱。 */
+    private static boolean playAreaLoaded(ServerWorld world) {
+        net.minecraft.util.math.Box area = MapVariablesWorldComponent.KEY.get(world).getPlayArea();
+        return area != null && world.isRegionLoaded(BlockPos.ofFloored(area.minX, area.minY, area.minZ),
+                BlockPos.ofFloored(area.maxX, area.maxY, area.maxZ));
     }
 
     private static void announceReady(ServerWorld world, SabotageWorldComponent sabotage) {

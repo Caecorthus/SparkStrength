@@ -74,8 +74,13 @@ public final class BreakerRepairService {
         if (session == null || session.id() != sessionId) {
             return;
         }
-        SESSIONS.remove(player.getUuid());
         ServerWorld world = player.getServerWorld();
+        if (world.getTime() - session.startTick() < SabotageRules.repairMinTicks(session.switches(), session.holdTicks())) {
+            // Too early (only a modified client gets here): ignore and keep the session; the panel retries.
+            // 过早（只有改过的客户端才会走到这里）：忽略并保留会话，面板会重试。
+            return;
+        }
+        SESSIONS.remove(player.getUuid());
         SabotageWorldComponent sabotage = SabotageWorldComponent.KEY.get(world);
         SabotageWorldComponent.Outage outage = sabotage.outage();
         if (outage == null || outage.id() != session.outageId() || world.getRegistryKey() != session.world()) {
@@ -84,9 +89,7 @@ public final class BreakerRepairService {
         }
         if (!SabotageAccess.canRepairBreaker(player)
                 || !world.getBlockState(session.pos()).isOf(SparkStrengthBlocks.circuitBreaker())
-                || !withinRange(player, session.pos())
-                || world.getTime() - session.startTick()
-                        < SabotageRules.repairMinTicks(session.switches(), session.holdTicks())) {
+                || !withinRange(player, session.pos())) {
             close(player, session, CloseBreakerRepairS2CPacket.REASON_OTHER);
             return;
         }

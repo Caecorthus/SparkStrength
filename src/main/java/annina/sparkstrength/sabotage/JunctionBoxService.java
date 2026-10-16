@@ -46,11 +46,13 @@ import java.util.UUID;
  */
 public final class JunctionBoxService {
     private static final Map<UUID, Channel> CHANNELS = new HashMap<>();
+    private static int nextChannelId = 1;
 
     private JunctionBoxService() {
     }
 
     private static final class Channel {
+        final int id = nextChannelId++;
         final int kind;
         final RegistryKey<World> world;
         final BlockPos pos;
@@ -90,7 +92,11 @@ public final class JunctionBoxService {
                     : "message.sparkstrength.sabotage.box_already_hacked"), true);
             return;
         }
-        SabotageType type = state.get(JunctionBoxBlock.SABOTAGE);
+        SabotageType type = JunctionBoxBlock.typeOf(state);
+        if (type == null) {
+            player.sendMessage(Text.translatable("message.sparkstrength.sabotage.box_unwired"), true);
+            return;
+        }
         if (sabotage.isUnlocked(type)) {
             player.sendMessage(Text.translatable("message.sparkstrength.sabotage.already_unlocked",
                     Text.translatable(type.translationKey())), true);
@@ -124,7 +130,10 @@ public final class JunctionBoxService {
         if (!sabotage.isMapReady() || state.get(JunctionBoxBlock.STATE) != JunctionBoxState.BROKEN) {
             return;
         }
-        SabotageType type = state.get(JunctionBoxBlock.SABOTAGE);
+        SabotageType type = JunctionBoxBlock.typeOf(state);
+        if (type == null) {
+            return;
+        }
         if (sabotage.isUnlocked(type)) {
             player.sendMessage(Text.translatable("message.sparkstrength.sabotage.already_unlocked",
                     Text.translatable(type.translationKey())), true);
@@ -173,12 +182,18 @@ public final class JunctionBoxService {
         player.getItemCooldownManager().set(ModItems.REPAIR_TOOL, RepairToolItem.COOLDOWN_TICKS);
         world.playSound(null, pos, SparkStrengthSounds.JUNCTION_BOX_REPAIR, SoundCategory.BLOCKS, 1.0F, 1.0F);
         player.sendMessage(Text.translatable("message.sparkstrength.sabotage.box_repaired"), true);
-        sabotage.log(world.getTime(), SabotageWorldComponent.LogKind.BOX_REPAIRED, "",
-                state.get(JunctionBoxBlock.SABOTAGE));
+        SabotageType repairedType = JunctionBoxBlock.typeOf(state);
+        if (repairedType != null) {
+            sabotage.log(world.getTime(), SabotageWorldComponent.LogKind.BOX_REPAIRED, "", repairedType);
+        }
     }
 
-    public static void handleCancel(ServerPlayerEntity player) {
-        stop(player, ChannelProgressS2CPacket.STATE_STOPPED);
+    /** Only the channel the client means; a stale cancel for an earlier box is ignored. / 只取消客户端所指的读条；针对之前箱子的过期取消被忽略。 */
+    public static void handleCancel(ServerPlayerEntity player, int channelId) {
+        Channel channel = CHANNELS.get(player.getUuid());
+        if (channel != null && channel.id == channelId) {
+            stop(player, ChannelProgressS2CPacket.STATE_STOPPED);
+        }
     }
 
     public static void onDisconnect(ServerPlayerEntity player) {
@@ -272,8 +287,8 @@ public final class JunctionBoxService {
                 || now - channel.lastHeartbeatTick > SabotageRules.HEARTBEAT_TIMEOUT_TICKS) {
             return false;
         }
-        if (!state.isOf(SparkStrengthBlocks.junctionBox())
-                || sabotage.isUnlocked(state.get(JunctionBoxBlock.SABOTAGE))) {
+        if (!state.isOf(SparkStrengthBlocks.junctionBox()) || JunctionBoxBlock.typeOf(state) == null
+                || sabotage.isUnlocked(JunctionBoxBlock.typeOf(state))) {
             return false;
         }
         JunctionBoxState expected = channel.kind == ChannelProgressS2CPacket.KIND_PRY
@@ -335,8 +350,11 @@ public final class JunctionBoxService {
         world.spawnParticles(ParticleTypes.LARGE_SMOKE, front.x, front.y, front.z, 6, 0.15, 0.15, 0.15, 0.01);
         world.playSound(null, pos, SparkStrengthSounds.JUNCTION_BOX_BREAK, SoundCategory.BLOCKS, 1.0F, 1.0F);
         player.sendMessage(Text.translatable("message.sparkstrength.sabotage.box_pried"), true);
-        sabotage.log(world.getTime(), SabotageWorldComponent.LogKind.BOX_BROKEN, player.getGameProfile().getName(),
-                state.get(JunctionBoxBlock.SABOTAGE));
+        SabotageType type = JunctionBoxBlock.typeOf(state);
+        if (type != null) {
+            sabotage.log(world.getTime(), SabotageWorldComponent.LogKind.BOX_BROKEN, player.getGameProfile().getName(),
+                    type);
+        }
     }
 
     private static void hack(ServerWorld world, SabotageWorldComponent sabotage, BlockPos pos, BlockState state,
@@ -345,7 +363,10 @@ public final class JunctionBoxService {
         Vec3d front = frontOf(pos, state.get(JunctionBoxBlock.FACING));
         world.spawnParticles(ParticleTypes.ELECTRIC_SPARK, front.x, front.y, front.z, 16, 0.15, 0.15, 0.15, 0.3);
         world.playSound(null, pos, SparkStrengthSounds.JUNCTION_BOX_HACKED, SoundCategory.BLOCKS, 0.7F, 1.0F);
-        SabotageService.unlock(world, sabotage, state.get(JunctionBoxBlock.SABOTAGE), player);
+        SabotageType type = JunctionBoxBlock.typeOf(state);
+        if (type != null) {
+            SabotageService.unlock(world, sabotage, type, player);
+        }
     }
 
     private static void stop(ServerPlayerEntity player, int state) {
@@ -372,7 +393,7 @@ public final class JunctionBoxService {
 
     private static void send(ServerPlayerEntity player, Channel channel, int state) {
         if (ServerPlayNetworking.canSend(player, ChannelProgressS2CPacket.ID)) {
-            ServerPlayNetworking.send(player, new ChannelProgressS2CPacket(channel.kind, channel.pos, state,
+            ServerPlayNetworking.send(player, new ChannelProgressS2CPacket(channel.id, channel.kind, channel.pos, state,
                     channel.progress, channel.total, channel.rate));
         }
     }

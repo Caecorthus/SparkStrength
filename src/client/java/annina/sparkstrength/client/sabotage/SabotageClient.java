@@ -146,8 +146,8 @@ public final class SabotageClient {
         boolean holding = client.options.useKey.isPressed() && client.currentScreen == null && !player.isSneaking();
         if (!aimed || !holding) {
             channel.cancelSent = true;
-            ClientPlayNetworking.send(CancelChannelC2SPacket.INSTANCE);
-            SabotageClientState.clearChannel();
+            ClientPlayNetworking.send(new CancelChannelC2SPacket(channel.id));
+            SabotageClientState.cancelChannel(channel);
         }
     }
 

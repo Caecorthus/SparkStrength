@@ -47,14 +47,14 @@ public final class CircuitConfiguratorService {
 
     private static void configureBox(ServerPlayerEntity player, ServerWorld world, BlockPos pos, BlockState state,
                                      boolean backwards) {
-        SabotageType type = state.get(JunctionBoxBlock.SABOTAGE).cycle(backwards);
-        world.setBlockState(pos, state.with(JunctionBoxBlock.SABOTAGE, type), Block.NOTIFY_ALL);
+        JunctionBoxCircuit circuit = state.get(JunctionBoxBlock.SABOTAGE).cycle(backwards);
+        world.setBlockState(pos, state.with(JunctionBoxBlock.SABOTAGE, circuit), Block.NOTIFY_ALL);
         BlockPos twin = twinOf(world, pos);
         boolean mirrored = false;
         if (twin != null) {
             BlockState twinState = world.getBlockState(twin);
             if (twinState.isOf(SparkStrengthBlocks.junctionBox())) {
-                world.setBlockState(twin, twinState.with(JunctionBoxBlock.SABOTAGE, type), Block.NOTIFY_ALL);
+                world.setBlockState(twin, twinState.with(JunctionBoxBlock.SABOTAGE, circuit), Block.NOTIFY_ALL);
                 mirrored = true;
             }
         }
@@ -62,7 +62,7 @@ public final class CircuitConfiguratorService {
         player.sendMessage(Text.translatable(mirrored
                         ? "message.sparkstrength.configurator.box_set_mirrored"
                         : "message.sparkstrength.configurator.box_set",
-                pos.getX(), pos.getY(), pos.getZ(), Text.translatable(type.translationKey())), true);
+                pos.getX(), pos.getY(), pos.getZ(), Text.translatable(circuit.translationKey())), true);
     }
 
     private static void summarize(ServerPlayerEntity player, ServerWorld world, BlockPos pos) {

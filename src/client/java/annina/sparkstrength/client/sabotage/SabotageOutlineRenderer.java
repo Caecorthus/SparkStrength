@@ -5,7 +5,7 @@ import annina.sparkstrength.block.CircuitBreakerBlock;
 import annina.sparkstrength.block.JunctionBoxBlock;
 import annina.sparkstrength.sabotage.JunctionBoxState;
 import annina.sparkstrength.sabotage.OutageMode;
-import annina.sparkstrength.sabotage.SabotageType;
+import annina.sparkstrength.sabotage.JunctionBoxCircuit;
 import com.mojang.blaze3d.systems.RenderSystem;
 import dev.doctor4t.wathe.client.WatheClient;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
@@ -16,12 +16,14 @@ import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.BuiltBuffer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.render.WorldRenderer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.text.Text;
@@ -30,7 +32,6 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.shape.VoxelShape;
-import org.joml.Matrix4f;
 
 /**
  * See-through block outlines: tripped breakers pulse red for everyone during a repair-mode outage; junction boxes not
@@ -47,6 +48,7 @@ final class SabotageOutlineRenderer {
     private static final int BOX_OPEN = 0xFF8A3D;
     private static final int ADMIN_BREAKER = 0x4C9BFF;
     private static final double LABEL_RANGE_SQ = 24.0 * 24.0;
+    private static final float LINE_WIDTH = 3.5F;
 
     private SabotageOutlineRenderer() {
     }
@@ -70,18 +72,21 @@ final class SabotageOutlineRenderer {
         }
         Vec3d camera = context.camera().getPos();
         MatrixStack matrices = context.matrixStack();
-        float pulse = 0.55F + 0.45F * (float) Math.sin(Util.getMeasuringTimeMs() / 1000.0 * Math.PI * 2.0);
+        float pulse = 0.75F + 0.25F * (float) Math.sin(Util.getMeasuringTimeMs() / 1000.0 * Math.PI * 2.0);
 
+        // rendertype_lines turns each line into a screen-space quad, so the width holds on core-profile GL (macOS) where
+        // plain GL lines are always one pixel. Depth test off: the outline shows through walls.
+        // rendertype_lines 会把每条线变成屏幕空间的四边形，因此在核心模式 GL（macOS）下宽度依然有效；普通 GL 线在那里永远只有一像素。
+        // 关闭深度测试：描边可以穿墙显示。
         RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        RenderSystem.lineWidth(3.0F);
-        BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES,
-                VertexFormats.POSITION_COLOR);
-        boolean drew = false;
+        RenderSystem.disableCull();
+        RenderSystem.setShader(GameRenderer::getRenderTypeLinesProgram);
+        RenderSystem.lineWidth(LINE_WIDTH);
+        BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.LINES, VertexFormats.LINES);
         matrices.push();
-        Matrix4f matrix = matrices.peek().getPositionMatrix();
         for (SabotageClientState.Fixture fixture : SabotageClientState.fixtures()) {
             BlockState state = world.getBlockState(fixture.pos());
             int color;
@@ -99,9 +104,9 @@ final class SabotageOutlineRenderer {
             } else if (state.isOf(SparkStrengthBlocks.junctionBox())) {
                 JunctionBoxState look = state.get(JunctionBoxBlock.STATE);
                 if (admin) {
-                    color = typeColor(state.get(JunctionBoxBlock.SABOTAGE));
+                    color = circuitColor(state.get(JunctionBoxBlock.SABOTAGE));
                     alpha = 0.9F;
-                } else if (boxes && look != JunctionBoxState.HACKED) {
+                } else if (boxes && look != JunctionBoxState.HACKED && JunctionBoxBlock.typeOf(state) != null) {
                     color = look == JunctionBoxState.CLOSED ? BOX_CLOSED : BOX_OPEN;
                     alpha = 0.85F;
                 } else {
@@ -110,17 +115,19 @@ final class SabotageOutlineRenderer {
             } else {
                 continue;
             }
-            outline(buffer, matrix, world, fixture.pos(), state, camera, color, alpha);
-            drew = true;
+            outline(buffer, matrices, world, fixture.pos(), state, camera, color, alpha);
         }
         matrices.pop();
-        if (drew) {
-            BufferRenderer.drawWithGlobalProgram(buffer.end());
-        } else {
-            buffer.end().close();
+        // endNullable: an empty builder (nothing qualified this frame) must not be ended with end(), which throws.
+        // endNullable：空的构建器（本帧没有需要描边的方块）不能用 end() 结束，否则会抛异常。
+        BuiltBuffer built = buffer.endNullable();
+        if (built != null) {
+            BufferRenderer.drawWithGlobalProgram(built);
         }
         RenderSystem.lineWidth(1.0F);
+        RenderSystem.enableCull();
         RenderSystem.disableBlend();
+        RenderSystem.depthMask(true);
         RenderSystem.enableDepthTest();
 
         if (admin) {
@@ -128,44 +135,20 @@ final class SabotageOutlineRenderer {
         }
     }
 
-    private static void outline(BufferBuilder buffer, Matrix4f matrix, ClientWorld world, BlockPos pos,
+    private static void outline(BufferBuilder buffer, MatrixStack matrices, ClientWorld world, BlockPos pos,
                                 BlockState state, Vec3d camera, int rgb, float alpha) {
         VoxelShape shape = state.getOutlineShape(world, pos);
-        Box bounds = shape.isEmpty() ? new Box(0, 0, 0, 1, 1, 1) : shape.getBoundingBox();
-        float inflate = 0.02F;
-        float x1 = (float) (pos.getX() + bounds.minX - camera.x) - inflate;
-        float y1 = (float) (pos.getY() + bounds.minY - camera.y) - inflate;
-        float z1 = (float) (pos.getZ() + bounds.minZ - camera.z) - inflate;
-        float x2 = (float) (pos.getX() + bounds.maxX - camera.x) + inflate;
-        float y2 = (float) (pos.getY() + bounds.maxY - camera.y) + inflate;
-        float z2 = (float) (pos.getZ() + bounds.maxZ - camera.z) + inflate;
-        int a = Math.max(0, Math.min(255, (int) (alpha * 255)));
-        int r = (rgb >> 16) & 0xFF;
-        int g = (rgb >> 8) & 0xFF;
-        int b = rgb & 0xFF;
-        line(buffer, matrix, x1, y1, z1, x2, y1, z1, r, g, b, a);
-        line(buffer, matrix, x2, y1, z1, x2, y1, z2, r, g, b, a);
-        line(buffer, matrix, x2, y1, z2, x1, y1, z2, r, g, b, a);
-        line(buffer, matrix, x1, y1, z2, x1, y1, z1, r, g, b, a);
-        line(buffer, matrix, x1, y2, z1, x2, y2, z1, r, g, b, a);
-        line(buffer, matrix, x2, y2, z1, x2, y2, z2, r, g, b, a);
-        line(buffer, matrix, x2, y2, z2, x1, y2, z2, r, g, b, a);
-        line(buffer, matrix, x1, y2, z2, x1, y2, z1, r, g, b, a);
-        line(buffer, matrix, x1, y1, z1, x1, y2, z1, r, g, b, a);
-        line(buffer, matrix, x2, y1, z1, x2, y2, z1, r, g, b, a);
-        line(buffer, matrix, x2, y1, z2, x2, y2, z2, r, g, b, a);
-        line(buffer, matrix, x1, y1, z2, x1, y2, z2, r, g, b, a);
+        Box bounds = (shape.isEmpty() ? new Box(0, 0, 0, 1, 1, 1) : shape.getBoundingBox())
+                .offset(pos.getX() - camera.x, pos.getY() - camera.y, pos.getZ() - camera.z)
+                .expand(0.02);
+        WorldRenderer.drawBox(matrices, buffer, bounds, ((rgb >> 16) & 0xFF) / 255.0F, ((rgb >> 8) & 0xFF) / 255.0F,
+                (rgb & 0xFF) / 255.0F, Math.max(0.0F, Math.min(1.0F, alpha)));
     }
 
-    private static void line(BufferBuilder buffer, Matrix4f matrix, float x1, float y1, float z1,
-                             float x2, float y2, float z2, int r, int g, int b, int a) {
-        buffer.vertex(matrix, x1, y1, z1).color(r, g, b, a);
-        buffer.vertex(matrix, x2, y2, z2).color(r, g, b, a);
-    }
-
-    private static int typeColor(SabotageType type) {
-        return switch (type) {
+    private static int circuitColor(JunctionBoxCircuit circuit) {
+        return switch (circuit) {
             case LIGHTS -> 0xFFD84A;
+            case NONE -> 0x8A8F98;
         };
     }
 

@@ -9,6 +9,15 @@
     "facing=north,sabotage=lights,state=hacked": {
       "model": "sparkstrength:block/junction_box_hacked"
     },
+    "facing=north,sabotage=none,state=closed": {
+      "model": "sparkstrength:block/junction_box"
+    },
+    "facing=north,sabotage=none,state=broken": {
+      "model": "sparkstrength:block/junction_box_broken"
+    },
+    "facing=north,sabotage=none,state=hacked": {
+      "model": "sparkstrength:block/junction_box_hacked"
+    },
     "facing=east,sabotage=lights,state=closed": {
       "model": "sparkstrength:block/junction_box",
       "y": 90
@@ -18,6 +27,18 @@
       "y": 90
     },
     "facing=east,sabotage=lights,state=hacked": {
+      "model": "sparkstrength:block/junction_box_hacked",
+      "y": 90
+    },
+    "facing=east,sabotage=none,state=closed": {
+      "model": "sparkstrength:block/junction_box",
+      "y": 90
+    },
+    "facing=east,sabotage=none,state=broken": {
+      "model": "sparkstrength:block/junction_box_broken",
+      "y": 90
+    },
+    "facing=east,sabotage=none,state=hacked": {
       "model": "sparkstrength:block/junction_box_hacked",
       "y": 90
     },
@@ -33,6 +54,18 @@
       "model": "sparkstrength:block/junction_box_hacked",
       "y": 180
     },
+    "facing=south,sabotage=none,state=closed": {
+      "model": "sparkstrength:block/junction_box",
+      "y": 180
+    },
+    "facing=south,sabotage=none,state=broken": {
+      "model": "sparkstrength:block/junction_box_broken",
+      "y": 180
+    },
+    "facing=south,sabotage=none,state=hacked": {
+      "model": "sparkstrength:block/junction_box_hacked",
+      "y": 180
+    },
     "facing=west,sabotage=lights,state=closed": {
       "model": "sparkstrength:block/junction_box",
       "y": 270
@@ -42,6 +75,18 @@
       "y": 270
     },
     "facing=west,sabotage=lights,state=hacked": {
+      "model": "sparkstrength:block/junction_box_hacked",
+      "y": 270
+    },
+    "facing=west,sabotage=none,state=closed": {
+      "model": "sparkstrength:block/junction_box",
+      "y": 270
+    },
+    "facing=west,sabotage=none,state=broken": {
+      "model": "sparkstrength:block/junction_box_broken",
+      "y": 270
+    },
+    "facing=west,sabotage=none,state=hacked": {
       "model": "sparkstrength:block/junction_box_hacked",
       "y": 270
     }
