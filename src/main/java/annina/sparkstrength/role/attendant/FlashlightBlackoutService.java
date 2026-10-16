@@ -2,6 +2,7 @@ package annina.sparkstrength.role.attendant;
 
 import annina.sparkstrength.item.FlashlightItem;
 import annina.sparkstrength.record.BlackoutRecorder;
+import annina.sparkstrength.sabotage.LightsSabotageService;
 import dev.doctor4t.wathe.api.event.BlackoutEffect;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
@@ -33,6 +34,11 @@ public final class FlashlightBlackoutService {
     }
 
     private static BlackoutEffect.BlackoutResult beforeBlackoutEffect(ServerPlayerEntity player, int durationTicks) {
+        if (LightsSabotageService.suppressesBlindness(player.getServerWorld())) {
+            // A sabotage outage gives no Blindness at all, so there is nothing for the flashlight to cancel or record.
+            // 破坏造成的熄灯根本不施加失明，手电筒没有要挡下或记录的东西。
+            return null;
+        }
         if (!shouldCancelBlackoutBlindness(FlashlightItem.isHeldOn(player))) {
             // Remember the exact blackout refresh so a later flashlight-on toggle can clear only that blindness.
             // 记录本次熄灯刷新的时长，后续打开手电筒时只清除这一类失明。

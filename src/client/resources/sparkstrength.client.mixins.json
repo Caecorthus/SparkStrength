@@ -91,7 +91,8 @@
     "serialkiller.SerialKillerClientUseMixin",
     "serialkiller.SerialKillerClientSlotLockMixin",
     "serialkiller.SerialKillerBipedEntityModelMixin",
-    "serialkiller.SerialKillerPlayerInventoryClientMixin"
+    "serialkiller.SerialKillerPlayerInventoryClientMixin",
+    "sabotage.SabotageSkyLightMixin"
   ],
   "injectors": {
     "defaultRequire": 1

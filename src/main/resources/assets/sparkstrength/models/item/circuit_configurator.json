@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/handheld",
+  "textures": {
+    "layer0": "sparkstrength:item/circuit_configurator"
+  }
+}

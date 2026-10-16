@@ -1,7 +1,7 @@
 package annina.sparkstrength.role.engineer;
 
-import annina.sparkstrength.mixin.wathe.PlayerShopComponentAccessor;
 import annina.sparkstrength.record.BlackoutRecorder;
+import annina.sparkstrength.sabotage.SabotageService;
 import dev.doctor4t.wathe.api.event.ShopPurchase;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerShopComponent;
@@ -23,7 +23,8 @@ import java.util.List;
  * 工程师电力恢复系统。
  *
  * <p>购买是否成功由商店 {@code onBuy} 回调决定；购买成功后的扣钱、商店购买记录仍交给 Wathe。
- * 我们只在 {@link ShopPurchase#AFTER} 里拿到真实支付价格，然后把这笔钱平分给存活杀手并缩短停电冷却。</p>
+ * 我们只在 {@link ShopPurchase#AFTER} 里拿到真实支付价格，然后把这笔钱平分给存活杀手。
+ * 灯光破坏的团队冷却由破坏系统在恢复时改为较短的一档（SabotageRules.POWER_RESTORATION_COOLDOWN_TICKS）。</p>
  */
 public final class EngineerPowerRestorationService {
     private static boolean registered;
@@ -56,6 +57,11 @@ public final class EngineerPowerRestorationService {
         if (buyer instanceof ServerPlayerEntity restorer) {
             BlackoutRecorder.restored(restorer);
         }
+        if (buyer.getWorld() instanceof ServerWorld serverWorld) {
+            // Ends a lights sabotage too; its team cooldown becomes the short one.
+            // 同时结束灯光破坏；其团队冷却改为较短的那一档。
+            SabotageService.onPowerRestored(serverWorld);
+        }
         return true;
     }
 
@@ -67,7 +73,6 @@ public final class EngineerPowerRestorationService {
         ServerWorld world = buyer.getServerWorld();
         List<ServerPlayerEntity> aliveKillers = aliveKillers(world);
         distributeRestorationCost(aliveKillers, pricePaid);
-        applyShortBlackoutCooldown(aliveKillers);
     }
 
     private static void clearBlackoutPotionEffects(ServerWorld world) {
@@ -101,19 +106,6 @@ public final class EngineerPowerRestorationService {
             if (share > 0) {
                 PlayerShopComponent.KEY.get(aliveKillers.get(i)).addToBalance(share);
             }
-        }
-    }
-
-    private static void applyShortBlackoutCooldown(List<ServerPlayerEntity> aliveKillers) {
-        for (ServerPlayerEntity killer : aliveKillers) {
-            PlayerShopComponent shop = PlayerShopComponent.KEY.get(killer);
-            // Wathe has no public cooldown setter; the approved Adapter targets only its exact cooldown map.
-            // Wathe 没有公开冷却写入接口；获批 Adapter 只访问其精确 cooldown map。
-            ((PlayerShopComponentAccessor) shop).sparkstrength$getCooldowns().put(
-                    EngineerRules.WATHE_BLACKOUT_ENTRY_ID,
-                    EngineerRules.BLACKOUT_COOLDOWN_AFTER_RESTORATION_TICKS
-            );
-            shop.sync();
         }
     }
 }

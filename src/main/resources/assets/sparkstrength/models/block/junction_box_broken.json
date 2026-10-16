@@ -1,0 +1,1637 @@
+{
+  "parent": "minecraft:block/block",
+  "ambientocclusion": true,
+  "textures": {
+    "front": "sparkstrength:block/junction_box_front",
+    "open": "sparkstrength:block/junction_box_open",
+    "side": "sparkstrength:block/junction_box_side",
+    "parts": "sparkstrength:block/junction_box_parts",
+    "particle": "sparkstrength:block/junction_box_side"
+  },
+  "elements": [
+    {
+      "name": "后壁与内部线路",
+      "from": [
+        3,
+        3,
+        15.25
+      ],
+      "to": [
+        13,
+        13,
+        16
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#open"
+        },
+        "south": {
+          "uv": [
+            3,
+            3,
+            13,
+            13
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            0,
+            3,
+            0.75,
+            13
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            15.25,
+            3,
+            16,
+            13
+          ],
+          "texture": "#side"
+        },
+        "up": {
+          "uv": [
+            3,
+            15.25,
+            13,
+            16
+          ],
+          "texture": "#side"
+        },
+        "down": {
+          "uv": [
+            3,
+            0,
+            13,
+            0.75
+          ],
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "左侧框",
+      "from": [
+        12,
+        3,
+        12
+      ],
+      "to": [
+        13,
+        13,
+        15.25
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            3,
+            3,
+            4,
+            13
+          ],
+          "texture": "#side"
+        },
+        "south": {
+          "uv": [
+            12,
+            3,
+            13,
+            13
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            0.75,
+            3,
+            4,
+            13
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            12,
+            3,
+            15.25,
+            13
+          ],
+          "texture": "#side"
+        },
+        "up": {
+          "uv": [
+            12,
+            12,
+            13,
+            15.25
+          ],
+          "texture": "#side"
+        },
+        "down": {
+          "uv": [
+            12,
+            0.75,
+            13,
+            4
+          ],
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "右侧框",
+      "from": [
+        3,
+        3,
+        12
+      ],
+      "to": [
+        4,
+        13,
+        15.25
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            12,
+            3,
+            13,
+            13
+          ],
+          "texture": "#side"
+        },
+        "south": {
+          "uv": [
+            3,
+            3,
+            4,
+            13
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            0.75,
+            3,
+            4,
+            13
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            12,
+            3,
+            15.25,
+            13
+          ],
+          "texture": "#side"
+        },
+        "up": {
+          "uv": [
+            3,
+            12,
+            4,
+            15.25
+          ],
+          "texture": "#side"
+        },
+        "down": {
+          "uv": [
+            3,
+            0.75,
+            4,
+            4
+          ],
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "上侧框",
+      "from": [
+        4,
+        12,
+        12
+      ],
+      "to": [
+        12,
+        13,
+        15.25
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            3,
+            12,
+            4
+          ],
+          "texture": "#side"
+        },
+        "south": {
+          "uv": [
+            4,
+            3,
+            12,
+            4
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            0.75,
+            3,
+            4,
+            4
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            12,
+            3,
+            15.25,
+            4
+          ],
+          "texture": "#side"
+        },
+        "up": {
+          "uv": [
+            4,
+            12,
+            12,
+            15.25
+          ],
+          "texture": "#side"
+        },
+        "down": {
+          "uv": [
+            4,
+            0.75,
+            12,
+            4
+          ],
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "下侧框",
+      "from": [
+        4,
+        3,
+        12
+      ],
+      "to": [
+        12,
+        4,
+        15.25
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            12,
+            12,
+            13
+          ],
+          "texture": "#side"
+        },
+        "south": {
+          "uv": [
+            4,
+            12,
+            12,
+            13
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            0.75,
+            12,
+            4,
+            13
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            12,
+            12,
+            15.25,
+            13
+          ],
+          "texture": "#side"
+        },
+        "up": {
+          "uv": [
+            4,
+            12,
+            12,
+            15.25
+          ],
+          "texture": "#side"
+        },
+        "down": {
+          "uv": [
+            4,
+            0.75,
+            12,
+            4
+          ],
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "黄铜铰链",
+      "from": [
+        2.75,
+        4.6,
+        11.65
+      ],
+      "to": [
+        3.55,
+        5.8999999999999995,
+        12.45
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "黄铜铰链",
+      "from": [
+        2.75,
+        10.1,
+        11.65
+      ],
+      "to": [
+        3.55,
+        11.4,
+        12.45
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "向外打开九十度的盖板",
+      "from": [
+        2.8,
+        3,
+        2
+      ],
+      "to": [
+        3.3,
+        13,
+        12
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            12.7,
+            3,
+            13.2,
+            13
+          ],
+          "texture": "#side"
+        },
+        "south": {
+          "uv": [
+            2.8,
+            3,
+            3.3,
+            13
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            0,
+            8,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#front"
+        },
+        "up": {
+          "uv": [
+            2.8,
+            2,
+            3.3,
+            12
+          ],
+          "texture": "#side"
+        },
+        "down": {
+          "uv": [
+            2.8,
+            4,
+            3.3,
+            14
+          ],
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "盖板内侧残留锁耳",
+      "from": [
+        3.3,
+        3.9,
+        2.2
+      ],
+      "to": [
+        3.65,
+        4.8,
+        2.8
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "red线出腔段",
+      "from": [
+        5.180000000000001,
+        5.98,
+        11.15
+      ],
+      "to": [
+        5.62,
+        6.42,
+        15.3
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            1,
+            5,
+            2,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            1,
+            5,
+            2,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            1,
+            5,
+            2,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            1,
+            5,
+            2,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            1,
+            5,
+            2,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            1,
+            5,
+            2,
+            6
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "red线下垂段",
+      "from": [
+        5.180000000000001,
+        2.4000000000000004,
+        11.15
+      ],
+      "to": [
+        5.62,
+        6.42,
+        11.59
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            1,
+            5,
+            2,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            1,
+            5,
+            2,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            1,
+            5,
+            2,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            1,
+            5,
+            2,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            1,
+            5,
+            2,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            1,
+            5,
+            2,
+            6
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "red线弯折段",
+      "from": [
+        5.180000000000001,
+        1.1,
+        11.15
+      ],
+      "to": [
+        5.62,
+        2.5,
+        11.59
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            1,
+            5,
+            2,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            1,
+            5,
+            2,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            1,
+            5,
+            2,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            1,
+            5,
+            2,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            1,
+            5,
+            2,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            1,
+            5,
+            2,
+            6
+          ],
+          "texture": "#parts"
+        }
+      },
+      "rotation": {
+        "origin": [
+          5.4,
+          2.5,
+          11.37
+        ],
+        "axis": "z",
+        "angle": -22.5
+      }
+    },
+    {
+      "name": "red线裸露铜头",
+      "from": [
+        5.24,
+        0.7000000000000001,
+        11.2
+      ],
+      "to": [
+        5.5600000000000005,
+        1.1,
+        11.54
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            13,
+            5,
+            14,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            13,
+            5,
+            14,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            13,
+            5,
+            14,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            13,
+            5,
+            14,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            13,
+            5,
+            14,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            13,
+            5,
+            14,
+            6
+          ],
+          "texture": "#parts"
+        }
+      },
+      "rotation": {
+        "origin": [
+          5.4,
+          2.5,
+          11.37
+        ],
+        "axis": "z",
+        "angle": -22.5
+      }
+    },
+    {
+      "name": "yellow线出腔段",
+      "from": [
+        7.78,
+        5.58,
+        11.15
+      ],
+      "to": [
+        8.22,
+        6.02,
+        15.3
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            5,
+            5,
+            6,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            5,
+            5,
+            6,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            5,
+            5,
+            6,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            5,
+            5,
+            6,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            5,
+            5,
+            6,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            5,
+            5,
+            6,
+            6
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "yellow线下垂段",
+      "from": [
+        7.78,
+        1.8,
+        11.15
+      ],
+      "to": [
+        8.22,
+        6.02,
+        11.59
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            5,
+            5,
+            6,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            5,
+            5,
+            6,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            5,
+            5,
+            6,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            5,
+            5,
+            6,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            5,
+            5,
+            6,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            5,
+            5,
+            6,
+            6
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "yellow线弯折段",
+      "from": [
+        7.78,
+        0.5,
+        11.15
+      ],
+      "to": [
+        8.22,
+        1.9,
+        11.59
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            5,
+            5,
+            6,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            5,
+            5,
+            6,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            5,
+            5,
+            6,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            5,
+            5,
+            6,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            5,
+            5,
+            6,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            5,
+            5,
+            6,
+            6
+          ],
+          "texture": "#parts"
+        }
+      },
+      "rotation": {
+        "origin": [
+          8,
+          1.9,
+          11.37
+        ],
+        "axis": "z",
+        "angle": 22.5
+      }
+    },
+    {
+      "name": "yellow线裸露铜头",
+      "from": [
+        7.84,
+        0.09999999999999998,
+        11.2
+      ],
+      "to": [
+        8.16,
+        0.5,
+        11.54
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            13,
+            5,
+            14,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            13,
+            5,
+            14,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            13,
+            5,
+            14,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            13,
+            5,
+            14,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            13,
+            5,
+            14,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            13,
+            5,
+            14,
+            6
+          ],
+          "texture": "#parts"
+        }
+      },
+      "rotation": {
+        "origin": [
+          8,
+          1.9,
+          11.37
+        ],
+        "axis": "z",
+        "angle": 22.5
+      }
+    },
+    {
+      "name": "blue线出腔段",
+      "from": [
+        10.08,
+        6.38,
+        11.15
+      ],
+      "to": [
+        10.520000000000001,
+        6.819999999999999,
+        15.3
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9,
+            5,
+            10,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            9,
+            5,
+            10,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            9,
+            5,
+            10,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            9,
+            5,
+            10,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            9,
+            5,
+            10,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            9,
+            5,
+            10,
+            6
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "blue线下垂段",
+      "from": [
+        10.08,
+        2.8,
+        11.15
+      ],
+      "to": [
+        10.520000000000001,
+        6.819999999999999,
+        11.59
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9,
+            5,
+            10,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            9,
+            5,
+            10,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            9,
+            5,
+            10,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            9,
+            5,
+            10,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            9,
+            5,
+            10,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            9,
+            5,
+            10,
+            6
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "blue线弯折段",
+      "from": [
+        10.08,
+        1.5,
+        11.15
+      ],
+      "to": [
+        10.520000000000001,
+        2.9,
+        11.59
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9,
+            5,
+            10,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            9,
+            5,
+            10,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            9,
+            5,
+            10,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            9,
+            5,
+            10,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            9,
+            5,
+            10,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            9,
+            5,
+            10,
+            6
+          ],
+          "texture": "#parts"
+        }
+      },
+      "rotation": {
+        "origin": [
+          10.3,
+          2.9,
+          11.37
+        ],
+        "axis": "z",
+        "angle": -22.5
+      }
+    },
+    {
+      "name": "blue线裸露铜头",
+      "from": [
+        10.14,
+        1.1,
+        11.2
+      ],
+      "to": [
+        10.46,
+        1.5,
+        11.54
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            13,
+            5,
+            14,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            13,
+            5,
+            14,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            13,
+            5,
+            14,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            13,
+            5,
+            14,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            13,
+            5,
+            14,
+            6
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            13,
+            5,
+            14,
+            6
+          ],
+          "texture": "#parts"
+        }
+      },
+      "rotation": {
+        "origin": [
+          10.3,
+          2.9,
+          11.37
+        ],
+        "axis": "z",
+        "angle": -22.5
+      }
+    }
+  ],
+  "display": {
+    "gui": {
+      "rotation": [
+        30,
+        225,
+        0
+      ],
+      "translation": [
+        0.5728,
+        0.7801,
+        1.2587
+      ],
+      "scale": [
+        0.9,
+        0.9,
+        0.9
+      ]
+    },
+    "ground": {
+      "rotation": [
+        0,
+        180,
+        0
+      ],
+      "translation": [
+        -0.045,
+        3.6525,
+        0.45
+      ],
+      "scale": [
+        0.45,
+        0.45,
+        0.45
+      ]
+    },
+    "fixed": {
+      "rotation": [
+        0,
+        180,
+        0
+      ],
+      "translation": [
+        -0.08,
+        1.16,
+        0.8
+      ],
+      "scale": [
+        0.8,
+        0.8,
+        0.8
+      ]
+    },
+    "thirdperson_righthand": {
+      "rotation": [
+        75,
+        180,
+        0
+      ],
+      "translation": [
+        -0.038,
+        2.2756,
+        0.6306
+      ],
+      "scale": [
+        0.38,
+        0.38,
+        0.38
+      ]
+    },
+    "thirdperson_lefthand": {
+      "rotation": [
+        75,
+        180,
+        0
+      ],
+      "translation": [
+        -0.038,
+        2.2756,
+        0.6306
+      ],
+      "scale": [
+        0.38,
+        0.38,
+        0.38
+      ]
+    },
+    "firstperson_righthand": {
+      "rotation": [
+        0,
+        200,
+        0
+      ],
+      "translation": [
+        1.1364,
+        1.7975,
+        0.5356
+      ],
+      "scale": [
+        0.55,
+        0.55,
+        0.55
+      ]
+    },
+    "firstperson_lefthand": {
+      "rotation": [
+        0,
+        160,
+        0
+      ],
+      "translation": [
+        0.7602,
+        1.7975,
+        0.498
+      ],
+      "scale": [
+        0.55,
+        0.55,
+        0.55
+      ]
+    }
+  }
+}

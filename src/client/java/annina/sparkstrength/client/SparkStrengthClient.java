@@ -28,6 +28,7 @@ import annina.sparkstrength.client.role.vulture.VultureSuperCurseClientHooks;
 import annina.sparkstrength.client.role.waiter.WaiterTaskRevealClientHooks;
 import annina.sparkstrength.client.role.timekeeper.TimekeeperWatchClientHooks;
 import annina.sparkstrength.client.role.shadowjester.ShadowJesterShowdownMusicController;
+import annina.sparkstrength.client.sabotage.SabotageClient;
 import annina.sparkstrength.client.screen.detective.DetectiveFolderScreen;
 import annina.sparkstrength.client.screen.tablet.TabletClientState;
 import annina.sparkstrength.client.screen.tablet.TabletScreen;
@@ -78,6 +79,7 @@ public final class SparkStrengthClient implements ClientModInitializer {
         // 灵界行者附身冤魂；按键与冤魂可见仅在加载 SparkWitch 时挂接（反射）。
         SpiritPossessionClient.register();
         TabletClientHighlights.register();
+        SabotageClient.register();
         VeteranClientHooks.register();
         // Binds only when SparkWitch is loaded (reflection, no compile dependency).
         // 仅在加载了 SparkWitch 时挂接按键（反射，无编译依赖）。

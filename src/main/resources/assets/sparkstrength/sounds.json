@@ -156,5 +156,112 @@
       }
     ],
     "subtitle": "subtitle.sparkstrength.vulture.death_scream"
+  },
+  "block.junction_box.pry": {
+    "sounds": [
+      {
+        "name": "wathe:item.lockpick.door",
+        "type": "event",
+        "volume": 0.8
+      },
+      {
+        "name": "minecraft:block.chain.hit",
+        "type": "event",
+        "volume": 1.0,
+        "pitch": 0.8
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.block.junction_box.pry"
+  },
+  "block.junction_box.break": {
+    "sounds": [
+      {
+        "name": "minecraft:block.redstone_torch.burnout",
+        "type": "event",
+        "volume": 1.0
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.block.junction_box.break"
+  },
+  "block.junction_box.spark": {
+    "sounds": [
+      {
+        "name": "minecraft:block.redstone_torch.burnout",
+        "type": "event",
+        "volume": 0.25,
+        "pitch": 1.6
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.block.junction_box.spark"
+  },
+  "block.junction_box.hack": {
+    "sounds": [
+      {
+        "name": "minecraft:block.note_block.bit",
+        "type": "event",
+        "volume": 0.6
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.block.junction_box.hack"
+  },
+  "block.junction_box.hacked": {
+    "sounds": [
+      {
+        "name": "minecraft:block.beacon.power_select",
+        "type": "event",
+        "volume": 0.7
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.block.junction_box.hacked"
+  },
+  "block.junction_box.repair": {
+    "sounds": [
+      {
+        "name": "minecraft:block.smithing_table.use",
+        "type": "event",
+        "volume": 1.0
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.block.junction_box.repair"
+  },
+  "block.circuit_breaker.trip": {
+    "sounds": [
+      {
+        "name": "minecraft:block.lever.click",
+        "type": "event",
+        "volume": 1.0,
+        "pitch": 0.5
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.block.circuit_breaker.trip"
+  },
+  "block.circuit_breaker.switch": {
+    "sounds": [
+      {
+        "name": "minecraft:block.lever.click",
+        "type": "event",
+        "volume": 0.8
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.block.circuit_breaker.switch"
+  },
+  "block.circuit_breaker.restore": {
+    "sounds": [
+      {
+        "name": "minecraft:block.beacon.activate",
+        "type": "event",
+        "volume": 1.0
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.block.circuit_breaker.restore"
+  },
+  "ui.sabotage.ready": {
+    "sounds": [
+      {
+        "name": "minecraft:block.note_block.chime",
+        "type": "event",
+        "volume": 0.6
+      }
+    ]
   }
 }

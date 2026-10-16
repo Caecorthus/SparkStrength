@@ -63,6 +63,10 @@ public final class AchievementRecords {
     public static final String BLACKOUT_CAUSE_EXPIRED = "expired";
     /** S8 cause: the world tick saw the lights go out with no known cause. / 世界 tick 看到熄灯且无已知原因。 */
     public static final String BLACKOUT_CAUSE_UNKNOWN = "unknown";
+    /** S8 cause: a killer triggered the lights sabotage from the tablet; actor = that killer. / 杀手在平板上触发了灯光破坏；actor 为该杀手。 */
+    public static final String BLACKOUT_CAUSE_SABOTAGE = "sabotage";
+    /** S8 cause: a circuit breaker repair brought the lights back; actor = the repairer. / 修好电闸来电；actor 为修理者。 */
+    public static final String BLACKOUT_CAUSE_BREAKER_REPAIR = "breaker_repair";
 
     private AchievementRecords() {
     }

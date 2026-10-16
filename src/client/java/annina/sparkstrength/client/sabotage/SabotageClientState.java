@@ -1,0 +1,122 @@
+package annina.sparkstrength.client.sabotage;
+
+import annina.sparkstrength.network.sabotage.ChannelProgressS2CPacket;
+import annina.sparkstrength.network.sabotage.SabotageStatusS2CPacket;
+import annina.sparkstrength.sabotage.OutageMode;
+import net.minecraft.block.BlockState;
+import net.minecraft.util.math.BlockPos;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Client-thread view of the sabotage system: the server status, this player's prying/hacking bar and the junction
+ * boxes / circuit breakers found in loaded chunks.
+ * 客户端线程上的破坏系统视图：服务端状态、本人的撬开/入侵进度条，以及在已加载区块中找到的接线箱与电闸。
+ */
+public final class SabotageClientState {
+    /** A junction box or breaker seen in a loaded chunk. / 在已加载区块中看到的接线箱或电闸。 */
+    public record Fixture(BlockPos pos, BlockState state) {
+    }
+
+    /** The local prying/hacking bar. / 本地的撬开/入侵进度条。 */
+    public static final class Channel {
+        public final int kind;
+        public final BlockPos pos;
+        public final int total;
+        public final int rate;
+        public int progress;
+        public long receivedTick;
+        public boolean cancelSent;
+        public int finishedFlashTicks;
+
+        Channel(ChannelProgressS2CPacket packet, long now) {
+            this.kind = packet.kind();
+            this.pos = packet.pos();
+            this.total = Math.max(1, packet.total());
+            this.rate = packet.rate();
+            this.progress = packet.progress();
+            this.receivedTick = now;
+        }
+
+        /** Extrapolated fraction 0-1. / 外推得到的 0-1 进度。 */
+        public float fraction(long now, float tickDelta) {
+            if (finishedFlashTicks > 0) {
+                return 1.0F;
+            }
+            float done = progress + rate * Math.max(0.0F, (now - receivedTick) + tickDelta);
+            return Math.max(0.0F, Math.min(1.0F, done / total));
+        }
+    }
+
+    private static SabotageStatusS2CPacket status = SabotageStatusS2CPacket.NONE;
+    private static @Nullable Channel channel;
+    private static List<Fixture> fixtures = List.of();
+
+    private SabotageClientState() {
+    }
+
+    public static boolean lightsOut() {
+        return status.lightsOut();
+    }
+
+    public static OutageMode outageMode() {
+        return OutageMode.byWire(status.modeWire());
+    }
+
+    public static boolean canSabotage() {
+        return status.canSabotage();
+    }
+
+    static void setStatus(SabotageStatusS2CPacket next) {
+        status = next == null ? SabotageStatusS2CPacket.NONE : next;
+    }
+
+    public static @Nullable Channel channel() {
+        return channel;
+    }
+
+    static void onProgress(ChannelProgressS2CPacket packet, long now) {
+        if (packet.state() == ChannelProgressS2CPacket.STATE_RUNNING) {
+            Channel current = channel;
+            if (current != null && current.kind == packet.kind() && current.pos.equals(packet.pos())
+                    && current.finishedFlashTicks == 0) {
+                // A resync keeps the cancel flag, so a released button is not cancelled twice.
+                // 重新同步时保留取消标记，松开按键不会被取消两次。
+                current.progress = packet.progress();
+                current.receivedTick = now;
+                return;
+            }
+            channel = new Channel(packet, now);
+        } else if (packet.state() == ChannelProgressS2CPacket.STATE_FINISHED) {
+            Channel finished = new Channel(packet, now);
+            finished.finishedFlashTicks = 10;
+            channel = finished;
+        } else {
+            channel = null;
+        }
+    }
+
+    static void clearChannel() {
+        channel = null;
+    }
+
+    public static List<Fixture> fixtures() {
+        return fixtures;
+    }
+
+    static void setFixtures(List<Fixture> found) {
+        fixtures = found == null ? List.of() : List.copyOf(found);
+    }
+
+    static void reset() {
+        status = SabotageStatusS2CPacket.NONE;
+        channel = null;
+        fixtures = List.of();
+    }
+
+    static List<Fixture> copyFixtures() {
+        return new ArrayList<>(fixtures);
+    }
+}

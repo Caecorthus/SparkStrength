@@ -165,6 +165,10 @@ public final class TaotieHeadRules {
             // Serial Killer psycho pistol shot: a payload-fired gun, classified like wathe:gunshoot.
             // 连环杀手疯魔手枪开火：通过数据包开火的枪械，与 wathe:gunshoot 同类处理。
             Identifier.of("sparkstrength", "serial_pistol_shoot"),
+            // Sabotage: triggering from the tablet and finishing a breaker repair; their cancel packets stay allowed.
+            // 破坏系统：在平板触发破坏、完成电闸维修；对应的取消包继续放行。
+            Identifier.of("sparkstrength", "trigger_sabotage"),
+            Identifier.of("sparkstrength", "complete_breaker_repair"),
             FIRE_PAYLOAD_ID));
 
     private TaotieHeadRules() {

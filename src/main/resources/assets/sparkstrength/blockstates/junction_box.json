@@ -1,0 +1,49 @@
+{
+  "variants": {
+    "facing=north,sabotage=lights,state=closed": {
+      "model": "sparkstrength:block/junction_box"
+    },
+    "facing=north,sabotage=lights,state=broken": {
+      "model": "sparkstrength:block/junction_box_broken"
+    },
+    "facing=north,sabotage=lights,state=hacked": {
+      "model": "sparkstrength:block/junction_box_hacked"
+    },
+    "facing=east,sabotage=lights,state=closed": {
+      "model": "sparkstrength:block/junction_box",
+      "y": 90
+    },
+    "facing=east,sabotage=lights,state=broken": {
+      "model": "sparkstrength:block/junction_box_broken",
+      "y": 90
+    },
+    "facing=east,sabotage=lights,state=hacked": {
+      "model": "sparkstrength:block/junction_box_hacked",
+      "y": 90
+    },
+    "facing=south,sabotage=lights,state=closed": {
+      "model": "sparkstrength:block/junction_box",
+      "y": 180
+    },
+    "facing=south,sabotage=lights,state=broken": {
+      "model": "sparkstrength:block/junction_box_broken",
+      "y": 180
+    },
+    "facing=south,sabotage=lights,state=hacked": {
+      "model": "sparkstrength:block/junction_box_hacked",
+      "y": 180
+    },
+    "facing=west,sabotage=lights,state=closed": {
+      "model": "sparkstrength:block/junction_box",
+      "y": 270
+    },
+    "facing=west,sabotage=lights,state=broken": {
+      "model": "sparkstrength:block/junction_box_broken",
+      "y": 270
+    },
+    "facing=west,sabotage=lights,state=hacked": {
+      "model": "sparkstrength:block/junction_box_hacked",
+      "y": 270
+    }
+  }
+}
