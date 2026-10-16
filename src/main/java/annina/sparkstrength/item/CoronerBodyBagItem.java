@@ -20,6 +20,9 @@ import java.util.List;
  *
  * <p>交互行为与 Wathe 裹尸袋保持一致：对准玩家尸体右键即可收走尸体。
  * 区别是这里没有任何使用冷却，并且服务端会给验尸官解锁该尸体原主的变形能力。</p>
+ *
+ * <p>A fake corpse (its owner still alive in Wathe) is refused: the bag is kept and the corpse stays.
+ * 假尸体（主人在 Wathe 中仍存活）会被拒绝：袋子不消耗，尸体留在原地。</p>
  */
 public final class CoronerBodyBagItem extends Item {
     public CoronerBodyBagItem(Settings settings) {

@@ -41,6 +41,8 @@ public final class CoronerPlayerComponent implements AutoSyncedComponent {
     /*
      * 靠近尸体的 50 金币奖励按“尸体实体 UUID”去重，而不是按尸体主人 UUID 去重。
      * 这样同一名玩家如果因为特殊流程留下多具尸体，验尸官靠近每一具尸体都能各领一次钱。
+     * 主人仍存活的假尸体不付钱，也不记入这里（CoronerService#isRealBody）。
+     * Fake corpses (owner still alive) pay nothing and are not recorded here.
      */
     private final Set<UUID> rewardedBodies = new LinkedHashSet<>();
     private @Nullable UUID activeDisguiseUuid;

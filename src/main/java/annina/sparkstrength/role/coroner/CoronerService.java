@@ -1,6 +1,7 @@
 package annina.sparkstrength.role.coroner;
 
 import annina.sparkstrength.SparkStrengthItems;
+import annina.sparkstrength.compat.SparkTraitsReviveCompat;
 import annina.sparkstrength.compat.SparkWitchCompat;
 import annina.sparkstrength.component.coroner.CoronerBodySnapshotComponent;
 import annina.sparkstrength.component.coroner.CoronerPlayerComponent;
@@ -134,7 +135,13 @@ public final class CoronerService {
     }
 
     public static boolean collectBodyWithBag(ServerPlayerEntity coroner, PlayerBodyEntity body) {
-        if (!canUseCoronerAbility(coroner) || body == null) {
+        /*
+         * Fake corpses are refused (owner 2026-10-16): false makes CoronerBodyBagItem pass, so the bag is kept, the
+         * corpse stays, and no disguise or coins come from a living player's body.
+         * 拒绝假尸体（所有者 2026-10-16）：返回 false 时采尸袋物品直接放行，袋子不消耗、尸体留在原地，
+         * 也不会从活人的尸体解锁伪装或拿到金币。
+         */
+        if (!canUseCoronerAbility(coroner) || body == null || !isRealBody(coroner.getServerWorld(), body)) {
             return false;
         }
 
@@ -408,8 +415,30 @@ public final class CoronerService {
         if (component.hasRewardedBody(bodyEntityUuid)) {
             return;
         }
+        if (!isRealBody(coroner.getServerWorld(), body)) {
+            // Not marked: a fake corpse still lying here when its owner really dies pays then.
+            // 不记入已领：假尸体在主人真正死亡后仍在原地时，届时照常付钱。
+            return;
+        }
         component.markRewardedBody(bodyEntityUuid);
         PlayerShopComponent.KEY.get(coroner).addToBalance(CoronerRules.BODY_PROXIMITY_REWARD);
+    }
+
+    /**
+     * Fake corpse guard (owner decision 2026-10-16): a corpse counts only while Wathe lists its owner as dead, which
+     * covers every mod's fake corpse (SparkWitch Fiend feign death, NoellesRoles Jester, SparkTraits Depression)
+     * without depending on any of them. SparkTraits' Last Stand pending corpse can sit on a dead-listed owner, so its
+     * public facade is asked as well; without SparkTraits that answer is false. A fake corpse pays no proximity coins
+     * and cannot be bagged.
+     * 假尸体判定（所有者 2026-10-16 决定）：只有 Wathe 把尸体主人记为死亡时尸体才算数，无需依赖任何模组即可覆盖
+     * SparkWitch 魔人假死、NoellesRoles 小丑、SparkTraits 抑郁等假尸体。SparkTraits 背水一战待决尸体的主人可能已在死亡
+     * 名单中，因此同时询问其公开门面；未安装 SparkTraits 时该查询为 false。假尸体不给靠近金币，也不能装袋。
+     */
+    private static boolean isRealBody(ServerWorld world, PlayerBodyEntity body) {
+        UUID ownerUuid = body.getPlayerUuid();
+        return ownerUuid != null
+                && GameWorldComponent.KEY.get(world).isPlayerDead(ownerUuid)
+                && !SparkTraitsReviveCompat.isFakeDeathBody(body);
     }
 
     private static boolean canUseCoronerAbility(ServerPlayerEntity player) {
