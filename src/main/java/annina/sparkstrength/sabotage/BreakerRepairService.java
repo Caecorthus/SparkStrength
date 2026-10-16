@@ -39,7 +39,7 @@ public final class BreakerRepairService {
     }
 
     public static void onBreakerUse(ServerPlayerEntity player, BlockPos pos, BlockState state) {
-        if (!SabotageAccess.canRepairBreaker(player)) {
+        if (!SabotageAccess.canRepairBreaker(player) || SabotageActionLocks.isLocked(player)) {
             return;
         }
         ServerWorld world = player.getServerWorld();
@@ -78,6 +78,11 @@ public final class BreakerRepairService {
         if (world.getTime() - session.startTick() < SabotageRules.repairMinTicks(session.switches(), session.holdTicks())) {
             // Too early (only a modified client gets here): ignore and keep the session; the panel retries.
             // 过早（只有改过的客户端才会走到这里）：忽略并保留会话，面板会重试。
+            return;
+        }
+        if (SabotageActionLocks.isLocked(player)) {
+            // Stunned as the lever finished: ignore and keep the session; the panel asks for another pull.
+            // 拉闸完成时处于眩晕：忽略并保留会话，面板会提示再拉一次。
             return;
         }
         SESSIONS.remove(player.getUuid());

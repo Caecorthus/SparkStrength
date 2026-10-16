@@ -5,6 +5,7 @@ import annina.sparkstrength.SparkStrengthSounds;
 import annina.sparkstrength.block.CircuitBreakerBlock;
 import annina.sparkstrength.block.JunctionBoxBlock;
 import annina.sparkstrength.component.sabotage.SabotageWorldComponent;
+import annina.sparkstrength.mixin.sabotage.GameWorldComponentResetAccessor;
 import annina.sparkstrength.network.sabotage.SabotageStatusS2CPacket;
 import annina.sparkstrength.tablet.TabletAccess;
 import annina.sparkstrength.tablet.TabletStateService;
@@ -167,10 +168,12 @@ public final class SabotageService {
         GameWorldComponent game = GameWorldComponent.KEY.get(world);
         if (game.getGameStatus() == GameWorldComponent.GameStatus.ACTIVE) {
             if (!sabotage.isMapReady() && sabotage.isAwaitingMapReset()
-                    && world.getTime() - sabotage.roundStartTick() >= SabotageRules.MAP_READY_FALLBACK_TICKS
-                    && playAreaLoaded(world)) {
-                // Only for maps whose copy keeps failing; a copy that succeeds later re-initializes (onTrainReset).
-                // 只用于复制一直失败的地图；之后若复制成功会重新初始化（onTrainReset）。
+                    && SabotageRules.mayScanWithoutCopy(world.getTime() - sabotage.roundStartTick(),
+                    trainCopyPending(game), playAreaLoaded(world))) {
+                // Only for a round where Wathe queued no train copy. A queued or retrying copy is waited for, so a
+                // half-loaded template never looks like a map without junction boxes (onTrainReset does that scan).
+                // 只用于 Wathe 没有排队车厢复制的对局。排队或重试中的复制一律等待，半加载的模板不会被当成没有接线箱的
+                // 地图（那次扫描由 onTrainReset 完成）。
                 initializeMap(world, sabotage);
             }
             if (sabotage.isMapReady()) {
@@ -181,6 +184,11 @@ public final class SabotageService {
             }
         }
         syncStatus(world, sabotage);
+    }
+
+    /** Wathe's counter is positive while a copy is queued or retrying. / Wathe 的计数在复制排队或重试中为正数。 */
+    private static boolean trainCopyPending(GameWorldComponent game) {
+        return ((GameWorldComponentResetAccessor) game).sparkstrength$getTicksUntilNextResetAttempt() > 0;
     }
 
     /** A partial scan of unloaded chunks would miss junction boxes. / 扫描未加载的区块会漏掉接线箱。 */

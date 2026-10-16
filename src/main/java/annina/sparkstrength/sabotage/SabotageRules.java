@@ -141,6 +141,16 @@ public final class SabotageRules {
         return mapHasBreakers ? OutageMode.REPAIR : OutageMode.TIMED;
     }
 
+    /**
+     * Whether the map may be scanned without a train-copy success: only when Wathe has no copy queued or retrying (a
+     * round that never queued one), after a short wait, with the play area loaded. A pending copy is always waited for.
+     * 是否可以在没有车厢复制成功回调的情况下扫描地图：仅当 Wathe 没有排队或重试中的复制（本局从未排队复制）、
+     * 等待片刻、且对局区域已加载时。进行中的复制一律等待。
+     */
+    public static boolean mayScanWithoutCopy(long ticksSinceRoundStart, boolean trainCopyPending, boolean playAreaLoaded) {
+        return !trainCopyPending && playAreaLoaded && ticksSinceRoundStart >= MAP_READY_FALLBACK_TICKS;
+    }
+
     /** Maps without junction boxes (made before this system) start with lights unlocked. / 没有接线箱的地图（此系统之前做的）开局就解锁灯光。 */
     public static boolean startsWithLightsUnlocked(boolean mapHasJunctionBoxes) {
         return !mapHasJunctionBoxes;

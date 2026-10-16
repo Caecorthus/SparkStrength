@@ -80,6 +80,9 @@ public final class JunctionBoxService {
             player.sendMessage(Text.translatable("message.sparkstrength.sabotage.cannot_pry"), true);
             return;
         }
+        if (SabotageActionLocks.isLocked(player)) {
+            return;
+        }
         ServerWorld world = player.getServerWorld();
         SabotageWorldComponent sabotage = SabotageWorldComponent.KEY.get(world);
         if (!sabotage.isMapReady()) {
@@ -123,6 +126,9 @@ public final class JunctionBoxService {
     public static void onHack(ServerPlayerEntity player, BlockPos pos, BlockState state) {
         if (!SabotageAccess.canUse(player)) {
             player.sendMessage(Text.translatable("message.sparkstrength.sabotage.cannot_hack"), true);
+            return;
+        }
+        if (SabotageActionLocks.isLocked(player)) {
             return;
         }
         ServerWorld world = player.getServerWorld();
@@ -283,7 +289,7 @@ public final class JunctionBoxService {
 
     private static boolean isStillValid(ServerPlayerEntity player, Channel channel, BlockState state,
                                         SabotageWorldComponent sabotage, long now) {
-        if (!SabotageAccess.canUse(player) || player.isSneaking()
+        if (!SabotageAccess.canUse(player) || player.isSneaking() || SabotageActionLocks.isLocked(player)
                 || now - channel.lastHeartbeatTick > SabotageRules.HEARTBEAT_TIMEOUT_TICKS) {
             return false;
         }
