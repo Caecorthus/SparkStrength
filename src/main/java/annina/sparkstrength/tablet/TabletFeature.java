@@ -15,7 +15,9 @@ public enum TabletFeature {
     /** Attendant room-door monitor. / 乘务员房门监控。 */
     DOOR_LOG("door_log", 1),
     /** Bomber drone control (real Bomber only). / 炸弹客无人机操控（仅真实炸弹客）。 */
-    DRONE("drone", 2);
+    DRONE("drone", 2),
+    /** Killer-team sabotage page (see {@code SabotageAccess}). / 杀手阵营破坏页（见 SabotageAccess）。 */
+    SABOTAGE("sabotage", 3);
 
     private final String id;
     private final int wire;

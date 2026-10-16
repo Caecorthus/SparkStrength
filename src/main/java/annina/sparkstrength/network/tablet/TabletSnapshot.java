@@ -21,8 +21,8 @@ import java.util.UUID;
  * 服务端还会按查看者裁剪身份：杀手匿名频道按互认状态，义警频道按查看者本局已完成的任务数。被隐藏发送者的聊天行不含 UUID
  * 与名字，被隐藏成员不会出现在 connections 中。</p>
  *
- * <p>Wire layout (v5, in order; changing it requires a new sync payload id):
- * 线上布局（v5，按顺序；修改它必须更换同步包 id）：
+ * <p>Wire layout (v7, in order; changing it requires a new sync payload id):
+ * 线上布局（v7，按顺序；修改它必须更换同步包 id）：
  * <ol>
  *   <li>bool localHasTablet, varint channelWire, varint allowedChannelMask, bool canSend,
  *   varint channelSwitchCooldownSeconds, bool channelLocked</li>
@@ -32,6 +32,7 @@ import java.util.UUID;
  *   <li>v4: varint featureMask, list doorLog ({@link DoorLogRow})</li>
  *   <li>v5: varint identityTasksRemaining</li>
  *   <li>v6: list drones ({@link DroneRow})</li>
+ *   <li>v7: list sabotage ({@link SabotageRow}), list sabotageLog ({@link SabotageLogRow})</li>
  * </ol>
  * Lists are a varint count followed by the rows.
  * 列表为 varint 数量后接各行。</p>
@@ -63,11 +64,15 @@ public record TabletSnapshot(
         int featureMask,
         List<DoorLogRow> doorLog,
         int identityTasksRemaining,
-        List<DroneRow> drones
+        List<DroneRow> drones,
+        List<SabotageRow> sabotage,
+        List<SabotageLogRow> sabotageLog
 ) {
     public TabletSnapshot {
         identityTasksRemaining = Math.max(0, identityTasksRemaining);
         drones = drones == null ? List.of() : List.copyOf(drones);
+        sabotage = sabotage == null ? List.of() : List.copyOf(sabotage);
+        sabotageLog = sabotageLog == null ? List.of() : List.copyOf(sabotageLog);
     }
 
     public static TabletSnapshot empty() {
@@ -88,6 +93,8 @@ public record TabletSnapshot(
                 0,
                 List.of(),
                 0,
+                List.of(),
+                List.of(),
                 List.of()
         );
     }
@@ -126,6 +133,8 @@ public record TabletSnapshot(
         writeList(buf, doorLog, (targetBuf, row) -> row.write(targetBuf));
         buf.writeVarInt(identityTasksRemaining);
         writeList(buf, drones, (targetBuf, row) -> row.write(targetBuf));
+        writeList(buf, sabotage, (targetBuf, row) -> row.write(targetBuf));
+        writeList(buf, sabotageLog, (targetBuf, row) -> row.write(targetBuf));
     }
 
     public static TabletSnapshot read(PacketByteBuf buf) {
@@ -146,7 +155,9 @@ public record TabletSnapshot(
                 buf.readVarInt(),
                 readList(buf, DoorLogRow::read),
                 buf.readVarInt(),
-                readList(buf, DroneRow::read)
+                readList(buf, DroneRow::read),
+                readList(buf, SabotageRow::read),
+                readList(buf, SabotageLogRow::read)
         );
     }
 
@@ -408,6 +419,69 @@ public record TabletSnapshot(
         private static DroneRow read(PacketByteBuf buf) {
             return new DroneRow(buf.readVarInt() - 1, buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
                     buf.readBoolean(), buf.readVarInt(), buf.readVarInt() - 1);
+        }
+    }
+
+    /**
+     * One sabotage card for a viewer holding {@link TabletFeature#SABOTAGE}; one row per sabotage type, in type order.
+     * 拥有 {@link TabletFeature#SABOTAGE} 的查看者看到的一张破坏卡片；每种破坏一行，按类型顺序。
+     *
+     * @param typeWire  {@code SabotageType} wire / 破坏类型
+     * @param stateWire {@code SabotageRowState} wire / 卡片状态
+     * @param seconds   remaining (arming, cooldown) or elapsed (active) seconds / 剩余（准备、冷却）或已持续（进行中）秒数
+     * @param modeWire  {@code OutageMode} wire while active / 进行中时的熄灯模式
+     * @param boxes     junction boxes of this type on the map / 本图该类接线箱数量
+     * @param opened    of those, pried open and not yet hacked / 其中已撬开未入侵的数量
+     * @param hacked    of those, hacked / 其中已入侵的数量
+     */
+    public record SabotageRow(int typeWire, int stateWire, int seconds, int modeWire, int boxes, int opened,
+                              int hacked) {
+        public SabotageRow {
+            seconds = Math.max(0, seconds);
+            boxes = Math.max(0, boxes);
+            opened = Math.max(0, opened);
+            hacked = Math.max(0, hacked);
+        }
+
+        private void write(PacketByteBuf buf) {
+            buf.writeVarInt(typeWire);
+            buf.writeVarInt(stateWire);
+            buf.writeVarInt(seconds);
+            buf.writeVarInt(modeWire);
+            buf.writeVarInt(boxes);
+            buf.writeVarInt(opened);
+            buf.writeVarInt(hacked);
+        }
+
+        private static SabotageRow read(PacketByteBuf buf) {
+            return new SabotageRow(buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
+                    buf.readVarInt(), buf.readVarInt(), buf.readVarInt());
+        }
+    }
+
+    /**
+     * One line of the killers' sabotage log, newest first. {@code actor} is a game name or empty.
+     * 杀手破坏日志的一行，最新在前。actor 为游戏名或空。
+     *
+     * @param kindWire     {@code SabotageWorldComponent.LogKind} wire / 日志类型
+     * @param typeWire     {@code SabotageType} wire / 破坏类型
+     * @param roundSeconds seconds since the round started / 距本局开始的秒数
+     */
+    public record SabotageLogRow(int kindWire, int typeWire, String actor, int roundSeconds) {
+        public SabotageLogRow {
+            actor = actor == null ? "" : actor;
+            roundSeconds = Math.max(0, roundSeconds);
+        }
+
+        private void write(PacketByteBuf buf) {
+            buf.writeVarInt(kindWire);
+            buf.writeVarInt(typeWire);
+            buf.writeString(actor);
+            buf.writeVarInt(roundSeconds);
+        }
+
+        private static SabotageLogRow read(PacketByteBuf buf) {
+            return new SabotageLogRow(buf.readVarInt(), buf.readVarInt(), buf.readString(32767), buf.readVarInt());
         }
     }
 }

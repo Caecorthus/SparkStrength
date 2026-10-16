@@ -53,14 +53,12 @@ public final class EngineerPowerRestorationService {
             for (ServerPlayerEntity player : serverWorld.getPlayers()) {
                 player.playSoundToPlayer(WatheSounds.BLOCK_LIGHT_TOGGLE, SoundCategory.PLAYERS, 1.0F, 1.0F);
             }
-        }
-        if (buyer instanceof ServerPlayerEntity restorer) {
-            BlackoutRecorder.restored(restorer);
-        }
-        if (buyer.getWorld() instanceof ServerWorld serverWorld) {
             // Ends a lights sabotage too; its team cooldown becomes the short one.
             // 同时结束灯光破坏；其团队冷却改为较短的那一档。
             SabotageService.onPowerRestored(serverWorld);
+        }
+        if (buyer instanceof ServerPlayerEntity restorer) {
+            BlackoutRecorder.restored(restorer);
         }
         return true;
     }

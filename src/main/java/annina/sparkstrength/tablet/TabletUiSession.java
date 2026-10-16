@@ -239,7 +239,8 @@ public final class TabletUiSession {
         SUSPECTS("screen.sparkstrength.tablet.tab.suspects", true, null),
         // Feature sections come last so channel sections keep their rail slots. 功能分区放在最后，频道分区的侧栏位置不变。
         DOOR_LOG("screen.sparkstrength.tablet.tab.door_log", false, TabletFeature.DOOR_LOG),
-        DRONE("screen.sparkstrength.tablet.tab.drone", false, TabletFeature.DRONE);
+        DRONE("screen.sparkstrength.tablet.tab.drone", false, TabletFeature.DRONE),
+        SABOTAGE("screen.sparkstrength.tablet.tab.sabotage", false, TabletFeature.SABOTAGE);
 
         private final String translationKey;
         private final boolean requiresMeetingFeatures;
