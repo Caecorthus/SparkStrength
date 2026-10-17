@@ -725,5 +725,6 @@
   "screen.sparkstrength.tablet.sabotage.log.engine_emergency": "列车启用应急动力",
   "screen.sparkstrength.tablet.sabotage.log.engine_repaired": "有人修好了动力装置，列车动力恢复",
   "message.sparkstrength.configurator.single_engine_unit": "本图只有一台动力装置：建议至少放两台并分散摆放，免得一条走廊就能守住。",
+  "message.sparkstrength.configurator.too_many_engine_units": "本图有 %s 台动力装置，超过了状态同步的上限 %s 台：多出的装置照样能修，但动力破坏期间没有远距离描边。",
   "message.sparkstrength.configurator.engine_boxes_without_units": "本图有动力接线箱，但对局区内没有动力装置：动力破坏不会出现。"
 }

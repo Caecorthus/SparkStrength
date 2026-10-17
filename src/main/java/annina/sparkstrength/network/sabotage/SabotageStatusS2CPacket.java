@@ -36,7 +36,13 @@ public record SabotageStatusS2CPacket(boolean lightsOut, int outageId, int modeW
         implements CustomPayload {
     public static final SabotageStatusS2CPacket NONE = new SabotageStatusS2CPacket(false, 0, 0, false, 0, 0L,
             List.of());
-    /** More than any map places; a bad count cannot make the client allocate wildly. / 比任何地图放的都多；错误的数量不会让客户端乱分配内存。 */
+    /**
+     * Most engine units the packet carries, far more than any map places; a bad count cannot make the client allocate
+     * wildly. Units past it are still repairable but get no long-range outline, so the circuit configurator warns a map
+     * with more.
+     * 包里最多携带的动力装置数，远多于任何地图会放的数量；错误的数量不会让客户端乱分配内存。超出的装置照样能修，只是没有
+     * 远距离描边，所以线路配置器会对超过它的地图发出提醒。
+     */
     public static final int MAX_ENGINE_UNITS = 256;
     public static final Identifier PAYLOAD_ID = SparkStrength.id("sabotage_status");
     public static final Id<SabotageStatusS2CPacket> ID = new Id<>(PAYLOAD_ID);

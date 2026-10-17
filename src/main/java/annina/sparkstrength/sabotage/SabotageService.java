@@ -16,6 +16,7 @@ import dev.doctor4t.wathe.cca.MapVariablesWorldComponent;
 import dev.doctor4t.wathe.cca.WorldBlackoutComponent;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
+import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.Block;
@@ -76,6 +77,9 @@ public final class SabotageService {
             }
         });
         ServerTickEvents.END_WORLD_TICK.register(SabotageService::tick);
+        // Spectators never reach Block.onUse; this is their way to the engine unit's status panel.
+        // 旁观者永远到不了 Block.onUse；这是他们打开动力装置状态面板的入口。
+        UseBlockCallback.EVENT.register(EngineSabotageService::onUseBlock);
         ServerWorldEvents.UNLOAD.register((server, world) -> {
             JunctionBoxService.clear(world);
             BreakerRepairService.closeAll(world, 2);
@@ -234,9 +238,11 @@ public final class SabotageService {
 
     /**
      * Engine units removed or replaced mid-round stop counting; once none is left the engine sabotage can neither be
-     * unlocked nor repaired, so one in progress ends without a cooldown. Unloaded chunks are left alone, never loaded.
-     * 局中被移除或替换的动力装置不再计入；一台都不剩时动力破坏既不能解锁也修不了，进行中的会直接结束，不开始冷却。
-     * 未加载的区块不做判断，也绝不加载。
+     * unlocked nor repaired, so one in progress ends without a cooldown. Then every loaded unit is given the look of the
+     * current phase, catching up units whose chunk was unloaded when the phase changed. Unloaded chunks are left alone,
+     * never loaded.
+     * 局中被移除或替换的动力装置不再计入；一台都不剩时动力破坏既不能解锁也修不了，进行中的会直接结束，不开始冷却。随后每台
+     * 已加载的装置都换成当前阶段的外观，补上阶段变化时区块未加载的装置。未加载的区块不做判断，也绝不加载。
      */
     private static void checkEngineUnits(ServerWorld world, SabotageWorldComponent sabotage) {
         if (world.getTime() % ENGINE_UNIT_CHECK_TICKS != 0 || !sabotage.hasEngineUnits()) {
@@ -244,14 +250,14 @@ public final class SabotageService {
         }
         boolean dropped = sabotage.pruneEngineUnits(pos -> !world.isChunkLoaded(pos)
                 || world.getBlockState(pos).isOf(SparkStrengthBlocks.engineUnit()));
-        if (!dropped) {
-            return;
+        if (dropped) {
+            if (!sabotage.hasEngineUnits() && sabotage.isEngineOn()) {
+                EngineSabotageService.abort(world);
+            }
+            markStatusDirty(world);
+            TabletStateService.syncToTabletHolders(world);
         }
-        if (!sabotage.hasEngineUnits() && sabotage.isEngineOn()) {
-            EngineSabotageService.abort(world);
-        }
-        markStatusDirty(world);
-        TabletStateService.syncToTabletHolders(world);
+        EngineSabotageService.reconcileUnitLooks(world, sabotage);
     }
 
     /** Wathe's counter is positive while a copy is queued or retrying. / Wathe 的计数在复制排队或重试中为正数。 */

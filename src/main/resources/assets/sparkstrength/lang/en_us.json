@@ -725,5 +725,6 @@
   "screen.sparkstrength.tablet.sabotage.log.engine_emergency": "The train switched to emergency power",
   "screen.sparkstrength.tablet.sabotage.log.engine_repaired": "Someone repaired an engine unit: the train runs again",
   "message.sparkstrength.configurator.single_engine_unit": "This map has only one engine unit: place at least two, spread out, so one corridor cannot guard them all.",
+  "message.sparkstrength.configurator.too_many_engine_units": "This map has %s engine units, more than the %s the status sync carries: the extra units still work but get no long-range outline during an engine sabotage.",
   "message.sparkstrength.configurator.engine_boxes_without_units": "This map has engine junction boxes but no engine unit in the play area: the engine sabotage will not appear."
 }

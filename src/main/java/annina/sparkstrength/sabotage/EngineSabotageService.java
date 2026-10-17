@@ -10,6 +10,7 @@ import dev.doctor4t.wathe.cca.WorldBlackoutComponent;
 import dev.doctor4t.wathe.index.WatheSounds;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.network.packet.s2c.play.PlaySoundS2CPacket;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -17,10 +18,14 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
+import net.minecraft.util.ActionResult;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Hand;
+import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -287,6 +292,11 @@ public final class EngineSabotageService {
      */
     private static void celebrate(ServerWorld world, List<BlockPos> units, @Nullable BlockPos repaired, boolean horn) {
         for (BlockPos pos : units) {
+            if (!world.isChunkLoaded(pos)) {
+                // Nobody is close enough to see it, and reading the block would load the chunk.
+                // 没有人近到能看见，而读取方块会加载区块。
+                continue;
+            }
             boolean main = pos.equals(repaired);
             Vec3d panel = panelPoint(world, pos);
             world.spawnParticles(ParticleTypes.HAPPY_VILLAGER, panel.x, panel.y, panel.z, main ? 40 : 8,
@@ -302,7 +312,11 @@ public final class EngineSabotageService {
         }
     }
 
-    /** Just in front of a unit's gauge panel, which faces the unit's {@code facing}. / 装置仪表面板正前方一点，面板朝向即装置的 facing。 */
+    /**
+     * Just in front of a unit's gauge panel, which faces the unit's {@code facing}. The caller checked the chunk is
+     * loaded.
+     * 装置仪表面板正前方一点，面板朝向即装置的 facing。调用方已确认区块已加载。
+     */
     private static Vec3d panelPoint(ServerWorld world, BlockPos pos) {
         BlockState state = world.getBlockState(pos);
         Direction facing = state.isOf(SparkStrengthBlocks.engineUnit()) ? state.get(EngineUnitBlock.FACING)
@@ -351,8 +365,17 @@ public final class EngineSabotageService {
         TabletStateService.syncToTabletHolders(world);
     }
 
+    /**
+     * Sets every loaded unit's look. Units in unloaded chunks are skipped, never loaded: reading their block would load
+     * the chunk synchronously on the server thread. {@link #reconcileUnitLooks} catches them up once they load.
+     * 设置每台已加载装置的外观。未加载区块里的装置直接跳过，绝不加载：读取它们的方块会在服务端线程上同步加载区块。
+     * 它们加载之后由 reconcileUnitLooks 补上。
+     */
     public static void setUnitLooks(ServerWorld world, List<BlockPos> units, EngineCondition condition) {
         for (BlockPos pos : units) {
+            if (!world.isChunkLoaded(pos)) {
+                continue;
+            }
             BlockState state = world.getBlockState(pos);
             if (state.isOf(SparkStrengthBlocks.engineUnit()) && state.get(EngineUnitBlock.CONDITION) != condition) {
                 world.setBlockState(pos, state.with(EngineUnitBlock.CONDITION, condition), Block.NOTIFY_ALL);
@@ -361,11 +384,44 @@ public final class EngineSabotageService {
     }
 
     /**
-     * Right-click on an engine unit. A living player in the round gets the repair panel for the current phase on a unit
-     * the map scan registered; everyone else (spectators, no sabotage on, a decorative unit outside the play area) gets
-     * the read-only status panel.
-     * 右键动力装置。本局存活的玩家对地图扫描登记过的装置打开当前阶段对应的维修面板；其他人（旁观者、没有破坏进行、对局区外的
-     * 装饰装置）打开只读的状态面板。
+     * Every loaded registered unit shows the look of the derived phase (intact when no engine sabotage is on). Catches
+     * up the units whose chunk was not loaded at a transition; called once a second by the map's unit check.
+     * 每台已加载、已登记的装置都显示推导阶段对应的外观（没有动力破坏时为完好）。补上阶段转换时区块未加载的装置；由地图的
+     * 装置检查每秒调用一次。
+     */
+    static void reconcileUnitLooks(ServerWorld world, SabotageWorldComponent sabotage) {
+        setUnitLooks(world, sabotage.engineUnits(), EngineCondition.of(sabotage.enginePhase(world.getTime())));
+    }
+
+    /**
+     * Fabric's use-block event, which the server fires before vanilla's spectator check (vanilla never calls
+     * {@code Block.onUse} for a spectator). A spectator right-clicking an engine unit gets the read-only status panel and
+     * nothing else happens. On the client Fabric skips this event for spectators and vanilla still sends the use packet,
+     * so the client side only ever answers PASS.
+     * Fabric 的使用方块事件，服务端在原版的旁观者判断之前触发（原版从不为旁观者调用 Block.onUse）。旁观者右键动力装置时只打开
+     * 只读的状态面板，其他什么都不发生。客户端上 Fabric 对旁观者不触发此事件，原版照常发送使用包，所以客户端一律返回 PASS。
+     */
+    static ActionResult onUseBlock(PlayerEntity player, World world, Hand hand, BlockHitResult hit) {
+        if (world.isClient() || !player.isSpectator() || hand != Hand.MAIN_HAND
+                || !(player instanceof ServerPlayerEntity serverPlayer)) {
+            return ActionResult.PASS;
+        }
+        // Vanilla already checked the reach, so the chunk is loaded. / 原版已检查过触及距离，区块必定已加载。
+        BlockPos pos = hit.getBlockPos();
+        if (!world.getBlockState(pos).isOf(SparkStrengthBlocks.engineUnit())) {
+            return ActionResult.PASS;
+        }
+        EngineRepairService.openStatus(serverPlayer, pos.toImmutable());
+        // Accepted (no "too high to build" notice), without a hand swing. / 视为已处理（不会提示建筑高度），也不挥手。
+        return ActionResult.CONSUME;
+    }
+
+    /**
+     * Right-click on an engine unit ({@code Block.onUse}, never reached by spectators: see {@link #onUseBlock}). A
+     * living player in the round gets the repair panel for the current phase on a unit the map scan registered;
+     * everyone else (no sabotage on, a decorative unit outside the play area) gets the read-only status panel.
+     * 右键动力装置（Block.onUse，旁观者到不了这里：见 onUseBlock）。本局存活的玩家对地图扫描登记过的装置打开当前阶段对应的
+     * 维修面板；其他人（没有破坏进行、对局区外的装饰装置）打开只读的状态面板。
      */
     public static void onUnitUse(ServerPlayerEntity player, BlockPos pos) {
         if (SabotageActionLocks.isLocked(player)) {

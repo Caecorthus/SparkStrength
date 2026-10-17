@@ -2,6 +2,7 @@ package annina.sparkstrength.sabotage;
 
 import annina.sparkstrength.SparkStrengthBlocks;
 import annina.sparkstrength.block.JunctionBoxBlock;
+import annina.sparkstrength.network.sabotage.SabotageStatusS2CPacket;
 import dev.doctor4t.wathe.cca.MapVariablesWorldComponent;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -89,6 +90,11 @@ public final class CircuitConfiguratorService {
             // One unit can be guarded from a single corridor. / 只有一台的话，守住一条走廊就够了。
             player.sendMessage(Text.translatable("message.sparkstrength.configurator.single_engine_unit")
                     .formatted(Formatting.YELLOW), false);
+        } else if (engineUnits.get() > SabotageStatusS2CPacket.MAX_ENGINE_UNITS) {
+            // The status packet only carries this many, so the rest get no long-range outline.
+            // 状态包最多只带这么多台，多出的装置没有远距离描边。
+            player.sendMessage(Text.translatable("message.sparkstrength.configurator.too_many_engine_units",
+                    engineUnits.get(), SabotageStatusS2CPacket.MAX_ENGINE_UNITS).formatted(Formatting.YELLOW), false);
         } else if (engineBoxes.get() > 0 && engineUnits.get() == 0) {
             player.sendMessage(Text.translatable("message.sparkstrength.configurator.engine_boxes_without_units")
                     .formatted(Formatting.YELLOW), false);
