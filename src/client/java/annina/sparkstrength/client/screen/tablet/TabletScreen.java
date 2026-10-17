@@ -7,6 +7,7 @@ import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.HeroState;
 import annina.sparkstrength.client.screen.tablet.TabletTheme.Accent;
 import annina.sparkstrength.compat.SparkWitchCompat;
 import annina.sparkstrength.network.drone.DronePilotStartC2SPacket;
+import annina.sparkstrength.network.sabotage.TriggerSabotageC2SPacket;
 import annina.sparkstrength.network.tablet.ApproveSuspectRemovalC2SPacket;
 import annina.sparkstrength.network.tablet.CallTabletMeetingC2SPacket;
 import annina.sparkstrength.network.tablet.CastTabletVoteC2SPacket;
@@ -16,6 +17,7 @@ import annina.sparkstrength.network.tablet.SelectTabletChannelC2SPacket;
 import annina.sparkstrength.network.tablet.SendTabletChatC2SPacket;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
 import annina.sparkstrength.role.bomber.drone.DroneKind;
+import annina.sparkstrength.sabotage.SabotageRowState;
 import annina.sparkstrength.tablet.TabletChannel;
 import annina.sparkstrength.tablet.TabletFeature;
 import annina.sparkstrength.tablet.TabletIdentityRules;
@@ -193,6 +195,8 @@ public final class TabletScreen extends Screen {
     private List<DroneButtonKey> lastDroneButtons = List.of();
     private int pendingPilotEntityId = -1;
     private int pendingPilotTicks;
+    private List<Integer> lastSabotageButtons = List.of();
+    private int pendingTriggerTicks;
 
     // Stable identity of each keyed widget in the current build, so a rebuild can restore keyboard focus.
     // 当前构建中各控件的稳定标识，供重建时恢复键盘焦点。
@@ -226,6 +230,7 @@ public final class TabletScreen extends Screen {
         clampRowScrolls(snapshot);
         lastDoorLogRows = doorLogRows(snapshot);
         lastDroneButtons = droneButtonKeys(snapshot);
+        lastSabotageButtons = sabotageButtonKeys(snapshot);
         ensureChatInput();
         focusKeys.clear();
         tabButtons.clear();
@@ -260,6 +265,7 @@ public final class TabletScreen extends Screen {
                 }
             }
             case DRONE -> initDrones(snapshot);
+            case SABOTAGE -> initSabotage(snapshot);
         }
     }
 
@@ -346,7 +352,9 @@ public final class TabletScreen extends Screen {
                 || session.section() == Section.MEETING
                 || session.section() == Section.SUSPECTS
                 || (session.section() == Section.DRONE && (droneFirstRow != session.droneFirstRow()
-                        || !droneButtonKeys(snapshot).equals(lastDroneButtons)))) {
+                        || !droneButtonKeys(snapshot).equals(lastDroneButtons)))
+                || (session.section() == Section.SABOTAGE
+                        && !sabotageButtonKeys(snapshot).equals(lastSabotageButtons))) {
             refresh();
         }
     }
@@ -377,6 +385,9 @@ public final class TabletScreen extends Screen {
         super.tick();
         if (pendingSwitchTicks > 0 && --pendingSwitchTicks == 0) {
             pendingChannelWire = TabletChannel.NO_CHANNEL_WIRE;
+        }
+        if (pendingTriggerTicks > 0 && --pendingTriggerTicks == 0 && session.section() == Section.SABOTAGE) {
+            refresh();
         }
         if (pendingPilotTicks > 0 && --pendingPilotTicks == 0) {
             // No answer (refused, e.g. body not on the ground): re-arm the connect button. 未获响应（被拒绝）：恢复连接按钮。
@@ -632,6 +643,154 @@ public final class TabletScreen extends Screen {
         // 驾驶客户端会关闭平板以切换到无人机视角；之后再打开平板时回到无人机列表。
         TabletClientState.resumeOnNextOpen(Section.DRONE);
         refresh();
+    }
+
+    /**
+     * One trigger button per sabotage card; only a READY card's button is active. The server re-validates every
+     * trigger, and a short pending window stops a double click from sending twice.
+     * 每张破坏卡片一个触发按钮；只有可触发的卡片按钮可用。服务端会重新校验每次触发，短暂的等待期防止双击重复发送。
+     */
+    private void initSabotage(TabletSnapshot snapshot) {
+        List<TabletSnapshot.SabotageRow> rows = snapshot.hasFeature(TabletFeature.SABOTAGE) ? snapshot.sabotage() : List.of();
+        Rect area = layout.bodyNoFooter();
+        for (int index = 0; index < rows.size(); index++) {
+            int y = area.y() + index * TabletSabotagePainter.CARD_STEP;
+            if (y + TabletSabotagePainter.CARD_H > area.bottom()) {
+                break;
+            }
+            TabletSnapshot.SabotageRow row = rows.get(index);
+            SabotageRowState state = TabletSabotagePainter.state(row);
+            boolean ready = state == SabotageRowState.READY && pendingTriggerTicks == 0;
+            String labelKey = switch (state) {
+                case READY -> "button.trigger";
+                case LOCKED -> "button.locked";
+                case ARMING -> "button.arming";
+                case COOLDOWN -> "button.cooldown";
+                case ACTIVE -> "button.active";
+                case BLOCKED -> "button.blocked";
+            };
+            ButtonStyle style = switch (state) {
+                case READY -> ButtonStyle.DANGER;
+                case ACTIVE -> ButtonStyle.DANGER_SOFT;
+                default -> ButtonStyle.LOCKED;
+            };
+            ButtonIcon icon = switch (state) {
+                case LOCKED -> ButtonIcon.LOCK;
+                case ARMING, COOLDOWN -> ButtonIcon.CLOCK;
+                case ACTIVE -> ButtonIcon.SPINNER;
+                default -> ButtonIcon.NONE;
+            };
+            Rect rect = TabletSabotagePainter.buttonRect(textRenderer, area.x(), y, area.width());
+            addButton("sabotage:" + row.typeWire(), rect, Text.translatable(KEY + "sabotage." + labelKey), style, icon,
+                    TabletTheme.SABOTAGE, () -> triggerSabotage(row))
+                    .active = ready;
+        }
+    }
+
+    private void triggerSabotage(TabletSnapshot.SabotageRow row) {
+        if (pendingTriggerTicks > 0 || !ClientPlayNetworking.canSend(TriggerSabotageC2SPacket.ID)) {
+            return;
+        }
+        ClientPlayNetworking.send(new TriggerSabotageC2SPacket(row.typeWire()));
+        pendingTriggerTicks = 20;
+        refresh();
+    }
+
+    private static List<Integer> sabotageButtonKeys(TabletSnapshot snapshot) {
+        if (!snapshot.hasFeature(TabletFeature.SABOTAGE)) {
+            return List.of();
+        }
+        ArrayList<Integer> keys = new ArrayList<>();
+        for (TabletSnapshot.SabotageRow row : snapshot.sabotage()) {
+            keys.add(row.typeWire() * 16 + row.stateWire());
+        }
+        return keys;
+    }
+
+    /** The most urgent sabotage state for the rail badge: ACTIVE, then READY. / 侧栏徽标用的最紧急状态：先进行中，再可触发。 */
+    private static @Nullable SabotageRowState sabotageAlert(TabletSnapshot snapshot) {
+        if (!snapshot.hasFeature(TabletFeature.SABOTAGE)) {
+            return null;
+        }
+        SabotageRowState alert = null;
+        for (TabletSnapshot.SabotageRow row : snapshot.sabotage()) {
+            SabotageRowState state = TabletSabotagePainter.state(row);
+            if (state == SabotageRowState.ACTIVE) {
+                return state;
+            }
+            if (state == SabotageRowState.READY) {
+                alert = state;
+            }
+        }
+        return alert;
+    }
+
+    /** Cards on top, then the newest log lines that still fit. / 上方为卡片，下方为放得下的最新日志。 */
+    private void paintSabotage(TabletSnapshot snapshot, long now) {
+        TabletCanvas c = frameCanvas;
+        Rect area = layout.bodyNoFooter();
+        List<TabletSnapshot.SabotageRow> rows = snapshot.sabotage();
+        int since = TabletClientState.secondsSinceSnapshot();
+        int y = area.y();
+        for (TabletSnapshot.SabotageRow row : rows) {
+            if (y + TabletSabotagePainter.CARD_H > area.bottom()) {
+                break;
+            }
+            TabletSabotagePainter.card(c, textRenderer, area.x(), y, area.width(), row, since, now);
+            y += TabletSabotagePainter.CARD_STEP;
+        }
+        if (y + TabletSabotagePainter.LOG_HEADER_H + TabletSabotagePainter.LOG_ROW_H > area.bottom()) {
+            return;
+        }
+        TabletSabotagePainter.logHeader(c, textRenderer, area.x(), y, area.width());
+        y += TabletSabotagePainter.LOG_HEADER_H;
+        List<TabletSnapshot.SabotageLogRow> log = snapshot.sabotageLog();
+        if (log.isEmpty()) {
+            c.text(textRenderer, TabletCanvas.trim(textRenderer,
+                            Text.translatable(KEY + "sabotage.log.empty").getString(), area.width() - 4),
+                    area.x() + 2, y + 5, TabletTheme.TEXT_3);
+            return;
+        }
+        for (TabletSnapshot.SabotageLogRow entry : log) {
+            if (y + TabletSabotagePainter.LOG_ROW_H > area.bottom()) {
+                break;
+            }
+            TabletSabotagePainter.logRow(c, textRenderer, area.x(), y, area.width(), entry);
+            y += TabletSabotagePainter.LOG_ROW_H;
+        }
+    }
+
+    /**
+     * A sabotage on (lights out, engine damaged or halted) as a red live chip, ready as a pulsing yellow one, else the
+     * cooldown or nothing.
+     * 破坏进行中（熄灯、动力受损或停驶）为红色实时胶囊，可触发为黄色脉冲胶囊，否则为冷却或不显示。
+     */
+    private int paintSabotageHeaderChip(TabletSnapshot snapshot, int right, int centerY, int maxWidth, long now) {
+        int since = TabletClientState.secondsSinceSnapshot();
+        for (TabletSnapshot.SabotageRow row : snapshot.sabotage()) {
+            SabotageRowState state = TabletSabotagePainter.state(row);
+            if (state == SabotageRowState.ACTIVE) {
+                return paintPill(right, centerY, maxWidth, TabletSabotagePainter.activeChip(row, since),
+                        TabletTheme.KILLER.pale(), TabletTheme.withAlpha(TabletTheme.DANGER, 0x33), 0,
+                        (canvas, x, y, size, color) -> paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
+                        TabletTheme.DANGER);
+            }
+        }
+        for (TabletSnapshot.SabotageRow row : snapshot.sabotage()) {
+            SabotageRowState state = TabletSabotagePainter.state(row);
+            if (state == SabotageRowState.READY) {
+                return paintPill(right, centerY, maxWidth, Text.translatable(KEY + "sabotage.chip.ready").getString(),
+                        TabletTheme.SABOTAGE.pale(), TabletTheme.withAlpha(TabletTheme.SABOTAGE.base(), 0x2E), 0,
+                        (canvas, x, y, size, color) -> paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
+                        TabletTheme.SABOTAGE.base());
+            }
+            if (state == SabotageRowState.COOLDOWN || state == SabotageRowState.ARMING) {
+                return paintPill(right, centerY, maxWidth,
+                        TabletSabotagePainter.clock(TabletSabotagePainter.liveSeconds(row, since)),
+                        TabletTheme.TEXT_2, TabletTheme.SURFACE, 0, TabletIcons::clock, TabletTheme.TEXT_2);
+            }
+        }
+        return right;
     }
 
     private TabletPressable addButton(String focusKey, Rect rect, Text label, ButtonStyle style, ButtonIcon icon,
@@ -1452,6 +1611,8 @@ public final class TabletScreen extends Screen {
             float glyphY = badge.y() + (badge.height() - glyph) / 2f;
             if (feature == Section.DRONE) {
                 TabletIcons.drone(c, glyphX, glyphY, glyph, TabletTheme.WHITE);
+            } else if (feature == Section.SABOTAGE) {
+                TabletIcons.bolt(c, glyphX, glyphY, glyph, TabletTheme.WHITE);
             } else {
                 TabletIcons.eye(c, glyphX, glyphY, glyph, TabletTheme.WHITE);
             }
@@ -1504,6 +1665,7 @@ public final class TabletScreen extends Screen {
             case SUSPECTS -> TabletIcons.target(c, box.x(), box.y(), box.width(), color);
             case DOOR_LOG -> TabletIcons.door(c, box.x(), box.y(), box.width(), color);
             case DRONE -> TabletIcons.drone(c, box.x(), box.y(), box.width(), color);
+            case SABOTAGE -> TabletIcons.bolt(c, box.x(), box.y(), box.width(), color);
         }
     }
 
@@ -1558,6 +1720,16 @@ public final class TabletScreen extends Screen {
                         c.circle(cx, cy, 3f, TabletTheme.DANGER);
                     } else if (alert == DroneAlert.UNATTENDED) {
                         paintPulseDot(cx, cy, 3f, TabletTheme.DRONE.base(), now);
+                    }
+                }
+                case SABOTAGE -> {
+                    // Ready to trigger pulses; an outage in progress is a red dot. 可触发时脉冲；熄灯进行中为红点。
+                    SabotageRowState alert = sabotageAlert(snapshot);
+                    if (alert == SabotageRowState.READY) {
+                        paintPulseDot(cx, cy, 3f, TabletTheme.SABOTAGE.base(), now);
+                    } else if (alert == SabotageRowState.ACTIVE) {
+                        c.circle(cx, cy, 4f, TabletTheme.mix(screenBackdropAt((int) cx, (int) cy), 0xFF000000, 0.25f));
+                        c.circle(cx, cy, 3f, TabletTheme.DANGER);
                     }
                 }
                 case CONNECTIONS -> {
@@ -1636,6 +1808,7 @@ public final class TabletScreen extends Screen {
                     (canvas, x, y, size, color) -> paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
                     TabletTheme.MONITOR.base());
             case DRONE -> paintDroneHeaderChip(snapshot, right, centerY, maxWidth, now);
+            case SABOTAGE -> paintSabotageHeaderChip(snapshot, right, centerY, maxWidth, now);
         };
     }
 
@@ -1720,6 +1893,7 @@ public final class TabletScreen extends Screen {
             }
             case DOOR_LOG -> paintDoorLog(snapshot);
             case DRONE -> paintDrones(snapshot, now);
+            case SABOTAGE -> paintSabotage(snapshot, now);
         }
     }
 

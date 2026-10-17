@@ -48,6 +48,35 @@ public final class BlackoutRecorder {
         }
     }
 
+    /** {@code initiator} just triggered the lights sabotage from the tablet. / 该玩家刚在平板上触发了灯光破坏。 */
+    public static void sabotaged(ServerPlayerEntity initiator) {
+        try {
+            ServerWorld world = initiator.getServerWorld();
+            boolean active = WorldBlackoutComponent.KEY.get(world).isBlackoutActive();
+            edge(world, active, active ? initiator : null, active
+                    ? AchievementRecords.BLACKOUT_CAUSE_SABOTAGE
+                    : AchievementRecords.BLACKOUT_CAUSE_EXPIRED);
+        } catch (RuntimeException error) {
+            SparkStrength.LOGGER.warn("Could not record the lights sabotage", error);
+        }
+    }
+
+    /**
+     * {@code repairer} just repaired a circuit breaker; Wathe's world timer was zeroed, so the blackout reads as over.
+     * 该玩家刚修好电闸；Wathe 的世界计时已清零，因此停电已视为结束。
+     */
+    public static void breakerRepaired(ServerPlayerEntity repairer) {
+        try {
+            ServerWorld world = repairer.getServerWorld();
+            boolean active = WorldBlackoutComponent.KEY.get(world).isBlackoutActive();
+            edge(world, active, active ? null : repairer, active
+                    ? AchievementRecords.BLACKOUT_CAUSE_UNKNOWN
+                    : AchievementRecords.BLACKOUT_CAUSE_BREAKER_REPAIR);
+        } catch (RuntimeException error) {
+            SparkStrength.LOGGER.warn("Could not record the breaker repair", error);
+        }
+    }
+
     /** The power restoration bought by {@code buyer} just reset the blackout. / 该购买者买下的电力恢复刚刚重置了停电。 */
     public static void restored(ServerPlayerEntity buyer) {
         try {

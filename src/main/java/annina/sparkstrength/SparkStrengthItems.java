@@ -5,6 +5,7 @@ import annina.sparkstrength.item.BlueVitriolItem;
 import annina.sparkstrength.item.BodyguardVestItem;
 import annina.sparkstrength.item.CaptureDeviceItem;
 import annina.sparkstrength.item.CapsuleItem;
+import annina.sparkstrength.item.CircuitConfiguratorItem;
 import annina.sparkstrength.item.CaseFolderItem;
 import annina.sparkstrength.item.CoronerBodyBagItem;
 import annina.sparkstrength.item.AromaOrbItem;
@@ -43,6 +44,7 @@ import net.minecraft.registry.Registry;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.Rarity;
 import org.agmas.noellesroles.item.IngredientItem;
 
 import java.util.List;
@@ -58,6 +60,7 @@ public final class SparkStrengthItems {
     public static final Identifier TRUTH_SERUM_ID = SparkStrength.id("truth_serum");
     public static final Identifier CAPTURE_DEVICE_ID = SparkStrength.id("capture_device");
     public static final Identifier POWER_RESTORATION_ID = SparkStrength.id("power_restoration");
+    public static final Identifier CIRCUIT_CONFIGURATOR_ID = SparkStrength.id("circuit_configurator");
     public static final Identifier MORPH_REAGENT_ID = SparkStrength.id("morph_reagent");
     public static final Identifier MORPH_DEVICE_ID = SparkStrength.id("morph_device");
     public static final Identifier CORONER_BODY_BAG_ID = SparkStrength.id("coroner_body_bag");
@@ -101,6 +104,7 @@ public final class SparkStrengthItems {
     private static Item truthSerum;
     private static Item captureDevice;
     private static Item powerRestoration;
+    private static Item circuitConfigurator;
     private static Item morphReagent;
     private static Item morphDevice;
     private static Item coronerBodyBag;
@@ -176,6 +180,11 @@ public final class SparkStrengthItems {
                 Registries.ITEM,
                 POWER_RESTORATION_ID,
                 new PowerRestorationItem(new Item.Settings().maxCount(1))
+        );
+        circuitConfigurator = Registry.register(
+                Registries.ITEM,
+                CIRCUIT_CONFIGURATOR_ID,
+                new CircuitConfiguratorItem(new Item.Settings().maxCount(1).rarity(Rarity.EPIC))
         );
         morphReagent = Registry.register(
                 Registries.ITEM,
@@ -381,6 +390,13 @@ public final class SparkStrengthItems {
             throw new IllegalStateException("SparkStrength items are not registered yet");
         }
         return powerRestoration;
+    }
+
+    public static Item circuitConfigurator() {
+        if (circuitConfigurator == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return circuitConfigurator;
     }
 
     public static Item morphReagent() {

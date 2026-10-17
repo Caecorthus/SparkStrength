@@ -6,6 +6,7 @@ import annina.sparkstrength.item.m67.M67RoundService;
 import annina.sparkstrength.role.bodyguard.BodyguardShieldService;
 import annina.sparkstrength.role.bomber.drone.DroneService;
 import annina.sparkstrength.role.vulture.VultureSkateboardService;
+import annina.sparkstrength.sabotage.SabotageService;
 import net.minecraft.item.Item;
 import net.minecraft.server.network.ServerPlayerEntity;
 import org.jetbrains.annotations.Nullable;
@@ -36,6 +37,9 @@ public final class SparkFactionAdminClear {
             VultureSkateboardService.onAdminCooldownCleared(player);
         } else if (item == SparkStrengthItems.democracyShield()) {
             BodyguardShieldService.onAdminCooldownCleared(player);
+        } else if (item == SparkStrengthItems.tablet()) {
+            // The killer team's sabotage cooldown and unlock wait. / 杀手阵营的破坏冷却与解锁等待。
+            SabotageService.onAdminCooldownCleared(player);
         }
     }
 }

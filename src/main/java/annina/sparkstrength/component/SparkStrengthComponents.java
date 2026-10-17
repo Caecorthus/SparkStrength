@@ -20,6 +20,7 @@ import annina.sparkstrength.component.perfumer.PerfumerScentComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumTargetComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
 import annina.sparkstrength.component.reporter.ReporterCommunicationComponent;
+import annina.sparkstrength.component.sabotage.SabotageWorldComponent;
 import annina.sparkstrength.component.tablet.TabletWorldComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowTargetComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
@@ -143,6 +144,7 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.register(DetectiveCaseWorldComponent.KEY, DetectiveCaseWorldComponent::new);
         registry.register(PlayerCollisionGraceWorldComponent.KEY, PlayerCollisionGraceWorldComponent::new);
         registry.register(TabletWorldComponent.KEY, TabletWorldComponent::new);
+        registry.register(SabotageWorldComponent.KEY, SabotageWorldComponent::new);
         registry.register(MorphBodyDisguiseWorldComponent.KEY, MorphBodyDisguiseWorldComponent::new);
         registry.register(
                 ShadowJesterShowdownWorldComponent.KEY,

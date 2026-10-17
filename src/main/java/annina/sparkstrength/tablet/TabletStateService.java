@@ -16,6 +16,7 @@ import annina.sparkstrength.role.bomber.drone.DroneRules;
 import annina.sparkstrength.role.bomber.drone.DroneService;
 import annina.sparkstrength.role.bomber.drone.DroneState;
 import annina.sparkstrength.role.detective.DetectiveIdentityResolver;
+import annina.sparkstrength.sabotage.SabotageTabletSnapshots;
 import com.mojang.authlib.GameProfile;
 import dev.doctor4t.wathe.api.event.TaskComplete;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -455,7 +456,9 @@ public final class TabletStateService {
                 access.featureMask(),
                 access.hasFeature(TabletFeature.DOOR_LOG) ? doorLogRows(viewer, tablet, now) : List.of(),
                 TabletIdentityRules.tasksRemaining(channel, tasksDone),
-                access.hasFeature(TabletFeature.DRONE) ? droneRows(viewer) : List.of()
+                access.hasFeature(TabletFeature.DRONE) ? droneRows(viewer) : List.of(),
+                access.hasFeature(TabletFeature.SABOTAGE) ? SabotageTabletSnapshots.rows(world) : List.of(),
+                access.hasFeature(TabletFeature.SABOTAGE) ? SabotageTabletSnapshots.log(world) : List.of()
         );
     }
 

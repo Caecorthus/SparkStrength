@@ -61,6 +61,12 @@ public final class TabletTheme {
      * 无论处于哪个频道都呈现为“无人机”。
      */
     public static final Accent DRONE = new Accent(0xFFFF8A3D, 0xFFFFCFAE, 0xFFD0601C);
+    /**
+     * Killer sabotage: live-wire yellow, kept apart from the killer red and the drone orange, so the sabotage page reads
+     * as "the train's power" whatever channel surrounds it.
+     * 杀手破坏：带电的黄色，与杀手红、无人机橙区分，使破坏页无论处于哪个频道都呈现为「列车电力」。
+     */
+    public static final Accent SABOTAGE = new Accent(0xFFF2C14E, 0xFFFCE7B0, 0xFFC4922A);
 
     private TabletTheme() {
     }
@@ -81,6 +87,7 @@ public final class TabletTheme {
         return switch (feature) {
             case DOOR_LOG -> MONITOR;
             case DRONE -> DRONE;
+            case SABOTAGE -> SABOTAGE;
         };
     }
 

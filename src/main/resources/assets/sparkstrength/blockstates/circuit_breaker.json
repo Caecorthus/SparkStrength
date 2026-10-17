@@ -1,0 +1,34 @@
+{
+  "variants": {
+    "facing=north,tripped=false": {
+      "model": "sparkstrength:block/circuit_breaker"
+    },
+    "facing=north,tripped=true": {
+      "model": "sparkstrength:block/circuit_breaker_tripped"
+    },
+    "facing=east,tripped=false": {
+      "model": "sparkstrength:block/circuit_breaker",
+      "y": 90
+    },
+    "facing=east,tripped=true": {
+      "model": "sparkstrength:block/circuit_breaker_tripped",
+      "y": 90
+    },
+    "facing=south,tripped=false": {
+      "model": "sparkstrength:block/circuit_breaker",
+      "y": 180
+    },
+    "facing=south,tripped=true": {
+      "model": "sparkstrength:block/circuit_breaker_tripped",
+      "y": 180
+    },
+    "facing=west,tripped=false": {
+      "model": "sparkstrength:block/circuit_breaker",
+      "y": 270
+    },
+    "facing=west,tripped=true": {
+      "model": "sparkstrength:block/circuit_breaker_tripped",
+      "y": 270
+    }
+  }
+}

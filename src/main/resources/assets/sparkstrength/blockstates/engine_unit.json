@@ -1,0 +1,49 @@
+{
+  "variants": {
+    "condition=intact,facing=north": {
+      "model": "sparkstrength:block/engine_unit"
+    },
+    "condition=damaged,facing=north": {
+      "model": "sparkstrength:block/engine_unit_damaged"
+    },
+    "condition=wrecked,facing=north": {
+      "model": "sparkstrength:block/engine_unit_wrecked"
+    },
+    "condition=intact,facing=east": {
+      "model": "sparkstrength:block/engine_unit",
+      "y": 90
+    },
+    "condition=damaged,facing=east": {
+      "model": "sparkstrength:block/engine_unit_damaged",
+      "y": 90
+    },
+    "condition=wrecked,facing=east": {
+      "model": "sparkstrength:block/engine_unit_wrecked",
+      "y": 90
+    },
+    "condition=intact,facing=south": {
+      "model": "sparkstrength:block/engine_unit",
+      "y": 180
+    },
+    "condition=damaged,facing=south": {
+      "model": "sparkstrength:block/engine_unit_damaged",
+      "y": 180
+    },
+    "condition=wrecked,facing=south": {
+      "model": "sparkstrength:block/engine_unit_wrecked",
+      "y": 180
+    },
+    "condition=intact,facing=west": {
+      "model": "sparkstrength:block/engine_unit",
+      "y": 270
+    },
+    "condition=damaged,facing=west": {
+      "model": "sparkstrength:block/engine_unit_damaged",
+      "y": 270
+    },
+    "condition=wrecked,facing=west": {
+      "model": "sparkstrength:block/engine_unit_wrecked",
+      "y": 270
+    }
+  }
+}

@@ -6,6 +6,7 @@ import annina.sparkstrength.component.tablet.TabletWorldComponent;
 import annina.sparkstrength.role.attendant.AttendantRules;
 import annina.sparkstrength.role.coroner.CoronerRules;
 import annina.sparkstrength.role.coroner.CoronerService;
+import annina.sparkstrength.sabotage.SabotageAccess;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -99,6 +100,10 @@ public final class TabletChannelResolver {
      * <p>Drones: an ALIVE player whose REAL round role is Bomber (a Coroner's Bomber disguise never counts). A dead
      * Bomber's drones are cleaned up, so the section ends with the life.
      * 无人机：真实局内身份为炸弹客且仍存活（验尸官的炸弹客伪装不算）。炸弹客死亡后其无人机会被清理，该分区随之结束。</p>
+     *
+     * <p>Sabotage: an alive player who may sabotage ({@code SabotageAccess}: the killer network by identity, which
+     * keeps it independent of the selected channel, so an Impostor viewing the police channel keeps it).
+     * 破坏：可以破坏的存活玩家（SabotageAccess：按身份属于杀手网络，因此与所选频道无关，内鬼查看义警频道时仍保留）。</p>
      */
     public static EnumSet<TabletFeature> features(ServerPlayerEntity player) {
         EnumSet<TabletFeature> features = EnumSet.noneOf(TabletFeature.class);
@@ -108,6 +113,9 @@ public final class TabletChannelResolver {
         }
         if (CoronerRules.isBomber(realRole) && GameFunctions.isPlayerPlayingAndAlive(player)) {
             features.add(TabletFeature.DRONE);
+        }
+        if (SabotageAccess.canUse(player)) {
+            features.add(TabletFeature.SABOTAGE);
         }
         return features;
     }

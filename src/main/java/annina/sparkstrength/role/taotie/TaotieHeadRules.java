@@ -71,10 +71,12 @@ public final class TaotieHeadRules {
      *   <li>removed {@code wathe:storebuy}: the shop stays usable while dazed;</li>
      *   <li>added the SparkStrength skills that list misses: {@code reporter_communication} (Reporter link/broadcast,
      *       cooldown skill), {@code timekeeper_watch_mode} (Dying Watch mode switch), {@code drone_pilot_start}
-     *       (taking control of a drone) and {@code drone_pilot_action} (drone drop/detonate), and
-     *       {@code taotie_head_fire} itself;</li>
+     *       (taking control of a drone) and {@code drone_pilot_action} (drone drop/detonate),
+     *       {@code taotie_head_fire} itself, and the sabotage actions {@code trigger_sabotage} and
+     *       {@code complete_breaker_repair};</li>
      *   <li>kept allowed (movement, leaving or UI-only): {@code drone_pilot_move}, {@code drone_pilot_exit},
-     *       {@code m67_cancel}, the tablet snapshot/chat/channel ids and the detective folder ids
+     *       {@code m67_cancel}, {@code cancel_sabotage_channel}, {@code cancel_breaker_repair}, the tablet
+     *       snapshot/chat/channel ids and the detective folder ids
      *       ({@code select_detective_case}, {@code update_detective_case_notes}, {@code set_detective_killer_guess},
      *       {@code set_detective_presumed_killer});</li>
      *   <li>NoellesRoles: all 14 C2S ids registered by the pinned runtime jar (sha fcb0da) are already in the list,
@@ -85,8 +87,10 @@ public final class TaotieHeadRules {
      * {@code ControlExpertStunRules.BLOCKED_PAYLOADS} 为基础，刻意的差异如下：
      * 移除 {@code wathe:storebuy}（眩晕时仍可使用商店）；补充该表缺少的 SparkStrength 技能包：记者通讯
      * {@code reporter_communication}（有冷却的技能）、怀表模式切换 {@code timekeeper_watch_mode}、接管无人机
-     * {@code drone_pilot_start}、无人机投弹/引爆 {@code drone_pilot_action}，以及本技能 {@code taotie_head_fire}；
+     * {@code drone_pilot_start}、无人机投弹/引爆 {@code drone_pilot_action}、本技能 {@code taotie_head_fire}，以及破坏系统的
+     * {@code trigger_sabotage} 与 {@code complete_breaker_repair}；
      * 继续放行（移动、离开或仅界面用途）：{@code drone_pilot_move}、{@code drone_pilot_exit}、{@code m67_cancel}、
+     * {@code cancel_sabotage_channel}、{@code cancel_breaker_repair}、
      * 平板快照/聊天/频道以及侦探文件夹相关 id；NoellesRoles：锁定运行时 jar（sha fcb0da）注册的 14 个 C2S id
      * 均已在表中，无需补充。新增技能包必须在此有意识地归类。
      */
@@ -165,6 +169,10 @@ public final class TaotieHeadRules {
             // Serial Killer psycho pistol shot: a payload-fired gun, classified like wathe:gunshoot.
             // 连环杀手疯魔手枪开火：通过数据包开火的枪械，与 wathe:gunshoot 同类处理。
             Identifier.of("sparkstrength", "serial_pistol_shoot"),
+            // Sabotage: triggering from the tablet and finishing a breaker repair; their cancel packets stay allowed.
+            // 破坏系统：在平板触发破坏、完成电闸维修；对应的取消包继续放行。
+            Identifier.of("sparkstrength", "trigger_sabotage"),
+            Identifier.of("sparkstrength", "complete_breaker_repair"),
             FIRE_PAYLOAD_ID));
 
     private TaotieHeadRules() {

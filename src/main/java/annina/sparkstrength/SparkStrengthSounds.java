@@ -47,6 +47,18 @@ public final class SparkStrengthSounds {
     public static final SoundEvent VULTURE_DEATH_SCREAM = REGISTRAR.create("vulture.death_scream");
     public static final SoundEvent VULTURE_DEATH_SCREAM_HELIUM = REGISTRAR.create("vulture.death_scream_helium");
 
+    /** Sabotage system: junction boxes, circuit breakers and the tablet ready chime. / 破坏系统：接线箱、电闸与平板就绪提示音。 */
+    public static final SoundEvent JUNCTION_BOX_PRY = REGISTRAR.create("block.junction_box.pry");
+    public static final SoundEvent JUNCTION_BOX_BREAK = REGISTRAR.create("block.junction_box.break");
+    public static final SoundEvent JUNCTION_BOX_SPARK = REGISTRAR.create("block.junction_box.spark");
+    public static final SoundEvent JUNCTION_BOX_HACK = REGISTRAR.create("block.junction_box.hack");
+    public static final SoundEvent JUNCTION_BOX_HACKED = REGISTRAR.create("block.junction_box.hacked");
+    public static final SoundEvent JUNCTION_BOX_REPAIR = REGISTRAR.create("block.junction_box.repair");
+    public static final SoundEvent CIRCUIT_BREAKER_TRIP = REGISTRAR.create("block.circuit_breaker.trip");
+    public static final SoundEvent CIRCUIT_BREAKER_SWITCH = REGISTRAR.create("block.circuit_breaker.switch");
+    public static final SoundEvent CIRCUIT_BREAKER_RESTORE = REGISTRAR.create("block.circuit_breaker.restore");
+    public static final SoundEvent SABOTAGE_READY = REGISTRAR.create("ui.sabotage.ready");
+
     private SparkStrengthSounds() {
     }
 

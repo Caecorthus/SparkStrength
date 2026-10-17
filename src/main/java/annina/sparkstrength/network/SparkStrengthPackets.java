@@ -40,6 +40,19 @@ import annina.sparkstrength.role.timekeeper.TimekeeperWatchService;
 import annina.sparkstrength.role.vulture.VultureSuperCurseService;
 import annina.sparkstrength.role.taotie.TaotieHeadService;
 import annina.sparkstrength.tablet.TabletStateService;
+import annina.sparkstrength.network.sabotage.CancelBreakerRepairC2SPacket;
+import annina.sparkstrength.network.sabotage.CancelChannelC2SPacket;
+import annina.sparkstrength.network.sabotage.ChannelProgressS2CPacket;
+import annina.sparkstrength.network.sabotage.CloseBreakerRepairS2CPacket;
+import annina.sparkstrength.network.sabotage.CompleteBreakerRepairC2SPacket;
+import annina.sparkstrength.network.sabotage.OpenBreakerRepairS2CPacket;
+import annina.sparkstrength.network.sabotage.OpenEngineRepairS2CPacket;
+import annina.sparkstrength.network.sabotage.SabotageStatusS2CPacket;
+import annina.sparkstrength.network.sabotage.TriggerSabotageC2SPacket;
+import annina.sparkstrength.sabotage.BreakerRepairService;
+import annina.sparkstrength.sabotage.EngineRepairService;
+import annina.sparkstrength.sabotage.JunctionBoxService;
+import annina.sparkstrength.sabotage.SabotageService;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 
@@ -157,5 +170,36 @@ public final class SparkStrengthPackets {
                 (payload, context) -> TaotieHeadService.tryFire(context.player()));
         ServerPlayNetworking.registerGlobalReceiver(SerialPistolShootC2SPayload.ID,
                 SerialPistolShootC2SPayload::receive);
+        registerSabotage();
+    }
+
+    private static void registerSabotage() {
+        PayloadTypeRegistry.playC2S().register(TriggerSabotageC2SPacket.ID, TriggerSabotageC2SPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(CancelChannelC2SPacket.ID, CancelChannelC2SPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(CompleteBreakerRepairC2SPacket.ID, CompleteBreakerRepairC2SPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(CancelBreakerRepairC2SPacket.ID, CancelBreakerRepairC2SPacket.CODEC);
+        PayloadTypeRegistry.playS2C().register(SabotageStatusS2CPacket.ID, SabotageStatusS2CPacket.CODEC);
+        PayloadTypeRegistry.playS2C().register(ChannelProgressS2CPacket.ID, ChannelProgressS2CPacket.CODEC);
+        PayloadTypeRegistry.playS2C().register(OpenBreakerRepairS2CPacket.ID, OpenBreakerRepairS2CPacket.CODEC);
+        PayloadTypeRegistry.playS2C().register(CloseBreakerRepairS2CPacket.ID, CloseBreakerRepairS2CPacket.CODEC);
+        PayloadTypeRegistry.playS2C().register(OpenEngineRepairS2CPacket.ID, OpenEngineRepairS2CPacket.CODEC);
+        // Every handler re-validates on the server. / 每个处理器都在服务端重新校验。
+        ServerPlayNetworking.registerGlobalReceiver(TriggerSabotageC2SPacket.ID,
+                (payload, context) -> SabotageService.handleTrigger(context.player(), payload.typeWire()));
+        ServerPlayNetworking.registerGlobalReceiver(CancelChannelC2SPacket.ID,
+                (payload, context) -> JunctionBoxService.handleCancel(context.player(), payload.channelId()));
+        // Breaker and engine panels share these two packets; their wire ids (complete_breaker_repair /
+        // cancel_breaker_repair) are kept for compatibility, since other mods' action restriction lists match on them.
+        // Session ids never repeat between the two services, and each ignores ids it does not own.
+        // 电闸与动力面板共用这两个包；保留原 wire id（complete_breaker_repair / cancel_breaker_repair）是为了兼容，
+        // 其他模组的动作限制名单按它们拦截。两个服务的会话 id 不会重复，各自忽略不属于自己的 id。
+        ServerPlayNetworking.registerGlobalReceiver(CompleteBreakerRepairC2SPacket.ID, (payload, context) -> {
+            BreakerRepairService.handleComplete(context.player(), payload.sessionId());
+            EngineRepairService.handleComplete(context.player(), payload.sessionId());
+        });
+        ServerPlayNetworking.registerGlobalReceiver(CancelBreakerRepairC2SPacket.ID, (payload, context) -> {
+            BreakerRepairService.handleCancel(context.player(), payload.sessionId());
+            EngineRepairService.handleCancel(context.player(), payload.sessionId());
+        });
     }
 }

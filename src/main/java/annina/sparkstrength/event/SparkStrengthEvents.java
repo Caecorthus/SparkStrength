@@ -63,6 +63,7 @@ import annina.sparkstrength.role.shadowjester.ShadowJesterShowdownService;
 import annina.sparkstrength.role.waiter.WaiterTaskRevealService;
 import annina.sparkstrength.role.timekeeper.TimekeeperWatchService;
 import annina.sparkstrength.component.timekeeper.TimekeeperWatchComponent;
+import annina.sparkstrength.sabotage.SabotageService;
 import annina.sparkstrength.tablet.TabletShopService;
 import annina.sparkstrength.tablet.TabletStateService;
 import dev.doctor4t.wathe.api.event.GameEvents;
@@ -117,6 +118,7 @@ public final class SparkStrengthEvents {
         ToxicologistBlueVitriolService.register();
         TabletShopService.register();
         TabletStateService.register();
+        SabotageService.register();
         VeteranShopService.register();
         VultureSkateboardService.register();
         // Super Curse death scream / curse stop on KillPlayer.AFTER and round end; registered after the skateboard.

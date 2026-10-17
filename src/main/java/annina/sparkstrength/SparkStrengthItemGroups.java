@@ -1,8 +1,10 @@
 package annina.sparkstrength;
 
 import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
+import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroup;
+import net.minecraft.item.ItemGroups;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
@@ -34,13 +36,20 @@ public final class SparkStrengthItemGroups {
                             // Lists every item in our namespace in registration order, so new items join automatically.
                             // 按注册顺序列出本模组命名空间下的全部物品，新增物品无需再手动加入。
                             for (Item item : Registries.ITEM) {
-                                if (SparkStrength.MOD_ID.equals(Registries.ITEM.getId(item).getNamespace())) {
+                                if (SparkStrength.MOD_ID.equals(Registries.ITEM.getId(item).getNamespace())
+                                        && item != SparkStrengthItems.circuitConfigurator()) {
                                     entries.add(item);
                                 }
                             }
                         })
                         .build()
         );
+        // The admin-only configurator lives in the vanilla operator tab. / 仅限管理员的线路配置器放在原版管理员物品栏。
+        ItemGroupEvents.modifyEntriesEvent(ItemGroups.OPERATOR).register(entries -> {
+            if (entries.shouldShowOpRestrictedItems()) {
+                entries.add(SparkStrengthItems.circuitConfigurator());
+            }
+        });
         registered = true;
     }
 }

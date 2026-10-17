@@ -91,7 +91,17 @@
     "serialkiller.SerialKillerClientUseMixin",
     "serialkiller.SerialKillerClientSlotLockMixin",
     "serialkiller.SerialKillerBipedEntityModelMixin",
-    "serialkiller.SerialKillerPlayerInventoryClientMixin"
+    "serialkiller.SerialKillerPlayerInventoryClientMixin",
+    "sabotage.EngineCameraShakeMixin",
+    "sabotage.EngineChimneySmokeMixin",
+    "sabotage.EngineHaltTimerMixin",
+    "sabotage.EngineShopPriceTintMixin",
+    "sabotage.EngineSnowflakeMixin",
+    "sabotage.EngineTrainAmbienceMixin",
+    "sabotage.EngineTrainTimeMixin",
+    "sabotage.EngineWheelTimeMixin",
+    "sabotage.EngineWindExposureMixin",
+    "sabotage.SabotageSkyLightMixin"
   ],
   "injectors": {
     "defaultRequire": 1
