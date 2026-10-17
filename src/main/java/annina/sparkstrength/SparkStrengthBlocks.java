@@ -1,6 +1,7 @@
 package annina.sparkstrength;
 
 import annina.sparkstrength.block.CircuitBreakerBlock;
+import annina.sparkstrength.block.EngineUnitBlock;
 import annina.sparkstrength.block.JunctionBoxBlock;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
@@ -20,10 +21,12 @@ import net.minecraft.util.Identifier;
 public final class SparkStrengthBlocks {
     public static final Identifier JUNCTION_BOX_ID = SparkStrength.id("junction_box");
     public static final Identifier CIRCUIT_BREAKER_ID = SparkStrength.id("circuit_breaker");
+    public static final Identifier ENGINE_UNIT_ID = SparkStrength.id("engine_unit");
 
     private static boolean registered;
     private static Block junctionBox;
     private static Block circuitBreaker;
+    private static Block engineUnit;
 
     private SparkStrengthBlocks() {
     }
@@ -34,6 +37,7 @@ public final class SparkStrengthBlocks {
         }
         junctionBox = registerWithItem(JUNCTION_BOX_ID, new JunctionBoxBlock(fixtureSettings()));
         circuitBreaker = registerWithItem(CIRCUIT_BREAKER_ID, new CircuitBreakerBlock(fixtureSettings()));
+        engineUnit = registerWithItem(ENGINE_UNIT_ID, new EngineUnitBlock(fixtureSettings()));
         registered = true;
     }
 
@@ -49,6 +53,18 @@ public final class SparkStrengthBlocks {
             throw new IllegalStateException("SparkStrength blocks are not registered yet");
         }
         return circuitBreaker;
+    }
+
+    public static Block engineUnit() {
+        if (engineUnit == null) {
+            throw new IllegalStateException("SparkStrength blocks are not registered yet");
+        }
+        return engineUnit;
+    }
+
+    /** Any block the sabotage system scans for. / 破坏系统会扫描的任意方块。 */
+    public static boolean isSabotageFixture(net.minecraft.block.BlockState state) {
+        return state.isOf(junctionBox()) || state.isOf(circuitBreaker()) || state.isOf(engineUnit());
     }
 
     private static AbstractBlock.Settings fixtureSettings() {

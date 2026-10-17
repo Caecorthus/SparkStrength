@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
  */
 public enum JunctionBoxCircuit implements StringIdentifiable {
     LIGHTS("lights", SabotageType.LIGHTS),
+    ENGINE("engine", SabotageType.ENGINE),
     /** Decoration only. Also keeps the property at two values, which Minecraft requires. / 仅作装饰；也让该属性保持 Minecraft 要求的至少两个取值。 */
     NONE("none", null);
 

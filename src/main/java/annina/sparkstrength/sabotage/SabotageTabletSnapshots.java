@@ -25,6 +25,10 @@ public final class SabotageTabletSnapshots {
         long now = world.getTime();
         List<TabletSnapshot.SabotageRow> rows = new ArrayList<>();
         for (SabotageType type : SabotageType.values()) {
+            if (!type.availableOn(sabotage.hasEngineUnits())) {
+                // No engine units on this map: no engine card at all. / 本图没有动力装置：根本不显示动力卡片。
+                continue;
+            }
             boolean thisActive = outage != null && outage.type() == type;
             SabotageRowState state = SabotageRowState.of(thisActive, outage != null && !thisActive,
                     sabotage.isUnlocked(type), now, sabotage.readyTick(type), sabotage.teamCooldownEndTick());

@@ -140,10 +140,12 @@ public final class LightsSabotageService {
 
     public static void finish(ServerWorld world, SabotageWorldComponent sabotage, EndReason reason,
                               @Nullable ServerPlayerEntity actor) {
-        SabotageWorldComponent.Outage outage = sabotage.endOutage();
-        if (outage == null) {
+        SabotageWorldComponent.Outage current = sabotage.outage();
+        if (current == null || current.type() != SabotageType.LIGHTS) {
+            // Only a lights outage ends here; any other sabotage has its own service. / 这里只结束灯光熄灯；其他破坏由各自的服务处理。
             return;
         }
+        SabotageWorldComponent.Outage outage = sabotage.endOutage();
         setBreakersTripped(world, sabotage, false);
         BreakerRepairService.closeAll(world, CloseBreakerRepairS2CPacket.REASON_POWER_BACK);
         long now = world.getTime();

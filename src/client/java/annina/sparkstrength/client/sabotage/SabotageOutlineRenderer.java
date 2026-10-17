@@ -3,9 +3,11 @@ package annina.sparkstrength.client.sabotage;
 import annina.sparkstrength.SparkStrengthBlocks;
 import annina.sparkstrength.block.CircuitBreakerBlock;
 import annina.sparkstrength.block.JunctionBoxBlock;
+import annina.sparkstrength.sabotage.EngineHalt;
 import annina.sparkstrength.sabotage.JunctionBoxState;
 import annina.sparkstrength.sabotage.OutageMode;
 import annina.sparkstrength.sabotage.JunctionBoxCircuit;
+import annina.sparkstrength.sabotage.SabotageType;
 import com.mojang.blaze3d.systems.RenderSystem;
 import dev.doctor4t.wathe.client.WatheClient;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
@@ -34,11 +36,13 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.shape.VoxelShape;
 
 /**
- * See-through block outlines: tripped breakers pulse red for everyone during a repair-mode outage; junction boxes not
- * yet hacked show for saboteurs while the instinct key is held; an admin holding the configurator sees every fixture
- * with its sabotage label. Drawn at {@code LAST} (after Fabulous' composite) with the fog-free position_color shader,
+ * See-through block outlines: tripped breakers pulse red for everyone during a repair-mode outage, engine units pulse
+ * orange-red during an engine sabotage; junction boxes not yet hacked show for saboteurs while the instinct key is held
+ * (amber for lights, teal for the engine); an admin holding the configurator sees every fixture with its sabotage
+ * label. Drawn at {@code LAST} (after Fabulous' composite) with the fog-free position_color shader,
  * so neither walls nor darkness hide them.
- * 透视方块描边：维修模式熄灯期间，跳闸的电闸对所有人红色呼吸闪烁；按住本能键时，可以破坏的人能看到尚未入侵的接线箱；
+ * 透视方块描边：维修模式熄灯期间，跳闸的电闸对所有人红色呼吸闪烁，动力破坏期间动力装置橙红色闪烁；按住本能键时，可以破坏的人
+ * 能看到尚未入侵的接线箱（灯光为琥珀色，动力为青色）；
  * 手持配置器的管理员能看到全部设施及其破坏类型标签。在 LAST 阶段（Fabulous 合成之后）用无雾的 position_color
  * 着色器绘制，墙体与黑暗都挡不住。
  */
@@ -46,6 +50,10 @@ final class SabotageOutlineRenderer {
     private static final int BREAKER_RED = 0xFF3A30;
     private static final int BOX_CLOSED = 0xF5A524;
     private static final int BOX_OPEN = 0xFF8A3D;
+    /** Engine boxes are teal so saboteurs can tell them from lights boxes. / 动力接线箱用青色，让破坏者能和灯光接线箱区分开。 */
+    private static final int ENGINE_BOX_CLOSED = 0x3FD0C9;
+    private static final int ENGINE_BOX_OPEN = 0x2FA8A2;
+    private static final int ENGINE_UNIT = 0xFF6A1F;
     private static final int ADMIN_BREAKER = 0x4C9BFF;
     private static final double LABEL_RANGE_SQ = 24.0 * 24.0;
     private static final float LINE_WIDTH = 3.5F;
@@ -67,7 +75,8 @@ final class SabotageOutlineRenderer {
         boolean admin = SabotageClient.holdsConfigurator(player);
         boolean breakers = SabotageClientState.lightsOut() && SabotageClientState.outageMode() == OutageMode.REPAIR;
         boolean boxes = SabotageClientState.canSabotage() && WatheClient.isInstinctEnabled();
-        if (!admin && !breakers && !boxes) {
+        boolean engine = EngineHalt.clientPhase() != null;
+        if (!admin && !breakers && !boxes && !engine) {
             return;
         }
         Vec3d camera = context.camera().getPos();
@@ -103,12 +112,26 @@ final class SabotageOutlineRenderer {
                 }
             } else if (state.isOf(SparkStrengthBlocks.junctionBox())) {
                 JunctionBoxState look = state.get(JunctionBoxBlock.STATE);
+                SabotageType type = JunctionBoxBlock.typeOf(state);
                 if (admin) {
                     color = circuitColor(state.get(JunctionBoxBlock.SABOTAGE));
                     alpha = 0.9F;
-                } else if (boxes && look != JunctionBoxState.HACKED && JunctionBoxBlock.typeOf(state) != null) {
-                    color = look == JunctionBoxState.CLOSED ? BOX_CLOSED : BOX_OPEN;
+                } else if (boxes && look != JunctionBoxState.HACKED && type != null) {
+                    boolean closed = look == JunctionBoxState.CLOSED;
+                    color = type == SabotageType.ENGINE
+                            ? (closed ? ENGINE_BOX_CLOSED : ENGINE_BOX_OPEN)
+                            : (closed ? BOX_CLOSED : BOX_OPEN);
                     alpha = 0.85F;
+                } else {
+                    continue;
+                }
+            } else if (state.isOf(SparkStrengthBlocks.engineUnit())) {
+                if (admin) {
+                    color = ADMIN_BREAKER;
+                    alpha = 0.9F;
+                } else if (engine) {
+                    color = ENGINE_UNIT;
+                    alpha = pulse;
                 } else {
                     continue;
                 }
@@ -148,6 +171,7 @@ final class SabotageOutlineRenderer {
     private static int circuitColor(JunctionBoxCircuit circuit) {
         return switch (circuit) {
             case LIGHTS -> 0xFFD84A;
+            case ENGINE -> ENGINE_BOX_CLOSED;
             case NONE -> 0x8A8F98;
         };
     }

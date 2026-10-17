@@ -54,6 +54,8 @@ public final class JunctionBoxService {
     private static final class Channel {
         final int id = nextChannelId++;
         final int kind;
+        /** The box's sabotage when the channel began; a rewired box ends it. / 读条开始时箱子的破坏类型；箱子改线后读条结束。 */
+        final SabotageType type;
         final RegistryKey<World> world;
         final BlockPos pos;
         final int total;
@@ -63,8 +65,9 @@ public final class JunctionBoxService {
         long startTick;
         int progress;
 
-        Channel(int kind, RegistryKey<World> world, BlockPos pos, int total, int rate, long now) {
+        Channel(int kind, SabotageType type, RegistryKey<World> world, BlockPos pos, int total, int rate, long now) {
             this.kind = kind;
+            this.type = type;
             this.world = world;
             this.pos = pos.toImmutable();
             this.total = total;
@@ -100,6 +103,10 @@ public final class JunctionBoxService {
             player.sendMessage(Text.translatable("message.sparkstrength.sabotage.box_unwired"), true);
             return;
         }
+        if (!type.availableOn(sabotage.hasEngineUnits())) {
+            player.sendMessage(Text.translatable("message.sparkstrength.sabotage.no_engine_units"), true);
+            return;
+        }
         if (sabotage.isUnlocked(type)) {
             player.sendMessage(Text.translatable("message.sparkstrength.sabotage.already_unlocked",
                     Text.translatable(type.translationKey())), true);
@@ -115,7 +122,7 @@ public final class JunctionBoxService {
         stop(player, ChannelProgressS2CPacket.STATE_STOPPED);
         sabotage.addJunctionBox(pos);
         int rate = SabotageRules.pryPerTick(SparkTraitsSabotageCompat.isMasterSaboteur(player));
-        Channel channel = new Channel(ChannelProgressS2CPacket.KIND_PRY, world.getRegistryKey(), pos,
+        Channel channel = new Channel(ChannelProgressS2CPacket.KIND_PRY, type, world.getRegistryKey(), pos,
                 SabotageRules.DURABILITY_MAX, rate, now);
         channel.progress = SabotageRules.DURABILITY_MAX - sabotage.box(pos).durability;
         CHANNELS.put(player.getUuid(), channel);
@@ -137,7 +144,7 @@ public final class JunctionBoxService {
             return;
         }
         SabotageType type = JunctionBoxBlock.typeOf(state);
-        if (type == null) {
+        if (type == null || !type.availableOn(sabotage.hasEngineUnits())) {
             return;
         }
         if (sabotage.isUnlocked(type)) {
@@ -154,7 +161,8 @@ public final class JunctionBoxService {
         }
         stop(player, ChannelProgressS2CPacket.STATE_STOPPED);
         int total = SabotageRules.hackTicks(SparkTraitsSabotageCompat.isMasterSaboteur(player));
-        Channel channel = new Channel(ChannelProgressS2CPacket.KIND_HACK, world.getRegistryKey(), pos, total, 1, now);
+        Channel channel = new Channel(ChannelProgressS2CPacket.KIND_HACK, type, world.getRegistryKey(), pos, total, 1,
+                now);
         CHANNELS.put(player.getUuid(), channel);
         send(player, channel, ChannelProgressS2CPacket.STATE_RUNNING);
     }
@@ -293,8 +301,9 @@ public final class JunctionBoxService {
                 || now - channel.lastHeartbeatTick > SabotageRules.HEARTBEAT_TIMEOUT_TICKS) {
             return false;
         }
-        if (!state.isOf(SparkStrengthBlocks.junctionBox()) || JunctionBoxBlock.typeOf(state) == null
-                || sabotage.isUnlocked(JunctionBoxBlock.typeOf(state))) {
+        if (!state.isOf(SparkStrengthBlocks.junctionBox()) || JunctionBoxBlock.typeOf(state) != channel.type
+                || sabotage.isUnlocked(channel.type) || !channel.type.availableOn(sabotage.hasEngineUnits())) {
+            // Rewired by the configurator mid-channel, or the map lost its last engine unit. / 读条途中被配置器改线，或地图失去了最后一台动力装置。
             return false;
         }
         JunctionBoxState expected = channel.kind == ChannelProgressS2CPacket.KIND_PRY

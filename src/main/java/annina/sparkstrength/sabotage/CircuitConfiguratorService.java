@@ -40,7 +40,7 @@ public final class CircuitConfiguratorService {
         ServerWorld world = player.getServerWorld();
         if (state.isOf(SparkStrengthBlocks.junctionBox())) {
             configureBox(player, world, pos, state, backwards);
-        } else if (state.isOf(SparkStrengthBlocks.circuitBreaker())) {
+        } else if (state.isOf(SparkStrengthBlocks.circuitBreaker()) || state.isOf(SparkStrengthBlocks.engineUnit())) {
             summarize(player, world, pos);
         }
     }
@@ -66,17 +66,33 @@ public final class CircuitConfiguratorService {
     }
 
     private static void summarize(ServerPlayerEntity player, ServerWorld world, BlockPos pos) {
-        AtomicInteger boxes = new AtomicInteger();
+        AtomicInteger lightsBoxes = new AtomicInteger();
+        AtomicInteger engineBoxes = new AtomicInteger();
+        AtomicInteger otherBoxes = new AtomicInteger();
         AtomicInteger breakers = new AtomicInteger();
+        AtomicInteger engineUnits = new AtomicInteger();
         SabotageBlockScan.scan(world, MapVariablesWorldComponent.KEY.get(world).getPlayArea(), (found, state) -> {
             if (state.isOf(SparkStrengthBlocks.junctionBox())) {
-                boxes.incrementAndGet();
-            } else {
+                SabotageType type = JunctionBoxBlock.typeOf(state);
+                (type == SabotageType.LIGHTS ? lightsBoxes : type == SabotageType.ENGINE ? engineBoxes : otherBoxes)
+                        .incrementAndGet();
+            } else if (state.isOf(SparkStrengthBlocks.circuitBreaker())) {
                 breakers.incrementAndGet();
+            } else if (state.isOf(SparkStrengthBlocks.engineUnit())) {
+                engineUnits.incrementAndGet();
             }
         });
         player.sendMessage(Text.translatable("message.sparkstrength.configurator.summary",
-                pos.getX(), pos.getY(), pos.getZ(), boxes.get(), breakers.get()), false);
+                pos.getX(), pos.getY(), pos.getZ(), lightsBoxes.get(), engineBoxes.get(), otherBoxes.get(),
+                breakers.get(), engineUnits.get()), false);
+        if (engineUnits.get() == 1) {
+            // One unit can be guarded from a single corridor. / 只有一台的话，守住一条走廊就够了。
+            player.sendMessage(Text.translatable("message.sparkstrength.configurator.single_engine_unit")
+                    .formatted(Formatting.YELLOW), false);
+        } else if (engineBoxes.get() > 0 && engineUnits.get() == 0) {
+            player.sendMessage(Text.translatable("message.sparkstrength.configurator.engine_boxes_without_units")
+                    .formatted(Formatting.YELLOW), false);
+        }
     }
 
     /**

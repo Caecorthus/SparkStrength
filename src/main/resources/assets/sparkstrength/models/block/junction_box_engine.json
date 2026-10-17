@@ -1,0 +1,962 @@
+{
+  "parent": "minecraft:block/block",
+  "ambientocclusion": true,
+  "textures": {
+    "front": "sparkstrength:block/junction_box_front_engine",
+    "open": "sparkstrength:block/junction_box_open",
+    "side": "sparkstrength:block/junction_box_side",
+    "parts": "sparkstrength:block/junction_box_parts",
+    "particle": "sparkstrength:block/junction_box_side"
+  },
+  "elements": [
+    {
+      "name": "后壁与内部线路",
+      "from": [
+        3,
+        3,
+        15.25
+      ],
+      "to": [
+        13,
+        13,
+        16
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#open"
+        },
+        "south": {
+          "uv": [
+            3,
+            3,
+            13,
+            13
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            0,
+            3,
+            0.75,
+            13
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            15.25,
+            3,
+            16,
+            13
+          ],
+          "texture": "#side"
+        },
+        "up": {
+          "uv": [
+            3,
+            15.25,
+            13,
+            16
+          ],
+          "texture": "#side"
+        },
+        "down": {
+          "uv": [
+            3,
+            0,
+            13,
+            0.75
+          ],
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "左侧框",
+      "from": [
+        12,
+        3,
+        12
+      ],
+      "to": [
+        13,
+        13,
+        15.25
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            3,
+            3,
+            4,
+            13
+          ],
+          "texture": "#side"
+        },
+        "south": {
+          "uv": [
+            12,
+            3,
+            13,
+            13
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            0.75,
+            3,
+            4,
+            13
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            12,
+            3,
+            15.25,
+            13
+          ],
+          "texture": "#side"
+        },
+        "up": {
+          "uv": [
+            12,
+            12,
+            13,
+            15.25
+          ],
+          "texture": "#side"
+        },
+        "down": {
+          "uv": [
+            12,
+            0.75,
+            13,
+            4
+          ],
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "右侧框",
+      "from": [
+        3,
+        3,
+        12
+      ],
+      "to": [
+        4,
+        13,
+        15.25
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            12,
+            3,
+            13,
+            13
+          ],
+          "texture": "#side"
+        },
+        "south": {
+          "uv": [
+            3,
+            3,
+            4,
+            13
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            0.75,
+            3,
+            4,
+            13
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            12,
+            3,
+            15.25,
+            13
+          ],
+          "texture": "#side"
+        },
+        "up": {
+          "uv": [
+            3,
+            12,
+            4,
+            15.25
+          ],
+          "texture": "#side"
+        },
+        "down": {
+          "uv": [
+            3,
+            0.75,
+            4,
+            4
+          ],
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "上侧框",
+      "from": [
+        4,
+        12,
+        12
+      ],
+      "to": [
+        12,
+        13,
+        15.25
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            3,
+            12,
+            4
+          ],
+          "texture": "#side"
+        },
+        "south": {
+          "uv": [
+            4,
+            3,
+            12,
+            4
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            0.75,
+            3,
+            4,
+            4
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            12,
+            3,
+            15.25,
+            4
+          ],
+          "texture": "#side"
+        },
+        "up": {
+          "uv": [
+            4,
+            12,
+            12,
+            15.25
+          ],
+          "texture": "#side"
+        },
+        "down": {
+          "uv": [
+            4,
+            0.75,
+            12,
+            4
+          ],
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "下侧框",
+      "from": [
+        4,
+        3,
+        12
+      ],
+      "to": [
+        12,
+        4,
+        15.25
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            12,
+            12,
+            13
+          ],
+          "texture": "#side"
+        },
+        "south": {
+          "uv": [
+            4,
+            12,
+            12,
+            13
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            0.75,
+            12,
+            4,
+            13
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            12,
+            12,
+            15.25,
+            13
+          ],
+          "texture": "#side"
+        },
+        "up": {
+          "uv": [
+            4,
+            12,
+            12,
+            15.25
+          ],
+          "texture": "#side"
+        },
+        "down": {
+          "uv": [
+            4,
+            0.75,
+            12,
+            4
+          ],
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "黄铜铰链",
+      "from": [
+        2.75,
+        4.6,
+        11.65
+      ],
+      "to": [
+        3.55,
+        5.8999999999999995,
+        12.45
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "黄铜铰链",
+      "from": [
+        2.75,
+        10.1,
+        11.65
+      ],
+      "to": [
+        3.55,
+        11.4,
+        12.45
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "封闭盖板",
+      "from": [
+        3,
+        3,
+        11.5
+      ],
+      "to": [
+        13,
+        13,
+        12
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#front"
+        },
+        "south": {
+          "uv": [
+            0,
+            8,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            4,
+            3,
+            4.5,
+            13
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            11.5,
+            3,
+            12,
+            13
+          ],
+          "texture": "#side"
+        },
+        "up": {
+          "uv": [
+            3,
+            11.5,
+            13,
+            12
+          ],
+          "texture": "#side"
+        },
+        "down": {
+          "uv": [
+            3,
+            4,
+            13,
+            4.5
+          ],
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "锁扣左脚",
+      "from": [
+        7.25,
+        3.5,
+        10.85
+      ],
+      "to": [
+        7.6,
+        4.8,
+        11.35
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "锁扣右脚",
+      "from": [
+        8.4,
+        3.5,
+        10.85
+      ],
+      "to": [
+        8.75,
+        4.8,
+        11.35
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "锁扣横梁",
+      "from": [
+        7.25,
+        4.45,
+        10.85
+      ],
+      "to": [
+        8.75,
+        4.8,
+        11.35
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "黄铜挂锁",
+      "from": [
+        7,
+        2,
+        10.45
+      ],
+      "to": [
+        9,
+        3.9,
+        11.55
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    }
+  ],
+  "display": {
+    "gui": {
+      "rotation": [
+        30,
+        225,
+        0
+      ],
+      "translation": [
+        3.2456,
+        -1.2967,
+        3.146
+      ],
+      "scale": [
+        0.9,
+        0.9,
+        0.9
+      ]
+    },
+    "ground": {
+      "rotation": [
+        0,
+        180,
+        0
+      ],
+      "translation": [
+        -0.045,
+        3.225,
+        2.34
+      ],
+      "scale": [
+        0.45,
+        0.45,
+        0.45
+      ]
+    },
+    "fixed": {
+      "rotation": [
+        0,
+        180,
+        0
+      ],
+      "translation": [
+        -0.08,
+        0.4,
+        4.16
+      ],
+      "scale": [
+        0.8,
+        0.8,
+        0.8
+      ]
+    },
+    "thirdperson_righthand": {
+      "rotation": [
+        75,
+        180,
+        0
+      ],
+      "translation": [
+        -0.038,
+        0.6405,
+        0.695
+      ],
+      "scale": [
+        0.38,
+        0.38,
+        0.38
+      ]
+    },
+    "thirdperson_lefthand": {
+      "rotation": [
+        75,
+        180,
+        0
+      ],
+      "translation": [
+        -0.038,
+        0.6405,
+        0.695
+      ],
+      "scale": [
+        0.38,
+        0.38,
+        0.38
+      ]
+    },
+    "firstperson_righthand": {
+      "rotation": [
+        0,
+        200,
+        0
+      ],
+      "translation": [
+        1.9265,
+        1.275,
+        2.7063
+      ],
+      "scale": [
+        0.55,
+        0.55,
+        0.55
+      ]
+    },
+    "firstperson_lefthand": {
+      "rotation": [
+        0,
+        160,
+        0
+      ],
+      "translation": [
+        -0.0299,
+        1.275,
+        2.6687
+      ],
+      "scale": [
+        0.55,
+        0.55,
+        0.55
+      ]
+    }
+  }
+}

@@ -623,7 +623,7 @@
   "message.sparkstrength.configurator.no_permission": "你没有使用线路配置器的权限。",
   "message.sparkstrength.configurator.box_set": "接线箱 (%s, %s, %s) → %s",
   "message.sparkstrength.configurator.box_set_mirrored": "接线箱 (%s, %s, %s) → %s（模板与对局区已同步）",
-  "message.sparkstrength.configurator.summary": "电闸 (%s, %s, %s)：本图对局区内有接线箱 %s 个、电闸 %s 个。",
+  "message.sparkstrength.configurator.summary": "(%s, %s, %s)：本图对局区内有接线箱 %s 个（灯光）、%s 个（动力）、%s 个（未接入），电闸 %s 个，动力装置 %s 台。",
   "hud.sparkstrength.sabotage.prying": "撬开中 · 接线箱耐久 %s%%",
   "hud.sparkstrength.sabotage.hacking": "入侵中 · 剩余 %s 秒",
   "hud.sparkstrength.sabotage.pried": "接线箱已撬开",
@@ -678,5 +678,15 @@
   "subtitle.sparkstrength.block.circuit_breaker.restore": "电力恢复",
   "sabotage.sparkstrength.none": "未接入",
   "message.sparkstrength.sabotage.box_unwired": "这个接线箱没有接入任何系统。",
-  "screen.sparkstrength.breaker.retry": "没能恢复供电，请再拉一次主闸"
+  "screen.sparkstrength.breaker.retry": "没能恢复供电，请再拉一次主闸",
+  "block.sparkstrength.engine_unit": "动力装置",
+  "sabotage.sparkstrength.engine": "动力",
+  "screen.sparkstrength.tablet.sabotage.card.engine": "动力系统损毁",
+  "message.sparkstrength.sabotage.no_engine_units": "本图没有动力装置，这个接线箱用不上。",
+  "message.sparkstrength.sabotage.trigger_denied.unavailable": "这项破坏暂未开放。",
+  "message.sparkstrength.engine.unit_intact": "动力装置运转正常。",
+  "message.sparkstrength.engine.unit_damaged": "动力装置受损！",
+  "message.sparkstrength.engine.unit_wrecked": "动力装置已损毁。",
+  "message.sparkstrength.configurator.single_engine_unit": "本图只有一台动力装置：建议至少放两台并分散摆放，免得一条走廊就能守住。",
+  "message.sparkstrength.configurator.engine_boxes_without_units": "本图有动力接线箱，但对局区内没有动力装置：动力破坏不会出现。"
 }

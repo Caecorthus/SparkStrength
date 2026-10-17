@@ -1,7 +1,6 @@
 package annina.sparkstrength.sabotage;
 
 import annina.sparkstrength.SparkStrengthBlocks;
-import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
@@ -14,10 +13,10 @@ import net.minecraft.world.chunk.ChunkStatus;
 import java.util.function.BiConsumer;
 
 /**
- * Finds junction boxes and circuit breakers in a box of loaded chunks. Sections whose palette holds neither block are
- * skipped whole, so a full play area costs a few hundred palette checks instead of ~900k block reads. Works on both
- * sides; unloaded chunks are skipped, never loaded.
- * 在已加载区块的一个范围内查找接线箱与电闸。调色板里没有这两种方块的区段整段跳过，所以整个 play area 只需几百次
+ * Finds junction boxes, circuit breakers and engine units in a box of loaded chunks. Sections whose palette holds none
+ * of them are skipped whole, so a full play area costs a few hundred palette checks instead of ~900k block reads. Works
+ * on both sides; unloaded chunks are skipped, never loaded.
+ * 在已加载区块的一个范围内查找接线箱、电闸与动力装置。调色板里没有这些方块的区段整段跳过，所以整个 play area 只需几百次
  * 调色板检查，而不是约 90 万次方块读取。两端通用；未加载的区块直接跳过，绝不加载。
  */
 public final class SabotageBlockScan {
@@ -28,8 +27,6 @@ public final class SabotageBlockScan {
         if (world == null || area == null) {
             return;
         }
-        Block junctionBox = SparkStrengthBlocks.junctionBox();
-        Block breaker = SparkStrengthBlocks.circuitBreaker();
         int minX = (int) Math.floor(area.minX);
         int minY = Math.max(world.getBottomY(), (int) Math.floor(area.minY));
         int minZ = (int) Math.floor(area.minZ);
@@ -53,7 +50,7 @@ public final class SabotageBlockScan {
                     }
                     ChunkSection section = chunk.getSection(index);
                     if (section.isEmpty()
-                            || !section.hasAny(state -> state.isOf(junctionBox) || state.isOf(breaker))) {
+                            || !section.hasAny(SparkStrengthBlocks::isSabotageFixture)) {
                         continue;
                     }
                     int x0 = Math.max(minX, cx << 4), x1 = Math.min(maxX, (cx << 4) + 15);
@@ -63,7 +60,7 @@ public final class SabotageBlockScan {
                         for (int z = z0; z <= z1; z++) {
                             for (int x = x0; x <= x1; x++) {
                                 BlockState state = section.getBlockState(x & 15, y & 15, z & 15);
-                                if (state.isOf(junctionBox) || state.isOf(breaker)) {
+                                if (SparkStrengthBlocks.isSabotageFixture(state)) {
                                     visitor.accept(cursor.set(x, y, z).toImmutable(), state);
                                 }
                             }

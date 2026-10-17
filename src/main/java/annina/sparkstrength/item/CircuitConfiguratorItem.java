@@ -12,8 +12,10 @@ import net.minecraft.world.World;
 
 /**
  * Admin tool: right-click a junction box to choose which sabotage it unlocks (sneak to go backwards); right-click a
- * circuit breaker for a map summary. Every decision, including the permission check, is made on the server.
- * 管理员工具：右键接线箱选择它解锁哪种破坏（潜行时反向切换）；右键电闸查看本图概况。包括权限在内的所有判定都在服务端。
+ * circuit breaker or an engine unit for a map summary. Every decision, including the permission check, is made on the
+ * server.
+ * 管理员工具：右键接线箱选择它解锁哪种破坏（潜行时反向切换）；右键电闸或动力装置查看本图概况。包括权限在内的所有判定
+ * 都在服务端。
  */
 public final class CircuitConfiguratorItem extends Item {
     public CircuitConfiguratorItem(Settings settings) {
@@ -24,7 +26,7 @@ public final class CircuitConfiguratorItem extends Item {
     public ActionResult useOnBlock(ItemUsageContext context) {
         World world = context.getWorld();
         BlockState state = world.getBlockState(context.getBlockPos());
-        if (!state.isOf(SparkStrengthBlocks.junctionBox()) && !state.isOf(SparkStrengthBlocks.circuitBreaker())) {
+        if (!SparkStrengthBlocks.isSabotageFixture(state)) {
             return ActionResult.PASS;
         }
         if (world.isClient()) {

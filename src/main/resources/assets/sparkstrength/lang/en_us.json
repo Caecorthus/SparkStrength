@@ -623,7 +623,7 @@
   "message.sparkstrength.configurator.no_permission": "You don't have permission to use the circuit configurator.",
   "message.sparkstrength.configurator.box_set": "Junction box (%s, %s, %s) → %s",
   "message.sparkstrength.configurator.box_set_mirrored": "Junction box (%s, %s, %s) → %s (template and play area synced)",
-  "message.sparkstrength.configurator.summary": "Circuit breaker (%s, %s, %s): the play area has %s junction boxes and %s circuit breakers.",
+  "message.sparkstrength.configurator.summary": "(%s, %s, %s): the play area has %s lights, %s engine and %s unwired junction boxes, %s circuit breakers and %s engine units.",
   "hud.sparkstrength.sabotage.prying": "Prying · box durability %s%%",
   "hud.sparkstrength.sabotage.hacking": "Hacking · %s s left",
   "hud.sparkstrength.sabotage.pried": "Junction box open",
@@ -678,5 +678,15 @@
   "subtitle.sparkstrength.block.circuit_breaker.restore": "Power restored",
   "sabotage.sparkstrength.none": "Not wired",
   "message.sparkstrength.sabotage.box_unwired": "This junction box isn't wired to anything.",
-  "screen.sparkstrength.breaker.retry": "Power not restored. Pull the lever again"
+  "screen.sparkstrength.breaker.retry": "Power not restored. Pull the lever again",
+  "block.sparkstrength.engine_unit": "Engine Unit",
+  "sabotage.sparkstrength.engine": "Engine",
+  "screen.sparkstrength.tablet.sabotage.card.engine": "Engine Failure",
+  "message.sparkstrength.sabotage.no_engine_units": "This map has no engine units, so this box does nothing.",
+  "message.sparkstrength.sabotage.trigger_denied.unavailable": "This sabotage is not available yet.",
+  "message.sparkstrength.engine.unit_intact": "The engine unit is running fine.",
+  "message.sparkstrength.engine.unit_damaged": "The engine unit is damaged!",
+  "message.sparkstrength.engine.unit_wrecked": "The engine unit is wrecked.",
+  "message.sparkstrength.configurator.single_engine_unit": "This map has only one engine unit: place at least two, spread out, so one corridor cannot guard them all.",
+  "message.sparkstrength.configurator.engine_boxes_without_units": "This map has engine junction boxes but no engine unit in the play area: the engine sabotage will not appear."
 }

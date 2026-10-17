@@ -1,0 +1,3523 @@
+{
+  "parent": "minecraft:block/block",
+  "ambientocclusion": true,
+  "textures": {
+    "side": "sparkstrength:block/engine_unit_side",
+    "top": "sparkstrength:block/engine_unit_top",
+    "parts": "sparkstrength:block/engine_unit_parts",
+    "flywheel": "sparkstrength:block/engine_unit_flywheel",
+    "front": "sparkstrength:block/engine_unit_front_damaged",
+    "gauge": "sparkstrength:block/engine_unit_gauge_damaged",
+    "tachometer": "sparkstrength:block/engine_unit_tachometer_damaged",
+    "lamps": "sparkstrength:block/engine_unit_lamps_damaged",
+    "particle": "sparkstrength:block/engine_unit_side"
+  },
+  "elements": [
+    {
+      "name": "落地钢底座",
+      "from": [
+        1,
+        0,
+        1
+      ],
+      "to": [
+        15,
+        1,
+        15
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            1,
+            15,
+            15,
+            16
+          ],
+          "texture": "#side"
+        },
+        "south": {
+          "uv": [
+            1,
+            15,
+            15,
+            16
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            1,
+            15,
+            15,
+            16
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            1,
+            15,
+            15,
+            16
+          ],
+          "texture": "#side"
+        },
+        "up": {
+          "uv": [
+            1,
+            1,
+            15,
+            15
+          ],
+          "texture": "#side"
+        },
+        "down": {
+          "uv": [
+            1,
+            1,
+            15,
+            15
+          ],
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "灰钢机柜",
+      "from": [
+        2,
+        1,
+        2
+      ],
+      "to": [
+        14,
+        13.5,
+        14
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2,
+            2.5,
+            14,
+            15
+          ],
+          "texture": "#side"
+        },
+        "south": {
+          "uv": [
+            2,
+            2.5,
+            14,
+            15
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            2,
+            2.5,
+            14,
+            15
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            2,
+            2.5,
+            14,
+            15
+          ],
+          "texture": "#side"
+        },
+        "up": {
+          "uv": [
+            2,
+            2,
+            14,
+            14
+          ],
+          "texture": "#side"
+        },
+        "down": {
+          "uv": [
+            2,
+            2,
+            14,
+            14
+          ],
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "仪表面板",
+      "from": [
+        2,
+        4.25,
+        1.5
+      ],
+      "to": [
+        14,
+        13.5,
+        2
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            11.84
+          ],
+          "texture": "#front"
+        },
+        "south": {
+          "uv": [
+            2,
+            2.5,
+            14,
+            11.75
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            14,
+            2.5,
+            14.5,
+            11.75
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            1.5,
+            2.5,
+            2,
+            11.75
+          ],
+          "texture": "#side"
+        },
+        "up": {
+          "uv": [
+            2,
+            1.5,
+            14,
+            2
+          ],
+          "texture": "#side"
+        },
+        "down": {
+          "uv": [
+            2,
+            14,
+            14,
+            14.5
+          ],
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "下部灯光面板",
+      "from": [
+        2,
+        1,
+        1.5
+      ],
+      "to": [
+        11.5,
+        4.25,
+        2
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            3.3333333333333335,
+            11.84,
+            16.0,
+            16.0
+          ],
+          "texture": "#front"
+        },
+        "south": {
+          "uv": [
+            2,
+            11.75,
+            11.5,
+            15
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            14,
+            11.75,
+            14.5,
+            15
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            1.5,
+            11.75,
+            2,
+            15
+          ],
+          "texture": "#side"
+        },
+        "up": {
+          "uv": [
+            2,
+            1.5,
+            11.5,
+            2
+          ],
+          "texture": "#side"
+        },
+        "down": {
+          "uv": [
+            2,
+            14,
+            11.5,
+            14.5
+          ],
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "左下检修盖角",
+      "from": [
+        11.5,
+        1,
+        1.5
+      ],
+      "to": [
+        14,
+        4.25,
+        2
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            11.84,
+            3.3333333333333335,
+            16.0
+          ],
+          "texture": "#front"
+        },
+        "south": {
+          "uv": [
+            11.5,
+            11.75,
+            14,
+            15
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            14,
+            11.75,
+            14.5,
+            15
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            1.5,
+            11.75,
+            2,
+            15
+          ],
+          "texture": "#side"
+        },
+        "up": {
+          "uv": [
+            11.5,
+            1.5,
+            14,
+            2
+          ],
+          "texture": "#side"
+        },
+        "down": {
+          "uv": [
+            11.5,
+            14,
+            14,
+            14.5
+          ],
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "顶盖",
+      "from": [
+        1.5,
+        13.5,
+        1.5
+      ],
+      "to": [
+        14.5,
+        14.25,
+        14.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            1.5,
+            1.75,
+            14.5,
+            2.5
+          ],
+          "texture": "#side"
+        },
+        "south": {
+          "uv": [
+            1.5,
+            1.75,
+            14.5,
+            2.5
+          ],
+          "texture": "#side"
+        },
+        "east": {
+          "uv": [
+            1.5,
+            1.75,
+            14.5,
+            2.5
+          ],
+          "texture": "#side"
+        },
+        "west": {
+          "uv": [
+            1.5,
+            1.75,
+            14.5,
+            2.5
+          ],
+          "texture": "#side"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#top"
+        },
+        "down": {
+          "uv": [
+            1.5,
+            1.5,
+            14.5,
+            14.5
+          ],
+          "texture": "#side"
+        }
+      }
+    },
+    {
+      "name": "压力表1_1",
+      "from": [
+        10.5625,
+        12.28125,
+        0.875
+      ],
+      "to": [
+        11.9375,
+        12.625,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            0,
+            12,
+            2
+          ],
+          "texture": "#gauge"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "压力表1_2",
+      "from": [
+        10.21875,
+        11.9375,
+        0.875
+      ],
+      "to": [
+        12.28125,
+        12.28125,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2,
+            2,
+            14,
+            4
+          ],
+          "texture": "#gauge"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "压力表1_3",
+      "from": [
+        9.875,
+        10.5625,
+        0.875
+      ],
+      "to": [
+        12.625,
+        11.9375,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            4,
+            16,
+            12
+          ],
+          "texture": "#gauge"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "压力表1_4",
+      "from": [
+        10.21875,
+        10.21875,
+        0.875
+      ],
+      "to": [
+        12.28125,
+        10.5625,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2,
+            12,
+            14,
+            14
+          ],
+          "texture": "#gauge"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "压力表1_5",
+      "from": [
+        10.5625,
+        9.875,
+        0.875
+      ],
+      "to": [
+        11.9375,
+        10.21875,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            14,
+            12,
+            16
+          ],
+          "texture": "#gauge"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "压力表2_1",
+      "from": [
+        7.3125,
+        12.28125,
+        0.875
+      ],
+      "to": [
+        8.6875,
+        12.625,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            0,
+            12,
+            2
+          ],
+          "texture": "#gauge"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "压力表2_2",
+      "from": [
+        6.96875,
+        11.9375,
+        0.875
+      ],
+      "to": [
+        9.03125,
+        12.28125,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2,
+            2,
+            14,
+            4
+          ],
+          "texture": "#gauge"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "压力表2_3",
+      "from": [
+        6.625,
+        10.5625,
+        0.875
+      ],
+      "to": [
+        9.375,
+        11.9375,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            4,
+            16,
+            12
+          ],
+          "texture": "#gauge"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "压力表2_4",
+      "from": [
+        6.96875,
+        10.21875,
+        0.875
+      ],
+      "to": [
+        9.03125,
+        10.5625,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2,
+            12,
+            14,
+            14
+          ],
+          "texture": "#gauge"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "压力表2_5",
+      "from": [
+        7.3125,
+        9.875,
+        0.875
+      ],
+      "to": [
+        8.6875,
+        10.21875,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            14,
+            12,
+            16
+          ],
+          "texture": "#gauge"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "压力表3_1",
+      "from": [
+        4.0625,
+        12.28125,
+        0.875
+      ],
+      "to": [
+        5.4375,
+        12.625,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            0,
+            12,
+            2
+          ],
+          "texture": "#gauge"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "压力表3_2",
+      "from": [
+        3.71875,
+        11.9375,
+        0.875
+      ],
+      "to": [
+        5.78125,
+        12.28125,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2,
+            2,
+            14,
+            4
+          ],
+          "texture": "#gauge"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "压力表3_3",
+      "from": [
+        3.375,
+        10.5625,
+        0.875
+      ],
+      "to": [
+        6.125,
+        11.9375,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            4,
+            16,
+            12
+          ],
+          "texture": "#gauge"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "压力表3_4",
+      "from": [
+        3.71875,
+        10.21875,
+        0.875
+      ],
+      "to": [
+        5.78125,
+        10.5625,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2,
+            12,
+            14,
+            14
+          ],
+          "texture": "#gauge"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "压力表3_5",
+      "from": [
+        4.0625,
+        9.875,
+        0.875
+      ],
+      "to": [
+        5.4375,
+        10.21875,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            14,
+            12,
+            16
+          ],
+          "texture": "#gauge"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "转速表_1",
+      "from": [
+        6.875,
+        8.3875,
+        0.75
+      ],
+      "to": [
+        9.125,
+        8.95,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            0,
+            12,
+            2
+          ],
+          "texture": "#tachometer"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "转速表_2",
+      "from": [
+        6.3125,
+        7.824999999999999,
+        0.75
+      ],
+      "to": [
+        9.6875,
+        8.3875,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2,
+            2,
+            14,
+            4
+          ],
+          "texture": "#tachometer"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "转速表_3",
+      "from": [
+        5.75,
+        5.574999999999999,
+        0.75
+      ],
+      "to": [
+        10.25,
+        7.824999999999999,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            4,
+            16,
+            12
+          ],
+          "texture": "#tachometer"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "转速表_4",
+      "from": [
+        6.3125,
+        5.012499999999999,
+        0.75
+      ],
+      "to": [
+        9.6875,
+        5.574999999999999,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2,
+            12,
+            14,
+            14
+          ],
+          "texture": "#tachometer"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "转速表_5",
+      "from": [
+        6.875,
+        4.449999999999999,
+        0.75
+      ],
+      "to": [
+        9.125,
+        5.012499999999999,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            14,
+            12,
+            16
+          ],
+          "texture": "#tachometer"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "指示灯1",
+      "from": [
+        9.875,
+        2.275,
+        1.125
+      ],
+      "to": [
+        11.125,
+        3.525,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#lamps"
+        },
+        "south": {
+          "uv": [
+            8,
+            0,
+            12,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            8,
+            0,
+            12,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            8,
+            0,
+            12,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            8,
+            0,
+            12,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            8,
+            0,
+            12,
+            4
+          ],
+          "texture": "#parts"
+        }
+      },
+      "shade": false
+    },
+    {
+      "name": "指示灯2",
+      "from": [
+        7.375,
+        2.275,
+        1.125
+      ],
+      "to": [
+        8.625,
+        3.525,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#lamps"
+        },
+        "south": {
+          "uv": [
+            8,
+            0,
+            12,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            8,
+            0,
+            12,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            8,
+            0,
+            12,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            8,
+            0,
+            12,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            8,
+            0,
+            12,
+            4
+          ],
+          "texture": "#parts"
+        }
+      },
+      "shade": false
+    },
+    {
+      "name": "指示灯3",
+      "from": [
+        4.875,
+        2.275,
+        1.125
+      ],
+      "to": [
+        6.125,
+        3.525,
+        1.65
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#lamps"
+        },
+        "south": {
+          "uv": [
+            8,
+            0,
+            12,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            8,
+            0,
+            12,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            8,
+            0,
+            12,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            8,
+            0,
+            12,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            8,
+            0,
+            12,
+            4
+          ],
+          "texture": "#parts"
+        }
+      },
+      "shade": false
+    },
+    {
+      "name": "西侧黄铜立管",
+      "from": [
+        1,
+        3,
+        4.75
+      ],
+      "to": [
+        2.125,
+        11.5,
+        5.875
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            4,
+            4,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            0,
+            4,
+            4,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            4,
+            4,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            4,
+            4,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            4,
+            4,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            4,
+            4,
+            16
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "西侧顶部弯管",
+      "from": [
+        1,
+        10.375,
+        5.875
+      ],
+      "to": [
+        2.125,
+        11.5,
+        11
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "西侧下接头",
+      "from": [
+        1,
+        2.75,
+        4.5
+      ],
+      "to": [
+        2.5,
+        4,
+        6.125
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "西侧后接头",
+      "from": [
+        1,
+        10.125,
+        10.25
+      ],
+      "to": [
+        2.5,
+        11.75,
+        11.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "西侧上管箍",
+      "from": [
+        0.875,
+        9.5,
+        4.625
+      ],
+      "to": [
+        2.25,
+        10,
+        6
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "西侧下管箍",
+      "from": [
+        0.875,
+        4.75,
+        4.625
+      ],
+      "to": [
+        2.25,
+        5.25,
+        6
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "东侧供油管",
+      "from": [
+        13.875,
+        3,
+        3
+      ],
+      "to": [
+        15,
+        12,
+        4
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            4,
+            4,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            0,
+            4,
+            4,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            4,
+            4,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            0,
+            4,
+            4,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            4,
+            4,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            4,
+            4,
+            16
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "东侧上接头",
+      "from": [
+        13.75,
+        11.25,
+        2.75
+      ],
+      "to": [
+        15.125,
+        12.25,
+        4.25
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "东侧下接头",
+      "from": [
+        13.75,
+        2.75,
+        2.75
+      ],
+      "to": [
+        15.125,
+        3.75,
+        4.25
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "东侧飞轮护罩_1",
+      "from": [
+        13.875,
+        10.025,
+        6.25
+      ],
+      "to": [
+        15.5,
+        10.9,
+        9.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            4,
+            0,
+            12,
+            2
+          ],
+          "texture": "#flywheel"
+        },
+        "west": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "东侧飞轮护罩_2",
+      "from": [
+        13.875,
+        9.15,
+        5.375
+      ],
+      "to": [
+        15.5,
+        10.025,
+        10.625
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            2,
+            2,
+            14,
+            4
+          ],
+          "texture": "#flywheel"
+        },
+        "west": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "东侧飞轮护罩_3",
+      "from": [
+        13.875,
+        5.65,
+        4.5
+      ],
+      "to": [
+        15.5,
+        9.15,
+        11.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            0,
+            4,
+            16,
+            12
+          ],
+          "texture": "#flywheel"
+        },
+        "west": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "东侧飞轮护罩_4",
+      "from": [
+        13.875,
+        4.775,
+        5.375
+      ],
+      "to": [
+        15.5,
+        5.65,
+        10.625
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            2,
+            12,
+            14,
+            14
+          ],
+          "texture": "#flywheel"
+        },
+        "west": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "东侧飞轮护罩_5",
+      "from": [
+        13.875,
+        3.9000000000000004,
+        6.25
+      ],
+      "to": [
+        15.5,
+        4.775,
+        9.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            4,
+            14,
+            12,
+            16
+          ],
+          "texture": "#flywheel"
+        },
+        "west": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "飞轮轴帽",
+      "from": [
+        15.5,
+        6.65,
+        7.25
+      ],
+      "to": [
+        15.875,
+        8.15,
+        8.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            12,
+            0,
+            16,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "排气管法兰",
+      "from": [
+        9.75,
+        14.25,
+        9.75
+      ],
+      "to": [
+        13.25,
+        14.5,
+        13.25
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "排气管北壁",
+      "from": [
+        10.25,
+        14.5,
+        10.25
+      ],
+      "to": [
+        12.75,
+        15.75,
+        10.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            4,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            4,
+            4,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            4,
+            4,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            4,
+            4,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            4,
+            4,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "排气管南壁",
+      "from": [
+        10.25,
+        14.5,
+        12.25
+      ],
+      "to": [
+        12.75,
+        15.75,
+        12.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            4,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            4,
+            4,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            4,
+            4,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            4,
+            4,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            4,
+            4,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "排气管西壁",
+      "from": [
+        10.25,
+        14.5,
+        10.75
+      ],
+      "to": [
+        10.75,
+        15.75,
+        12.25
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            4,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            4,
+            4,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            4,
+            4,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            4,
+            4,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            4,
+            4,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "排气管东壁",
+      "from": [
+        12.25,
+        14.5,
+        10.75
+      ],
+      "to": [
+        12.75,
+        15.75,
+        12.25
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            4,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            4,
+            4,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            4,
+            4,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            4,
+            4,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            4,
+            4,
+            8,
+            16
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "排气管内腔",
+      "from": [
+        10.75,
+        14.5,
+        10.75
+      ],
+      "to": [
+        12.25,
+        14.5625,
+        12.25
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            10,
+            6,
+            12,
+            8
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            10,
+            6,
+            12,
+            8
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            10,
+            6,
+            12,
+            8
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            10,
+            6,
+            12,
+            8
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            10,
+            6,
+            12,
+            8
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            10,
+            6,
+            12,
+            8
+          ],
+          "texture": "#parts"
+        }
+      }
+    }
+  ],
+  "display": {
+    "gui": {
+      "rotation": [
+        30,
+        225,
+        0
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ]
+    },
+    "ground": {
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        3,
+        0
+      ],
+      "scale": [
+        0.25,
+        0.25,
+        0.25
+      ]
+    },
+    "fixed": {
+      "rotation": [
+        0,
+        180,
+        0
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ]
+    }
+  }
+}

@@ -47,6 +47,7 @@ import java.util.UUID;
  */
 public final class SabotageService {
     private static final int STATUS_REFRESH_TICKS = 10;
+    private static final int ENGINE_UNIT_CHECK_TICKS = 20;
     private static final Map<UUID, SabotageStatusS2CPacket> SENT_STATUS = new HashMap<>();
     private static final Set<RegistryKey<World>> DIRTY = new HashSet<>();
     private static boolean registered;
@@ -106,12 +107,29 @@ public final class SabotageService {
 
     private static void onRoundEnd(ServerWorld world) {
         SabotageWorldComponent sabotage = SabotageWorldComponent.KEY.get(world);
-        LightsSabotageService.finish(world, sabotage, LightsSabotageService.EndReason.ROUND_END, null);
+        finishActive(world);
         JunctionBoxService.clear(world);
         BreakerRepairService.closeAll(world, 2);
-        restoreLooks(world, sabotage.junctionBoxes(), sabotage.breakers());
+        restoreLooks(world, sabotage.junctionBoxes(), sabotage.breakers(), sabotage.engineUnits());
         sabotage.clearRoundState();
         markStatusDirty(world);
+    }
+
+    /**
+     * Ends whatever sabotage is on without a repair: round over, the round stopped, the map copied again mid-round.
+     * Each type ends only its own state; no cooldown starts and nobody is credited.
+     * 不经维修直接结束正在进行的破坏：对局结束、对局被停止、局中重新复制了地图。每种类型只结束自己的状态；不开始冷却，
+     * 也不记任何人的功劳。
+     */
+    public static void finishActive(ServerWorld world) {
+        SabotageWorldComponent sabotage = SabotageWorldComponent.KEY.get(world);
+        SabotageWorldComponent.Outage outage = sabotage.outage();
+        if (outage != null && outage.type() == SabotageType.LIGHTS) {
+            LightsSabotageService.finish(world, sabotage, LightsSabotageService.EndReason.ROUND_END, null);
+        }
+        if (sabotage.enginePhase() != null) {
+            EngineSabotageService.abort(world);
+        }
     }
 
     /** Wathe's train copy for this round just succeeded. / 本局的 Wathe 车厢复制刚刚成功。 */
@@ -125,18 +143,26 @@ public final class SabotageService {
     }
 
     private static void initializeMap(ServerWorld world, SabotageWorldComponent sabotage) {
+        if (sabotage.isMapReady()) {
+            // The train was copied again mid-round: fixtures are back to their template looks, so nothing on can be
+            // finished or seen any more. / 局中再次复制了车厢：设施都回到了模板外观，进行中的破坏既修不了也看不见了。
+            finishActive(world);
+        }
         List<BlockPos> boxes = new ArrayList<>();
         List<BlockPos> breakers = new ArrayList<>();
+        List<BlockPos> engineUnits = new ArrayList<>();
         SabotageBlockScan.scan(world, MapVariablesWorldComponent.KEY.get(world).getPlayArea(), (pos, state) -> {
             if (state.isOf(SparkStrengthBlocks.junctionBox())) {
                 boxes.add(pos);
-            } else {
+            } else if (state.isOf(SparkStrengthBlocks.circuitBreaker())) {
                 breakers.add(pos);
+            } else if (state.isOf(SparkStrengthBlocks.engineUnit())) {
+                engineUnits.add(pos);
             }
         });
-        restoreLooks(world, boxes, breakers);
+        restoreLooks(world, boxes, breakers, engineUnits);
         boolean autoUnlocked = sabotage.isAutoUnlocked();
-        sabotage.markMapReady(boxes, breakers);
+        sabotage.markMapReady(boxes, breakers, engineUnits);
         boolean lightsBoxes = boxes.stream()
                 .anyMatch(pos -> JunctionBoxBlock.typeOf(world.getBlockState(pos)) == SabotageType.LIGHTS);
         if (SabotageRules.startsWithLightsUnlocked(lightsBoxes)) {
@@ -151,8 +177,9 @@ public final class SabotageService {
         markStatusDirty(world);
     }
 
-    /** Back to intact boxes and untripped breakers, in case the map has no reset template. / 恢复完好的箱子与未跳闸的电闸，以防地图没有重置模板。 */
-    private static void restoreLooks(ServerWorld world, List<BlockPos> boxes, List<BlockPos> breakers) {
+    /** Back to intact boxes, untripped breakers and intact engine units, in case the map has no reset template. / 恢复完好的箱子、未跳闸的电闸与完好的动力装置，以防地图没有重置模板。 */
+    private static void restoreLooks(ServerWorld world, List<BlockPos> boxes, List<BlockPos> breakers,
+                                     List<BlockPos> engineUnits) {
         for (BlockPos pos : boxes) {
             BlockState state = world.getBlockState(pos);
             if (state.isOf(SparkStrengthBlocks.junctionBox())
@@ -166,11 +193,18 @@ public final class SabotageService {
                 world.setBlockState(pos, state.with(CircuitBreakerBlock.TRIPPED, false), Block.NOTIFY_ALL);
             }
         }
+        EngineSabotageService.setUnitLooks(world, engineUnits, EngineCondition.INTACT);
     }
 
     private static void tick(ServerWorld world) {
         SabotageWorldComponent sabotage = SabotageWorldComponent.KEY.get(world);
         GameWorldComponent game = GameWorldComponent.KEY.get(world);
+        if (game.getGameStatus() != GameWorldComponent.GameStatus.ACTIVE
+                && (sabotage.outage() != null || sabotage.enginePhase() != null)) {
+            // A stopped round is STOPPING well before Wathe's finalize event: end the effects the moment it leaves
+            // ACTIVE. / 被停止的对局在 Wathe 的 finalize 事件之前很久就进入 STOPPING：一离开 ACTIVE 就结束效果。
+            finishActive(world);
+        }
         if (game.getGameStatus() == GameWorldComponent.GameStatus.ACTIVE) {
             if (!sabotage.isMapReady() && sabotage.isAwaitingMapReset()
                     && SabotageRules.mayScanWithoutCopy(world.getTime() - sabotage.roundStartTick(),
@@ -182,6 +216,7 @@ public final class SabotageService {
                 initializeMap(world, sabotage);
             }
             if (sabotage.isMapReady()) {
+                checkEngineUnits(world, sabotage);
                 JunctionBoxService.tick(world, sabotage);
                 LightsSabotageService.tick(world, sabotage);
                 BreakerRepairService.tick(world);
@@ -189,6 +224,28 @@ public final class SabotageService {
             }
         }
         syncStatus(world, sabotage);
+    }
+
+    /**
+     * Engine units removed or replaced mid-round stop counting; once none is left the engine sabotage can neither be
+     * unlocked nor repaired, so one in progress ends without a cooldown. Unloaded chunks are left alone, never loaded.
+     * 局中被移除或替换的动力装置不再计入；一台都不剩时动力破坏既不能解锁也修不了，进行中的会直接结束，不开始冷却。
+     * 未加载的区块不做判断，也绝不加载。
+     */
+    private static void checkEngineUnits(ServerWorld world, SabotageWorldComponent sabotage) {
+        if (world.getTime() % ENGINE_UNIT_CHECK_TICKS != 0 || !sabotage.hasEngineUnits()) {
+            return;
+        }
+        boolean dropped = sabotage.pruneEngineUnits(pos -> !world.isChunkLoaded(pos)
+                || world.getBlockState(pos).isOf(SparkStrengthBlocks.engineUnit()));
+        if (!dropped) {
+            return;
+        }
+        if (!sabotage.hasEngineUnits() && sabotage.enginePhase() != null) {
+            EngineSabotageService.abort(world);
+        }
+        markStatusDirty(world);
+        TabletStateService.syncToTabletHolders(world);
     }
 
     /** Wathe's counter is positive while a copy is queued or retrying. / Wathe 的计数在复制排队或重试中为正数。 */
@@ -240,6 +297,11 @@ public final class SabotageService {
     public static void handleTrigger(ServerPlayerEntity player, int typeWire) {
         SabotageType type = SabotageType.byWire(typeWire);
         if (type == null || !SabotageAccess.canUse(player) || !TabletAccess.hasTabletInHotbar(player)) {
+            return;
+        }
+        if (type != SabotageType.LIGHTS) {
+            // The engine sabotage's trigger comes with its repair flow. / 动力破坏的触发与它的维修流程一起接入。
+            player.sendMessage(Text.translatable("message.sparkstrength.sabotage.trigger_denied.unavailable"), true);
             return;
         }
         ServerWorld world = player.getServerWorld();

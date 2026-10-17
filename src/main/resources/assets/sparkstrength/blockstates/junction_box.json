@@ -89,6 +89,51 @@
     "facing=west,sabotage=none,state=hacked": {
       "model": "sparkstrength:block/junction_box_hacked",
       "y": 270
+    },
+    "facing=north,sabotage=engine,state=closed": {
+      "model": "sparkstrength:block/junction_box_engine"
+    },
+    "facing=north,sabotage=engine,state=broken": {
+      "model": "sparkstrength:block/junction_box_engine_broken"
+    },
+    "facing=north,sabotage=engine,state=hacked": {
+      "model": "sparkstrength:block/junction_box_engine_hacked"
+    },
+    "facing=east,sabotage=engine,state=closed": {
+      "model": "sparkstrength:block/junction_box_engine",
+      "y": 90
+    },
+    "facing=east,sabotage=engine,state=broken": {
+      "model": "sparkstrength:block/junction_box_engine_broken",
+      "y": 90
+    },
+    "facing=east,sabotage=engine,state=hacked": {
+      "model": "sparkstrength:block/junction_box_engine_hacked",
+      "y": 90
+    },
+    "facing=south,sabotage=engine,state=closed": {
+      "model": "sparkstrength:block/junction_box_engine",
+      "y": 180
+    },
+    "facing=south,sabotage=engine,state=broken": {
+      "model": "sparkstrength:block/junction_box_engine_broken",
+      "y": 180
+    },
+    "facing=south,sabotage=engine,state=hacked": {
+      "model": "sparkstrength:block/junction_box_engine_hacked",
+      "y": 180
+    },
+    "facing=west,sabotage=engine,state=closed": {
+      "model": "sparkstrength:block/junction_box_engine",
+      "y": 270
+    },
+    "facing=west,sabotage=engine,state=broken": {
+      "model": "sparkstrength:block/junction_box_engine_broken",
+      "y": 270
+    },
+    "facing=west,sabotage=engine,state=hacked": {
+      "model": "sparkstrength:block/junction_box_engine_hacked",
+      "y": 270
     }
   }
 }

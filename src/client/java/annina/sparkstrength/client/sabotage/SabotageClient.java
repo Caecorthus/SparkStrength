@@ -3,6 +3,7 @@ package annina.sparkstrength.client.sabotage;
 import annina.sparkstrength.SparkStrengthBlocks;
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.SparkStrengthSounds;
+import annina.sparkstrength.block.EngineUnitBlock;
 import annina.sparkstrength.block.JunctionBoxBlock;
 import annina.sparkstrength.network.sabotage.CancelChannelC2SPacket;
 import annina.sparkstrength.network.sabotage.ChannelProgressS2CPacket;
@@ -58,7 +59,7 @@ public final class SabotageClient {
 
     public static void register() {
         BlockRenderLayerMap.INSTANCE.putBlocks(RenderLayer.getCutout(),
-                SparkStrengthBlocks.junctionBox(), SparkStrengthBlocks.circuitBreaker());
+                SparkStrengthBlocks.junctionBox(), SparkStrengthBlocks.circuitBreaker(), SparkStrengthBlocks.engineUnit());
         ClientPlayNetworking.registerGlobalReceiver(SabotageStatusS2CPacket.ID, (payload, context) -> {
             SabotageClientState.setStatus(payload);
             EngineHalt.setClientPhase(EnginePhase.byWire(payload.enginePhaseWire()));
@@ -105,6 +106,7 @@ public final class SabotageClient {
         updateDarkness(client, world, player);
         watchChannel(client, world, player);
         sparks(world, player);
+        engineParticles(world, player);
     }
 
     /** Lights sabotage darkness for living players; spectators and the dead keep their view. / 存活玩家看到灯光破坏的黑暗；观战者与死者保持原有视野。 */
@@ -162,6 +164,64 @@ public final class SabotageClient {
             channel.cancelSent = true;
             ClientPlayNetworking.send(new CancelChannelC2SPacket(channel.id));
             SabotageClientState.cancelChannel(channel);
+        }
+    }
+
+    /**
+     * Engine units, at a steady rate (randomDisplayTick is not called every tick): an intact unit now and then gives a
+     * green sparkle, a damaged one smokes from its exhaust, a wrecked one pours black smoke and throws sparks.
+     * 动力装置，按固定频率（randomDisplayTick 并不是每 tick 都会调用）：完好的偶尔冒一点绿色闪光，受损的从排气管冒烟，
+     * 损毁的冒浓黑烟并迸出火花。
+     */
+    private static void engineParticles(ClientWorld world, ClientPlayerEntity player) {
+        Random random = world.random;
+        for (SabotageClientState.Fixture fixture : SabotageClientState.fixtures()) {
+            BlockState state = world.getBlockState(fixture.pos());
+            if (!state.isOf(SparkStrengthBlocks.engineUnit())
+                    || player.squaredDistanceTo(Vec3d.ofCenter(fixture.pos())) > SPARK_RANGE_SQ) {
+                continue;
+            }
+            Direction facing = state.get(EngineUnitBlock.FACING);
+            Vec3d exhaust = EngineUnitLook.exhaust(fixture.pos(), facing);
+            Vec3d front = EngineUnitLook.panel(fixture.pos(), facing);
+            switch (state.get(EngineUnitBlock.CONDITION)) {
+                case INTACT -> {
+                    if (random.nextInt(EngineUnitLook.INTACT_SPARKLE_INTERVAL) == 0) {
+                        world.addParticle(ParticleTypes.HAPPY_VILLAGER,
+                                front.x + (random.nextDouble() - 0.5) * 0.6, front.y + random.nextDouble() * 0.4,
+                                front.z + (random.nextDouble() - 0.5) * 0.6, 0.0, 0.02, 0.0);
+                    }
+                }
+                case DAMAGED -> {
+                    if (random.nextFloat() < 0.35F) {
+                        world.addParticle(ParticleTypes.LARGE_SMOKE, exhaust.x, exhaust.y, exhaust.z,
+                                (random.nextDouble() - 0.5) * 0.02, 0.05 + random.nextDouble() * 0.03,
+                                (random.nextDouble() - 0.5) * 0.02);
+                    }
+                }
+                case WRECKED -> {
+                    for (int i = 0; i < 2; i++) {
+                        if (random.nextFloat() < 0.6F) {
+                            world.addParticle(ParticleTypes.LARGE_SMOKE,
+                                    exhaust.x + (random.nextDouble() - 0.5) * 0.3, exhaust.y,
+                                    exhaust.z + (random.nextDouble() - 0.5) * 0.3,
+                                    (random.nextDouble() - 0.5) * 0.03, 0.07 + random.nextDouble() * 0.05,
+                                    (random.nextDouble() - 0.5) * 0.03);
+                        }
+                    }
+                    if (random.nextFloat() < 0.12F) {
+                        int count = 2 + random.nextInt(4);
+                        for (int i = 0; i < count; i++) {
+                            world.addParticle(ParticleTypes.ELECTRIC_SPARK,
+                                    front.x + (random.nextDouble() - 0.5) * 0.5, front.y + (random.nextDouble() - 0.5) * 0.5,
+                                    front.z + (random.nextDouble() - 0.5) * 0.5,
+                                    (random.nextDouble() - 0.5) * 0.3 - facing.getOffsetX() * 0.1,
+                                    random.nextDouble() * 0.15,
+                                    (random.nextDouble() - 0.5) * 0.3 - facing.getOffsetZ() * 0.1);
+                        }
+                    }
+                }
+            }
         }
     }
 

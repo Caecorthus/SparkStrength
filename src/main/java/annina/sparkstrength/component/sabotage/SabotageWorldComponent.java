@@ -81,6 +81,7 @@ public final class SabotageWorldComponent implements Component {
     private boolean awaitingMapReset;
     private final List<BlockPos> junctionBoxes = new ArrayList<>();
     private final List<BlockPos> breakers = new ArrayList<>();
+    private final List<BlockPos> engineUnits = new ArrayList<>();
     private final Map<BlockPos, BoxProgress> boxes = new HashMap<>();
     private final EnumMap<SabotageType, Long> unlockReadyTick = new EnumMap<>(SabotageType.class);
     private final EnumSet<SabotageType> readyAnnounced = EnumSet.noneOf(SabotageType.class);
@@ -101,6 +102,7 @@ public final class SabotageWorldComponent implements Component {
         awaitingMapReset = false;
         junctionBoxes.clear();
         breakers.clear();
+        engineUnits.clear();
         boxes.clear();
         unlockReadyTick.clear();
         readyAnnounced.clear();
@@ -130,13 +132,15 @@ public final class SabotageWorldComponent implements Component {
         return awaitingMapReset;
     }
 
-    public void markMapReady(List<BlockPos> junctionBoxes, List<BlockPos> breakers) {
+    public void markMapReady(List<BlockPos> junctionBoxes, List<BlockPos> breakers, List<BlockPos> engineUnits) {
         this.awaitingMapReset = false;
         this.mapReady = true;
         this.junctionBoxes.clear();
         this.junctionBoxes.addAll(junctionBoxes);
         this.breakers.clear();
         this.breakers.addAll(breakers);
+        this.engineUnits.clear();
+        this.engineUnits.addAll(engineUnits);
         this.boxes.clear();
     }
 
@@ -150,6 +154,24 @@ public final class SabotageWorldComponent implements Component {
 
     public boolean hasBreakers() {
         return !breakers.isEmpty();
+    }
+
+    /** Engine units found in the play area when the map was scanned. / 扫描地图时在对局区找到的动力装置。 */
+    public List<BlockPos> engineUnits() {
+        return Collections.unmodifiableList(engineUnits);
+    }
+
+    /**
+     * Drops engine units that are gone (removed or replaced since the scan); true if any was dropped.
+     * 去掉已经不在的动力装置（扫描后被移除或替换）；有去掉的就返回 true。
+     */
+    public boolean pruneEngineUnits(java.util.function.Predicate<BlockPos> stillThere) {
+        return engineUnits.removeIf(pos -> !stillThere.test(pos));
+    }
+
+    /** The map supports the engine sabotage. / 本图支持动力破坏。 */
+    public boolean hasEngineUnits() {
+        return !engineUnits.isEmpty();
     }
 
     public boolean hasJunctionBoxes() {
@@ -209,10 +231,15 @@ public final class SabotageWorldComponent implements Component {
         return autoUnlocked;
     }
 
+    /**
+     * Only the automatic lights unlock is taken back (a fallback scan ran before the copy finished); an engine unlock
+     * always comes from a hack and stays.
+     * 只撤回自动解锁的灯光（兜底扫描早于复制完成）；动力的解锁一定来自入侵，保持不变。
+     */
     public void revokeAutoUnlock() {
         if (autoUnlocked) {
-            unlockReadyTick.clear();
-            readyAnnounced.clear();
+            unlockReadyTick.remove(SabotageType.LIGHTS);
+            readyAnnounced.remove(SabotageType.LIGHTS);
             autoUnlocked = false;
         }
     }
