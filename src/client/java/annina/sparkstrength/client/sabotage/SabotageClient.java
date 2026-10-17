@@ -11,6 +11,7 @@ import annina.sparkstrength.network.sabotage.CloseBreakerRepairS2CPacket;
 import annina.sparkstrength.network.sabotage.OpenBreakerRepairS2CPacket;
 import annina.sparkstrength.network.sabotage.OpenEngineRepairS2CPacket;
 import annina.sparkstrength.network.sabotage.SabotageStatusS2CPacket;
+import annina.sparkstrength.sabotage.EngineEconomy;
 import annina.sparkstrength.sabotage.EngineHalt;
 import annina.sparkstrength.sabotage.EnginePhase;
 import annina.sparkstrength.sabotage.JunctionBoxService;
@@ -59,11 +60,19 @@ public final class SabotageClient {
     }
 
     public static void register() {
+        // Client init runs on the render thread: only this thread follows the local player's shop discount.
+        // 客户端初始化在渲染线程上执行：只有这个线程跟随本地玩家的商店折扣。
+        EngineEconomy.registerClientThread(Thread.currentThread());
         BlockRenderLayerMap.INSTANCE.putBlocks(RenderLayer.getCutout(),
                 SparkStrengthBlocks.junctionBox(), SparkStrengthBlocks.circuitBreaker(), SparkStrengthBlocks.engineUnit());
         ClientPlayNetworking.registerGlobalReceiver(SabotageStatusS2CPacket.ID, (payload, context) -> {
             SabotageClientState.setStatus(payload);
             EngineHalt.setClientPhase(EnginePhase.byWire(payload.enginePhaseWire()));
+            boolean bonusChanged = EngineEconomy.clientBonus() != payload.engineBonus();
+            EngineEconomy.setClientBonus(payload.engineBonus());
+            if (bonusChanged) {
+                EngineShopDisplay.refreshOpenShop(context.client());
+            }
             EngineTrainMotion.onStatus();
         });
         ClientPlayNetworking.registerGlobalReceiver(ChannelProgressS2CPacket.ID, (payload, context) -> {
@@ -90,12 +99,14 @@ public final class SabotageClient {
         // JOIN 在客户端线程上、任何游戏数据包处理之前执行，所以不会抹掉第一个状态包。
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             EngineHalt.setClientPhase(null);
+            EngineEconomy.setClientBonus(false);
             EngineTrainMotion.onJoin();
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(() -> {
             SabotageClientState.reset();
             SabotageSkyLight.set(client, null);
             EngineHalt.setClientPhase(null);
+            EngineEconomy.setClientBonus(false);
             EngineTrainMotion.reset();
         }));
     }

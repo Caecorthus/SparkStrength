@@ -2,6 +2,8 @@ package annina.sparkstrength.sabotage;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,6 +46,19 @@ public final class EngineRules {
     public static final int ALARM_INTERVAL_TICKS = 40;
     /** The countdown on the action bar turns red for its last 20 s. / 动作栏倒计时在最后 20 秒变红。 */
     public static final int URGENT_TICKS = 400;
+    /**
+     * Wathe pays its killer passive income on world ticks that are a multiple of this ({@code PASSIVE_MONEY_TICKER},
+     * Wathe 1.5.6: 5 gold every 10 s).
+     * Wathe 在世界 tick 为此值整数倍时发放杀手被动收入（Wathe 1.5.6 的 PASSIVE_MONEY_TICKER：每 10 秒 5 金币）。
+     */
+    public static final int PASSIVE_INCOME_PERIOD_TICKS = 200;
+    /**
+     * While the engine is broken two extra payouts sit between Wathe's own, at these offsets into each period: three per
+     * period, about one every 3.3 s.
+     * 动力损毁期间，在 Wathe 自己的两次发放之间再加两次，位于每个周期的这两个偏移处：每周期三次，约 3.3 秒一次。
+     */
+    public static final int BOOSTED_INCOME_FIRST_OFFSET = 67;
+    public static final int BOOSTED_INCOME_SECOND_OFFSET = 133;
 
     private EngineRules() {
     }
@@ -198,5 +213,55 @@ public final class EngineRules {
     /** Server minimum time of a repair panel: quick about 4 s, overhaul about 9 s. / 维修面板的服务端最短用时：抢修约 4 秒，大修约 9 秒。 */
     public static int minTicks(int gauges, int fuses, int holdTicks) {
         return Math.max(0, holdTicks) + Math.max(0, gauges) * MIN_TICKS_PER_GAUGE + Math.max(0, fuses) * MIN_TICKS_PER_FUSE;
+    }
+
+    /**
+     * One of the two extra killer payouts of each income period while the engine is broken (offset 67 or 133). Wathe's
+     * own payout tick (offset 0) is never one: it already pays.
+     * 动力损毁期间每个收入周期里额外两次杀手收入之一（偏移 67 或 133）。Wathe 自己的发放 tick（偏移 0）不算：它本来就发。
+     */
+    public static boolean boostedIncomeTick(long worldTime) {
+        long offset = Math.floorMod(worldTime, PASSIVE_INCOME_PERIOD_TICKS);
+        return offset == BOOSTED_INCOME_FIRST_OFFSET || offset == BOOSTED_INCOME_SECOND_OFFSET;
+    }
+
+    /**
+     * The tick of Wathe's own payout a boosted tick stands in for (67 or 133 ticks earlier, a multiple of the period),
+     * so asking Wathe's ticker about it yields exactly its own amount; any other tick is returned unchanged.
+     * 加成 tick 所代表的 Wathe 自身发放 tick（早 67 或 133 tick，正好是周期的整数倍），向 Wathe 的计时器询问它时得到的正是
+     * Wathe 自己的金额；其他 tick 原样返回。
+     */
+    public static long alignedPayoutTick(long worldTime) {
+        return boostedIncomeTick(worldTime)
+                ? worldTime - Math.floorMod(worldTime, PASSIVE_INCOME_PERIOD_TICKS) : worldTime;
+    }
+
+    /**
+     * Gold settlement price while the engine is broken: 20% off as {@code p - p / 5}, which is 0.8p rounded up
+     * (25 → 20, 110 → 88); 0 stays 0 and prices under 5 do not change.
+     * 动力损毁期间的金币结算价：8 折，算法是 p - p / 5，即 0.8p 向上取整（25 → 20，110 → 88）；0 仍是 0，低于 5 的价格不变。
+     */
+    public static int discountedPrice(int price) {
+        return price <= 0 ? price : price - price / 5;
+    }
+
+    /**
+     * The instance field through which a shop entry of {@code type} wraps another entry, or null for an entry that lists
+     * its own price. A wrapper (SparkTraits' Charisma entry keeps its delegate and stores a price computed from the
+     * delegate's {@code price()}) already carries the discount, so it must not get it again. Only the declared fields
+     * below {@code entryType} are looked at.
+     * type 类型的商店条目用来包装另一个条目的实例字段；条目自己定价时为 null。包装条目（SparkTraits 的魅力条目保留被包装的
+     * 条目，并保存由其 price() 算出的价格）已经带上了折扣，不能再打一次。只查看 entryType 之下各层声明的字段。
+     */
+    public static @Nullable Field wrappedEntryField(Class<?> type, Class<?> entryType) {
+        for (Class<?> level = type; level != null && level != entryType && entryType.isAssignableFrom(level);
+             level = level.getSuperclass()) {
+            for (Field field : level.getDeclaredFields()) {
+                if (!Modifier.isStatic(field.getModifiers()) && entryType.isAssignableFrom(field.getType())) {
+                    return field;
+                }
+            }
+        }
+        return null;
     }
 }

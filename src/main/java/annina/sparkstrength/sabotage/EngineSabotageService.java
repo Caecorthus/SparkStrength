@@ -138,7 +138,9 @@ public final class EngineSabotageService {
         }
         EngineRepairService.onPhaseChanged(world);
         sabotage.log(now, SabotageWorldComponent.LogKind.ENGINE_WRECKED, "", SabotageType.ENGINE);
-        // Re-syncs the round timer itself as the frozen state changes. / 冻结状态改变时，它会自己重新同步回合倒计时。
+        notifyEconomy(world, "message.sparkstrength.engine.economy_wrecked");
+        // Re-syncs the round timer itself as the frozen state changes; also carries each player's economy bonus.
+        // 冻结状态改变时，它会自己重新同步回合倒计时；同时带上每个玩家的经济加成。
         SabotageService.syncStatusNow(world);
         TabletStateService.syncToTabletHolders(world);
     }
@@ -149,8 +151,23 @@ public final class EngineSabotageService {
         // Overhaul panels stay open: WRECKED and EMERGENCY need the same repair. / 大修面板不关：两个阶段要做的是同一种维修。
         EngineRepairService.onPhaseChanged(world);
         sabotage.log(world.getTime(), SabotageWorldComponent.LogKind.ENGINE_EMERGENCY, "", SabotageType.ENGINE);
+        // The timer runs again, the bonus does not stop. / 倒计时恢复，加成不停。
+        notifyEconomy(world, "message.sparkstrength.engine.economy_emergency");
         SabotageService.syncStatusNow(world);
         TabletStateService.syncToTabletHolders(world);
+    }
+
+    /**
+     * A chat line to every player the broken-engine killer economy pays right now ({@link EngineEconomy#isEligible}).
+     * 给当前享有动力损毁杀手经济加成的每个玩家发一条聊天消息（EngineEconomy#isEligible）。
+     */
+    private static void notifyEconomy(ServerWorld world, String key) {
+        Text message = Text.translatable(key).formatted(Formatting.GOLD);
+        for (ServerPlayerEntity player : world.getPlayers()) {
+            if (EngineEconomy.isEligible(player)) {
+                player.sendMessage(message, false);
+            }
+        }
     }
 
     /** End of every world tick in an active round. / 进行中对局里每个世界 tick 的末尾。 */

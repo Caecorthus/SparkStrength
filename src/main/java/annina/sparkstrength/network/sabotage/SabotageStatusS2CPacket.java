@@ -14,10 +14,10 @@ import java.util.List;
 /**
  * Per-player sabotage status: whether a lights sabotage is on (darkness, breaker outlines), whether this player may
  * sabotage (instinct outlines of junction boxes), and the engine sabotage (train motion, round timer freeze, long-range
- * unit outlines). Sent on change and on join; the record's equality drives "on change", so the unit list is copied into
- * an immutable list.
+ * unit outlines, this player's economy bonus). Sent on change and on join; the record's equality drives "on change", so
+ * the unit list is copied into an immutable list.
  * 按玩家发送的破坏状态：是否正在灯光破坏（黑暗、电闸描边）、本人能否破坏（本能键下的接线箱描边），以及动力破坏（列车运动、回合
- * 倒计时冻结、远距离装置描边）。变化时与进服时发送；「变化」靠 record 的相等判断，所以装置列表会复制成不可变列表。
+ * 倒计时冻结、远距离装置描边、本人的经济加成）。变化时与进服时发送；「变化」靠 record 的相等判断，所以装置列表会复制成不可变列表。
  *
  * @param lightsOut         a sabotage outage is on / 正在进行破坏造成的熄灯
  * @param outageId          the outage instance, 0 when none / 熄灯实例，没有时为 0
@@ -30,12 +30,16 @@ import java.util.List;
  * @param engineUnits       every registered engine unit while an engine sabotage is on, empty otherwise, so units
  *                          beyond the render distance can be outlined / 动力破坏进行中时为全部已登记的动力装置，否则为空，
  *                          用于给渲染距离外的装置描边
+ * @param engineBonus       this player gets the broken-engine killer economy right now (passive income ×3, shop 20%
+ *                          off); decided by the server per player, the client never derives it from roles / 本人当前享有
+ *                          动力损毁的杀手经济加成（被动收入 ×3、商店 8 折）；由服务端按玩家判定，客户端从不按身份自行推导
  */
 public record SabotageStatusS2CPacket(boolean lightsOut, int outageId, int modeWire, boolean canSabotage,
-                                      int enginePhaseWire, long engineTriggeredAt, List<BlockPos> engineUnits)
+                                      int enginePhaseWire, long engineTriggeredAt, List<BlockPos> engineUnits,
+                                      boolean engineBonus)
         implements CustomPayload {
     public static final SabotageStatusS2CPacket NONE = new SabotageStatusS2CPacket(false, 0, 0, false, 0, 0L,
-            List.of());
+            List.of(), false);
     /**
      * Most engine units the packet carries, far more than any map places; a bad count cannot make the client allocate
      * wildly. Units past it are still repairable but get no long-range outline, so the circuit configurator warns a map
@@ -70,6 +74,7 @@ public record SabotageStatusS2CPacket(boolean lightsOut, int outageId, int modeW
         for (int i = 0; i < count; i++) {
             buf.writeBlockPos(engineUnits.get(i));
         }
+        buf.writeBoolean(engineBonus);
     }
 
     public static SabotageStatusS2CPacket read(PacketByteBuf buf) {
@@ -87,7 +92,8 @@ public record SabotageStatusS2CPacket(boolean lightsOut, int outageId, int modeW
         for (int i = 0; i < count; i++) {
             engineUnits.add(buf.readBlockPos());
         }
+        boolean engineBonus = buf.readBoolean();
         return new SabotageStatusS2CPacket(lightsOut, outageId, modeWire, canSabotage, enginePhaseWire,
-                engineTriggeredAt, engineUnits);
+                engineTriggeredAt, engineUnits, engineBonus);
     }
 }

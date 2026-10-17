@@ -412,11 +412,15 @@ public final class SabotageService {
         long engineTriggeredAt = enginePhase == null ? 0L : sabotage.engineTriggeredAt();
         // Coordinates for the long-range outline, only while it is drawn. / 远距离描边用的坐标，只在需要描边时下发。
         List<BlockPos> engineUnits = enginePhase == null ? List.of() : List.copyOf(sabotage.engineUnits());
+        // Decided here per player, so the client's shop prices never re-derive roles. / 在这里按玩家判定，客户端的商店价格
+        // 从不自行推导身份。
+        boolean economyBoosted = EngineEconomy.isBoosted(world);
         boolean resyncTimer = false;
         for (ServerPlayerEntity player : world.getPlayers()) {
             SabotageStatusS2CPacket status = new SabotageStatusS2CPacket(lightsOut, lightsOut ? outage.id() : 0,
                     lightsOut ? outage.mode().wire() : 0, sabotage.isMapReady() && SabotageAccess.canUse(player),
-                    EnginePhase.wireOf(enginePhase), engineTriggeredAt, engineUnits);
+                    EnginePhase.wireOf(enginePhase), engineTriggeredAt, engineUnits,
+                    economyBoosted && EngineEconomy.isEligible(player));
             SabotageStatusS2CPacket previous = SENT_STATUS.get(player.getUuid());
             if (!status.equals(previous) && ServerPlayNetworking.canSend(player, SabotageStatusS2CPacket.ID)) {
                 ServerPlayNetworking.send(player, status);

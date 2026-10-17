@@ -94,6 +94,8 @@
     "serialkiller.SerialKillerPlayerInventoryClientMixin",
     "sabotage.EngineCameraShakeMixin",
     "sabotage.EngineChimneySmokeMixin",
+    "sabotage.EngineHaltTimerMixin",
+    "sabotage.EngineShopPriceTintMixin",
     "sabotage.EngineSnowflakeMixin",
     "sabotage.EngineTrainAmbienceMixin",
     "sabotage.EngineTrainTimeMixin",
