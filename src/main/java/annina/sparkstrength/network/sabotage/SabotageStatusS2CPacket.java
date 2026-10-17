@@ -16,10 +16,12 @@ import net.minecraft.util.Identifier;
  * @param outageId    the outage instance, 0 when none / 熄灯实例，没有时为 0
  * @param modeWire    {@code OutageMode} wire / 熄灯模式
  * @param canSabotage this player may use sabotage right now / 本人当前可以使用破坏
+ * @param enginePhaseWire {@code EnginePhase} wire, 0 when no engine sabotage is on / 动力破坏阶段，没有时为 0
  */
-public record SabotageStatusS2CPacket(boolean lightsOut, int outageId, int modeWire, boolean canSabotage)
+public record SabotageStatusS2CPacket(boolean lightsOut, int outageId, int modeWire, boolean canSabotage,
+                                      int enginePhaseWire)
         implements CustomPayload {
-    public static final SabotageStatusS2CPacket NONE = new SabotageStatusS2CPacket(false, 0, 0, false);
+    public static final SabotageStatusS2CPacket NONE = new SabotageStatusS2CPacket(false, 0, 0, false, 0);
     public static final Identifier PAYLOAD_ID = SparkStrength.id("sabotage_status");
     public static final Id<SabotageStatusS2CPacket> ID = new Id<>(PAYLOAD_ID);
     public static final PacketCodec<RegistryByteBuf, SabotageStatusS2CPacket> CODEC =
@@ -35,9 +37,11 @@ public record SabotageStatusS2CPacket(boolean lightsOut, int outageId, int modeW
         buf.writeVarInt(outageId);
         buf.writeVarInt(modeWire);
         buf.writeBoolean(canSabotage);
+        buf.writeVarInt(enginePhaseWire);
     }
 
     public static SabotageStatusS2CPacket read(PacketByteBuf buf) {
-        return new SabotageStatusS2CPacket(buf.readBoolean(), buf.readVarInt(), buf.readVarInt(), buf.readBoolean());
+        return new SabotageStatusS2CPacket(buf.readBoolean(), buf.readVarInt(), buf.readVarInt(), buf.readBoolean(),
+                buf.readVarInt());
     }
 }

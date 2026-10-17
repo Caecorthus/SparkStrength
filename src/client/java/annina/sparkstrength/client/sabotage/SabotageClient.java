@@ -9,6 +9,8 @@ import annina.sparkstrength.network.sabotage.ChannelProgressS2CPacket;
 import annina.sparkstrength.network.sabotage.CloseBreakerRepairS2CPacket;
 import annina.sparkstrength.network.sabotage.OpenBreakerRepairS2CPacket;
 import annina.sparkstrength.network.sabotage.SabotageStatusS2CPacket;
+import annina.sparkstrength.sabotage.EngineHalt;
+import annina.sparkstrength.sabotage.EnginePhase;
 import annina.sparkstrength.sabotage.JunctionBoxService;
 import annina.sparkstrength.sabotage.JunctionBoxState;
 import annina.sparkstrength.sabotage.SabotageBlockScan;
@@ -57,8 +59,11 @@ public final class SabotageClient {
     public static void register() {
         BlockRenderLayerMap.INSTANCE.putBlocks(RenderLayer.getCutout(),
                 SparkStrengthBlocks.junctionBox(), SparkStrengthBlocks.circuitBreaker());
-        ClientPlayNetworking.registerGlobalReceiver(SabotageStatusS2CPacket.ID,
-                (payload, context) -> SabotageClientState.setStatus(payload));
+        ClientPlayNetworking.registerGlobalReceiver(SabotageStatusS2CPacket.ID, (payload, context) -> {
+            SabotageClientState.setStatus(payload);
+            EngineHalt.setClientPhase(EnginePhase.byWire(payload.enginePhaseWire()));
+            EngineTrainMotion.onStatus();
+        });
         ClientPlayNetworking.registerGlobalReceiver(ChannelProgressS2CPacket.ID, (payload, context) -> {
             ClientWorld world = context.client().world;
             SabotageClientState.onProgress(payload, world == null ? 0L : world.getTime());
@@ -71,11 +76,20 @@ public final class SabotageClient {
             }
         });
         ClientTickEvents.END_CLIENT_TICK.register(SabotageClient::tick);
+        ClientTickEvents.END_CLIENT_TICK.register(EngineTrainMotion::tick);
         HudRenderCallback.EVENT.register(SabotageHud::render);
         SabotageOutlineRenderer.register();
+        // JOIN runs on the client thread before any play packet is handled, so the first status cannot be wiped.
+        // JOIN 在客户端线程上、任何游戏数据包处理之前执行，所以不会抹掉第一个状态包。
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            EngineHalt.setClientPhase(null);
+            EngineTrainMotion.onJoin();
+        });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(() -> {
             SabotageClientState.reset();
             SabotageSkyLight.set(client, null);
+            EngineHalt.setClientPhase(null);
+            EngineTrainMotion.reset();
         }));
     }
 

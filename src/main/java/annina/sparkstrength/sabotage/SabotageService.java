@@ -10,6 +10,7 @@ import annina.sparkstrength.network.sabotage.SabotageStatusS2CPacket;
 import annina.sparkstrength.tablet.TabletAccess;
 import annina.sparkstrength.tablet.TabletStateService;
 import dev.doctor4t.wathe.api.event.GameEvents;
+import dev.doctor4t.wathe.cca.GameTimeComponent;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.MapVariablesWorldComponent;
 import dev.doctor4t.wathe.cca.WorldBlackoutComponent;
@@ -84,8 +85,12 @@ public final class SabotageService {
             JunctionBoxService.onDisconnect(handler.player);
             BreakerRepairService.onDisconnect(handler.player);
         });
-        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
-                SENT_STATUS.remove(handler.player.getUuid()));
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+            SENT_STATUS.remove(handler.player.getUuid());
+            // Sent on the next world tick, not the next 10-tick refresh, so a frozen round timer is right at once.
+            // 在下一个世界 tick 发送，而不是等下一次 10 tick 刷新，让冻结的回合倒计时一进来就是对的。
+            markStatusDirty(handler.player.getServerWorld());
+        });
     }
 
     public static void markStatusDirty(ServerWorld world) {
@@ -297,21 +302,44 @@ public final class SabotageService {
         return players;
     }
 
+    /** Send changed status right away, before anything that depends on the client already having it. / 立即发送变化的状态，先于依赖客户端已收到它的任何操作。 */
+    public static void syncStatusNow(ServerWorld world) {
+        DIRTY.remove(world.getRegistryKey());
+        sendStatus(world, SabotageWorldComponent.KEY.get(world));
+    }
+
     private static void syncStatus(ServerWorld world, SabotageWorldComponent sabotage) {
         boolean dirty = DIRTY.remove(world.getRegistryKey());
         if (!dirty && world.getTime() % STATUS_REFRESH_TICKS != 0) {
             return;
         }
+        sendStatus(world, sabotage);
+    }
+
+    private static void sendStatus(ServerWorld world, SabotageWorldComponent sabotage) {
         SabotageWorldComponent.Outage outage = sabotage.outage();
         boolean lightsOut = outage != null && outage.type() == SabotageType.LIGHTS;
+        boolean resyncTimer = false;
         for (ServerPlayerEntity player : world.getPlayers()) {
             SabotageStatusS2CPacket status = new SabotageStatusS2CPacket(lightsOut, lightsOut ? outage.id() : 0,
-                    lightsOut ? outage.mode().wire() : 0, sabotage.isMapReady() && SabotageAccess.canUse(player));
-            if (!status.equals(SENT_STATUS.get(player.getUuid()))
-                    && ServerPlayNetworking.canSend(player, SabotageStatusS2CPacket.ID)) {
+                    lightsOut ? outage.mode().wire() : 0, sabotage.isMapReady() && SabotageAccess.canUse(player),
+                    EnginePhase.wireOf(sabotage.enginePhase()));
+            SabotageStatusS2CPacket previous = SENT_STATUS.get(player.getUuid());
+            if (!status.equals(previous) && ServerPlayNetworking.canSend(player, SabotageStatusS2CPacket.ID)) {
                 ServerPlayNetworking.send(player, status);
                 SENT_STATUS.put(player.getUuid(), status);
+                resyncTimer |= freezes(status) != (previous != null && freezes(previous));
             }
         }
+        if (resyncTimer) {
+            // The client just started or stopped skipping its own countdown: correct it to the server's time.
+            // 客户端刚开始或停止跳过自己的倒计时：用服务端时间校正。
+            GameTimeComponent.KEY.get(world).sync();
+        }
+    }
+
+    private static boolean freezes(SabotageStatusS2CPacket status) {
+        EnginePhase phase = EnginePhase.byWire(status.enginePhaseWire());
+        return phase != null && phase.freezesRoundTimer();
     }
 }

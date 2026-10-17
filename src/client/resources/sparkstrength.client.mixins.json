@@ -92,6 +92,13 @@
     "serialkiller.SerialKillerClientSlotLockMixin",
     "serialkiller.SerialKillerBipedEntityModelMixin",
     "serialkiller.SerialKillerPlayerInventoryClientMixin",
+    "sabotage.EngineCameraShakeMixin",
+    "sabotage.EngineChimneySmokeMixin",
+    "sabotage.EngineSnowflakeMixin",
+    "sabotage.EngineTrainAmbienceMixin",
+    "sabotage.EngineTrainTimeMixin",
+    "sabotage.EngineWheelTimeMixin",
+    "sabotage.EngineWindExposureMixin",
     "sabotage.SabotageSkyLightMixin"
   ],
   "injectors": {

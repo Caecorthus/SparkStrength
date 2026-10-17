@@ -1,6 +1,7 @@
 package annina.sparkstrength.component.sabotage;
 
 import annina.sparkstrength.SparkStrength;
+import annina.sparkstrength.sabotage.EnginePhase;
 import annina.sparkstrength.sabotage.OutageMode;
 import annina.sparkstrength.sabotage.SabotageRules;
 import annina.sparkstrength.sabotage.SabotageType;
@@ -88,6 +89,8 @@ public final class SabotageWorldComponent implements Component {
     private @Nullable Outage outage;
     private int outageCounter;
     private final ArrayDeque<LogEntry> log = new ArrayDeque<>();
+    private @Nullable EnginePhase enginePhase;
+    private long engineWreckedAt;
 
     public SabotageWorldComponent(World world) {
     }
@@ -105,6 +108,8 @@ public final class SabotageWorldComponent implements Component {
         teamCooldownEndTick = 0L;
         outage = null;
         log.clear();
+        enginePhase = null;
+        engineWreckedAt = 0L;
     }
 
     public boolean isMapReady() {
@@ -249,6 +254,25 @@ public final class SabotageWorldComponent implements Component {
         Outage ended = outage;
         outage = null;
         return ended;
+    }
+
+    /** The engine sabotage's phase, or null when none is on. / 动力破坏的阶段，没有时为 null。 */
+    public @Nullable EnginePhase enginePhase() {
+        return enginePhase;
+    }
+
+    /** When the engine was wrecked; kept through emergency power. / 动力损毁的时刻；进入应急动力后仍保留。 */
+    public long engineWreckedAt() {
+        return engineWreckedAt;
+    }
+
+    public void setEnginePhase(@Nullable EnginePhase phase, long now) {
+        if (phase == EnginePhase.WRECKED && enginePhase != EnginePhase.WRECKED) {
+            engineWreckedAt = now;
+        } else if (phase == null || phase == EnginePhase.CRITICAL) {
+            engineWreckedAt = 0L;
+        }
+        enginePhase = phase;
     }
 
     public void log(long tick, LogKind kind, String actor, SabotageType type) {
