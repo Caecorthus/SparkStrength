@@ -392,6 +392,10 @@ public final class EngineSabotageService {
      * the chunk synchronously on the server thread. {@link #reconcileUnitLooks} catches them up once they load.
      * 设置每台已加载装置的外观。未加载区块里的装置直接跳过，绝不加载：读取它们的方块会在服务端线程上同步加载区块。
      * 它们加载之后由 reconcileUnitLooks 补上。
+     *
+     * <p>The condition is only a look, so the write tells clients and nothing else: no neighbour updates and no shape
+     * propagation, which would read (and load) the neighbouring chunk of a unit on a chunk border.
+     * 状态只是外观，所以写入只通知客户端：不发邻居更新、不传播形状，否则位于区块边界的装置会读取（并加载）相邻区块。</p>
      */
     public static void setUnitLooks(ServerWorld world, List<BlockPos> units, EngineCondition condition) {
         for (BlockPos pos : units) {
@@ -400,7 +404,8 @@ public final class EngineSabotageService {
             }
             BlockState state = world.getBlockState(pos);
             if (state.isOf(SparkStrengthBlocks.engineUnit()) && state.get(EngineUnitBlock.CONDITION) != condition) {
-                world.setBlockState(pos, state.with(EngineUnitBlock.CONDITION, condition), Block.NOTIFY_ALL);
+                world.setBlockState(pos, state.with(EngineUnitBlock.CONDITION, condition),
+                        Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
             }
         }
     }
