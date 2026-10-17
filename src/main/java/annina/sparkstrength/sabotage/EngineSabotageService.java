@@ -5,6 +5,7 @@ import annina.sparkstrength.block.EngineUnitBlock;
 import annina.sparkstrength.compat.SparkTraitsSabotageCompat;
 import annina.sparkstrength.component.sabotage.SabotageWorldComponent;
 import annina.sparkstrength.network.sabotage.CloseBreakerRepairS2CPacket;
+import annina.sparkstrength.record.EngineRecorder;
 import annina.sparkstrength.tablet.TabletStateService;
 import dev.doctor4t.wathe.cca.WorldBlackoutComponent;
 import dev.doctor4t.wathe.index.WatheSounds;
@@ -85,6 +86,7 @@ public final class EngineSabotageService {
         start(world, sabotage, world.getTime(), initiator.getUuid(), initiator.getGameProfile().getName(),
                 SparkTraitsSabotageCompat.isMasterSaboteur(initiator));
         feedback(world, sabotage);
+        EngineRecorder.triggered(world, initiator);
         return TriggerResult.OK;
     }
 
@@ -127,6 +129,7 @@ public final class EngineSabotageService {
 
     /** The 60 s ran out: units wrecked, the train halts, quick panels close. / 60 秒已过：装置损毁，列车停驶，抢修面板关闭。 */
     private static void onWrecked(ServerWorld world, SabotageWorldComponent sabotage) {
+        EngineRecorder.entered(world, EnginePhase.WRECKED);
         long now = world.getTime();
         setUnitLooks(world, sabotage.engineUnits(), EngineCondition.WRECKED);
         for (BlockPos pos : sabotage.engineUnits()) {
@@ -147,6 +150,7 @@ public final class EngineSabotageService {
 
     /** Halted for the cap: half speed, the timer runs again, the units stay wrecked. / 停驶到上限：半速行驶，倒计时恢复，装置仍是损毁。 */
     private static void onEmergency(ServerWorld world, SabotageWorldComponent sabotage) {
+        EngineRecorder.entered(world, EnginePhase.EMERGENCY);
         setUnitLooks(world, sabotage.engineUnits(), EngineCondition.WRECKED);
         // Overhaul panels stay open: WRECKED and EMERGENCY need the same repair. / 大修面板不关：两个阶段要做的是同一种维修。
         EngineRepairService.onPhaseChanged(world);
@@ -284,6 +288,7 @@ public final class EngineSabotageService {
         }
         long now = world.getTime();
         EnginePhase phase = sabotage.enginePhase(now);
+        EngineRecorder.ended(world, reason, actor);
         sabotage.endOutage();
         sabotage.clearEngine();
         setUnitLooks(world, sabotage.engineUnits(), EngineCondition.INTACT);

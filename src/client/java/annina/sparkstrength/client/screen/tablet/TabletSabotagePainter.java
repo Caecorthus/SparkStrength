@@ -3,6 +3,7 @@ package annina.sparkstrength.client.screen.tablet;
 import annina.sparkstrength.component.sabotage.SabotageWorldComponent;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
 import annina.sparkstrength.sabotage.EnginePhase;
+import annina.sparkstrength.sabotage.EngineRules;
 import annina.sparkstrength.sabotage.OutageMode;
 import annina.sparkstrength.sabotage.SabotageRowState;
 import annina.sparkstrength.sabotage.SabotageType;
@@ -30,6 +31,12 @@ final class TabletSabotagePainter {
     private static final int BUTTON_MIN_W = 78;
     private static final int BUTTON_H = 24;
     private static final int BUTTON_INSET = 12;
+    /** The lock badge on a locked card's tile: radius, centre inset from the tile's bottom-right. / 锁定卡片图块上的锁徽标。 */
+    private static final float LOCK_BADGE_R = 7f;
+    private static final float LOCK_BADGE_INSET = 5f;
+    private static final int LOCK_BADGE_GLYPH = 8;
+    /** A log line's type glyph, in place of a plain dot. / 日志行的类型图形，代替原来的圆点。 */
+    private static final int LOG_GLYPH = 9;
 
     private TabletSabotagePainter() {
     }
@@ -120,10 +127,15 @@ final class TabletSabotagePainter {
         }
         c.roundRect(tileX, tileY, TILE, TILE, 10f, TabletTheme.withAlpha(tone, 0x2E));
         float glyphOffset = (TILE - GLYPH) / 2f;
+        // Every card shows its own type, so lights and engine tell apart at a glance; a locked one adds a lock badge.
+        // 每张卡片都显示自己的类型图形，灯光和动力一眼就能分清；未解锁的再加一个锁形徽标。
+        typeGlyph(c, type, tileX + glyphOffset, tileY + glyphOffset, GLYPH, gearTurn(enginePhase(row), now), tone);
         if (state == SabotageRowState.LOCKED) {
-            TabletIcons.lock(c, tileX + glyphOffset, tileY + glyphOffset, GLYPH, tone);
-        } else {
-            TabletIcons.bolt(c, tileX + glyphOffset, tileY + glyphOffset, GLYPH, tone);
+            float badgeX = tileX + TILE - LOCK_BADGE_INSET;
+            float badgeY = tileY + TILE - LOCK_BADGE_INSET;
+            c.circle(badgeX, badgeY, LOCK_BADGE_R, TabletTheme.LOCKED_BADGE);
+            TabletIcons.lock(c, badgeX - LOCK_BADGE_GLYPH / 2f, badgeY - LOCK_BADGE_GLYPH / 2f, LOCK_BADGE_GLYPH,
+                    TabletTheme.TEXT_2);
         }
 
         TabletLayout.Rect button = buttonRect(tr, x, y, w);
@@ -142,12 +154,67 @@ final class TabletSabotagePainter {
             case ACTIVE -> Text.translatable(activeStatusKey(row), clock(seconds)).getString();
             case BLOCKED -> Text.translatable(KEY + "status.blocked").getString();
         };
-        c.text(tr, TabletCanvas.trim(tr, status, textW), textX, y + 27, state == SabotageRowState.LOCKED
-                ? TabletTheme.TEXT_2 : tone);
+        int statusColor = switch (state) {
+            case LOCKED -> TabletTheme.TEXT_2;
+            case ACTIVE -> activeStatusColor(row, seconds);
+            default -> tone;
+        };
+        c.text(tr, TabletCanvas.trim(tr, status, textW), textX, y + 27, statusColor);
+        EnginePhase phase = enginePhase(row);
+        if (phase != null && phase.boostsKillerEconomy()) {
+            // Wrecked until repaired, emergency power included: the killers' bonus replaces the box counts.
+            // 从损毁到修好（应急动力期间也算）：用杀手的经济加成代替接线箱统计。
+            c.text(tr, TabletCanvas.trim(tr, Text.translatable(KEY + "status.engine_bonus").getString(), textW),
+                    textX, y + 41, TabletTheme.SABOTAGE.pale());
+            return;
+        }
         String stats = row.boxes() == 0
                 ? Text.translatable(KEY + "stats.no_boxes").getString()
                 : Text.translatable(KEY + "stats", row.boxes(), row.opened(), row.hacked()).getString();
         c.text(tr, TabletCanvas.trim(tr, stats, textW), textX, y + 41, TabletTheme.TEXT_3);
+    }
+
+    /** Bolt for lights, gear for the engine (and for an unknown type, the bolt). / 灯光用闪电，动力用齿轮（未知类型用闪电）。 */
+    static void typeGlyph(TabletCanvas c, @Nullable SabotageType type, float x, float y, float size, float turnDeg,
+                          int color) {
+        if (type == SabotageType.ENGINE) {
+            TabletIcons.gear(c, x, y, size, turnDeg, color);
+        } else {
+            TabletIcons.bolt(c, x, y, size, color);
+        }
+    }
+
+    /**
+     * How far an engine card's gear is turned: it shudders while damaged, stands still while the train is halted and
+     * turns slowly on emergency power. Still on every other card.
+     * 动力卡片齿轮的转角：受损时抖动，停驶时静止，应急动力时缓慢转动。其他卡片都不转。
+     */
+    static float gearTurn(@Nullable EnginePhase phase, long nowMs) {
+        if (phase == null) {
+            return 0f;
+        }
+        return switch (phase) {
+            case CRITICAL -> 4f * (float) Math.sin(nowMs / 55.0);
+            case WRECKED -> 0f;
+            case EMERGENCY -> (nowMs % 12_000L) * 0.03f;
+        };
+    }
+
+    /**
+     * Status line colour of an active card. Engine: amber while the repair window runs, red in its last 20 s and while
+     * halted, amber again on emergency power. Lights: red.
+     * 进行中卡片状态行的颜色。动力：抢修窗口内为琥珀色，最后 20 秒和停驶时为红色，应急动力时回到琥珀色。灯光：红色。
+     */
+    static int activeStatusColor(TabletSnapshot.SabotageRow row, int seconds) {
+        EnginePhase phase = enginePhase(row);
+        if (phase == null) {
+            return TabletTheme.DANGER;
+        }
+        return switch (phase) {
+            case CRITICAL -> seconds * 20L <= EngineRules.URGENT_TICKS ? TabletTheme.DANGER : TabletTheme.WARNING;
+            case WRECKED -> TabletTheme.DANGER;
+            case EMERGENCY -> TabletTheme.WARNING;
+        };
     }
 
     private static String activeStatusKey(TabletSnapshot.SabotageRow row) {
@@ -181,7 +248,13 @@ final class TabletSabotagePainter {
             case BOX_BROKEN, ENGINE_EMERGENCY -> TabletTheme.WARNING;
             case EXPIRED -> TabletTheme.TEXT_2;
         };
-        c.circle(dotX, y + LOG_ROW_H / 2f, 2.5f, color);
+        if (type == null) {
+            c.circle(dotX, y + LOG_ROW_H / 2f, 2.5f, color);
+        } else {
+            // The line's type at a glance (both types share most log kinds), coloured by what happened.
+            // 一眼看出这一行属于哪种破坏（两种破坏共用大部分日志类型），颜色表示发生了什么。
+            typeGlyph(c, type, dotX - LOG_GLYPH / 2f, y + (LOG_ROW_H - LOG_GLYPH) / 2f, LOG_GLYPH, 0f, color);
+        }
         Text typeName = type == null ? Text.literal("?") : Text.translatable(type.translationKey());
         // A repaired engine is not "a breaker repaired": it has its own line. / 修好动力不是「修好电闸」：单独一句。
         String logKey = kind == SabotageWorldComponent.LogKind.REPAIRED && type == SabotageType.ENGINE

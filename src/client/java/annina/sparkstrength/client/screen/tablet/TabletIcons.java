@@ -355,6 +355,39 @@ public final class TabletIcons {
         canvas.fillStar(PATH, n, x + 8f * u, y + 8f * u, color);
     }
 
+    /** {@link #gear(TabletCanvas, float, float, float, float, int)} with one tooth straight up. / 一个齿朝正上方的齿轮。 */
+    public static void gear(TabletCanvas canvas, float x, float y, float size, int color) {
+        gear(canvas, x, y, size, 0f, color);
+    }
+
+    /**
+     * Gear (engine): body ring centred (8,8) outer r5.6 around a hole r2.3, eight trapezoid teeth from r4.9 (inside the
+     * ring, 2.9 wide) out to tips at r7.5 (2.1 wide), turned clockwise by {@code turnDeg} (0 = one tooth straight up).
+     * The teeth overlap the ring, so pass an opaque colour.
+     * 齿轮（动力）：以 (8,8) 为中心的轮体圆环，外半径 5.6、中心孔半径 2.3；八个梯形轮齿从 r4.9（圆环内，宽 2.9）伸到 r7.5 的齿尖
+     * （宽 2.1），顺时针转过 turnDeg 度（0 = 一个齿朝正上方）。轮齿与圆环有重叠，请传入不透明颜色。
+     */
+    public static void gear(TabletCanvas canvas, float x, float y, float size, float turnDeg, int color) {
+        float u = size / GRID;
+        float cx = x + 8f * u;
+        float cy = y + 8f * u;
+        canvas.ring(cx, cy, 5.6f * u, 3.3f * u, color);
+        for (int k = 0; k < 8; k++) {
+            double angle = Math.toRadians(turnDeg + 45.0 * k);
+            // Outward (ox, oy) and across (ax, ay) the tooth, on screen (y down). / 沿轮齿向外 (ox, oy) 与横跨轮齿 (ax, ay)，屏幕坐标（y 向下）。
+            float ox = (float) Math.sin(angle) * u;
+            float oy = (float) -Math.cos(angle) * u;
+            float ax = -oy;
+            float ay = ox;
+            int n = 0;
+            n = put(n, cx + ox * 4.9f - ax * 1.45f, cy + oy * 4.9f - ay * 1.45f);
+            n = put(n, cx + ox * 7.5f - ax * 1.05f, cy + oy * 7.5f - ay * 1.05f);
+            n = put(n, cx + ox * 7.5f + ax * 1.05f, cy + oy * 7.5f + ay * 1.05f);
+            n = put(n, cx + ox * 4.9f + ax * 1.45f, cy + oy * 4.9f + ay * 1.45f);
+            canvas.fillPath(PATH, n, color);
+        }
+    }
+
     /** Location arrow pointing up-right: notch (7.4,8.6), tail (2.4,7.4), tip (13.6,2.4), wing (8.6,13.6). */
     public static void locate(TabletCanvas canvas, float x, float y, float size, int color) {
         float u = size / GRID;

@@ -18,10 +18,10 @@ import java.util.UUID;
 
 /**
  * Extra match-record data that SparkAssist reads for its local hidden achievements (achievement record contract,
- * SparkStrength part S1-S14). Event types and field names are binding. Server only: every caller runs on the logical
+ * SparkStrength part S1-S15). Event types and field names are binding. Server only: every caller runs on the logical
  * server, and Wathe's builder already drops events outside an active match. No replay formatter is registered for
  * these types, so Wathe's replay skips them. A recording failure is logged and swallowed: it never breaks gameplay.
- * SparkAssist 本地隐藏成就读取的额外对局记录数据（成就记录契约 SparkStrength 部分 S1-S14）。事件类型与字段名不可更改。
+ * SparkAssist 本地隐藏成就读取的额外对局记录数据（成就记录契约 SparkStrength 部分 S1-S15）。事件类型与字段名不可更改。
  * 仅服务端：所有调用方都在逻辑服务端，且 Wathe 的构建器会丢弃对局外的事件。这些类型不注册回放格式化器，
  * Wathe 回放会跳过它们。记录失败只写日志并吞掉异常，绝不影响玩法。
  */
@@ -54,6 +54,16 @@ public final class AchievementRecords {
     public static final String THROWING_AXE_THROW = "sparkstrength:throwing_axe_throw";
     /** S14. actor = the thrower, target = the player hit; throw_id uuid, killed bool. / actor 为投掷者，target 为被命中的玩家。 */
     public static final String THROWING_AXE_HIT = "sparkstrength:throwing_axe_hit";
+    /**
+     * S15. World event at each edge of an engine sabotage: state string (one of the ENGINE_STATE_* values); outage_id
+     * int, the same on every event of one sabotage; phase string (one of the ENGINE_PHASE_* values), the phase at that
+     * edge (for "repaired" and "aborted", the phase it ended in); actor = the initiator on "triggered", the repairer on
+     * "repaired", none otherwise.
+     * 动力破坏每个边沿的世界事件：state 为 ENGINE_STATE_* 之一；outage_id 为整数，同一次破坏的所有事件相同；phase 为
+     * ENGINE_PHASE_* 之一，即该边沿时的阶段（repaired 与 aborted 为结束时所处的阶段）；actor 在 triggered 时为发起者，
+     * 在 repaired 时为修理者，其余情况没有。
+     */
+    public static final String ENGINE_SABOTAGE = "sparkstrength:engine_sabotage";
 
     /** S8 cause: the lights went out through Wathe's blackout shop entry; actor = the buyer. / 经 Wathe 商店停电熄灯；actor 为购买者。 */
     public static final String BLACKOUT_CAUSE_PURCHASE = "purchase";
@@ -67,6 +77,29 @@ public final class AchievementRecords {
     public static final String BLACKOUT_CAUSE_SABOTAGE = "sabotage";
     /** S8 cause: a circuit breaker repair brought the lights back; actor = the repairer. / 修好电闸来电；actor 为修理者。 */
     public static final String BLACKOUT_CAUSE_BREAKER_REPAIR = "breaker_repair";
+
+    /**
+     * S15 state: triggered from the tablet by someone who may sabotage (a killer or the Undercover); actor = that player.
+     * 由可以破坏的人（杀手或卧底）在平板上触发；actor 为该玩家。
+     */
+    public static final String ENGINE_STATE_TRIGGERED = "triggered";
+    /** S15 state: the 60 s repair window ran out; the train halts. / 60 秒抢修窗口已过，列车停驶。 */
+    public static final String ENGINE_STATE_WRECKED = "wrecked";
+    /** S15 state: halted for the cap; emergency power, still wrecked. / 停驶到上限：应急动力，仍是损毁。 */
+    public static final String ENGINE_STATE_EMERGENCY = "emergency";
+    /** S15 state: someone finished a repair panel; actor = the repairer. / 有人完成了维修面板；actor 为修理者。 */
+    public static final String ENGINE_STATE_REPAIRED = "repaired";
+    /**
+     * S15 state: ended without a repair (round over, map copied again, last unit gone); no actor.
+     * 不经维修结束（对局结束、重新复制地图、最后一台装置没了）；没有 actor。
+     */
+    public static final String ENGINE_STATE_ABORTED = "aborted";
+    /** S15 phase: engine units damaged, the repair window running. / 动力装置受损，抢修窗口进行中。 */
+    public static final String ENGINE_PHASE_CRITICAL = "critical";
+    /** S15 phase: wrecked, the train halted. / 已损毁，列车停驶。 */
+    public static final String ENGINE_PHASE_WRECKED = "wrecked";
+    /** S15 phase: wrecked, the train on emergency power. / 已损毁，列车靠应急动力行驶。 */
+    public static final String ENGINE_PHASE_EMERGENCY = "emergency";
 
     private AchievementRecords() {
     }
@@ -213,6 +246,23 @@ public final class AchievementRecords {
                 .target(victim)
                 .putUuid("throw_id", throwId)
                 .putBool("killed", AchievementRecordRules.killedByHit(deadBefore, isMarkedDead(victim)))
+                .record());
+    }
+
+    /**
+     * S15: an engine sabotage edge in {@code world}; {@code state} is one of the ENGINE_STATE_* values and
+     * {@code phase} one of the ENGINE_PHASE_* values. Fed by EngineRecorder, once per edge.
+     * 该世界中动力破坏的一个边沿；state 为 ENGINE_STATE_* 之一，phase 为 ENGINE_PHASE_* 之一。由 EngineRecorder 调用，
+     * 每个边沿一次。
+     */
+    public static void engineSabotage(ServerWorld world, String state, @Nullable ServerPlayerEntity actor, int outageId,
+                                      String phase) {
+        safely(ENGINE_SABOTAGE, () -> GameRecordManager.event(ENGINE_SABOTAGE)
+                .world(world)
+                .actor(actor)
+                .put("state", state)
+                .putInt("outage_id", outageId)
+                .put("phase", phase)
                 .record());
     }
 
