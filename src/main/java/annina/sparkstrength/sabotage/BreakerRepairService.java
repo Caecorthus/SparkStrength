@@ -29,7 +29,6 @@ import java.util.UUID;
  */
 public final class BreakerRepairService {
     private static final Map<UUID, Session> SESSIONS = new HashMap<>();
-    private static int nextSessionId = 1;
 
     private record Session(int id, RegistryKey<World> world, BlockPos pos, int outageId, long startTick, int switches,
                            int holdTicks) {
@@ -56,8 +55,10 @@ public final class BreakerRepairService {
         boolean master = outage.masterSaboteur();
         int switches = SabotageRules.repairSwitches(world.random.nextInt(3), master);
         int hold = SabotageRules.repairHoldTicks(master);
-        Session session = new Session(nextSessionId++, world.getRegistryKey(), pos.toImmutable(), outage.id(),
+        Session session = new Session(RepairSessionIds.next(), world.getRegistryKey(), pos.toImmutable(), outage.id(),
                 world.getTime(), switches, hold);
+        // One repair panel at a time: an engine panel left open is dropped. / 同一时间只有一个维修面板：留着的动力面板作废。
+        EngineRepairService.closeFor(player, CloseBreakerRepairS2CPacket.REASON_OTHER);
         Session previous = SESSIONS.put(player.getUuid(), session);
         if (previous != null) {
             close(player, previous, CloseBreakerRepairS2CPacket.REASON_OTHER);
@@ -69,6 +70,7 @@ public final class BreakerRepairService {
         }
     }
 
+    /** Ignores session ids it does not own: the engine panels share the packet. / 忽略不属于自己的会话 id：动力面板共用这个包。 */
     public static void handleComplete(ServerPlayerEntity player, int sessionId) {
         Session session = SESSIONS.get(player.getUuid());
         if (session == null || session.id() != sessionId) {
@@ -148,6 +150,14 @@ public final class BreakerRepairService {
 
     public static void onDisconnect(ServerPlayerEntity player) {
         SESSIONS.remove(player.getUuid());
+    }
+
+    /** Drops this player's breaker session, if any, and closes its panel. / 作废本人的电闸会话（如有）并关闭面板。 */
+    static void closeFor(ServerPlayerEntity player, int reason) {
+        Session session = SESSIONS.remove(player.getUuid());
+        if (session != null) {
+            close(player, session, reason);
+        }
     }
 
     private static boolean withinRange(ServerPlayerEntity player, BlockPos pos) {

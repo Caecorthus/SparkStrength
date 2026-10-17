@@ -50,6 +50,7 @@ import annina.sparkstrength.network.sabotage.OpenEngineRepairS2CPacket;
 import annina.sparkstrength.network.sabotage.SabotageStatusS2CPacket;
 import annina.sparkstrength.network.sabotage.TriggerSabotageC2SPacket;
 import annina.sparkstrength.sabotage.BreakerRepairService;
+import annina.sparkstrength.sabotage.EngineRepairService;
 import annina.sparkstrength.sabotage.JunctionBoxService;
 import annina.sparkstrength.sabotage.SabotageService;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -187,9 +188,18 @@ public final class SparkStrengthPackets {
                 (payload, context) -> SabotageService.handleTrigger(context.player(), payload.typeWire()));
         ServerPlayNetworking.registerGlobalReceiver(CancelChannelC2SPacket.ID,
                 (payload, context) -> JunctionBoxService.handleCancel(context.player(), payload.channelId()));
-        ServerPlayNetworking.registerGlobalReceiver(CompleteBreakerRepairC2SPacket.ID,
-                (payload, context) -> BreakerRepairService.handleComplete(context.player(), payload.sessionId()));
-        ServerPlayNetworking.registerGlobalReceiver(CancelBreakerRepairC2SPacket.ID,
-                (payload, context) -> BreakerRepairService.handleCancel(context.player(), payload.sessionId()));
+        // Breaker and engine panels share these two packets; their wire ids (complete_breaker_repair /
+        // cancel_breaker_repair) are kept for compatibility, since other mods' action restriction lists match on them.
+        // Session ids never repeat between the two services, and each ignores ids it does not own.
+        // 电闸与动力面板共用这两个包；保留原 wire id（complete_breaker_repair / cancel_breaker_repair）是为了兼容，
+        // 其他模组的动作限制名单按它们拦截。两个服务的会话 id 不会重复，各自忽略不属于自己的 id。
+        ServerPlayNetworking.registerGlobalReceiver(CompleteBreakerRepairC2SPacket.ID, (payload, context) -> {
+            BreakerRepairService.handleComplete(context.player(), payload.sessionId());
+            EngineRepairService.handleComplete(context.player(), payload.sessionId());
+        });
+        ServerPlayNetworking.registerGlobalReceiver(CancelBreakerRepairC2SPacket.ID, (payload, context) -> {
+            BreakerRepairService.handleCancel(context.player(), payload.sessionId());
+            EngineRepairService.handleCancel(context.player(), payload.sessionId());
+        });
     }
 }

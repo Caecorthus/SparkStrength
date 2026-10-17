@@ -73,6 +73,16 @@ public final class SabotageClientState {
         return status.canSabotage();
     }
 
+    /** World tick the engine sabotage was triggered, 0 when none is on. / 动力破坏触发时的世界 tick，没有时为 0。 */
+    public static long engineTriggeredAt() {
+        return status.engineTriggeredAt();
+    }
+
+    /** Every registered engine unit while an engine sabotage is on, else empty. / 动力破坏进行中时为全部已登记的动力装置，否则为空。 */
+    public static List<BlockPos> engineUnits() {
+        return status.engineUnits();
+    }
+
     static void setStatus(SabotageStatusS2CPacket next) {
         status = next == null ? SabotageStatusS2CPacket.NONE : next;
     }

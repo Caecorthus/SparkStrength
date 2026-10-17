@@ -33,7 +33,11 @@ public final class SabotageTabletSnapshots {
             SabotageRowState state = SabotageRowState.of(thisActive, outage != null && !thisActive,
                     sabotage.isUnlocked(type), now, sabotage.readyTick(type), sabotage.teamCooldownEndTick());
             long seconds = switch (state) {
-                case ACTIVE -> (now - outage.startTick()) / 20;
+                // Engine: the repair window counts down, then how long the train has been halted counts up.
+                // 动力：抢修窗口向下数，之后已停驶时间向上数。
+                case ACTIVE -> type == SabotageType.ENGINE
+                        ? EngineRules.cardSeconds(now, sabotage.engineTriggeredAt())
+                        : (now - outage.startTick()) / 20;
                 case ARMING -> ceilSeconds(sabotage.readyTick(type) - now);
                 case COOLDOWN -> ceilSeconds(sabotage.teamCooldownEndTick() - now);
                 default -> 0;
@@ -54,8 +58,12 @@ public final class SabotageTabletSnapshots {
                     }
                 }
             }
+            // (typeWire, modeWire) read together: lights send their OutageMode, the engine its EnginePhase.
+            // (typeWire, modeWire) 合起来解释：灯光发 OutageMode，动力发 EnginePhase。
+            int modeWire = !thisActive ? 0 : type == SabotageType.ENGINE
+                    ? EnginePhase.wireOf(sabotage.enginePhase(now)) : outage.mode().wire();
             rows.add(new TabletSnapshot.SabotageRow(type.wire(), state.wire(), (int) Math.min(Integer.MAX_VALUE, seconds),
-                    thisActive ? outage.mode().wire() : 0, boxes, opened, hacked));
+                    modeWire, boxes, opened, hacked));
         }
         return rows;
     }

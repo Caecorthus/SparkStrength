@@ -18,6 +18,11 @@ public final class EngineHalt {
     private EngineHalt() {
     }
 
+    /**
+     * Server: the phase derived from the trigger tick, exact to the tick (the timer freezes at the deadline tick itself,
+     * before the end-of-tick update runs). Client: the phase of the last status packet.
+     * 服务端：由触发 tick 推导的阶段，精确到 tick（倒计时在截止那一 tick 就冻结，不等 tick 末尾的更新）。客户端：最近一次状态包里的阶段。
+     */
     public static @Nullable EnginePhase phase(World world) {
         if (world == null) {
             return null;
@@ -25,7 +30,7 @@ public final class EngineHalt {
         if (world.isClient()) {
             return clientPhase;
         }
-        return SabotageWorldComponent.KEY.get(world).enginePhase();
+        return SabotageWorldComponent.KEY.get(world).enginePhase(world.getTime());
     }
 
     /**

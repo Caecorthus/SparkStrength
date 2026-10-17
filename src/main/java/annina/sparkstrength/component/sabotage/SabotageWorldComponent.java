@@ -2,6 +2,7 @@ package annina.sparkstrength.component.sabotage;
 
 import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.sabotage.EnginePhase;
+import annina.sparkstrength.sabotage.EngineRules;
 import annina.sparkstrength.sabotage.OutageMode;
 import annina.sparkstrength.sabotage.SabotageRules;
 import annina.sparkstrength.sabotage.SabotageType;
@@ -35,14 +36,22 @@ public final class SabotageWorldComponent implements Component {
             SparkStrength.id("sabotage_world"), SabotageWorldComponent.class
     );
 
-    /** A lights-out (or later sabotage) in progress. / 正在进行的熄灯（或以后的其他破坏）。 */
+    /**
+     * The one sabotage in progress, lights or engine; only one may exist at a time. {@code mode} only means something
+     * for lights.
+     * 正在进行的唯一一个破坏，灯光或动力；同一时间只能有一个。mode 只对灯光有意义。
+     */
     public record Outage(int id, SabotageType type, OutageMode mode, long startTick, @Nullable UUID initiator,
                          String initiatorName, boolean masterSaboteur) {
     }
 
     public enum LogKind {
         BOX_BROKEN(0), BOX_HACKED(1), BOX_REPAIRED(2), TRIGGERED(3), REPAIRED(4), POWER_RESTORED(5), EXPIRED(6),
-        READY(7);
+        READY(7),
+        /** The 60 s ran out: the train halted. / 60 秒已过：列车停驶。 */
+        ENGINE_WRECKED(8),
+        /** Halted for the cap: emergency power. / 停驶到上限：应急动力。 */
+        ENGINE_EMERGENCY(9);
 
         private final int wire;
 
@@ -90,8 +99,8 @@ public final class SabotageWorldComponent implements Component {
     private @Nullable Outage outage;
     private int outageCounter;
     private final ArrayDeque<LogEntry> log = new ArrayDeque<>();
-    private @Nullable EnginePhase enginePhase;
-    private long engineWreckedAt;
+    private long engineTriggeredAt;
+    private @Nullable EnginePhase appliedEnginePhase;
 
     public SabotageWorldComponent(World world) {
     }
@@ -110,8 +119,7 @@ public final class SabotageWorldComponent implements Component {
         teamCooldownEndTick = 0L;
         outage = null;
         log.clear();
-        enginePhase = null;
-        engineWreckedAt = 0L;
+        clearEngine();
     }
 
     public boolean isMapReady() {
@@ -283,23 +291,45 @@ public final class SabotageWorldComponent implements Component {
         return ended;
     }
 
-    /** The engine sabotage's phase, or null when none is on. / 动力破坏的阶段，没有时为 null。 */
-    public @Nullable EnginePhase enginePhase() {
-        return enginePhase;
+    /** An engine sabotage holds the one outage slot, from its trigger until it is repaired or aborted. / 动力破坏占着唯一的破坏名额，从触发直到修好或中止。 */
+    public boolean isEngineOn() {
+        return outage != null && outage.type() == SabotageType.ENGINE;
     }
 
-    /** When the engine was wrecked; kept through emergency power. / 动力损毁的时刻；进入应急动力后仍保留。 */
-    public long engineWreckedAt() {
-        return engineWreckedAt;
+    /** World tick the engine sabotage was triggered; 0 when none is on. / 动力破坏触发时的世界 tick；没有时为 0。 */
+    public long engineTriggeredAt() {
+        return engineTriggeredAt;
     }
 
-    public void setEnginePhase(@Nullable EnginePhase phase, long now) {
-        if (phase == EnginePhase.WRECKED && enginePhase != EnginePhase.WRECKED) {
-            engineWreckedAt = now;
-        } else if (phase == null || phase == EnginePhase.CRITICAL) {
-            engineWreckedAt = 0L;
-        }
-        enginePhase = phase;
+    public void setEngineTriggeredAt(long tick) {
+        this.engineTriggeredAt = tick;
+    }
+
+    /**
+     * The engine sabotage's phase at {@code now}, derived from the trigger tick (null when none is on). This is the one
+     * phase decision; nothing reads a stored phase.
+     * 动力破坏在 now 时刻的阶段，由触发 tick 推导（没有时为 null）。这是唯一的阶段判定，不读取任何保存的阶段。
+     */
+    public @Nullable EnginePhase enginePhase(long now) {
+        return isEngineOn() ? EngineRules.effectivePhase(now, engineTriggeredAt) : null;
+    }
+
+    /**
+     * The last phase whose side effects ran; only used to detect transitions, never to decide the phase.
+     * 最近一次已执行副作用的阶段；只用于发现阶段转换，从不用来判定阶段。
+     */
+    public @Nullable EnginePhase appliedEnginePhase() {
+        return appliedEnginePhase;
+    }
+
+    public void setAppliedEnginePhase(@Nullable EnginePhase phase) {
+        this.appliedEnginePhase = phase;
+    }
+
+    /** Forget the engine sabotage's clock; its outage is ended separately. / 清掉动力破坏的时钟；它的名额另行结束。 */
+    public void clearEngine() {
+        engineTriggeredAt = 0L;
+        appliedEnginePhase = null;
     }
 
     public void log(long tick, LogKind kind, String actor, SabotageType type) {

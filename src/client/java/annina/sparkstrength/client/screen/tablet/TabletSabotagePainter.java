@@ -2,12 +2,14 @@ package annina.sparkstrength.client.screen.tablet;
 
 import annina.sparkstrength.component.sabotage.SabotageWorldComponent;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
+import annina.sparkstrength.sabotage.EnginePhase;
 import annina.sparkstrength.sabotage.OutageMode;
 import annina.sparkstrength.sabotage.SabotageRowState;
 import annina.sparkstrength.sabotage.SabotageType;
 import annina.sparkstrength.tablet.TabletLayout;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.text.Text;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Paints the tablet's sabotage page: one card per sabotage type (its trigger button is a widget, see TabletScreen)
@@ -36,13 +38,34 @@ final class TabletSabotagePainter {
         return SabotageRowState.byWire(row.stateWire());
     }
 
-    /** Seconds shown now: remaining counts down and elapsed counts up since the snapshot. / 当前显示的秒数：剩余向下、已持续向上计。 */
+    /**
+     * The phase of an active engine card ({@code modeWire} carries it), null for any other card.
+     * 进行中的动力卡片的阶段（由 modeWire 携带），其他卡片为 null。
+     */
+    static @Nullable EnginePhase enginePhase(TabletSnapshot.SabotageRow row) {
+        return row.typeWire() == SabotageType.ENGINE.wire() && state(row) == SabotageRowState.ACTIVE
+                ? EnginePhase.byWire(row.modeWire()) : null;
+    }
+
+    /**
+     * Seconds shown now: remaining counts down and elapsed counts up since the snapshot; an engine card counts its
+     * repair window down while CRITICAL and the halted time up afterwards.
+     * 当前显示的秒数：剩余向下、已持续向上计；动力卡片在 CRITICAL 时抢修剩余时间向下数，之后已停驶时间向上数。
+     */
     static int liveSeconds(TabletSnapshot.SabotageRow row, int sinceSnapshot) {
         return switch (state(row)) {
-            case ACTIVE -> row.seconds() + sinceSnapshot;
+            case ACTIVE -> enginePhase(row) == EnginePhase.CRITICAL
+                    ? Math.max(0, row.seconds() - sinceSnapshot) : row.seconds() + sinceSnapshot;
             case ARMING, COOLDOWN -> Math.max(0, row.seconds() - sinceSnapshot);
             default -> 0;
         };
+    }
+
+    /** Header chip text while a sabotage is on. / 破坏进行中时的顶栏胶囊文字。 */
+    static String activeChip(TabletSnapshot.SabotageRow row, int sinceSnapshot) {
+        EnginePhase phase = enginePhase(row);
+        String key = phase == null ? "chip.active" : "chip.engine_" + phase.name().toLowerCase(java.util.Locale.ROOT);
+        return Text.translatable(KEY + key, clock(liveSeconds(row, sinceSnapshot))).getString();
     }
 
     static String clock(int seconds) {
@@ -113,10 +136,10 @@ final class TabletSabotagePainter {
             case LOCKED -> Text.translatable(KEY + "status.locked",
                     type == null ? "" : Text.translatable(type.translationKey())).getString();
             case ARMING -> Text.translatable(KEY + "status.arming", clock(seconds)).getString();
-            case READY -> Text.translatable(KEY + "status.ready").getString();
+            case READY -> Text.translatable(KEY + (type == SabotageType.ENGINE ? "status.engine_ready" : "status.ready"))
+                    .getString();
             case COOLDOWN -> Text.translatable(KEY + "status.cooldown", clock(seconds)).getString();
-            case ACTIVE -> Text.translatable(OutageMode.byWire(row.modeWire()) == OutageMode.TIMED
-                    ? KEY + "status.active_timed" : KEY + "status.active", clock(seconds)).getString();
+            case ACTIVE -> Text.translatable(activeStatusKey(row), clock(seconds)).getString();
             case BLOCKED -> Text.translatable(KEY + "status.blocked").getString();
         };
         c.text(tr, TabletCanvas.trim(tr, status, textW), textX, y + 27, state == SabotageRowState.LOCKED
@@ -125,6 +148,14 @@ final class TabletSabotagePainter {
                 ? Text.translatable(KEY + "stats.no_boxes").getString()
                 : Text.translatable(KEY + "stats", row.boxes(), row.opened(), row.hacked()).getString();
         c.text(tr, TabletCanvas.trim(tr, stats, textW), textX, y + 41, TabletTheme.TEXT_3);
+    }
+
+    private static String activeStatusKey(TabletSnapshot.SabotageRow row) {
+        if (row.typeWire() == SabotageType.ENGINE.wire()) {
+            EnginePhase phase = enginePhase(row);
+            return KEY + "status.engine_" + (phase == null ? "critical" : phase.name().toLowerCase(java.util.Locale.ROOT));
+        }
+        return OutageMode.byWire(row.modeWire()) == OutageMode.TIMED ? KEY + "status.active_timed" : KEY + "status.active";
     }
 
     static void logHeader(TabletCanvas c, TextRenderer tr, int x, int y, int w) {
@@ -145,15 +176,17 @@ final class TabletSabotagePainter {
         int dotX = x + 2 + timeW + 4;
         int color = switch (kind) {
             case BOX_HACKED, READY -> TabletTheme.SABOTAGE.base();
-            case TRIGGERED -> TabletTheme.DANGER;
+            case TRIGGERED, ENGINE_WRECKED -> TabletTheme.DANGER;
             case REPAIRED, POWER_RESTORED, BOX_REPAIRED -> TabletTheme.SUCCESS;
-            case BOX_BROKEN -> TabletTheme.WARNING;
+            case BOX_BROKEN, ENGINE_EMERGENCY -> TabletTheme.WARNING;
             case EXPIRED -> TabletTheme.TEXT_2;
         };
         c.circle(dotX, y + LOG_ROW_H / 2f, 2.5f, color);
         Text typeName = type == null ? Text.literal("?") : Text.translatable(type.translationKey());
-        String sentence = Text.translatable(KEY + "log." + kind.name().toLowerCase(java.util.Locale.ROOT),
-                row.actor(), typeName).getString();
+        // A repaired engine is not "a breaker repaired": it has its own line. / 修好动力不是「修好电闸」：单独一句。
+        String logKey = kind == SabotageWorldComponent.LogKind.REPAIRED && type == SabotageType.ENGINE
+                ? "log.engine_repaired" : "log." + kind.name().toLowerCase(java.util.Locale.ROOT);
+        String sentence = Text.translatable(KEY + logKey, row.actor(), typeName).getString();
         int textX = dotX + 8;
         c.text(tr, TabletCanvas.trim(tr, sentence, Math.max(0, x + w - textX - 4)), textX, textY, TabletTheme.TEXT);
     }

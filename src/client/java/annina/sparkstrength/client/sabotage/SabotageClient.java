@@ -9,6 +9,7 @@ import annina.sparkstrength.network.sabotage.CancelChannelC2SPacket;
 import annina.sparkstrength.network.sabotage.ChannelProgressS2CPacket;
 import annina.sparkstrength.network.sabotage.CloseBreakerRepairS2CPacket;
 import annina.sparkstrength.network.sabotage.OpenBreakerRepairS2CPacket;
+import annina.sparkstrength.network.sabotage.OpenEngineRepairS2CPacket;
 import annina.sparkstrength.network.sabotage.SabotageStatusS2CPacket;
 import annina.sparkstrength.sabotage.EngineHalt;
 import annina.sparkstrength.sabotage.EnginePhase;
@@ -71,8 +72,13 @@ public final class SabotageClient {
         });
         ClientPlayNetworking.registerGlobalReceiver(OpenBreakerRepairS2CPacket.ID,
                 (payload, context) -> context.client().setScreen(new BreakerRepairScreen(payload)));
+        ClientPlayNetworking.registerGlobalReceiver(OpenEngineRepairS2CPacket.ID,
+                (payload, context) -> context.client().setScreen(new EngineRepairScreen(payload)));
+        // One close packet for both panels; session ids never repeat between them. / 两种面板共用一个关闭包；会话 id 不会重复。
         ClientPlayNetworking.registerGlobalReceiver(CloseBreakerRepairS2CPacket.ID, (payload, context) -> {
             if (context.client().currentScreen instanceof BreakerRepairScreen screen) {
+                screen.onServerClose(payload.sessionId(), payload.reason());
+            } else if (context.client().currentScreen instanceof EngineRepairScreen screen) {
                 screen.onServerClose(payload.sessionId(), payload.reason());
             }
         });

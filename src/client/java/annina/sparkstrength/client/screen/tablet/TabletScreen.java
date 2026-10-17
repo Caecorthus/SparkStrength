@@ -760,14 +760,17 @@ public final class TabletScreen extends Screen {
         }
     }
 
-    /** Lights out as a red live chip, ready as a pulsing yellow one, else the cooldown or nothing. / 熄灯中为红色实时胶囊，可触发为黄色脉冲胶囊，否则为冷却或不显示。 */
+    /**
+     * A sabotage on (lights out, engine damaged or halted) as a red live chip, ready as a pulsing yellow one, else the
+     * cooldown or nothing.
+     * 破坏进行中（熄灯、动力受损或停驶）为红色实时胶囊，可触发为黄色脉冲胶囊，否则为冷却或不显示。
+     */
     private int paintSabotageHeaderChip(TabletSnapshot snapshot, int right, int centerY, int maxWidth, long now) {
         int since = TabletClientState.secondsSinceSnapshot();
         for (TabletSnapshot.SabotageRow row : snapshot.sabotage()) {
             SabotageRowState state = TabletSabotagePainter.state(row);
             if (state == SabotageRowState.ACTIVE) {
-                return paintPill(right, centerY, maxWidth, Text.translatable(KEY + "sabotage.chip.active",
-                                TabletSabotagePainter.clock(TabletSabotagePainter.liveSeconds(row, since))).getString(),
+                return paintPill(right, centerY, maxWidth, TabletSabotagePainter.activeChip(row, since),
                         TabletTheme.KILLER.pale(), TabletTheme.withAlpha(TabletTheme.DANGER, 0x33), 0,
                         (canvas, x, y, size, color) -> paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
                         TabletTheme.DANGER);

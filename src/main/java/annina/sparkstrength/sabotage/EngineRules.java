@@ -2,6 +2,9 @@ package annina.sparkstrength.sabotage;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Pure numbers and decisions of the engine sabotage, free of Minecraft types so local tests can compile it alone.
  * 动力破坏的纯数值与判定，不依赖 Minecraft 类型，便于本地测试单独编译。
@@ -37,6 +40,10 @@ public final class EngineRules {
     /** Server-side minimum per gauge and per fuse, so a forged completion cannot be instant. / 每块表、每根保险丝的服务端最短用时，防止伪造的瞬间完成。 */
     public static final int MIN_TICKS_PER_GAUGE = 14;
     public static final int MIN_TICKS_PER_FUSE = 20;
+    /** The damaged units sound an alarm every 2 s while the repair window runs. / 抢修窗口期间受损装置每 2 秒响一次警报。 */
+    public static final int ALARM_INTERVAL_TICKS = 40;
+    /** The countdown on the action bar turns red for its last 20 s. / 动作栏倒计时在最后 20 秒变红。 */
+    public static final int URGENT_TICKS = 400;
 
     private EngineRules() {
     }
@@ -84,6 +91,77 @@ public final class EngineRules {
     /** How long the train has been halted, counted from the wreck and kept through emergency power. / 已停驶多久，从损毁起算，进入应急动力后继续累计。 */
     public static long haltedTicks(long now, long triggeredAt) {
         return Math.max(0L, now - wreckedTick(triggeredAt));
+    }
+
+    /** Whole seconds for a countdown, rounded up so 0:00 only shows once the time is really up. / 倒计时的整秒数，向上取整，时间真正用完时才显示 0:00。 */
+    public static long ceilSeconds(long ticks) {
+        return ticks <= 0 ? 0 : (ticks + 19) / 20;
+    }
+
+    /** The countdown is in its last 20 s. / 倒计时进入最后 20 秒。 */
+    public static boolean urgent(long now, long triggeredAt) {
+        return remainingTicks(now, triggeredAt) <= URGENT_TICKS;
+    }
+
+    /**
+     * Seconds on the tablet's engine card: the repair window counts down (rounded up) while CRITICAL; once wrecked it
+     * counts up how long the train has been halted, kept through emergency power.
+     * 平板动力卡片上的秒数：CRITICAL 时是向下数的抢修剩余时间（向上取整）；损毁后是向上数的已停驶时间，进入应急动力后继续累计。
+     */
+    public static long cardSeconds(long now, long triggeredAt) {
+        if (effectivePhase(now, triggeredAt) == EnginePhase.CRITICAL) {
+            return ceilSeconds(remainingTicks(now, triggeredAt));
+        }
+        return haltedTicks(now, triggeredAt) / 20;
+    }
+
+    /**
+     * The phases to enter, in order, to go from the last applied phase to the derived one: each transition's side
+     * effects run exactly once, and both run when ticks were skipped. Empty when nothing changed or when the derived
+     * phase lies before the applied one (only tooling moves the clock back).
+     * 从最近已应用的阶段走到推导出的阶段，需要依次进入的阶段：每次转换的副作用只执行一次，跳过了 tick 时两次都会执行。没有变化，
+     * 或推导出的阶段早于已应用的阶段（只有工具会把时钟往回拨）时为空。
+     */
+    public static List<EnginePhase> pendingTransitions(@Nullable EnginePhase applied, EnginePhase derived) {
+        List<EnginePhase> transitions = new ArrayList<>(3);
+        for (int step = applied == null ? 0 : order(applied) + 1; step <= order(derived); step++) {
+            transitions.add(byOrder(step));
+        }
+        return transitions;
+    }
+
+    /** Whether {@code phase} lies before {@code other} in the CRITICAL, WRECKED, EMERGENCY order. / phase 是否在 other 之前。 */
+    public static boolean isBefore(EnginePhase phase, EnginePhase other) {
+        return order(phase) < order(other);
+    }
+
+    /**
+     * Tooling: the trigger tick that puts {@code now} at the very start of {@code phase}.
+     * 工具用：让 now 恰好处在 phase 开始时刻的触发 tick。
+     */
+    public static long triggerTickFor(EnginePhase phase, long now) {
+        return switch (phase) {
+            case CRITICAL -> now;
+            case WRECKED -> now - CRITICAL_WINDOW_TICKS;
+            case EMERGENCY -> now - CRITICAL_WINDOW_TICKS - HALT_CAP_TICKS;
+        };
+    }
+
+    /** The phases always run CRITICAL, WRECKED, EMERGENCY; never wire values or ordinal(). / 阶段总是按 CRITICAL、WRECKED、EMERGENCY 的顺序；不用 wire 值或 ordinal()。 */
+    private static int order(EnginePhase phase) {
+        return switch (phase) {
+            case CRITICAL -> 0;
+            case WRECKED -> 1;
+            case EMERGENCY -> 2;
+        };
+    }
+
+    private static EnginePhase byOrder(int order) {
+        return switch (order) {
+            case 0 -> EnginePhase.CRITICAL;
+            case 1 -> EnginePhase.WRECKED;
+            default -> EnginePhase.EMERGENCY;
+        };
     }
 
     /** The panel a unit opens in this phase ({@code null} = no engine sabotage). / 该阶段装置打开的面板（null 表示没有动力破坏）。 */

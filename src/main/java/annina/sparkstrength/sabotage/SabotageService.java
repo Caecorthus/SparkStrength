@@ -79,12 +79,14 @@ public final class SabotageService {
         ServerWorldEvents.UNLOAD.register((server, world) -> {
             JunctionBoxService.clear(world);
             BreakerRepairService.closeAll(world, 2);
+            EngineRepairService.closeAll(world, 2);
             SabotageWorldComponent.KEY.get(world).clearRoundState();
         });
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             SENT_STATUS.remove(handler.player.getUuid());
             JunctionBoxService.onDisconnect(handler.player);
             BreakerRepairService.onDisconnect(handler.player);
+            EngineRepairService.onDisconnect(handler.player);
         });
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             SENT_STATUS.remove(handler.player.getUuid());
@@ -101,6 +103,7 @@ public final class SabotageService {
     private static void onRoundStart(ServerWorld world) {
         JunctionBoxService.clear(world);
         BreakerRepairService.closeAll(world, 2);
+        EngineRepairService.closeAll(world, 2);
         SabotageWorldComponent.KEY.get(world).beginRound(world.getTime());
         markStatusDirty(world);
     }
@@ -110,6 +113,7 @@ public final class SabotageService {
         finishActive(world);
         JunctionBoxService.clear(world);
         BreakerRepairService.closeAll(world, 2);
+        EngineRepairService.closeAll(world, 2);
         restoreLooks(world, sabotage.junctionBoxes(), sabotage.breakers(), sabotage.engineUnits());
         sabotage.clearRoundState();
         markStatusDirty(world);
@@ -126,8 +130,7 @@ public final class SabotageService {
         SabotageWorldComponent.Outage outage = sabotage.outage();
         if (outage != null && outage.type() == SabotageType.LIGHTS) {
             LightsSabotageService.finish(world, sabotage, LightsSabotageService.EndReason.ROUND_END, null);
-        }
-        if (sabotage.enginePhase() != null) {
+        } else if (outage != null && outage.type() == SabotageType.ENGINE) {
             EngineSabotageService.abort(world);
         }
     }
@@ -199,8 +202,7 @@ public final class SabotageService {
     private static void tick(ServerWorld world) {
         SabotageWorldComponent sabotage = SabotageWorldComponent.KEY.get(world);
         GameWorldComponent game = GameWorldComponent.KEY.get(world);
-        if (game.getGameStatus() != GameWorldComponent.GameStatus.ACTIVE
-                && (sabotage.outage() != null || sabotage.enginePhase() != null)) {
+        if (game.getGameStatus() != GameWorldComponent.GameStatus.ACTIVE && sabotage.outage() != null) {
             // A stopped round is STOPPING well before Wathe's finalize event: end the effects the moment it leaves
             // ACTIVE. / 被停止的对局在 Wathe 的 finalize 事件之前很久就进入 STOPPING：一离开 ACTIVE 就结束效果。
             finishActive(world);
@@ -222,6 +224,10 @@ public final class SabotageService {
                 BreakerRepairService.tick(world);
                 announceReady(world, sabotage);
             }
+            // Outside the map-ready gate so tooling that forces a phase still gets its transitions and panels pruned.
+            // 放在地图就绪的判断之外，这样强制切换阶段的工具也能执行阶段转换、清理面板。
+            EngineSabotageService.tick(world, sabotage);
+            EngineRepairService.tick(world);
         }
         syncStatus(world, sabotage);
     }
@@ -241,7 +247,7 @@ public final class SabotageService {
         if (!dropped) {
             return;
         }
-        if (!sabotage.hasEngineUnits() && sabotage.enginePhase() != null) {
+        if (!sabotage.hasEngineUnits() && sabotage.isEngineOn()) {
             EngineSabotageService.abort(world);
         }
         markStatusDirty(world);
@@ -293,15 +299,15 @@ public final class SabotageService {
         TabletStateService.syncToTabletHolders(world);
     }
 
-    /** Tablet sabotage page: trigger {@code typeWire}. / 平板破坏页：触发 typeWire。 */
+    /**
+     * Tablet sabotage page: trigger {@code typeWire}. Both types share the checks (unlocked, armed, team cooldown, and
+     * nothing else on: one sabotage at a time, Wathe's own blackout included); each type then starts itself.
+     * 平板破坏页：触发 typeWire。两种类型共用同一套检查（已解锁、准备完毕、团队冷却，以及没有别的破坏：同一时间只能有一个破坏，
+     * Wathe 自己的熄灯也算）；之后各类型自己启动。
+     */
     public static void handleTrigger(ServerPlayerEntity player, int typeWire) {
         SabotageType type = SabotageType.byWire(typeWire);
         if (type == null || !SabotageAccess.canUse(player) || !TabletAccess.hasTabletInHotbar(player)) {
-            return;
-        }
-        if (type != SabotageType.LIGHTS) {
-            // The engine sabotage's trigger comes with its repair flow. / 动力破坏的触发与它的维修流程一起接入。
-            player.sendMessage(Text.translatable("message.sparkstrength.sabotage.trigger_denied.unavailable"), true);
             return;
         }
         ServerWorld world = player.getServerWorld();
@@ -318,28 +324,43 @@ public final class SabotageService {
                     + check.name().toLowerCase(java.util.Locale.ROOT)), true);
             return;
         }
-        LightsSabotageService.TriggerResult result = LightsSabotageService.trigger(world, sabotage, player);
-        switch (result) {
-            case OK -> {
-                sabotage.log(now, SabotageWorldComponent.LogKind.TRIGGERED, player.getGameProfile().getName(), type);
-                markStatusDirty(world);
-                TabletStateService.syncToTabletHolders(world);
-            }
-            case BUSY -> player.sendMessage(
-                    Text.translatable("message.sparkstrength.sabotage.trigger_denied.active"), true);
-            case NO_LAMPS -> player.sendMessage(
-                    Text.translatable("message.sparkstrength.sabotage.no_lamps"), true);
+        String denied = switch (type) {
+            case LIGHTS -> switch (LightsSabotageService.trigger(world, sabotage, player)) {
+                case OK -> null;
+                case BUSY -> "message.sparkstrength.sabotage.trigger_denied.active";
+                case NO_LAMPS -> "message.sparkstrength.sabotage.no_lamps";
+            };
+            case ENGINE -> switch (EngineSabotageService.trigger(world, sabotage, player)) {
+                case OK -> null;
+                case BUSY -> "message.sparkstrength.sabotage.trigger_denied.active";
+                case NO_ENGINE_UNITS -> "message.sparkstrength.sabotage.trigger_denied.no_engine_units";
+            };
+        };
+        if (denied != null) {
+            player.sendMessage(Text.translatable(denied), true);
+            return;
         }
+        sabotage.log(now, SabotageWorldComponent.LogKind.TRIGGERED, player.getGameProfile().getName(), type);
+        markStatusDirty(world);
+        TabletStateService.syncToTabletHolders(world);
     }
 
-    /** The Engineer's power restoration just reset Wathe's blackout. / 工程师的电力恢复刚刚重置了 Wathe 停电。 */
+    /**
+     * The Engineer's power restoration just reset Wathe's blackout. It only ever ends a lights outage; an engine
+     * sabotage carries on in every phase.
+     * 工程师的电力恢复刚刚重置了 Wathe 停电。它只会结束灯光熄灯；动力破坏在任何阶段都照常进行。
+     */
     public static void onPowerRestored(ServerWorld world) {
         SabotageWorldComponent sabotage = SabotageWorldComponent.KEY.get(world);
         LightsSabotageService.finish(world, sabotage, LightsSabotageService.EndReason.POWER_RESTORED, null);
         TabletStateService.syncToTabletHolders(world);
     }
 
-    /** Admin {@code clearCooldown} while holding the tablet: the team's sabotage timers. / 手持平板时管理员清除冷却：清掉团队破坏计时。 */
+    /**
+     * Admin {@code clearCooldown} while holding the tablet: the team's sabotage timers only. A sabotage in progress
+     * (an engine one on emergency power included) is left alone and still blocks new triggers.
+     * 手持平板时管理员清除冷却：只清团队破坏计时。进行中的破坏（包括应急动力中的动力破坏）不受影响，照样挡住新的触发。
+     */
     public static void onAdminCooldownCleared(ServerPlayerEntity player) {
         ServerWorld world = player.getServerWorld();
         SabotageWorldComponent sabotage = SabotageWorldComponent.KEY.get(world);
@@ -381,11 +402,15 @@ public final class SabotageService {
     private static void sendStatus(ServerWorld world, SabotageWorldComponent sabotage) {
         SabotageWorldComponent.Outage outage = sabotage.outage();
         boolean lightsOut = outage != null && outage.type() == SabotageType.LIGHTS;
+        EnginePhase enginePhase = sabotage.enginePhase(world.getTime());
+        long engineTriggeredAt = enginePhase == null ? 0L : sabotage.engineTriggeredAt();
+        // Coordinates for the long-range outline, only while it is drawn. / 远距离描边用的坐标，只在需要描边时下发。
+        List<BlockPos> engineUnits = enginePhase == null ? List.of() : List.copyOf(sabotage.engineUnits());
         boolean resyncTimer = false;
         for (ServerPlayerEntity player : world.getPlayers()) {
             SabotageStatusS2CPacket status = new SabotageStatusS2CPacket(lightsOut, lightsOut ? outage.id() : 0,
                     lightsOut ? outage.mode().wire() : 0, sabotage.isMapReady() && SabotageAccess.canUse(player),
-                    EnginePhase.wireOf(sabotage.enginePhase()));
+                    EnginePhase.wireOf(enginePhase), engineTriggeredAt, engineUnits);
             SabotageStatusS2CPacket previous = SENT_STATUS.get(player.getUuid());
             if (!status.equals(previous) && ServerPlayNetworking.canSend(player, SabotageStatusS2CPacket.ID)) {
                 ServerPlayNetworking.send(player, status);

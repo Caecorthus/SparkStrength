@@ -428,8 +428,11 @@ public record TabletSnapshot(
      *
      * @param typeWire  {@code SabotageType} wire / 破坏类型
      * @param stateWire {@code SabotageRowState} wire / 卡片状态
-     * @param seconds   remaining (arming, cooldown) or elapsed (active) seconds / 剩余（准备、冷却）或已持续（进行中）秒数
-     * @param modeWire  {@code OutageMode} wire while active / 进行中时的熄灯模式
+     * @param seconds   remaining (arming, cooldown) or elapsed (active) seconds; an active engine card counts the repair
+     *                  window down while CRITICAL, then the halted time up / 剩余（准备、冷却）或已持续（进行中）秒数；
+     *                  进行中的动力卡片在 CRITICAL 时是向下数的抢修剩余时间，之后是向上数的已停驶时间
+     * @param modeWire  while active: {@code OutageMode} wire for lights, {@code EnginePhase} wire for the engine /
+     *                  进行中时：灯光为熄灯模式，动力为动力阶段
      * @param boxes     junction boxes of this type on the map / 本图该类接线箱数量
      * @param opened    of those, pried open and not yet hacked / 其中已撬开未入侵的数量
      * @param hacked    of those, hacked / 其中已入侵的数量
