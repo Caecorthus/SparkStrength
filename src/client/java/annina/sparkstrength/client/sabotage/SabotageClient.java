@@ -5,6 +5,7 @@ import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.SparkStrengthSounds;
 import annina.sparkstrength.block.EngineUnitBlock;
 import annina.sparkstrength.block.JunctionBoxBlock;
+import annina.sparkstrength.client.compat.SparkWitchBlindViewCompat;
 import annina.sparkstrength.network.sabotage.CancelChannelC2SPacket;
 import annina.sparkstrength.network.sabotage.ChannelProgressS2CPacket;
 import annina.sparkstrength.network.sabotage.CloseBreakerRepairS2CPacket;
@@ -95,6 +96,9 @@ public final class SabotageClient {
         ClientTickEvents.END_CLIENT_TICK.register(EngineTrainMotion::tick);
         HudRenderCallback.EVENT.register(SabotageHud::render);
         SabotageOutlineRenderer.register();
+        // SparkWitch's Blind echo view paints over LAST: hand it the public outlines too (fails closed without it).
+        // SparkWitch 盲人的回声画面会盖住 LAST 阶段：把公开描边也交给它（缺失时安全失效）。
+        SparkWitchBlindViewCompat.addSeeThroughOutlines(SabotageOutlineRenderer::publicOutlines);
         // JOIN runs on the client thread before any play packet is handled, so the first status cannot be wiped.
         // JOIN 在客户端线程上、任何游戏数据包处理之前执行，所以不会抹掉第一个状态包。
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
