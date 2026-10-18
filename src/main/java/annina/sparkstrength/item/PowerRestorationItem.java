@@ -8,9 +8,9 @@ import net.minecraft.text.Text;
 import java.util.List;
 
 /**
- * 电力恢复系统的商店展示物品。
+ * 破坏维修的商店展示物品（物品 ID 沿用旧名 power_restoration）。
  *
- * <p>它不在背包中执行右键效果，真正的恢复逻辑由工程师商店购买回调触发；
+ * <p>它不在背包中执行右键效果，真正的维修逻辑由工程师商店购买回调触发；
  * 保留独立 Item 只是为了让商店和资源包有稳定图标。</p>
  */
 public final class PowerRestorationItem extends Item {

@@ -36,7 +36,7 @@ import annina.sparkstrength.role.demonhunter.DemonHunterSniffService;
 import annina.sparkstrength.role.economy.RoleEconomyService;
 import annina.sparkstrength.role.economy.KillerTeamEconomyService;
 import annina.sparkstrength.role.engineer.EngineerCaptureDeviceService;
-import annina.sparkstrength.role.engineer.EngineerPowerRestorationService;
+import annina.sparkstrength.role.engineer.EngineerSabotageRepairService;
 import annina.sparkstrength.role.engineer.EngineerShopService;
 import annina.sparkstrength.role.morphling.MorphlingService;
 import annina.sparkstrength.role.morphling.MorphlingShopService;
@@ -99,7 +99,7 @@ public final class SparkStrengthEvents {
         VeteranBlackoutService.register();
         RoleEconomyService.register();
         KillerTeamEconomyService.register();
-        EngineerPowerRestorationService.register();
+        EngineerSabotageRepairService.register();
         EngineerShopService.register();
         MorphlingService.register();
         MorphlingShopService.register();

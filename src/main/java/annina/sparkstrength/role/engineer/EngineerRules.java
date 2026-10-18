@@ -15,11 +15,12 @@ public final class EngineerRules {
     public static final Identifier ENGINEER_ID = Identifier.of("noellesroles", "engineer");
 
     public static final String CAPTURE_DEVICE_ENTRY_ID = "sparkstrength_capture_device";
-    public static final String POWER_RESTORATION_ENTRY_ID = "sparkstrength_power_restoration";
+    /** Kept from the old Power Restoration, so purchase records and other mods' id lists still match. / 沿用旧的电力恢复系统 id，购买记录与其他模组的 id 列表照样匹配。 */
+    public static final String SABOTAGE_REPAIR_ENTRY_ID = "sparkstrength_power_restoration";
     public static final String WATHE_BLACKOUT_ENTRY_ID = "blackout";
 
     public static final int CAPTURE_DEVICE_PRICE = 125;
-    public static final int POWER_RESTORATION_PRICE = 300;
+    public static final int SABOTAGE_REPAIR_PRICE = 250;
 
     public static final double CAPTURE_RADIUS = 5.0D;
     public static final double CAPTURE_RADIUS_SQUARED = CAPTURE_RADIUS * CAPTURE_RADIUS;
