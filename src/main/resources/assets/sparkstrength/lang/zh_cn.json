@@ -284,7 +284,7 @@
   "message.sparkstrength.tablet.link.incoming_multi": "%s 请求与你互认身份 —— 在各自倒计时结束前用平板 Shift+右键 其中一人",
   "message.sparkstrength.tablet.link.incoming_entry": "%1$s（%2$s 秒）",
   "message.sparkstrength.tablet.link.expired": "互认请求已过期。",
-  "message.sparkstrength.tablet.link.linked": "已与 %s 互认身份，现在可以在杀手频道看到彼此的名字。",
+  "message.sparkstrength.tablet.link.linked": "已与 %s 互认：杀手频道显示彼此名字，熄灯时可本能看到对方。",
   "message.sparkstrength.tablet.link.already": "你已与 %s 互认过身份。",
   "message.sparkstrength.tablet.police_identities_unlocked": "你已完成 %s 个任务，现在可以在义警频道看到其他成员的身份。",
   "replay.global.sparkstrength.noisemaker_glow_started": "%s点亮了%s",

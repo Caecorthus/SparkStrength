@@ -21,8 +21,14 @@ public final class SabotageRules {
     public static final int HACK_TICKS = 300;
     /** Master Saboteur tablet hack: 10 s. / 破坏大师的平板入侵：10 秒。 */
     public static final int HACK_TICKS_MASTER = 200;
-    /** A freshly unlocked sabotage can be used after 90 s. / 刚解锁的破坏 90 秒后才能使用。 */
-    public static final int UNLOCK_DELAY_TICKS = 1_800;
+    /** A sabotage unlocked by a tablet hack can be used after 45 s. / 平板入侵解锁的破坏 45 秒后才能使用。 */
+    public static final int UNLOCK_DELAY_TICKS = 900;
+    /**
+     * Maps without junction boxes unlock the lights at round start; they keep the original 90 s wait so the lights
+     * cannot go out in the first minute.
+     * 没有接线箱的地图在开局时自动解锁灯光；仍保留原来的 90 秒等待，避免开局一分钟内就被关灯。
+     */
+    public static final int AUTO_UNLOCK_DELAY_TICKS = 1_800;
     /** Shared team cooldown, counted from the moment the lights come back: 2.5 min. / 团队共享冷却，从来电时起算：2.5 分钟。 */
     public static final int TEAM_COOLDOWN_TICKS = 3_000;
     /** Team cooldown after the Engineer's remote Sabotage Repair, lights or engine: 90 s. / 工程师远程破坏维修（灯光或动力）后的团队冷却：90 秒。 */
@@ -111,7 +117,7 @@ public final class SabotageRules {
         OK,
         /** No junction box of this type has been hacked yet. / 还没有入侵过这一类接线箱。 */
         LOCKED,
-        /** Unlocked less than 90 s ago. / 解锁还不到 90 秒。 */
+        /** The post-unlock wait is still running. / 解锁后的等待时间还没结束。 */
         ARMING,
         /** The shared team cooldown is running. / 团队共享冷却中。 */
         COOLDOWN,

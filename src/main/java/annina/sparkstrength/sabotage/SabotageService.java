@@ -173,9 +173,9 @@ public final class SabotageService {
         boolean lightsBoxes = boxes.stream()
                 .anyMatch(pos -> JunctionBoxBlock.typeOf(world.getBlockState(pos)) == SabotageType.LIGHTS);
         if (SabotageRules.startsWithLightsUnlocked(lightsBoxes)) {
-            // Made before junction boxes existed: lights work as before, from the tablet, after the usual wait.
-            // 在接线箱出现之前做的地图：灯光照旧可用，入口在平板，同样要等待解锁时间。
-            sabotage.autoUnlock(SabotageType.LIGHTS, world.getTime() + SabotageRules.UNLOCK_DELAY_TICKS);
+            // Made before junction boxes existed: lights work as before, from the tablet, after the round-start wait.
+            // 在接线箱出现之前做的地图：灯光照旧可用，入口在平板，同样要等待开局解锁时间。
+            sabotage.autoUnlock(SabotageType.LIGHTS, world.getTime() + SabotageRules.AUTO_UNLOCK_DELAY_TICKS);
         } else if (autoUnlocked) {
             // A fallback scan ran before the copy finished; the real map has junction boxes after all.
             // 兜底扫描早于复制完成；真正的地图其实有接线箱。

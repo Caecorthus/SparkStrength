@@ -25,7 +25,6 @@ import annina.sparkstrength.network.tablet.SelectTabletChannelC2SPacket;
 import annina.sparkstrength.network.tablet.SendTabletChatC2SPacket;
 import annina.sparkstrength.network.tablet.SyncTabletSnapshotS2CPacket;
 import annina.sparkstrength.network.shadowjester.SyncShadowJesterShowdownMusicS2CPacket;
-import annina.sparkstrength.network.veteran.SyncVeteranBlackoutS2CPacket;
 import annina.sparkstrength.network.timekeeper.TimekeeperWatchModeC2SPacket;
 import annina.sparkstrength.network.vulture.VultureSuperCurseC2SPacket;
 import annina.sparkstrength.network.taotie.TaotieHeadFireC2SPacket;
@@ -48,6 +47,7 @@ import annina.sparkstrength.network.sabotage.CompleteBreakerRepairC2SPacket;
 import annina.sparkstrength.network.sabotage.OpenBreakerRepairS2CPacket;
 import annina.sparkstrength.network.sabotage.OpenEngineRepairS2CPacket;
 import annina.sparkstrength.network.sabotage.SabotageStatusS2CPacket;
+import annina.sparkstrength.network.sabotage.SyncBlackoutSightS2CPacket;
 import annina.sparkstrength.network.sabotage.TriggerSabotageC2SPacket;
 import annina.sparkstrength.sabotage.BreakerRepairService;
 import annina.sparkstrength.sabotage.EngineRepairService;
@@ -91,7 +91,7 @@ public final class SparkStrengthPackets {
         PayloadTypeRegistry.playC2S().register(SerialPistolShootC2SPayload.ID, SerialPistolShootC2SPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(OpenTabletScreenS2CPacket.ID, OpenTabletScreenS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncTabletSnapshotS2CPacket.ID, SyncTabletSnapshotS2CPacket.CODEC);
-        PayloadTypeRegistry.playS2C().register(SyncVeteranBlackoutS2CPacket.ID, SyncVeteranBlackoutS2CPacket.CODEC);
+        PayloadTypeRegistry.playS2C().register(SyncBlackoutSightS2CPacket.ID, SyncBlackoutSightS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncKillerTeamEconomyS2CPacket.ID, SyncKillerTeamEconomyS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(
                 SyncShadowJesterShowdownMusicS2CPacket.ID,

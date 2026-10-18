@@ -1,6 +1,8 @@
 package annina.sparkstrength.mixin.sabotage;
 
+import annina.sparkstrength.sabotage.BlackoutNightVision;
 import annina.sparkstrength.sabotage.LightsSabotageService;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -22,6 +24,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * 破坏造成的熄灯期间，黑暗来自熄灭的灯与客户端屏蔽的天空光照，而不是失明。只跳过施加失明这一步：此时 Wathe 已经询问过
  * BlackoutEffect.BEFORE，所以发放夜视的监听器（内鬼、风灵、验尸官伪装的老兵……）照常执行，杀手与老兵也照常获得夜视。
  * 动作栏显示维修提示，代替 Wathe 的倒计时。
+ *
+ * <p>The Undercover takes Wathe's killer branch in every blackout, sabotage or not (see {@link BlackoutNightVision}).
+ * 卧底在任何熄灯中都走 Wathe 的杀手分支，不论是否由破坏引起（见 BlackoutNightVision）。</p>
  */
 @Mixin(value = WorldBlackoutComponent.class, remap = false)
 public abstract class SabotageBlackoutEffectsMixin {
@@ -35,6 +40,18 @@ public abstract class SabotageBlackoutEffectsMixin {
             return false;
         }
         return original.call(player, effect);
+    }
+
+    /*
+     * The killer check right before is SparkFactionAPI's @Redirect, so this sits on the Veteran check that shares its
+     * Night Vision branch; it only runs for players that check already turned down.
+     * 前面的杀手判定已被 SparkFactionAPI 的 @Redirect 占用，所以挂在共用同一夜视分支的老兵判定上；只有杀手判定为否的玩家
+     * 才会走到这里。
+     */
+    @ModifyExpressionValue(method = "applyBlackoutEffects", at = @At(value = "INVOKE",
+            target = "Ldev/doctor4t/wathe/cca/GameWorldComponent;isRole(Ljava/util/UUID;Ldev/doctor4t/wathe/api/Role;)Z"))
+    private boolean sparkstrength$undercoverSeesLikeKiller(boolean veteran, @Local ServerPlayerEntity player) {
+        return veteran || BlackoutNightVision.seesLikeKiller(player);
     }
 
     @Inject(method = "sendBlackoutCountdown", at = @At("HEAD"), cancellable = true)

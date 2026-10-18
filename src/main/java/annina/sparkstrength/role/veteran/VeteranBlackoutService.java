@@ -1,34 +1,27 @@
 package annina.sparkstrength.role.veteran;
 
-import annina.sparkstrength.network.veteran.SyncVeteranBlackoutS2CPacket;
 import annina.sparkstrength.record.BlackoutRecorder;
 import annina.sparkstrength.role.coroner.CoronerService;
 import dev.doctor4t.wathe.api.event.BlackoutEffect;
 import dev.doctor4t.wathe.cca.WorldBlackoutComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.world.World;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 /**
- * 把 Wathe 服务端停电状态同步给客户端老兵高亮。
+ * 停电期间的老兵相关服务端逻辑：给伪装成老兵的验尸官补发夜视，并为成就记录观察停电边沿。
  *
- * <p>同步策略很轻：状态变化时立即发包；停电期间每秒补发一次 true，
- * 让中途重连或刚切入世界的客户端也能尽快拿到正确状态。</p>
+ * <p>停电状态与本能规则的客户端同步见 {@link annina.sparkstrength.sabotage.BlackoutSightService}。</p>
  */
 public final class VeteranBlackoutService {
-    private static final int ACTIVE_RESYNC_INTERVAL_TICKS = 20;
     private static final int CORONER_BLACKOUT_NIGHT_VISION_REFRESH_TICKS = 40;
     private static final int BLACKOUT_EFFECT_DURATION_TOLERANCE_TICKS = 5;
-    private static final Map<RegistryKey<World>, Boolean> LAST_BLACKOUT_STATE = new HashMap<>();
     private static final Map<UUID, RememberedCoronerVeteranNightVision> CORONER_VETERAN_NIGHT_VISION = new HashMap<>();
     private static boolean registered;
 
@@ -48,27 +41,16 @@ public final class VeteranBlackoutService {
         // Achievement record: edges the purchase or the power restoration did not already record (the blackout running out).
         // 成就记录：购买或电力恢复没有记下的边沿（停电时间耗尽）。
         BlackoutRecorder.tick(world, active);
-        RegistryKey<World> worldKey = world.getRegistryKey();
-        boolean previous = LAST_BLACKOUT_STATE.getOrDefault(worldKey, false);
-        boolean changed = previous != active;
-        LAST_BLACKOUT_STATE.put(worldKey, active);
-
         if (active) {
             refreshCoronerVeteranBlackoutSight(world);
         } else {
             clearCoronerVeteranBlackoutSight(world);
         }
-
-        if (changed || (active && world.getTime() % ACTIVE_RESYNC_INTERVAL_TICKS == 0)) {
-            syncToWorld(world, active);
-        }
     }
 
     public static void clear(ServerWorld world) {
-        LAST_BLACKOUT_STATE.put(world.getRegistryKey(), false);
         BlackoutRecorder.clear(world);
         clearCoronerVeteranBlackoutSight(world);
-        syncToWorld(world, false);
     }
 
     private static BlackoutEffect.BlackoutResult beforeBlackoutEffect(ServerPlayerEntity player, int durationTicks) {
@@ -169,13 +151,6 @@ public final class VeteranBlackoutService {
 
     private static boolean matchesDuration(int currentDurationTicks, int expectedDurationTicks) {
         return Math.abs(currentDurationTicks - expectedDurationTicks) <= BLACKOUT_EFFECT_DURATION_TOLERANCE_TICKS;
-    }
-
-    private static void syncToWorld(ServerWorld world, boolean active) {
-        SyncVeteranBlackoutS2CPacket packet = new SyncVeteranBlackoutS2CPacket(active);
-        for (ServerPlayerEntity player : world.getPlayers()) {
-            ServerPlayNetworking.send(player, packet);
-        }
     }
 
     private record RememberedCoronerVeteranNightVision(int durationTicks, long worldTime) {
