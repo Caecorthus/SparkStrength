@@ -1,6 +1,7 @@
 package annina.sparkstrength.tablet;
 
 import annina.sparkstrength.component.tablet.TabletWorldComponent;
+import annina.sparkstrength.sabotage.BlackoutSightService;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -96,6 +97,7 @@ public final class TabletLinkService {
                 overlay(actor, "message.sparkstrength.tablet.link.linked", name(target));
                 overlay(target, "message.sparkstrength.tablet.link.linked", name(actor));
                 TabletStateService.syncPair(actor, target);
+                BlackoutSightService.linked(actor, target);
             }
             case IGNORE_PENDING -> {
                 // Held right-click re-fires every 4 ticks; keep the original window and prompt.

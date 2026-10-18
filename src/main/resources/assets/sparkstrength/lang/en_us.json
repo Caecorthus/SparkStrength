@@ -284,7 +284,7 @@
   "message.sparkstrength.tablet.link.incoming_multi": "%s want to link tablets — Shift + right-click one before its timer ends",
   "message.sparkstrength.tablet.link.incoming_entry": "%1$s (%2$s s)",
   "message.sparkstrength.tablet.link.expired": "Link request expired.",
-  "message.sparkstrength.tablet.link.linked": "Linked with %s — you can now see each other's names in the killer channel.",
+  "message.sparkstrength.tablet.link.linked": "Linked with %s: you see each other's names and, in blackouts, outlines.",
   "message.sparkstrength.tablet.link.already": "Already linked with %s.",
   "message.sparkstrength.tablet.police_identities_unlocked": "You completed %s tasks — you can now see the other members' names in the vigilante channel.",
   "replay.global.sparkstrength.noisemaker_glow_started": "%s lit up %s",

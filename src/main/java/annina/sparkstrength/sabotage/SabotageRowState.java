@@ -7,7 +7,7 @@ package annina.sparkstrength.sabotage;
 public enum SabotageRowState {
     /** No junction box of this type hacked yet. / 还没有入侵过这一类接线箱。 */
     LOCKED(0),
-    /** Unlocked; usable once the 90 s wait is over (seconds = remaining). / 已解锁，90 秒等待结束后可用（seconds 为剩余秒数）。 */
+    /** Unlocked; usable once the post-unlock wait is over (seconds = remaining). / 已解锁，等待结束后可用（seconds 为剩余秒数）。 */
     ARMING(1),
     READY(2),
     /** Shared team cooldown (seconds = remaining). / 团队共享冷却（seconds 为剩余秒数）。 */
