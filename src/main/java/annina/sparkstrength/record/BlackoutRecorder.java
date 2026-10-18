@@ -11,11 +11,11 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Writes the blackout record events (S8 blackout_state, S9 flashlight_blackout) from one shared per-world state, so
  * each real edge is recorded once by whichever caller sees it first: the shop purchase (start, with the buyer) and the
- * Engineer's power restoration (end, with the buyer) record at the moment they act; the world tick records whatever
+ * Engineer's Sabotage Repair (end, with the buyer) record at the moment they act; the world tick records whatever
  * is left (the blackout running out, or a start from an unknown source). Server thread only. A recording failure is
  * logged and swallowed.
  * 用同一份按世界的状态写入停电记录事件（S8 blackout_state、S9 flashlight_blackout），每个真实边沿只由最先看到它的调用方记录一次：
- * 商店购买（开始，带购买者）与工程师恢复电力（结束，带购买者）在发生的当下记录；世界 tick 记录剩下的边沿（停电时间耗尽，
+ * 商店购买（开始，带购买者）与工程师破坏维修（结束，带购买者）在发生的当下记录；世界 tick 记录剩下的边沿（停电时间耗尽，
  * 或来源未知的开始）。仅限服务端线程。记录失败只写日志并吞掉异常。
  */
 public final class BlackoutRecorder {
@@ -77,7 +77,7 @@ public final class BlackoutRecorder {
         }
     }
 
-    /** The power restoration bought by {@code buyer} just reset the blackout. / 该购买者买下的电力恢复刚刚重置了停电。 */
+    /** The Sabotage Repair bought by {@code buyer} just reset the blackout. / 该购买者买下的破坏维修刚刚重置了停电。 */
     public static void restored(ServerPlayerEntity buyer) {
         try {
             ServerWorld world = buyer.getServerWorld();
@@ -86,7 +86,7 @@ public final class BlackoutRecorder {
                     ? AchievementRecords.BLACKOUT_CAUSE_UNKNOWN
                     : AchievementRecords.BLACKOUT_CAUSE_POWER_RESTORATION);
         } catch (RuntimeException error) {
-            SparkStrength.LOGGER.warn("Could not record the power restoration", error);
+            SparkStrength.LOGGER.warn("Could not record the Sabotage Repair", error);
         }
     }
 

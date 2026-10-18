@@ -31,8 +31,8 @@ public final class SabotageRules {
     public static final int AUTO_UNLOCK_DELAY_TICKS = 1_800;
     /** Shared team cooldown, counted from the moment the lights come back: 2.5 min. / 团队共享冷却，从来电时起算：2.5 分钟。 */
     public static final int TEAM_COOLDOWN_TICKS = 3_000;
-    /** Team cooldown after the Engineer's power restoration: 90 s. / 工程师电力恢复后的团队冷却：90 秒。 */
-    public static final int POWER_RESTORATION_COOLDOWN_TICKS = 1_800;
+    /** Team cooldown after the Engineer's remote Sabotage Repair, lights or engine: 90 s. / 工程师远程破坏维修（灯光或动力）后的团队冷却：90 秒。 */
+    public static final int REMOTE_REPAIR_COOLDOWN_TICKS = 1_800;
 
     public static final double CHANNEL_RANGE = 4.5;
     /** Vanilla re-sends a held block use every 4 ticks; a longer gap means the button was released. / 原版按住使用键每 4 tick 重发一次；间隔更久说明已松手。 */

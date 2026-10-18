@@ -1,6 +1,7 @@
 package annina.sparkstrength.role.engineer;
 
 import annina.sparkstrength.record.BlackoutRecorder;
+import annina.sparkstrength.sabotage.EngineSabotageService;
 import annina.sparkstrength.sabotage.SabotageService;
 import dev.doctor4t.wathe.api.event.ShopPurchase;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -20,16 +21,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 工程师电力恢复系统。
+ * 工程师破坏维修：远程修复当前的一次破坏（灯光或动力）。
  *
  * <p>购买是否成功由商店 {@code onBuy} 回调决定；购买成功后的扣钱、商店购买记录仍交给 Wathe。
  * 我们只在 {@link ShopPurchase#AFTER} 里拿到真实支付价格，然后把这笔钱平分给存活杀手。
- * 灯光破坏的团队冷却由破坏系统在恢复时改为较短的一档（SabotageRules.POWER_RESTORATION_COOLDOWN_TICKS）。</p>
+ * 远程修复后的团队冷却由破坏系统改为较短的一档（SabotageRules.REMOTE_REPAIR_COOLDOWN_TICKS）。</p>
  */
-public final class EngineerPowerRestorationService {
+public final class EngineerSabotageRepairService {
     private static boolean registered;
 
-    private EngineerPowerRestorationService() {
+    private EngineerSabotageRepairService() {
     }
 
     public static synchronized void register() {
@@ -37,40 +38,47 @@ public final class EngineerPowerRestorationService {
             return;
         }
         registered = true;
-        ShopPurchase.AFTER.register(EngineerPowerRestorationService::afterPurchase);
+        ShopPurchase.AFTER.register(EngineerSabotageRepairService::afterPurchase);
     }
 
-    public static boolean tryRestorePower(PlayerEntity buyer) {
-        WorldBlackoutComponent blackout = WorldBlackoutComponent.KEY.get(buyer.getWorld());
+    /** Wathe calls {@code onBuy} on the server only. / Wathe 只在服务端调用 onBuy。 */
+    public static boolean tryRepair(PlayerEntity buyer) {
+        if (!(buyer instanceof ServerPlayerEntity repairer)) {
+            return false;
+        }
+        ServerWorld world = repairer.getServerWorld();
+        // The engine holds the one sabotage slot until it is repaired, in every phase.
+        // 动力破坏在任何阶段都占着唯一的破坏名额，直到修好。
+        if (EngineSabotageService.repairRemotely(world, repairer)) {
+            return true;
+        }
+
+        WorldBlackoutComponent blackout = WorldBlackoutComponent.KEY.get(world);
         if (!blackout.isBlackoutActive()) {
-            buyer.sendMessage(Text.translatable("message.sparkstrength.power_restoration.unavailable"), true);
+            repairer.sendMessage(Text.translatable("message.sparkstrength.power_restoration.unavailable"), true);
             return false;
         }
 
         blackout.reset();
-        if (buyer.getWorld() instanceof ServerWorld serverWorld) {
-            clearBlackoutPotionEffects(serverWorld);
-            for (ServerPlayerEntity player : serverWorld.getPlayers()) {
-                player.playSoundToPlayer(WatheSounds.BLOCK_LIGHT_TOGGLE, SoundCategory.PLAYERS, 1.0F, 1.0F);
-            }
-            // Ends a lights sabotage too; its team cooldown becomes the short one.
-            // 同时结束灯光破坏；其团队冷却改为较短的那一档。
-            SabotageService.onPowerRestored(serverWorld);
+        clearBlackoutPotionEffects(world);
+        for (ServerPlayerEntity player : world.getPlayers()) {
+            player.playSoundToPlayer(WatheSounds.BLOCK_LIGHT_TOGGLE, SoundCategory.PLAYERS, 1.0F, 1.0F);
         }
-        if (buyer instanceof ServerPlayerEntity restorer) {
-            BlackoutRecorder.restored(restorer);
-        }
+        // Ends a lights sabotage too; its team cooldown becomes the short one.
+        // 同时结束灯光破坏；其团队冷却改为较短的那一档。
+        SabotageService.onLightsRepairedRemotely(world);
+        BlackoutRecorder.restored(repairer);
         return true;
     }
 
     private static void afterPurchase(ServerPlayerEntity buyer, ShopEntry entry, int index, int pricePaid) {
-        if (!EngineerRules.POWER_RESTORATION_ENTRY_ID.equals(entry.id())) {
+        if (!EngineerRules.SABOTAGE_REPAIR_ENTRY_ID.equals(entry.id())) {
             return;
         }
 
         ServerWorld world = buyer.getServerWorld();
         List<ServerPlayerEntity> aliveKillers = aliveKillers(world);
-        distributeRestorationCost(aliveKillers, pricePaid);
+        distributeRepairCost(aliveKillers, pricePaid);
     }
 
     private static void clearBlackoutPotionEffects(ServerWorld world) {
@@ -92,7 +100,7 @@ public final class EngineerPowerRestorationService {
         return killers;
     }
 
-    private static void distributeRestorationCost(List<ServerPlayerEntity> aliveKillers, int pricePaid) {
+    private static void distributeRepairCost(List<ServerPlayerEntity> aliveKillers, int pricePaid) {
         if (aliveKillers.isEmpty() || pricePaid <= 0) {
             return;
         }
