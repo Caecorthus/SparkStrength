@@ -3,8 +3,8 @@ package annina.sparkstrength.role.coroner;
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.compat.SparkWitchCompat;
 import annina.sparkstrength.role.bartender.BartenderRules;
-import annina.sparkstrength.role.engineer.EngineerPowerRestorationService;
 import annina.sparkstrength.role.engineer.EngineerRules;
+import annina.sparkstrength.role.engineer.EngineerSabotageRepairService;
 import annina.sparkstrength.role.professor.ProfessorSerumRules;
 import annina.sparkstrength.role.professor.ProfessorSerumShopService;
 import annina.sparkstrength.role.professor.ProfessorSerumType;
@@ -210,11 +210,11 @@ public final class CoronerShopService {
                 ShopEntry.Type.TOOL
         ).actualStack(SparkStrengthItems.captureDevice().getDefaultStack()).build());
         context.addEntry(new ShopEntry.Builder(
-                EngineerRules.POWER_RESTORATION_ENTRY_ID,
-                powerRestorationDisplayStack(),
-                EngineerRules.POWER_RESTORATION_PRICE,
+                EngineerRules.SABOTAGE_REPAIR_ENTRY_ID,
+                sabotageRepairDisplayStack(),
+                EngineerRules.SABOTAGE_REPAIR_PRICE,
                 ShopEntry.Type.TOOL
-        ).onBuy(EngineerPowerRestorationService::tryRestorePower).build());
+        ).onBuy(EngineerSabotageRepairService::tryRepair).build());
     }
 
     private static void addBomberShop(BuildShopEntries.ShopContext context) {
@@ -300,7 +300,7 @@ public final class CoronerShopService {
         return stack;
     }
 
-    private static ItemStack powerRestorationDisplayStack() {
+    private static ItemStack sabotageRepairDisplayStack() {
         ItemStack stack = SparkStrengthItems.powerRestoration().getDefaultStack();
         stack.set(DataComponentTypes.ITEM_NAME, Text.translatable("shop.sparkstrength.engineer.power_restoration"));
         stack.set(DataComponentTypes.LORE, grayLore("shop.sparkstrength.engineer.power_restoration.description"));

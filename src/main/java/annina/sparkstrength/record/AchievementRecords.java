@@ -57,17 +57,20 @@ public final class AchievementRecords {
     /**
      * S15. World event at each edge of an engine sabotage: state string (one of the ENGINE_STATE_* values); outage_id
      * int, the same on every event of one sabotage; phase string (one of the ENGINE_PHASE_* values), the phase at that
-     * edge (for "repaired" and "aborted", the phase it ended in); actor = the initiator on "triggered", the repairer on
-     * "repaired", none otherwise.
+     * edge (for "repaired", "remote_repaired" and "aborted", the phase it ended in); actor = the initiator on
+     * "triggered", the repairer on "repaired" and "remote_repaired", none otherwise.
      * 动力破坏每个边沿的世界事件：state 为 ENGINE_STATE_* 之一；outage_id 为整数，同一次破坏的所有事件相同；phase 为
-     * ENGINE_PHASE_* 之一，即该边沿时的阶段（repaired 与 aborted 为结束时所处的阶段）；actor 在 triggered 时为发起者，
-     * 在 repaired 时为修理者，其余情况没有。
+     * ENGINE_PHASE_* 之一，即该边沿时的阶段（repaired、remote_repaired 与 aborted 为结束时所处的阶段）；actor 在
+     * triggered 时为发起者，在 repaired 与 remote_repaired 时为修理者，其余情况没有。
      */
     public static final String ENGINE_SABOTAGE = "sparkstrength:engine_sabotage";
 
     /** S8 cause: the lights went out through Wathe's blackout shop entry; actor = the buyer. / 经 Wathe 商店停电熄灯；actor 为购买者。 */
     public static final String BLACKOUT_CAUSE_PURCHASE = "purchase";
-    /** S8 cause: an Engineer's power restoration ended it early; actor = the buyer. / 工程师恢复电力提前结束；actor 为购买者。 */
+    /**
+     * S8 cause: an Engineer's Sabotage Repair ended it early; actor = the buyer. The value keeps the item's old name.
+     * 工程师的破坏维修提前结束；actor 为购买者。取值沿用该物品的旧名。
+     */
     public static final String BLACKOUT_CAUSE_POWER_RESTORATION = "power_restoration";
     /** S8 cause: the world tick saw the lights back with no known cause (the blackout ran out). / 世界 tick 看到来电且无已知原因（停电时间耗尽）。 */
     public static final String BLACKOUT_CAUSE_EXPIRED = "expired";
@@ -89,6 +92,11 @@ public final class AchievementRecords {
     public static final String ENGINE_STATE_EMERGENCY = "emergency";
     /** S15 state: someone finished a repair panel; actor = the repairer. / 有人完成了维修面板；actor 为修理者。 */
     public static final String ENGINE_STATE_REPAIRED = "repaired";
+    /**
+     * S15 state: an Engineer bought Sabotage Repair and ended it from anywhere; actor = the buyer.
+     * 工程师买下破坏维修，远程结束了它；actor 为购买者。
+     */
+    public static final String ENGINE_STATE_REMOTE_REPAIRED = "remote_repaired";
     /**
      * S15 state: ended without a repair (round over, map copied again, last unit gone); no actor.
      * 不经维修结束（对局结束、重新复制地图、最后一台装置没了）；没有 actor。

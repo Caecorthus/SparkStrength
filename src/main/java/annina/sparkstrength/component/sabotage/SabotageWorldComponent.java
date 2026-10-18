@@ -46,7 +46,9 @@ public final class SabotageWorldComponent implements Component {
     }
 
     public enum LogKind {
-        BOX_BROKEN(0), BOX_HACKED(1), BOX_REPAIRED(2), TRIGGERED(3), REPAIRED(4), POWER_RESTORED(5), EXPIRED(6),
+        BOX_BROKEN(0), BOX_HACKED(1), BOX_REPAIRED(2), TRIGGERED(3), REPAIRED(4),
+        /** The Engineer's Sabotage Repair from the shop. / 工程师在商店买下的破坏维修。 */
+        REMOTE_REPAIRED(5), EXPIRED(6),
         READY(7),
         /** The 60 s ran out: the train halted. / 60 秒已过：列车停驶。 */
         ENGINE_WRECKED(8),
