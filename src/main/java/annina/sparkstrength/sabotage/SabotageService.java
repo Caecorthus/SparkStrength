@@ -352,13 +352,13 @@ public final class SabotageService {
     }
 
     /**
-     * The Engineer's power restoration just reset Wathe's blackout. It only ever ends a lights outage; an engine
-     * sabotage carries on in every phase.
-     * 工程师的电力恢复刚刚重置了 Wathe 停电。它只会结束灯光熄灯；动力破坏在任何阶段都照常进行。
+     * The Engineer's Sabotage Repair just reset Wathe's blackout. Only a lights outage ends here; the engine has its
+     * own remote repair ({@link EngineSabotageService#repairRemotely}).
+     * 工程师的破坏维修刚刚重置了 Wathe 停电。这里只结束灯光熄灯；动力破坏有自己的远程维修（EngineSabotageService#repairRemotely）。
      */
-    public static void onPowerRestored(ServerWorld world) {
+    public static void onLightsRepairedRemotely(ServerWorld world) {
         SabotageWorldComponent sabotage = SabotageWorldComponent.KEY.get(world);
-        LightsSabotageService.finish(world, sabotage, LightsSabotageService.EndReason.POWER_RESTORED, null);
+        LightsSabotageService.finish(world, sabotage, LightsSabotageService.EndReason.REMOTE_REPAIRED, null);
         TabletStateService.syncToTabletHolders(world);
     }
 

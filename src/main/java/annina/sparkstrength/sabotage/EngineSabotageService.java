@@ -53,6 +53,11 @@ public final class EngineSabotageService {
     public enum EndReason {
         /** Someone finished a repair panel: cooldown starts, the train runs again. / 有人完成了维修面板：开始冷却，列车恢复行驶。 */
         REPAIRED,
+        /**
+         * The Engineer's Sabotage Repair from the shop: the short cooldown starts, the train runs again.
+         * 工程师在商店买下的破坏维修：开始较短的冷却，列车恢复行驶。
+         */
+        REMOTE_REPAIRED,
         /** Round over, map copied again, last unit gone: no cooldown, nobody credited. / 对局结束、重新复制地图、最后一台装置没了：不冷却，不记功劳。 */
         ABORTED
     }
@@ -265,6 +270,21 @@ public final class EngineSabotageService {
         return true;
     }
 
+    /**
+     * The Engineer's Sabotage Repair: ends an engine sabotage in any phase, from anywhere. False when none is on.
+     * 工程师的破坏维修：在任何阶段、任何位置结束动力破坏。没有动力破坏时返回 false。
+     */
+    public static boolean repairRemotely(ServerWorld world, ServerPlayerEntity repairer) {
+        // A shop packet can beat the end-of-tick update: run a due wreck first, so the record ends in a phase it entered.
+        // 商店包可能早于 tick 末尾的更新：先执行到期的损毁，记录里结束时的阶段才是进入过的阶段。
+        advance(world);
+        if (!SabotageWorldComponent.KEY.get(world).isEngineOn()) {
+            return false;
+        }
+        finish(world, EndReason.REMOTE_REPAIRED, repairer, null);
+        return true;
+    }
+
     /** Ends the engine sabotage without a repair: no cooldown, nobody credited. / 不经维修结束动力破坏：不开始冷却，不记功劳。 */
     public static void abort(ServerWorld world) {
         finish(world, EndReason.ABORTED, null, null);
@@ -292,11 +312,15 @@ public final class EngineSabotageService {
         sabotage.endOutage();
         sabotage.clearEngine();
         setUnitLooks(world, sabotage.engineUnits(), EngineCondition.INTACT);
-        EngineRepairService.closeAll(world, reason == EndReason.REPAIRED
+        boolean repaired = reason != EndReason.ABORTED;
+        EngineRepairService.closeAll(world, repaired
                 ? CloseBreakerRepairS2CPacket.REASON_POWER_BACK : CloseBreakerRepairS2CPacket.REASON_OTHER);
-        if (reason == EndReason.REPAIRED) {
-            sabotage.setTeamCooldownEndTick(now + SabotageRules.TEAM_COOLDOWN_TICKS);
-            sabotage.log(now, SabotageWorldComponent.LogKind.REPAIRED, "", SabotageType.ENGINE);
+        if (repaired) {
+            boolean remote = reason == EndReason.REMOTE_REPAIRED;
+            sabotage.setTeamCooldownEndTick(now + (remote
+                    ? SabotageRules.REMOTE_REPAIR_COOLDOWN_TICKS : SabotageRules.TEAM_COOLDOWN_TICKS));
+            sabotage.log(now, remote ? SabotageWorldComponent.LogKind.REMOTE_REPAIRED
+                    : SabotageWorldComponent.LogKind.REPAIRED, "", SabotageType.ENGINE);
             celebrate(world, sabotage.engineUnits(), unit, phase != null && phase != EnginePhase.CRITICAL);
             Text restored = Text.translatable("message.sparkstrength.engine.repaired").formatted(Formatting.GREEN);
             for (ServerPlayerEntity player : world.getPlayers()) {

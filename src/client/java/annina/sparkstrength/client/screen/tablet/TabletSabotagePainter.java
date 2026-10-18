@@ -244,7 +244,7 @@ final class TabletSabotagePainter {
         int color = switch (kind) {
             case BOX_HACKED, READY -> TabletTheme.SABOTAGE.base();
             case TRIGGERED, ENGINE_WRECKED -> TabletTheme.DANGER;
-            case REPAIRED, POWER_RESTORED, BOX_REPAIRED -> TabletTheme.SUCCESS;
+            case REPAIRED, REMOTE_REPAIRED, BOX_REPAIRED -> TabletTheme.SUCCESS;
             case BOX_BROKEN, ENGINE_EMERGENCY -> TabletTheme.WARNING;
             case EXPIRED -> TabletTheme.TEXT_2;
         };

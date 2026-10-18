@@ -38,7 +38,7 @@ import java.util.List;
 public final class LightsSabotageService {
     public enum TriggerResult { OK, BUSY, NO_LAMPS }
 
-    public enum EndReason { REPAIRED, POWER_RESTORED, EXPIRED, ROUND_END }
+    public enum EndReason { REPAIRED, REMOTE_REPAIRED, EXPIRED, ROUND_END }
 
     private LightsSabotageService() {
     }
@@ -161,9 +161,9 @@ public final class LightsSabotageService {
                     BlackoutRecorder.breakerRepaired(actor);
                 }
             }
-            case POWER_RESTORED -> {
-                sabotage.setTeamCooldownEndTick(now + SabotageRules.POWER_RESTORATION_COOLDOWN_TICKS);
-                sabotage.log(now, SabotageWorldComponent.LogKind.POWER_RESTORED, "", outage.type());
+            case REMOTE_REPAIRED -> {
+                sabotage.setTeamCooldownEndTick(now + SabotageRules.REMOTE_REPAIR_COOLDOWN_TICKS);
+                sabotage.log(now, SabotageWorldComponent.LogKind.REMOTE_REPAIRED, "", outage.type());
             }
             case EXPIRED -> {
                 sabotage.setTeamCooldownEndTick(now + SabotageRules.TEAM_COOLDOWN_TICKS);

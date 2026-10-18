@@ -17,7 +17,7 @@ import java.util.List;
  * 工程师专属商店。
  *
  * <p>工程师原本的维修工具由 NoellesRoles 职业逻辑发放，不从这里移除。
- * 这里仅重建商店条目，保证工程师商店只出售本增强要求的捕捉装置和电力恢复系统。</p>
+ * 这里仅重建商店条目，保证工程师商店只出售本增强要求的捕捉装置和破坏维修。</p>
  */
 public final class EngineerShopService {
     private static boolean registered;
@@ -47,11 +47,11 @@ public final class EngineerShopService {
                 ShopEntry.Type.TOOL
         ).actualStack(SparkStrengthItems.captureDevice().getDefaultStack()).build());
         context.addEntry(new ShopEntry.Builder(
-                EngineerRules.POWER_RESTORATION_ENTRY_ID,
-                powerRestorationDisplayStack(),
-                EngineerRules.POWER_RESTORATION_PRICE,
+                EngineerRules.SABOTAGE_REPAIR_ENTRY_ID,
+                sabotageRepairDisplayStack(),
+                EngineerRules.SABOTAGE_REPAIR_PRICE,
                 ShopEntry.Type.TOOL
-        ).onBuy(EngineerPowerRestorationService::tryRestorePower).build());
+        ).onBuy(EngineerSabotageRepairService::tryRepair).build());
     }
 
     private static ItemStack captureDeviceDisplayStack() {
@@ -64,7 +64,7 @@ public final class EngineerShopService {
         return stack;
     }
 
-    private static ItemStack powerRestorationDisplayStack() {
+    private static ItemStack sabotageRepairDisplayStack() {
         ItemStack stack = SparkStrengthItems.powerRestoration().getDefaultStack();
         stack.set(DataComponentTypes.ITEM_NAME, Text.translatable("shop.sparkstrength.engineer.power_restoration"));
         stack.set(DataComponentTypes.LORE, new LoreComponent(List.of(
