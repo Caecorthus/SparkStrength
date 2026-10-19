@@ -1,6 +1,7 @@
 package annina.sparkstrength.role.undercover;
 
 import annina.sparkstrength.SparkStrengthItems;
+import annina.sparkstrength.component.undercover.RemovedDoorsWorldComponent;
 import annina.sparkstrength.network.sabotage.ChannelProgressS2CPacket;
 import annina.sparkstrength.role.attendant.DoorLogService;
 import annina.sparkstrength.sabotage.SabotageActionLocks;
@@ -10,7 +11,6 @@ import dev.doctor4t.wathe.block.SmallDoorBlock;
 import dev.doctor4t.wathe.block.TrainDoorBlock;
 import dev.doctor4t.wathe.block_entity.DoorBlockEntity;
 import dev.doctor4t.wathe.block_entity.SmallDoorBlockEntity;
-import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.index.WatheBlocks;
 import dev.doctor4t.wathe.record.GameRecordManager;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -46,14 +46,14 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * The stage-2 Undercover chops doors down with the tactical tomahawk (owner 2026-10-19): holding right-click on a door
- * it cannot simply open (locked, jammed, or a train door during the round) takes 5 s for glass, 10 s for wood and 30 s
- * for steel, then the door is gone: both halves, plus the paired leaf of a double door. Afterwards the tomahawk cools
- * down 10 / 20 / 60 s. An unlocked door just opens as usual. Removed doors are recorded and put back at round end (and
- * on server stop), so maps without Wathe's train copy never lose them. Server thread only.
- * 二阶段卧底用战术斧拆门（负责人 2026-10-19）：对着自己打不开的门（锁着、被堵、或对局中的列车门）按住右键，
- * 玻璃门 5 秒、木门 10 秒、钢门 30 秒后整扇门消失：上下两半连同双开门的另一扇。之后战术斧冷却 10 / 20 / 60 秒。
- * 没锁的门照常打开。被拆的门会记录下来，在回合结束（以及服务器关闭）时原样放回，所以没有 Wathe 车厢复制的地图也不会少门。
+ * The stage-2 Undercover chops doors down with the tactical tomahawk (owner 2026-10-19): holding right-click on any
+ * closed, intact door takes 5 s for glass, 10 s for wood and 30 s for steel, then the door is gone: both halves, plus
+ * the paired leaf of a double door. Afterwards the tomahawk cools down 10 / 20 / 60 s. To simply open a door, hold
+ * something else. Removed doors are saved with the world ({@link RemovedDoorsWorldComponent}) and put back at round
+ * start and end, on server stop and on the next server start, so no map ever loses one. Server thread only.
+ * 二阶段卧底用战术斧拆门（负责人 2026-10-19）：对着任何关着且完好的门按住右键，玻璃门 5 秒、木门 10 秒、钢门 30 秒后
+ * 整扇门消失：上下两半连同双开门的另一扇。之后战术斧冷却 10 / 20 / 60 秒。想正常开门就换别的东西拿在手上。
+ * 被拆的门随世界保存（RemovedDoorsWorldComponent），在回合开始与结束、服务器关闭以及下次启动时原样放回，任何地图都不会少门。
  * 仅限服务端线程。
  *
  * <p>The progress bar, crack overlay and client cancel reuse the junction box channel plumbing
@@ -63,15 +63,18 @@ import java.util.UUID;
 public final class DoorBreachService {
     private static final int FIRST_CHANNEL_ID = 1 << 24;
     private static final int CHOP_SOUND_INTERVAL_TICKS = 10;
+    /**
+     * A breach runs up to 30 s, so one late packet or client hiccup must not throw it away: the server waits 1.5 s for
+     * the next heartbeat (the boxes' short channels wait 0.5 s). Letting go still ends it at once, because the client
+     * sends a cancel. / 拆门最长 30 秒，一个迟到的包或客户端卡顿不该让它前功尽弃：服务端等下一次心跳 1.5 秒（接线箱的短读条
+     * 等 0.5 秒）。松手仍会立即结束，因为客户端会发送取消。
+     */
+    private static final int HEARTBEAT_TIMEOUT_TICKS = 30;
     private static final Map<UUID, Channel> CHANNELS = new HashMap<>();
-    private static final Map<RegistryKey<World>, List<RemovedBlock>> REMOVED = new HashMap<>();
     private static int nextChannelId = FIRST_CHANNEL_ID;
     private static boolean registered;
 
     private DoorBreachService() {
-    }
-
-    private record RemovedBlock(BlockPos pos, BlockState state, @Nullable NbtCompound blockEntity) {
     }
 
     private static final class Channel {
@@ -102,6 +105,13 @@ public final class DoorBreachService {
         DoorInteraction.EVENT.register(DoorBreachService::onDoorInteraction);
         ServerTickEvents.END_WORLD_TICK.register(DoorBreachService::tick);
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> CHANNELS.remove(handler.player.getUuid()));
+        // Doors left out by a crash come back on the next start; a normal stop puts them back first.
+        // 崩溃时留下的缺门在下次启动时放回；正常关服会先放回。
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+            for (ServerWorld world : server.getWorlds()) {
+                restoreAll(world);
+            }
+        });
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
             for (ServerWorld world : server.getWorlds()) {
                 restoreAll(world);
@@ -116,7 +126,7 @@ public final class DoorBreachService {
             return DoorInteraction.DoorInteractionResult.PASS;
         }
         UndercoverRules.DoorKind kind = kindOf(context.getState());
-        if (kind == null || !blocksHolder(context)) {
+        if (kind == null || !breachable(context.getEntity())) {
             return DoorInteraction.DoorInteractionResult.PASS;
         }
         if (context.getPlayer() instanceof ServerPlayerEntity player && context.getWorld() instanceof ServerWorld world) {
@@ -136,21 +146,9 @@ public final class DoorBreachService {
         return state.getBlock() instanceof TrainDoorBlock ? UndercoverRules.DoorKind.STEEL : null;
     }
 
-    /**
-     * A closed, intact door the holder could not open by hand: keyed or jammed small doors, or a train door while the
-     * round runs. An unlocked door opens as usual instead.
-     * 关着且完好、持有者徒手打不开的门：带钥匙名或被堵的小门，或对局中的列车门。没锁的门照常打开。
-     */
-    private static boolean blocksHolder(DoorInteraction.DoorInteractionContext context) {
-        DoorBlockEntity door = context.getEntity();
-        if (door.isOpen() || door.isBlasted() || context.getPlayer().isCreative()) {
-            return false;
-        }
-        if (context.getDoorType() == DoorInteraction.DoorType.TRAIN_DOOR) {
-            return GameWorldComponent.KEY.get(context.getWorld()).getGameStatus()
-                    != GameWorldComponent.GameStatus.INACTIVE;
-        }
-        return !door.getKeyName().isEmpty() || door.isJammed();
+    /** Any closed, intact door, locked or not (owner: "右键可以对准一扇门进行破坏"). / 任何关着且完好的门，锁不锁都行。 */
+    private static boolean breachable(DoorBlockEntity door) {
+        return !door.isOpen() && !door.isBlasted();
     }
 
     private static void onBreach(ServerWorld world, ServerPlayerEntity player, BlockPos lowerPos,
@@ -232,7 +230,7 @@ public final class DoorBreachService {
         if (!UndercoverRoles.isLivingStage2(player) || player.isSneaking() || SabotageActionLocks.isLocked(player)
                 || !player.getMainHandStack().isOf(SparkStrengthItems.tacticalTomahawk())
                 || player.getItemCooldownManager().isCoolingDown(SparkStrengthItems.tacticalTomahawk())
-                || now - channel.lastHeartbeatTick > SabotageRules.HEARTBEAT_TIMEOUT_TICKS) {
+                || now - channel.lastHeartbeatTick > HEARTBEAT_TIMEOUT_TICKS) {
             return false;
         }
         BlockState state = world.getBlockState(channel.lowerPos);
@@ -265,7 +263,7 @@ public final class DoorBreachService {
         DoorLogService.recordBroken(world, lowerPos);
         // Capture everything first: removing one half makes the other one update itself away.
         // 先全部记下：移除一半会让另一半在更新中自行消失。
-        List<RemovedBlock> taken = new ArrayList<>();
+        List<RemovedDoorsWorldComponent.RemovedBlock> taken = new ArrayList<>();
         for (BlockPos lower : lowers) {
             for (BlockPos pos : List.of(lower, lower.up())) {
                 BlockState state = world.getBlockState(pos);
@@ -273,17 +271,19 @@ public final class DoorBreachService {
                     continue;
                 }
                 BlockEntity blockEntity = world.getBlockEntity(pos);
-                taken.add(new RemovedBlock(pos.toImmutable(), state, blockEntity == null ? null
-                        : blockEntity.createNbtWithIdentifyingData(world.getRegistryManager())));
+                taken.add(new RemovedDoorsWorldComponent.RemovedBlock(pos.toImmutable(), state, blockEntity == null
+                        ? null : blockEntity.createNbtWithIdentifyingData(world.getRegistryManager())));
             }
         }
-        for (RemovedBlock block : taken) {
+        // Recorded before anything is removed, so a crash mid-way still knows every half.
+        // 先登记再移除，即使中途崩溃也记得每一半。
+        RemovedDoorsWorldComponent.KEY.get(world).add(taken);
+        for (RemovedDoorsWorldComponent.RemovedBlock block : taken) {
             world.syncWorldEvent(WorldEvents.BLOCK_BROKEN, block.pos(), Block.getRawIdFromState(block.state()));
             world.setBlockState(block.pos(), Blocks.AIR.getDefaultState(),
                     Block.NOTIFY_LISTENERS | Block.FORCE_STATE | Block.SKIP_DROPS);
             world.setBlockBreakingInfo(crackId(block.pos()), block.pos(), -1);
         }
-        REMOVED.computeIfAbsent(world.getRegistryKey(), key -> new ArrayList<>()).addAll(taken);
         world.playSound(null, lowerPos.up(), breakSound(kind), SoundCategory.BLOCKS, 1.0F, 1.0F);
         player.swingHand(Hand.MAIN_HAND, true);
         NbtCompound extra = new NbtCompound();
@@ -291,19 +291,23 @@ public final class DoorBreachService {
         GameRecordManager.recordItemUse(player, SparkStrengthItems.TACTICAL_TOMAHAWK_ID, null, extra);
     }
 
-    /** Round end and server stop: every removed door goes back where it was, unless something else is there now. / 回合结束与服务器关闭：被拆的门原样放回，除非那里已有别的东西。 */
+    /**
+     * Round start and end, server start and stop: every removed door goes back where it was, unless something else is
+     * there now. / 回合开始与结束、服务器启动与关闭：被拆的门原样放回，除非那里已有别的东西。
+     */
     public static void restoreAll(ServerWorld world) {
         CHANNELS.values().removeIf(channel -> channel.world == world.getRegistryKey());
-        List<RemovedBlock> removed = REMOVED.remove(world.getRegistryKey());
-        if (removed == null) {
+        RemovedDoorsWorldComponent record = RemovedDoorsWorldComponent.KEY.get(world);
+        if (record.isEmpty()) {
             return;
         }
-        for (RemovedBlock block : removed) {
+        List<RemovedDoorsWorldComponent.RemovedBlock> removed = record.takeAll();
+        for (RemovedDoorsWorldComponent.RemovedBlock block : removed) {
             if (world.getBlockState(block.pos()).isAir()) {
                 world.setBlockState(block.pos(), block.state(), Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
             }
         }
-        for (RemovedBlock block : removed) {
+        for (RemovedDoorsWorldComponent.RemovedBlock block : removed) {
             BlockEntity blockEntity = world.getBlockEntity(block.pos());
             if (block.blockEntity() != null && blockEntity != null && world.getBlockState(block.pos()) == block.state()) {
                 blockEntity.read(block.blockEntity(), world.getRegistryManager());

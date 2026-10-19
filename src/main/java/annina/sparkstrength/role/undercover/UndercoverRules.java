@@ -17,8 +17,11 @@ public final class UndercoverRules {
 
     /** Killers see a stage-2 Undercover in line of sight in the role's own colour. / 杀手视线内的二阶段卧底显示为职业色。 */
     public static final int HIGHLIGHT_COLOR = 0xC0C0C0;
-    /** Thermal targets are drawn magenta; the thermal post shader turns exactly this into white heat. / 热成像目标画成品红，由后处理映射为白热。 */
-    public static final int THERMAL_COLOR = 0xFF00FF;
+    /**
+     * Thermal's fallback outline where the T-7 heat image can't run (an Iris shader pack, or a failed post chain).
+     * 热成像图无法运行时（Iris 光影包，或后处理加载失败）使用的退回描边颜色。
+     */
+    public static final int THERMAL_COLOR = 0xFFFFFF;
     /** How far the line-of-sight highlight and thermal reach, in blocks. / 视线高亮与热成像的距离（格）。 */
     public static final double SIGHT_RANGE = 48.0;
 
@@ -84,9 +87,9 @@ public final class UndercoverRules {
     }
 
     /**
-     * Thermal vision of a stage-2 Undercover: living players it can see are magenta, invisible ones included.
-     * Anything else keeps whatever it would have had.
-     * 二阶段卧底的热成像：视线内的活人（含隐身者）显示为品红；其余保持原样。
+     * Thermal fallback outline (only when the heat image can't run): living players it can see are white, invisible
+     * ones included. Anything else keeps whatever it would have had.
+     * 热成像退回描边（仅在热图无法运行时）：视线内的活人（含隐身者）显示为白色；其余保持原样。
      *
      * @return the colour, or {@code null} when this rule does not apply / 颜色；null 表示本规则不适用
      */

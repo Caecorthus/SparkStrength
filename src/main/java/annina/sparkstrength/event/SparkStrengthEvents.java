@@ -274,6 +274,9 @@ public final class SparkStrengthEvents {
 
         GameEvents.ON_FINISH_INITIALIZE.register((world, gameComponent) -> {
             if (world instanceof ServerWorld serverWorld) {
+                // Doors chopped down last round (or before a crash) are back before this one starts.
+                // 上一局（或崩溃前）被拆的门在本局开始前放回。
+                DoorBreachService.restoreAll(serverWorld);
                 // 该事件发生在 Wathe 完成角色/地图初始化、切换 ACTIVE 之前，正好作为本局保护期起点。
                 PlayerCollisionGraceWorldComponent.KEY.get(serverWorld).markRoundStart(serverWorld.getTime());
                 MorphBodyDisguiseWorldComponent.KEY.get(serverWorld).clearRoundState();

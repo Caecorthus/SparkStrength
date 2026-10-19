@@ -8,9 +8,9 @@ import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.util.Identifier;
 
 /**
- * Empty hand, Shift + right-click at nothing while wearing the CQCM mask: take it off. Vanilla sends nothing for an
- * empty-hand use, hence this packet; the server re-checks everything.
- * 戴着 CQCM 面具时空手 Shift + 右键空处：摘下面具。原版空手使用不发包，所以需要这个包；服务端会重新检查一切。
+ * Empty hand, Shift + right-click (not at a player) while wearing the CQCM mask: take it off. Vanilla sends nothing
+ * for an empty-hand use in the air, hence this packet; the server re-checks everything.
+ * 戴着 CQCM 面具时空手 Shift + 右键（不对着玩家）：摘下面具。原版空手对空使用不发包，所以需要这个包；服务端会重新检查一切。
  */
 public record UndercoverMaskOffC2SPacket() implements CustomPayload {
     public static final Identifier PAYLOAD_ID = SparkStrength.id("undercover_mask_off");

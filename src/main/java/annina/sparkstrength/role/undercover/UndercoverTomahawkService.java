@@ -22,6 +22,11 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.RaycastContext;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
@@ -44,6 +49,8 @@ public final class UndercoverTomahawkService {
     /** Pass this constant to killPlayer; other code compares death reasons by reference. / 传给 killPlayer 的常量；其他代码按引用比较死因。 */
     public static final Identifier DEATH_REASON = SparkStrength.id("tomahawk");
     private static final float FULL_CHARGE_BASE = 0.5F;
+    /** Lag allowance on top of the 3-block reach. / 3 格射程之外的延迟容差。 */
+    private static final double REACH_TOLERANCE = 0.5;
     private static boolean registered;
 
     private UndercoverTomahawkService() {
@@ -64,12 +71,14 @@ public final class UndercoverTomahawkService {
         if (!held.isOf(tomahawk)) {
             return ActionResult.PASS;
         }
-        if (!(entity instanceof PlayerEntity target) || !UndercoverRoles.isLivingStage2(player)
-                || player.getAttackCooldownProgress(FULL_CHARGE_BASE) < 1.0F
+        // Read the charge first, then every swing spends it, hit or not (a click spam never keeps a charge).
+        // 先读蓄力，然后每次挥砍都会消耗，无论是否命中（连点不会保留蓄力）。
+        boolean charged = player.getAttackCooldownProgress(FULL_CHARGE_BASE) >= 1.0F;
+        player.resetLastAttackedTicks();
+        if (!(entity instanceof PlayerEntity target) || !UndercoverRoles.isLivingStage2(player) || !charged
                 || player.getItemCooldownManager().isCoolingDown(tomahawk)) {
             return ActionResult.FAIL;
         }
-        player.resetLastAttackedTicks();
         if (world.isClient) {
             return ActionResult.SUCCESS;
         }
@@ -80,8 +89,7 @@ public final class UndercoverTomahawkService {
     }
 
     private static void strike(ServerPlayerEntity attacker, ServerPlayerEntity victim, ItemStack held, Item tomahawk) {
-        if (!GameFunctions.isPlayerPlayingAndAlive(victim)
-                || attacker.squaredDistanceTo(victim) > square(UndercoverRules.TOMAHAWK_RANGE + 1.0)
+        if (!GameFunctions.isPlayerPlayingAndAlive(victim) || !inReach(attacker, victim)
                 || SabotageActionLocks.isLocked(attacker)
                 || SparkTraitsCompat.isMeleeActionBlocked(attacker, held)
                 || !SparkFactionCompat.canAffectPlayer(attacker, victim, DEATH_REASON)
@@ -108,7 +116,25 @@ public final class UndercoverTomahawkService {
         }
     }
 
-    private static double square(double value) {
-        return value * value;
+    /**
+     * Server truth for a forged or laggy attack packet: the victim's box is within the knife's 3 blocks of the eyes and
+     * nothing solid stands between (eyes to the victim's eyes or body centre).
+     * 对伪造或延迟的攻击包以服务端为准：目标碰撞箱距眼睛不超过刀的 3 格，且之间没有实心方块（眼睛到目标眼睛或身体中心）。
+     */
+    private static boolean inReach(ServerPlayerEntity attacker, ServerPlayerEntity victim) {
+        Vec3d eye = attacker.getEyePos();
+        Box box = victim.getBoundingBox();
+        Vec3d closest = new Vec3d(MathHelper.clamp(eye.x, box.minX, box.maxX),
+                MathHelper.clamp(eye.y, box.minY, box.maxY), MathHelper.clamp(eye.z, box.minZ, box.maxZ));
+        double reach = UndercoverRules.TOMAHAWK_RANGE + REACH_TOLERANCE;
+        if (eye.squaredDistanceTo(closest) > reach * reach) {
+            return false;
+        }
+        return clearLine(attacker, eye, victim.getEyePos()) || clearLine(attacker, eye, box.getCenter());
+    }
+
+    private static boolean clearLine(ServerPlayerEntity attacker, Vec3d from, Vec3d to) {
+        return attacker.getWorld().raycast(new RaycastContext(from, to, RaycastContext.ShapeType.COLLIDER,
+                RaycastContext.FluidHandling.NONE, attacker)).getType() == HitResult.Type.MISS;
     }
 }

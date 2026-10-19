@@ -105,7 +105,9 @@
     "sabotage.EngineWindExposureMixin",
     "sabotage.SabotageSkyLightMixin",
     "undercover.UndercoverInstinctArbiterMixin",
-    "undercover.UndercoverThermalGameRendererMixin"
+    "undercover.UndercoverThermalArmMixin",
+    "undercover.UndercoverThermalGameRendererMixin",
+    "undercover.UndercoverThermalSilhouetteMixin"
   ],
   "injectors": {
     "defaultRequire": 1

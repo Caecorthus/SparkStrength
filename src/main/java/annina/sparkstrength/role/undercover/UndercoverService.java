@@ -52,7 +52,6 @@ public final class UndercoverService {
     public static final Identifier BELL_ECHO_ACTION = Identifier.of("sparkwitch", "bell_echo");
     private static final int INVISIBILITY_TICKS = 60;
     private static final int RESYNC_TICKS = 40;
-    private static final int GUN_SWEEP_TICKS = 10;
 
     private UndercoverService() {
     }
@@ -61,7 +60,11 @@ public final class UndercoverService {
         long now = world.getTime();
         for (ServerPlayerEntity player : world.getPlayers()) {
             UndercoverPlayerComponent state = UndercoverPlayerComponent.KEY.get(player);
-            boolean livingUndercover = UndercoverRoles.isUndercover(player) && GameFunctions.isPlayerPlayingAndAlive(player);
+            boolean undercover = UndercoverRoles.isUndercover(player);
+            if (!undercover) {
+                stripBoundGear(player);
+            }
+            boolean livingUndercover = undercover && GameFunctions.isPlayerPlayingAndAlive(player);
             if (livingUndercover && !state.isStage2() && player.getEquippedStack(EquipmentSlot.HEAD)
                     .isOf(SparkStrengthItems.cqcmMask())) {
                 enterStage2(world, player, state);
@@ -74,14 +77,17 @@ public final class UndercoverService {
                             .formatted(Formatting.GOLD), false);
                     player.playSoundToPlayer(SparkStrengthSounds.SABOTAGE_READY, SoundCategory.PLAYERS, 0.6F, 1.2F);
                 }
-                if (now % GUN_SWEEP_TICKS == 0) {
-                    dropGuns(player);
-                }
+                // Every tick: a gun swapped in through a slot never stays long enough to fire.
+                // 每 tick 检查：通过槽位换进来的枪留不到能开火的时候。
+                dropGuns(player);
                 if (now % RESYNC_TICKS == 0) {
                     state.resync();
                 }
             }
             maintainBlackoutLook(player, state, stage2 && WorldBlackoutComponent.KEY.get(world).isBlackoutActive());
+            if (!state.isOutfitOn()) {
+                stripStrayOutfit(player);
+            }
         }
     }
 
@@ -193,7 +199,11 @@ public final class UndercoverService {
             equipIfMissing(player, EquipmentSlot.LEGS, Items.LEATHER_LEGGINGS);
             equipIfMissing(player, EquipmentSlot.FEET, Items.LEATHER_BOOTS);
             StatusEffectInstance current = player.getStatusEffect(StatusEffects.INVISIBILITY);
-            if (current == null || (state.ownsInvisibility() && current.getDuration() < INVISIBILITY_TICKS / 2)) {
+            if (current != null && current.getDuration() > INVISIBILITY_TICKS) {
+                // Someone else's longer invisibility (a Professor serum) took over: it is theirs to end.
+                // 别人更长的隐身（教授血清）接管了：由它自己结束。
+                state.setOwnsInvisibility(false);
+            } else if (current == null || (state.ownsInvisibility() && current.getDuration() < INVISIBILITY_TICKS / 2)) {
                 player.addStatusEffect(new StatusEffectInstance(StatusEffects.INVISIBILITY, INVISIBILITY_TICKS, 0,
                         false, false, false));
                 state.setOwnsInvisibility(true);
@@ -212,7 +222,44 @@ public final class UndercoverService {
         }
         if (state.ownsInvisibility()) {
             state.setOwnsInvisibility(false);
-            player.removeStatusEffect(StatusEffects.INVISIBILITY);
+            StatusEffectInstance current = player.getStatusEffect(StatusEffects.INVISIBILITY);
+            // Ours never runs longer than INVISIBILITY_TICKS; anything longer was extended by another source.
+            // 我们给的隐身从不超过 INVISIBILITY_TICKS；更长的说明被其他来源延长了。
+            if (current != null && current.getDuration() <= INVISIBILITY_TICKS) {
+                player.removeStatusEffect(StatusEffects.INVISIBILITY);
+            }
+        }
+    }
+
+    /**
+     * The mask and the tomahawk only ever belong to the real Undercover: anyone else who ends up with one (a container
+     * swap, an armour-slot trick) loses it at once.
+     * 面具与战术斧只属于真卧底：其他人无论通过什么途径（容器交换、盔甲槽操作）拿到，都会立刻失去。
+     */
+    private static void stripBoundGear(ServerPlayerEntity player) {
+        PlayerInventory inventory = player.getInventory();
+        for (int slot = 0; slot < inventory.size(); slot++) {
+            ItemStack stack = inventory.getStack(slot);
+            if (stack.isOf(SparkStrengthItems.cqcmMask()) || stack.isOf(SparkStrengthItems.tacticalTomahawk())) {
+                inventory.setStack(slot, ItemStack.EMPTY);
+            }
+        }
+        ItemStack cursor = player.currentScreenHandler.getCursorStack();
+        if (cursor.isOf(SparkStrengthItems.cqcmMask()) || cursor.isOf(SparkStrengthItems.tacticalTomahawk())) {
+            player.currentScreenHandler.setCursorStack(ItemStack.EMPTY);
+        }
+    }
+
+    /**
+     * Outfit pieces outside an active blackout look (a crash mid-blackout, a reload) are left-overs: take them off.
+     * 不在熄灯形态中的黑衣（熄灯中崩溃、重载）都是残留：直接收走。
+     */
+    private static void stripStrayOutfit(ServerPlayerEntity player) {
+        PlayerInventory inventory = player.getInventory();
+        for (int slot = 0; slot < inventory.size(); slot++) {
+            if (isOutfit(inventory.getStack(slot))) {
+                inventory.setStack(slot, ItemStack.EMPTY);
+            }
         }
     }
 

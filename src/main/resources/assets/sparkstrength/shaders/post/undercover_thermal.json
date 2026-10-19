@@ -1,10 +1,17 @@
 {
-  "targets": ["swap"],
+  "targets": [
+    "heat",
+    "swap"
+  ],
   "passes": [
     {
       "name": "sparkstrength_undercover_thermal",
       "intarget": "minecraft:main",
-      "outtarget": "swap"
+      "outtarget": "swap",
+      "use_linear_filter": true,
+      "auxtargets": [
+        { "name": "HeatSampler", "id": "heat" }
+      ]
     },
     {
       "name": "blit",

@@ -23,7 +23,7 @@ import org.spongepowered.asm.mixin.Mixin;
 public abstract class UndercoverInstinctArbiterMixin {
     @WrapMethod(method = "getInstinctHighlight")
     private static int sparkstrength$undercoverArbiter(Entity target, Operation<Integer> original) {
-        int decided = UndercoverClient.highlight(target);
+        int decided = UndercoverClient.highlight(target, () -> original.call(target));
         return decided != UndercoverClient.NO_DECISION ? decided : original.call(target);
     }
 }

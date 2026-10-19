@@ -4,6 +4,7 @@ import annina.sparkstrength.SparkStrengthBlocks;
 import annina.sparkstrength.block.JunctionBoxBlock;
 import annina.sparkstrength.component.sabotage.SabotageWorldComponent;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
+import dev.doctor4t.wathe.cca.WorldBlackoutComponent;
 import net.minecraft.block.BlockState;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
@@ -31,6 +32,9 @@ public final class SabotageTabletSnapshots {
         SabotageWorldComponent sabotage = SabotageWorldComponent.KEY.get(world);
         SabotageWorldComponent.Outage outage = sabotage.outage();
         long now = world.getTime();
+        // Wathe's own blackout takes the slot too, so the card says BLOCKED instead of a READY the server would refuse.
+        // Wathe 自己的熄灯也占用名额，卡片显示被占用，而不是一个服务端会拒绝的「可触发」。
+        boolean nativeBlackout = outage == null && WorldBlackoutComponent.KEY.get(world).isBlackoutActive();
         List<TabletSnapshot.SabotageRow> rows = new ArrayList<>();
         for (SabotageType type : SabotageType.values()) {
             if (!type.availableOn(sabotage.hasEngineUnits())) {
@@ -38,7 +42,7 @@ public final class SabotageTabletSnapshots {
                 continue;
             }
             boolean thisActive = outage != null && outage.type() == type;
-            SabotageRowState state = SabotageRowState.of(thisActive, outage != null && !thisActive,
+            SabotageRowState state = SabotageRowState.of(thisActive, (outage != null && !thisActive) || nativeBlackout,
                     sabotage.isUnlockedFor(track, type), now, sabotage.readyTickFor(track, type),
                     sabotage.cooldownEndTickFor(track));
             long seconds = switch (state) {
