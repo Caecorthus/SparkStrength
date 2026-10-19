@@ -145,7 +145,7 @@ public final class EngineSabotageService {
                     12, 0.25, 0.2, 0.25, 0.02);
         }
         EngineRepairService.onPhaseChanged(world);
-        sabotage.log(now, SabotageWorldComponent.LogKind.ENGINE_WRECKED, "", SabotageType.ENGINE);
+        sabotage.log(now, SabotageWorldComponent.LogKind.ENGINE_WRECKED, SabotageType.ENGINE);
         notifyEconomy(world, "message.sparkstrength.engine.economy_wrecked");
         // Re-syncs the round timer itself as the frozen state changes; also carries each player's economy bonus.
         // 冻结状态改变时，它会自己重新同步回合倒计时；同时带上每个玩家的经济加成。
@@ -159,7 +159,7 @@ public final class EngineSabotageService {
         setUnitLooks(world, sabotage.engineUnits(), EngineCondition.WRECKED);
         // Overhaul panels stay open: WRECKED and EMERGENCY need the same repair. / 大修面板不关：两个阶段要做的是同一种维修。
         EngineRepairService.onPhaseChanged(world);
-        sabotage.log(world.getTime(), SabotageWorldComponent.LogKind.ENGINE_EMERGENCY, "", SabotageType.ENGINE);
+        sabotage.log(world.getTime(), SabotageWorldComponent.LogKind.ENGINE_EMERGENCY, SabotageType.ENGINE);
         // The timer runs again, the bonus does not stop. / 倒计时恢复，加成不停。
         notifyEconomy(world, "message.sparkstrength.engine.economy_emergency");
         SabotageService.syncStatusNow(world);
@@ -320,7 +320,7 @@ public final class EngineSabotageService {
             sabotage.setTeamCooldownEndTick(now + (remote
                     ? SabotageRules.REMOTE_REPAIR_COOLDOWN_TICKS : SabotageRules.TEAM_COOLDOWN_TICKS));
             sabotage.log(now, remote ? SabotageWorldComponent.LogKind.REMOTE_REPAIRED
-                    : SabotageWorldComponent.LogKind.REPAIRED, "", SabotageType.ENGINE);
+                    : SabotageWorldComponent.LogKind.REPAIRED, SabotageType.ENGINE);
             celebrate(world, sabotage.engineUnits(), unit, phase != null && phase != EnginePhase.CRITICAL);
             Text restored = Text.translatable("message.sparkstrength.engine.repaired").formatted(Formatting.GREEN);
             for (ServerPlayerEntity player : world.getPlayers()) {

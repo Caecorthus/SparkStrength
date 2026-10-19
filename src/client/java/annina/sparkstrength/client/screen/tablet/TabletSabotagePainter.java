@@ -259,7 +259,11 @@ final class TabletSabotagePainter {
         // A repaired engine is not "a breaker repaired": it has its own line. / 修好动力不是「修好电闸」：单独一句。
         String logKey = kind == SabotageWorldComponent.LogKind.REPAIRED && type == SabotageType.ENGINE
                 ? "log.engine_repaired" : "log." + kind.name().toLowerCase(java.util.Locale.ROOT);
-        String sentence = Text.translatable(KEY + logKey, row.actor(), typeName).getString();
+        // Lines with an actor arrive with an empty name when the viewer has not linked with them: show "???".
+        // 有操作者的行，若查看者与其未互认，名字以空串到达：显示「???」。
+        String actor = row.actor().isEmpty()
+                ? Text.translatable("screen.sparkstrength.tablet.chat.anonymous").getString() : row.actor();
+        String sentence = Text.translatable(KEY + logKey, actor, typeName).getString();
         int textX = dotX + 8;
         c.text(tr, TabletCanvas.trim(tr, sentence, Math.max(0, x + w - textX - 4)), textX, textY, TabletTheme.TEXT);
     }

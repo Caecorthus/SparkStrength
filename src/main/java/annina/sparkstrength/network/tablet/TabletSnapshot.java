@@ -463,8 +463,9 @@ public record TabletSnapshot(
     }
 
     /**
-     * One line of the killers' sabotage log, newest first. {@code actor} is a game name or empty.
-     * 杀手破坏日志的一行，最新在前。actor 为游戏名或空。
+     * One line of the killers' sabotage log, newest first. {@code actor} is a game name or empty: empty means the
+     * line has no actor, or the viewer has not linked with the actor (the client then shows "???").
+     * 杀手破坏日志的一行，最新在前。actor 为游戏名或空：空表示这一行没有操作者，或查看者与操作者未互认（客户端显示「???」）。
      *
      * @param kindWire     {@code SabotageWorldComponent.LogKind} wire / 日志类型
      * @param typeWire     {@code SabotageType} wire / 破坏类型

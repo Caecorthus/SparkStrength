@@ -198,7 +198,7 @@ public final class JunctionBoxService {
         player.sendMessage(Text.translatable("message.sparkstrength.sabotage.box_repaired"), true);
         SabotageType repairedType = JunctionBoxBlock.typeOf(state);
         if (repairedType != null) {
-            sabotage.log(world.getTime(), SabotageWorldComponent.LogKind.BOX_REPAIRED, "", repairedType);
+            sabotage.log(world.getTime(), SabotageWorldComponent.LogKind.BOX_REPAIRED, repairedType);
         }
     }
 
@@ -367,8 +367,8 @@ public final class JunctionBoxService {
         player.sendMessage(Text.translatable("message.sparkstrength.sabotage.box_pried"), true);
         SabotageType type = JunctionBoxBlock.typeOf(state);
         if (type != null) {
-            sabotage.log(world.getTime(), SabotageWorldComponent.LogKind.BOX_BROKEN, player.getGameProfile().getName(),
-                    type);
+            sabotage.log(world.getTime(), SabotageWorldComponent.LogKind.BOX_BROKEN, player.getUuid(),
+                    player.getGameProfile().getName(), type);
         }
     }
 

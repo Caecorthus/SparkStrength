@@ -5,6 +5,7 @@ import annina.sparkstrength.SparkStrengthSounds;
 import annina.sparkstrength.block.CircuitBreakerBlock;
 import annina.sparkstrength.block.JunctionBoxBlock;
 import annina.sparkstrength.component.sabotage.SabotageWorldComponent;
+import annina.sparkstrength.component.tablet.TabletWorldComponent;
 import annina.sparkstrength.mixin.sabotage.GameWorldComponentResetAccessor;
 import annina.sparkstrength.network.sabotage.SabotageStatusS2CPacket;
 import annina.sparkstrength.tablet.TabletAccess;
@@ -47,6 +48,8 @@ import java.util.UUID;
  * Wathe 开局只是把车厢复制排进队列，因此等复制真正完成（onTrainReset）才扫描地图；复制始终不成功的地图有一个短暂的兜底。</p>
  */
 public final class SabotageService {
+    /** The tablet's own "???" for a hidden name. / 平板用于隐藏名字的「???」。 */
+    public static final String ANONYMOUS_ACTOR_KEY = "screen.sparkstrength.tablet.chat.anonymous";
     private static final int STATUS_REFRESH_TICKS = 10;
     private static final int ENGINE_UNIT_CHECK_TICKS = 20;
     private static final Map<UUID, SabotageStatusS2CPacket> SENT_STATUS = new HashMap<>();
@@ -276,7 +279,7 @@ public final class SabotageService {
         long now = world.getTime();
         for (SabotageType type : sabotage.unlocked()) {
             if (now >= sabotage.readyTick(type) && sabotage.markReadyAnnounced(type)) {
-                sabotage.log(now, SabotageWorldComponent.LogKind.READY, "", type);
+                sabotage.log(now, SabotageWorldComponent.LogKind.READY, type);
                 Text message = Text.translatable("message.sparkstrength.sabotage.ready",
                         Text.translatable(type.translationKey())).formatted(Formatting.GOLD);
                 for (ServerPlayerEntity player : saboteurs(world)) {
@@ -293,13 +296,20 @@ public final class SabotageService {
         long now = world.getTime();
         boolean fresh = !sabotage.isUnlocked(type);
         sabotage.unlock(type, now + SabotageRules.UNLOCK_DELAY_TICKS);
-        sabotage.log(now, SabotageWorldComponent.LogKind.BOX_HACKED, actor.getGameProfile().getName(), type);
+        sabotage.log(now, SabotageWorldComponent.LogKind.BOX_HACKED, actor.getUuid(), actor.getGameProfile().getName(),
+                type);
         if (fresh) {
-            Text message = Text.translatable("message.sparkstrength.sabotage.unlocked", actor.getGameProfile().getName(),
-                    Text.translatable(type.translationKey()), SabotageRules.UNLOCK_DELAY_TICKS / 20)
-                    .formatted(Formatting.GOLD);
+            // Same rule as the log: only the hacker and their tablet links learn who it was.
+            // 与日志同一规则：只有入侵者本人和与他互认的人知道是谁。
+            TabletWorldComponent tablet = TabletWorldComponent.KEY.get(world);
             for (ServerPlayerEntity player : saboteurs(world)) {
-                player.sendMessage(message, false);
+                Text who = SabotageActorVisibility.revealsActor(actor.getUuid(), player.getUuid(),
+                        tablet.identityLinks(player.getUuid()))
+                        ? Text.literal(actor.getGameProfile().getName())
+                        : Text.translatable(ANONYMOUS_ACTOR_KEY);
+                player.sendMessage(Text.translatable("message.sparkstrength.sabotage.unlocked", who,
+                        Text.translatable(type.translationKey()), SabotageRules.UNLOCK_DELAY_TICKS / 20)
+                        .formatted(Formatting.GOLD), false);
             }
         }
         TabletStateService.syncToTabletHolders(world);
@@ -346,7 +356,8 @@ public final class SabotageService {
             player.sendMessage(Text.translatable(denied), true);
             return;
         }
-        sabotage.log(now, SabotageWorldComponent.LogKind.TRIGGERED, player.getGameProfile().getName(), type);
+        sabotage.log(now, SabotageWorldComponent.LogKind.TRIGGERED, player.getUuid(), player.getGameProfile().getName(),
+                type);
         markStatusDirty(world);
         TabletStateService.syncToTabletHolders(world);
     }

@@ -10,6 +10,8 @@ import net.minecraft.util.math.BlockPos;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * The tablet's sabotage page for one viewer who may sabotage: one card per type and the log, newest first.
@@ -68,13 +70,20 @@ public final class SabotageTabletSnapshots {
         return rows;
     }
 
-    public static List<TabletSnapshot.SabotageLogRow> log(ServerWorld world) {
+    /**
+     * The log as {@code viewer} may read it: names of actors they have not linked with are sent empty, which the
+     * client shows as "???" (the wire format is unchanged). Actor uuids never leave the server.
+     * 查看者能读到的日志：未互认操作者的名字以空串下发，客户端显示为「???」（线上格式不变）。操作者 uuid 绝不离开服务端。
+     */
+    public static List<TabletSnapshot.SabotageLogRow> log(ServerWorld world, UUID viewer, Set<UUID> viewerLinks) {
         SabotageWorldComponent sabotage = SabotageWorldComponent.KEY.get(world);
         List<SabotageWorldComponent.LogEntry> entries = sabotage.logEntries();
         List<TabletSnapshot.SabotageLogRow> rows = new ArrayList<>(entries.size());
         for (int i = entries.size() - 1; i >= 0; i--) {
             SabotageWorldComponent.LogEntry entry = entries.get(i);
-            rows.add(new TabletSnapshot.SabotageLogRow(entry.kind().wire(), entry.type().wire(), entry.actor(),
+            String actor = SabotageActorVisibility.revealsActor(entry.actorUuid(), viewer, viewerLinks)
+                    ? entry.actor() : "";
+            rows.add(new TabletSnapshot.SabotageLogRow(entry.kind().wire(), entry.type().wire(), actor,
                     (int) Math.max(0, (entry.tick() - sabotage.roundStartTick()) / 20)));
         }
         return rows;
