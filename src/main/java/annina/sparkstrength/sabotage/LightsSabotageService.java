@@ -5,6 +5,7 @@ import annina.sparkstrength.SparkStrengthSounds;
 import annina.sparkstrength.block.CircuitBreakerBlock;
 import annina.sparkstrength.compat.SparkTraitsSabotageCompat;
 import annina.sparkstrength.component.sabotage.SabotageWorldComponent;
+import annina.sparkstrength.role.undercover.UndercoverRoles;
 import annina.sparkstrength.mixin.sabotage.BlackoutDetailsAccessor;
 import annina.sparkstrength.mixin.sabotage.WorldBlackoutComponentAccessor;
 import annina.sparkstrength.network.sabotage.CloseBreakerRepairS2CPacket;
@@ -65,7 +66,8 @@ public final class LightsSabotageService {
         // Started before Wathe's trigger: its first effect pass already runs inside triggerBlackout.
         // 在 Wathe 触发之前登记：它的第一轮效果就在 triggerBlackout 内部执行。
         sabotage.startOutage(SabotageType.LIGHTS, mode, world.getTime(), initiator.getUuid(),
-                initiator.getGameProfile().getName(), SparkTraitsSabotageCompat.isMasterSaboteur(initiator));
+                initiator.getGameProfile().getName(), SparkTraitsSabotageCompat.isMasterSaboteur(initiator),
+                UndercoverRoles.isUndercover(initiator));
         boolean started;
         try {
             // Wathe also returns true on a map without lamps, where nothing goes dark. / 没有灯的地图上 Wathe 同样返回 true，但不会熄灯。
@@ -151,7 +153,7 @@ public final class LightsSabotageService {
         long now = world.getTime();
         switch (reason) {
             case REPAIRED -> {
-                sabotage.setTeamCooldownEndTick(now + SabotageRules.TEAM_COOLDOWN_TICKS);
+                sabotage.startCooldownAfter(outage, now + SabotageRules.TEAM_COOLDOWN_TICKS);
                 sabotage.log(now, SabotageWorldComponent.LogKind.REPAIRED, outage.type());
                 Text restored = Text.translatable("message.sparkstrength.sabotage.power_back").formatted(Formatting.GREEN);
                 for (ServerPlayerEntity player : world.getPlayers()) {
@@ -162,11 +164,11 @@ public final class LightsSabotageService {
                 }
             }
             case REMOTE_REPAIRED -> {
-                sabotage.setTeamCooldownEndTick(now + SabotageRules.REMOTE_REPAIR_COOLDOWN_TICKS);
+                sabotage.startCooldownAfter(outage, now + SabotageRules.REMOTE_REPAIR_COOLDOWN_TICKS);
                 sabotage.log(now, SabotageWorldComponent.LogKind.REMOTE_REPAIRED, outage.type());
             }
             case EXPIRED -> {
-                sabotage.setTeamCooldownEndTick(now + SabotageRules.TEAM_COOLDOWN_TICKS);
+                sabotage.startCooldownAfter(outage, now + SabotageRules.TEAM_COOLDOWN_TICKS);
                 sabotage.log(now, SabotageWorldComponent.LogKind.EXPIRED, outage.type());
             }
             case ROUND_END -> {

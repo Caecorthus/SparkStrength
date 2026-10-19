@@ -13,7 +13,7 @@ import net.minecraft.util.math.BlockPos;
  * 撬开或入侵的进度，供本人 HUD 显示：一份快照加上每 tick 速率，客户端据此外推。
  *
  * @param channelId the server's channel number, echoed by the cancel packet / 服务端的读条编号，取消包会原样带回
- * @param kind     0 = pry, 1 = hack / 0 撬开，1 入侵
+ * @param kind     0 = pry, 1 = hack, 2 = door breach / 0 撬开，1 入侵，2 拆门
  * @param state    0 = running, 1 = finished, 2 = stopped / 0 进行中，1 完成，2 中断
  * @param progress units done, out of {@code total} / 已完成量，满值为 total
  * @param rate     units per tick while running / 进行中每 tick 的增量
@@ -23,6 +23,8 @@ public record ChannelProgressS2CPacket(int channelId, int kind, BlockPos pos, in
         implements CustomPayload {
     public static final int KIND_PRY = 0;
     public static final int KIND_HACK = 1;
+    /** The stage-2 Undercover chopping a door down (DoorBreachService). / 二阶段卧底拆门（DoorBreachService）。 */
+    public static final int KIND_BREACH = 2;
     public static final int STATE_RUNNING = 0;
     public static final int STATE_FINISHED = 1;
     public static final int STATE_STOPPED = 2;

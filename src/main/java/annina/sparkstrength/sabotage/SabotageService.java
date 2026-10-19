@@ -326,18 +326,28 @@ public final class SabotageService {
         if (type == null || !SabotageAccess.canUse(player) || !TabletAccess.hasTabletInHotbar(player)) {
             return;
         }
+        if (!SabotageAccess.canTrigger(player)) {
+            // A stage-1 Undercover: the page is there for cover, the trigger needs the mask. / 第一阶段卧底：页面用于伪装，触发需要面具。
+            player.sendMessage(Text.translatable("message.sparkstrength.sabotage.trigger_denied.undercover_mask"), true);
+            return;
+        }
         ServerWorld world = player.getServerWorld();
         SabotageWorldComponent sabotage = SabotageWorldComponent.KEY.get(world);
         if (!sabotage.isMapReady()) {
             return;
         }
         long now = world.getTime();
+        // The killer team's track, or a stage-2 Undercover's own; the one outage slot is shared either way.
+        // 杀手团队的轨道，或二阶段卧底自己的轨道；无论哪条，唯一的破坏名额都是共用的。
+        UUID track = SabotageAccess.trackOf(player);
         boolean busy = sabotage.outage() != null || WorldBlackoutComponent.KEY.get(world).isBlackoutActive();
-        SabotageRules.TriggerCheck check = SabotageRules.canTrigger(sabotage.isUnlocked(type),
-                sabotage.readyTick(type), sabotage.teamCooldownEndTick(), busy, now);
+        SabotageRules.TriggerCheck check = SabotageRules.canTrigger(sabotage.isUnlockedFor(track, type),
+                sabotage.readyTickFor(track, type), sabotage.cooldownEndTickFor(track), busy, now);
         if (check != SabotageRules.TriggerCheck.OK) {
-            player.sendMessage(Text.translatable("message.sparkstrength.sabotage.trigger_denied."
-                    + check.name().toLowerCase(java.util.Locale.ROOT)), true);
+            // A stage-2 Undercover's cooldown is its own, not the team's. / 二阶段卧底的冷却是它自己的，不是团队的。
+            String reason = check == SabotageRules.TriggerCheck.COOLDOWN && track != null
+                    ? "cooldown_own" : check.name().toLowerCase(java.util.Locale.ROOT);
+            player.sendMessage(Text.translatable("message.sparkstrength.sabotage.trigger_denied." + reason), true);
             return;
         }
         String denied = switch (type) {
@@ -383,6 +393,7 @@ public final class SabotageService {
         SabotageWorldComponent sabotage = SabotageWorldComponent.KEY.get(world);
         long now = world.getTime();
         sabotage.setTeamCooldownEndTick(now);
+        sabotage.clearUndercoverTimers(now);
         for (SabotageType type : sabotage.unlocked()) {
             if (sabotage.readyTick(type) > now) {
                 sabotage.setReadyTick(type, now);
@@ -391,11 +402,15 @@ public final class SabotageService {
         TabletStateService.syncToTabletHolders(world);
     }
 
-    /** Everyone who may sabotage right now, Undercover included. / 当前可以破坏的所有人，包括卧底。 */
+    /**
+     * Who hears the killer team's sabotage notices: everyone on the team's track, stage-1 Undercover included. A
+     * stage-2 Undercover has its own track and its own notices.
+     * 收到杀手团队破坏通知的人：团队轨道上的所有人，包括第一阶段卧底。二阶段卧底有自己的轨道和通知。
+     */
     static List<ServerPlayerEntity> saboteurs(ServerWorld world) {
         List<ServerPlayerEntity> players = new ArrayList<>();
         for (ServerPlayerEntity player : world.getPlayers()) {
-            if (SabotageAccess.canUse(player)) {
+            if (SabotageAccess.canUse(player) && SabotageAccess.trackOf(player) == null) {
                 players.add(player);
             }
         }
@@ -429,7 +444,7 @@ public final class SabotageService {
         boolean resyncTimer = false;
         for (ServerPlayerEntity player : world.getPlayers()) {
             SabotageStatusS2CPacket status = new SabotageStatusS2CPacket(lightsOut, lightsOut ? outage.id() : 0,
-                    lightsOut ? outage.mode().wire() : 0, sabotage.isMapReady() && SabotageAccess.canUse(player),
+                    lightsOut ? outage.mode().wire() : 0, sabotage.isMapReady() && SabotageAccess.canPryOrHack(player),
                     EnginePhase.wireOf(enginePhase), engineTriggeredAt, engineUnits,
                     economyBoosted && EngineEconomy.isEligible(player));
             SabotageStatusS2CPacket previous = SENT_STATUS.get(player.getUuid());

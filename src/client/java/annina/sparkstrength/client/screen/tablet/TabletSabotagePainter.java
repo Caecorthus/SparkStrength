@@ -91,7 +91,7 @@ final class TabletSabotagePainter {
     static TabletLayout.Rect buttonRect(TextRenderer tr, int x, int y, int w) {
         int labelW = 0;
         for (String key : new String[]{"button.trigger", "button.locked", "button.arming", "button.cooldown",
-                "button.active", "button.blocked"}) {
+                "button.active", "button.blocked", "button.needs_mask"}) {
             labelW = Math.max(labelW, tr.getWidth(Text.translatable(KEY + key)) + 18);
         }
         int bw = Math.max(BUTTON_MIN_W, labelW + 20);

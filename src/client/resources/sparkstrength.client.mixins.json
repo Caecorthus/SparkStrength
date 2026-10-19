@@ -103,7 +103,9 @@
     "sabotage.EngineTrainTimeMixin",
     "sabotage.EngineWheelTimeMixin",
     "sabotage.EngineWindExposureMixin",
-    "sabotage.SabotageSkyLightMixin"
+    "sabotage.SabotageSkyLightMixin",
+    "undercover.UndercoverInstinctArbiterMixin",
+    "undercover.UndercoverThermalGameRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

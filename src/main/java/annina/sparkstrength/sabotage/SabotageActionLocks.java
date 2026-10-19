@@ -13,11 +13,11 @@ import org.agmas.noellesroles.taotie.SwallowedPlayerComponent;
  * 阻止撬开、入侵或电闸维修开始或完成的锁定：工程师眩晕、SparkWitch 控场专家眩晕、饕餮眩晕、被吞下。
  * 由服务端每 tick 检查，因为眩晕可能落在两次心跳之间，而客户端的取消要一个往返后才到。
  */
-final class SabotageActionLocks {
+public final class SabotageActionLocks {
     private SabotageActionLocks() {
     }
 
-    static boolean isLocked(ServerPlayerEntity player) {
+    public static boolean isLocked(ServerPlayerEntity player) {
         return EngineerStunnedPlayerComponent.KEY.get(player).isStunned()
                 || SparkWitchCompat.isControlExpertStunned(player)
                 || TaotieHeadDaze.isDazed(player)

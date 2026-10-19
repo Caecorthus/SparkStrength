@@ -19,6 +19,8 @@ import net.minecraft.text.Text;
  * 全屏遮罩会连白天的车窗和玩家找电闸要靠的红框一起压暗。
  */
 final class SabotageHud {
+    /** The Undercover's role colour for its door breach bar. / 卧底拆门读条使用卧底职业色。 */
+    private static final int UNDERCOVER_SILVER = 0xFFC0C0C0;
     private static final int BAR_WIDTH = 92;
     private static final int BAR_HEIGHT = 5;
 
@@ -44,10 +46,16 @@ final class SabotageHud {
         int h = context.getScaledWindowHeight();
         float fraction = channel.fraction(now, tickDelta);
         boolean pry = channel.kind == ChannelProgressS2CPacket.KIND_PRY;
+        boolean breach = channel.kind == ChannelProgressS2CPacket.KIND_BREACH;
         boolean finished = channel.finishedFlashTicks > 0;
-        int accent = finished ? TabletTheme.SUCCESS : (pry ? TabletTheme.WARNING : TabletTheme.KILLER.base());
+        int accent = finished ? TabletTheme.SUCCESS
+                : breach ? UNDERCOVER_SILVER : (pry ? TabletTheme.WARNING : TabletTheme.KILLER.base());
         Text label;
-        if (finished) {
+        if (breach) {
+            float seconds = Math.max(0.0F, (1.0F - fraction) * channel.total / 20.0F);
+            label = finished ? Text.translatable("hud.sparkstrength.undercover.breached")
+                    : Text.translatable("hud.sparkstrength.undercover.breaching", String.format("%.1f", seconds));
+        } else if (finished) {
             label = Text.translatable(pry ? "hud.sparkstrength.sabotage.pried" : "hud.sparkstrength.sabotage.hacked");
         } else if (pry) {
             int durability = Math.round((1.0F - fraction) * SabotageRules.DURABILITY_MAX);

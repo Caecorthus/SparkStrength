@@ -178,8 +178,10 @@ public final class SabotageClient {
             return;
         }
         HitResult target = client.crosshairTarget;
+        // A door breach may be aimed at either half of the door. / 拆门时准星对着门的上下任一半都算。
         boolean aimed = target instanceof BlockHitResult hit && target.getType() == HitResult.Type.BLOCK
-                && hit.getBlockPos().equals(channel.pos);
+                && (hit.getBlockPos().equals(channel.pos) || (channel.kind == ChannelProgressS2CPacket.KIND_BREACH
+                && hit.getBlockPos().equals(channel.pos.up())));
         boolean holding = client.options.useKey.isPressed() && client.currentScreen == null && !player.isSneaking();
         if (!aimed || !holding) {
             channel.cancelSent = true;

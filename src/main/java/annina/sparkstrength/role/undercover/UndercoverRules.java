@@ -1,0 +1,109 @@
+package annina.sparkstrength.role.undercover;
+
+/**
+ * Pure rules of the reworked NoellesRoles Undercover (owner 2026-10-19). Stage 1 is the Undercover as assigned; the
+ * first time the CQCM mask goes on, stage 2 begins and never ends this round, even if the mask comes off again.
+ * 重做后 NoellesRoles 卧底的纯规则（负责人 2026-10-19）。第一阶段即分配到的卧底；第一次戴上 CQCM 面具即进入第二阶段，
+ * 本局内永不退出，即使之后摘下面具。
+ *
+ * <p>Only {@code java.*} may be used here so the standalone test compiles this file with plain javac.
+ * 这里只能依赖 java.*，独立测试可以直接用 javac 编译。</p>
+ */
+public final class UndercoverRules {
+    /** CQCM mask in the Undercover's shop. / 卧底商店里的 CQCM 面具。 */
+    public static final int MASK_PRICE = 250;
+    /** Paid when an Undercover completes a junction box hack (task money is RoleEconomyRules'). / 卧底完成接线箱入侵的奖励。 */
+    public static final int HACK_REWARD = 100;
+
+    /** Killers see a stage-2 Undercover in line of sight in the role's own colour. / 杀手视线内的二阶段卧底显示为职业色。 */
+    public static final int HIGHLIGHT_COLOR = 0xC0C0C0;
+    /** Thermal targets are drawn magenta; the thermal post shader turns exactly this into white heat. / 热成像目标画成品红，由后处理映射为白热。 */
+    public static final int THERMAL_COLOR = 0xFF00FF;
+    /** How far the line-of-sight highlight and thermal reach, in blocks. / 视线高亮与热成像的距离（格）。 */
+    public static final double SIGHT_RANGE = 48.0;
+
+    /** Tomahawk: attack speed 1 means a full swing charge every second. / 战术斧：攻速 1，即每秒蓄满一次。 */
+    public static final double TOMAHAWK_ATTACK_SPEED = 1.0;
+    /** Wathe melee kill range (the knife's 3 blocks). / Wathe 近战击杀距离（与刀同为 3 格）。 */
+    public static final double TOMAHAWK_RANGE = 3.0;
+    public static final int TOMAHAWK_KILL_COOLDOWN_TICKS = 20 * 20;
+
+    private UndercoverRules() {
+    }
+
+    /** Door materials the tomahawk can chop down. / 战术斧能拆的门的材质。 */
+    public enum DoorKind {
+        /** Wathe small glass door. / Wathe 小玻璃门。 */
+        GLASS(5 * 20, 10 * 20),
+        /** Wathe small wood door. / Wathe 小木门。 */
+        WOOD(10 * 20, 20 * 20),
+        /** Wathe's five steel train doors (the owner's "iron door"). / Wathe 五种钢制列车门（负责人说的「铁门」）。 */
+        STEEL(30 * 20, 60 * 20);
+
+        private final int breachTicks;
+        private final int cooldownTicks;
+
+        DoorKind(int breachTicks, int cooldownTicks) {
+            this.breachTicks = breachTicks;
+            this.cooldownTicks = cooldownTicks;
+        }
+
+        public int breachTicks() {
+            return breachTicks;
+        }
+
+        public int cooldownTicks() {
+            return cooldownTicks;
+        }
+    }
+
+    /** Stage 1 may pry and hack junction boxes; stage 2 has its own track and no longer touches boxes. / 第一阶段可撬可入侵；第二阶段走独立轨道，不再碰接线箱。 */
+    public static boolean mayPryOrHack(boolean undercover, boolean stage2) {
+        return !undercover || !stage2;
+    }
+
+    /** An Undercover may only trigger a sabotage in stage 2. / 卧底只有在第二阶段才能触发破坏。 */
+    public static boolean mayTrigger(boolean undercover, boolean stage2) {
+        return !undercover || stage2;
+    }
+
+    /**
+     * What a killer's client draws on a stage-2 Undercover: silver when it can see them (not invisible, in range, in
+     * line of sight), otherwise nothing at all, instinct key or not. Only living effective killers are affected.
+     * 杀手客户端对二阶段卧底的描边：看得见（未隐身、在范围内、视线可达）时为银色，否则什么都没有，按不按本能键都一样。
+     * 只作用于存活的有效杀手。
+     *
+     * @return the colour, -1 for none, or {@code null} when this rule does not apply / 颜色；-1 表示无；null 表示本规则不适用
+     */
+    public static Integer killerViewOfStage2(boolean viewerLivingKiller, boolean targetStage2, boolean targetInvisible,
+                                             double distance, boolean lineOfSight) {
+        if (!viewerLivingKiller || !targetStage2) {
+            return null;
+        }
+        return !targetInvisible && distance <= SIGHT_RANGE && lineOfSight ? HIGHLIGHT_COLOR : -1;
+    }
+
+    /**
+     * Thermal vision of a stage-2 Undercover: living players it can see are magenta, invisible ones included.
+     * Anything else keeps whatever it would have had.
+     * 二阶段卧底的热成像：视线内的活人（含隐身者）显示为品红；其余保持原样。
+     *
+     * @return the colour, or {@code null} when this rule does not apply / 颜色；null 表示本规则不适用
+     */
+    public static Integer thermalView(boolean thermalOn, boolean targetLivingPlayer, double distance,
+                                      boolean lineOfSight) {
+        if (!thermalOn || !targetLivingPlayer) {
+            return null;
+        }
+        return distance <= SIGHT_RANGE && lineOfSight ? THERMAL_COLOR : null;
+    }
+
+    /**
+     * The Undercover's own sabotage card, read from its personal track: armed the moment stage 2 begins and then
+     * cooling down after each of its own sabotages ends. 0 for "not set".
+     * 卧底自己的破坏卡片读个人轨道：进入第二阶段那一刻开始待命，此后每次自己的破坏结束后冷却。0 表示未设置。
+     */
+    public static boolean personalTrackUnlocked(long readyTick) {
+        return readyTick > 0L;
+    }
+}

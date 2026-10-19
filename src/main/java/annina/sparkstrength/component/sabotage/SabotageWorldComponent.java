@@ -42,7 +42,15 @@ public final class SabotageWorldComponent implements Component {
      * 正在进行的唯一一个破坏，灯光或动力；同一时间只能有一个。mode 只对灯光有意义。
      */
     public record Outage(int id, SabotageType type, OutageMode mode, long startTick, @Nullable UUID initiator,
-                         String initiatorName, boolean masterSaboteur) {
+                         String initiatorName, boolean masterSaboteur, boolean undercoverOwned) {
+        /**
+         * Whose cooldown this outage starts when it ends: fixed at trigger time, so death, disconnect or a role change
+         * of the initiator never moves it. Null means the killer team.
+         * 这次破坏结束时开始谁的冷却：在触发时就固定，发起人死亡、掉线或换身份都不会改变。null 表示杀手团队。
+         */
+        public @Nullable UUID cooldownOwner() {
+            return undercoverOwned ? initiator : null;
+        }
     }
 
     public enum LogKind {
@@ -102,6 +110,9 @@ public final class SabotageWorldComponent implements Component {
     private final EnumSet<SabotageType> readyAnnounced = EnumSet.noneOf(SabotageType.class);
     private boolean autoUnlocked;
     private long teamCooldownEndTick;
+    /** A stage-2 Undercover's own track: armed when stage 2 begins. / 二阶段卧底自己的轨道：进入第二阶段时开始待命。 */
+    private final Map<UUID, Long> undercoverReadyTick = new HashMap<>();
+    private final Map<UUID, Long> undercoverCooldownEndTick = new HashMap<>();
     private @Nullable Outage outage;
     private int outageCounter;
     private final ArrayDeque<LogEntry> log = new ArrayDeque<>();
@@ -123,6 +134,8 @@ public final class SabotageWorldComponent implements Component {
         readyAnnounced.clear();
         autoUnlocked = false;
         teamCooldownEndTick = 0L;
+        undercoverReadyTick.clear();
+        undercoverCooldownEndTick.clear();
         outage = null;
         log.clear();
         clearEngine();
@@ -281,13 +294,51 @@ public final class SabotageWorldComponent implements Component {
         this.teamCooldownEndTick = tick;
     }
 
+    /** Arms a stage-2 Undercover's own track once; later calls keep the first time. / 只为二阶段卧底的轨道设置一次待命时间。 */
+    public void armUndercover(UUID undercover, long readyTick) {
+        undercoverReadyTick.putIfAbsent(undercover, readyTick);
+    }
+
+    /**
+     * The track {@code undercover} triggers on (null = the killer team): unlocked, armed-at and cooldown-end ticks.
+     * 由 undercover 指定的轨道（null 为杀手团队）：是否解锁、待命结束 tick 与冷却结束 tick。
+     */
+    public boolean isUnlockedFor(@Nullable UUID undercover, SabotageType type) {
+        return undercover == null ? isUnlocked(type) : undercoverReadyTick.containsKey(undercover);
+    }
+
+    public long readyTickFor(@Nullable UUID undercover, SabotageType type) {
+        return undercover == null ? readyTick(type) : undercoverReadyTick.getOrDefault(undercover, 0L);
+    }
+
+    public long cooldownEndTickFor(@Nullable UUID undercover) {
+        return undercover == null ? teamCooldownEndTick : undercoverCooldownEndTick.getOrDefault(undercover, 0L);
+    }
+
+    /** The one place an ended outage starts a cooldown: on the track that triggered it. / 结束的破坏开始冷却的唯一入口：记在触发它的那条轨道上。 */
+    public void startCooldownAfter(Outage ended, long cooldownEndTick) {
+        UUID owner = ended.cooldownOwner();
+        if (owner == null) {
+            teamCooldownEndTick = cooldownEndTick;
+        } else {
+            undercoverCooldownEndTick.put(owner, cooldownEndTick);
+        }
+    }
+
+    /** Admin clear: every Undercover track is ready now, like the team's. / 管理员清除：所有卧底轨道与团队一样立即可用。 */
+    public void clearUndercoverTimers(long now) {
+        undercoverReadyTick.replaceAll((uuid, tick) -> Math.min(tick, now));
+        undercoverCooldownEndTick.replaceAll((uuid, tick) -> Math.min(tick, now));
+    }
+
     public @Nullable Outage outage() {
         return outage;
     }
 
     public Outage startOutage(SabotageType type, OutageMode mode, long now, @Nullable UUID initiator,
-                              String initiatorName, boolean masterSaboteur) {
-        outage = new Outage(++outageCounter, type, mode, now, initiator, initiatorName, masterSaboteur);
+                              String initiatorName, boolean masterSaboteur, boolean undercoverOwned) {
+        outage = new Outage(++outageCounter, type, mode, now, initiator, initiatorName, masterSaboteur,
+                undercoverOwned && initiator != null);
         return outage;
     }
 

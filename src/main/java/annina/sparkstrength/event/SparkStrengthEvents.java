@@ -1,5 +1,6 @@
 package annina.sparkstrength.event;
 
+import annina.sparkstrength.compat.SparkFactionCompat;
 import annina.sparkstrength.component.detective.DetectiveCasePlayerComponent;
 import annina.sparkstrength.component.collision.PlayerCollisionGraceWorldComponent;
 import annina.sparkstrength.component.demonhunter.DemonHunterSniffPlayerComponent;
@@ -53,6 +54,11 @@ import annina.sparkstrength.role.toxicologist.ToxicologistBluePassiveService;
 import annina.sparkstrength.role.toxicologist.ToxicologistBlueVitriolService;
 import annina.sparkstrength.role.toxicologist.ToxicologistCapsuleShop;
 import annina.sparkstrength.role.attendant.FlashlightBlackoutService;
+import annina.sparkstrength.role.undercover.DoorBreachService;
+import annina.sparkstrength.role.undercover.UndercoverRoles;
+import annina.sparkstrength.role.undercover.UndercoverService;
+import annina.sparkstrength.role.undercover.UndercoverShopService;
+import annina.sparkstrength.role.undercover.UndercoverTomahawkService;
 import annina.sparkstrength.role.veteran.VeteranBlackoutService;
 import annina.sparkstrength.role.veteran.VeteranEconomyService;
 import annina.sparkstrength.role.veteran.VeteranKnifeService;
@@ -120,6 +126,14 @@ public final class SparkStrengthEvents {
         TabletShopService.register();
         TabletStateService.register();
         SabotageService.register();
+        // Reworked Undercover (2026-10-19): shop (CQCM mask), stage 2, blackout look; immune to the Bell Ringer's
+        // echo like before, now that it gets fake tasks.
+        // 重做后的卧底（2026-10-19）：商店（CQCM 面具）、第二阶段、熄灯形态；有了假任务后仍和以前一样不受敲钟人回响影响。
+        UndercoverShopService.register();
+        UndercoverTomahawkService.register();
+        DoorBreachService.register();
+        ServerTickEvents.END_WORLD_TICK.register(UndercoverService::tick);
+        SparkFactionCompat.denyAction(UndercoverService.BELL_ECHO_ACTION, UndercoverRoles::isUndercover);
         VeteranShopService.register();
         VultureSkateboardService.register();
         // Super Curse death scream / curse stop on KillPlayer.AFTER and round end; registered after the skateboard.
@@ -161,6 +175,7 @@ public final class SparkStrengthEvents {
                 CorruptCopAbilityService.reset(serverPlayer);
                 CoronerService.assignForRole(serverPlayer, role);
                 RoleEconomyService.assignForRole(serverPlayer, role);
+                UndercoverService.assignForRole(serverPlayer);
                 AttendantFlashlightService.assignForRole(serverPlayer, role);
                 DetectiveCaseService.assignForRole(serverPlayer, role);
                 DemonHunterSniffService.assignForRole(serverPlayer, role);
@@ -191,6 +206,7 @@ public final class SparkStrengthEvents {
             ReporterCommunicationComponent.KEY.get(player).reset();
             if (player instanceof ServerPlayerEntity serverPlayer) {
                 WaiterTaskRevealService.reset(serverPlayer);
+                UndercoverService.reset(serverPlayer);
                 TimekeeperWatchComponent.KEY.get(serverPlayer).reset();
             }
             DetectiveCasePlayerComponent.KEY.get(player).clearAll();
@@ -216,6 +232,7 @@ public final class SparkStrengthEvents {
             ToxicologistBluePassiveService.clearPlayer(victim);
             // The vest and shield die with the Bodyguard: nothing to loot or keep. / 防弹衣与盾随保镖死亡消失，无从拾取或保留。
             BodyguardShieldService.clearGear(victim, true);
+            UndercoverService.afterDeath(victim);
         });
 
         GameEvents.ON_FINISH_FINALIZE.register((world, gameComponent) -> {
@@ -248,7 +265,10 @@ public final class SparkStrengthEvents {
                     VeteranKnifeService.reset(player);
                     TimekeeperWatchComponent.KEY.get(player).reset();
                     BodyguardShieldService.resetRound(player);
+                    UndercoverService.reset(player);
                 }
+                // Chopped-down doors come back for the next round. / 被拆掉的门在下一局前放回。
+                DoorBreachService.restoreAll(serverWorld);
             }
         });
 

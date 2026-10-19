@@ -1,5 +1,6 @@
 package annina.sparkstrength.role.engineer;
 
+import annina.sparkstrength.component.sabotage.SabotageWorldComponent;
 import annina.sparkstrength.record.BlackoutRecorder;
 import annina.sparkstrength.sabotage.EngineSabotageService;
 import annina.sparkstrength.sabotage.SabotageService;
@@ -18,7 +19,10 @@ import net.minecraft.sound.SoundCategory;
 import net.minecraft.text.Text;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * 工程师破坏维修：远程修复当前的一次破坏（灯光或动力）。
@@ -28,6 +32,11 @@ import java.util.List;
  * 远程修复后的团队冷却由破坏系统改为较短的一档（SabotageRules.REMOTE_REPAIR_COOLDOWN_TICKS）。</p>
  */
 public final class EngineerSabotageRepairService {
+    /**
+     * Buyers whose repair ended an Undercover's own sabotage: their coins go to nobody, since no killer opened it.
+     * 本次维修结束的是卧底自己开的破坏的购买者：这笔钱不分给任何人，因为不是杀手开的。
+     */
+    private static final Set<UUID> NO_REBATE = new HashSet<>();
     private static boolean registered;
 
     private EngineerSabotageRepairService() {
@@ -47,6 +56,11 @@ public final class EngineerSabotageRepairService {
             return false;
         }
         ServerWorld world = repairer.getServerWorld();
+        SabotageWorldComponent.Outage outage = SabotageWorldComponent.KEY.get(world).outage();
+        NO_REBATE.remove(repairer.getUuid());
+        if (outage != null && outage.undercoverOwned()) {
+            NO_REBATE.add(repairer.getUuid());
+        }
         // The engine holds the one sabotage slot until it is repaired, in every phase.
         // 动力破坏在任何阶段都占着唯一的破坏名额，直到修好。
         if (EngineSabotageService.repairRemotely(world, repairer)) {
@@ -76,6 +90,9 @@ public final class EngineerSabotageRepairService {
             return;
         }
 
+        if (NO_REBATE.remove(buyer.getUuid())) {
+            return;
+        }
         ServerWorld world = buyer.getServerWorld();
         List<ServerPlayerEntity> aliveKillers = aliveKillers(world);
         distributeRepairCost(aliveKillers, pricePaid);

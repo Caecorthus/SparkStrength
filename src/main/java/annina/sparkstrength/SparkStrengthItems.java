@@ -3,6 +3,8 @@ package annina.sparkstrength;
 import annina.sparkstrength.item.BlueBelladonnaItem;
 import annina.sparkstrength.item.BlueVitriolItem;
 import annina.sparkstrength.item.BodyguardVestItem;
+import annina.sparkstrength.item.CqcmMaskItem;
+import annina.sparkstrength.item.TacticalTomahawkItem;
 import annina.sparkstrength.item.CaptureDeviceItem;
 import annina.sparkstrength.item.CapsuleItem;
 import annina.sparkstrength.item.CircuitConfiguratorItem;
@@ -85,6 +87,8 @@ public final class SparkStrengthItems {
     public static final Identifier SERIAL_LEFT_PISTOL_ID = SparkStrength.id("serial_left_pistol");
     public static final Identifier DEMOCRACY_SHIELD_ID = SparkStrength.id("democracy_shield");
     public static final Identifier BODYGUARD_VEST_ID = SparkStrength.id("bodyguard_vest");
+    public static final Identifier CQCM_MASK_ID = SparkStrength.id("cqcm_mask");
+    public static final Identifier TACTICAL_TOMAHAWK_ID = SparkStrength.id("tactical_tomahawk");
 
     /** 怀表模式数据组件：0=刷新物品冷却，1=刷新技能冷却。 */
     public static final ComponentType<Integer> TIMEKEEPER_WATCH_MODE = Registry.register(
@@ -127,6 +131,8 @@ public final class SparkStrengthItems {
     private static Item serialLeftPistol;
     private static Item democracyShield;
     private static Item bodyguardVest;
+    private static Item cqcmMask;
+    private static Item tacticalTomahawk;
     private static boolean registered;
 
     private SparkStrengthItems() {
@@ -319,6 +325,31 @@ public final class SparkStrengthItems {
                 BODYGUARD_VEST_ID,
                 new BodyguardVestItem(vestMaterial, new Item.Settings().maxCount(1))
         );
+        // Same idea as the vest: zero defence, the vanilla armour layer draws the mask on the face.
+        // 与防弹衣同理：护甲值为 0，由原版盔甲层把面具画在脸上。
+        RegistryEntry<ArmorMaterial> maskMaterial = Registry.registerReference(
+                Registries.ARMOR_MATERIAL,
+                CQCM_MASK_ID,
+                new ArmorMaterial(
+                        Map.of(ArmorItem.Type.HELMET, 0),
+                        0,
+                        SoundEvents.ITEM_ARMOR_EQUIP_LEATHER,
+                        () -> Ingredient.EMPTY,
+                        List.of(new ArmorMaterial.Layer(CQCM_MASK_ID)),
+                        0.0F,
+                        0.0F
+                )
+        );
+        cqcmMask = Registry.register(
+                Registries.ITEM,
+                CQCM_MASK_ID,
+                new CqcmMaskItem(maskMaterial, new Item.Settings().maxCount(1))
+        );
+        tacticalTomahawk = Registry.register(
+                Registries.ITEM,
+                TACTICAL_TOMAHAWK_ID,
+                new TacticalTomahawkItem(new Item.Settings().maxCount(1))
+        );
         registered = true;
     }
 
@@ -488,6 +519,20 @@ public final class SparkStrengthItems {
             throw new IllegalStateException("SparkStrength items are not registered yet");
         }
         return democracyShield;
+    }
+
+    public static Item cqcmMask() {
+        if (cqcmMask == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return cqcmMask;
+    }
+
+    public static Item tacticalTomahawk() {
+        if (tacticalTomahawk == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return tacticalTomahawk;
     }
 
     public static Item bodyguardVest() {
