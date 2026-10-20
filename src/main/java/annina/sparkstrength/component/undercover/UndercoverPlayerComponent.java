@@ -32,6 +32,9 @@ public final class UndercoverPlayerComponent implements AutoSyncedComponent {
     private boolean maskBought;
     private boolean outfitOn;
     private boolean ownsInvisibility;
+    private boolean ownsSpeed;
+    /** World tick the tomahawk's last kill cooldown ends; 0 for none. / 战术斧上次击杀冷却结束的世界 tick；0 表示没有。 */
+    private long killCooldownEndTick;
     private ItemStack savedChest = ItemStack.EMPTY;
     private ItemStack savedLegs = ItemStack.EMPTY;
     private ItemStack savedFeet = ItemStack.EMPTY;
@@ -72,6 +75,22 @@ public final class UndercoverPlayerComponent implements AutoSyncedComponent {
         this.ownsInvisibility = ownsInvisibility;
     }
 
+    public boolean ownsSpeed() {
+        return ownsSpeed;
+    }
+
+    public void setOwnsSpeed(boolean ownsSpeed) {
+        this.ownsSpeed = ownsSpeed;
+    }
+
+    public long killCooldownEndTick() {
+        return killCooldownEndTick;
+    }
+
+    public void setKillCooldownEndTick(long killCooldownEndTick) {
+        this.killCooldownEndTick = killCooldownEndTick;
+    }
+
     /** Remember what the blackout outfit replaced, once per blackout. / 每次熄灯只记录一次被黑衣替换的装备。 */
     public void putOutfitOn(ItemStack chest, ItemStack legs, ItemStack feet) {
         outfitOn = true;
@@ -89,13 +108,15 @@ public final class UndercoverPlayerComponent implements AutoSyncedComponent {
         return saved;
     }
 
-    /** Round reset; the outfit and invisibility are taken off by UndercoverService before this. / 回合重置；黑衣与隐身已由 UndercoverService 先行收回。 */
+    /** Round reset; the outfit, invisibility and speed are taken off by UndercoverService before this. / 回合重置；黑衣、隐身与速度已由 UndercoverService 先行收回。 */
     public void reset() {
         boolean wasStage2 = stage2;
         stage2 = false;
         maskBought = false;
         outfitOn = false;
         ownsInvisibility = false;
+        ownsSpeed = false;
+        killCooldownEndTick = 0L;
         savedChest = ItemStack.EMPTY;
         savedLegs = ItemStack.EMPTY;
         savedFeet = ItemStack.EMPTY;
