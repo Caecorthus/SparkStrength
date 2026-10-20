@@ -42,15 +42,16 @@ import java.util.function.IntSupplier;
 /**
  * Client side of the reworked Undercover.
  * <ul>
- *   <li>Nobody sees a stage-2 Undercover through walls, whatever their faction or ability. In view: killers see
- *   silver (no key needed), anyone whose ability would have revealed them sees silver, everyone else nothing. No red
- *   "cohort" label for killers any more.</li>
+ *   <li>Nobody in the round sees a stage-2 Undercover through walls, whatever their faction or ability (spectators
+ *   and creative players are exempt). In view: killers see silver (no key needed), anyone whose ability would have
+ *   revealed them sees silver, everyone else nothing. No red "cohort" label for killers any more.</li>
  *   <li>The stage-2 Undercover's thermal vision (T-7 style): the NoellesRoles ability key toggles it, no cooldown; the
  *   image itself comes from UndercoverThermalRenderer.</li>
  *   <li>Empty hand, Shift + right-click (not at a player): take the mask off (stage 2 stays).</li>
  * </ul>
  * 重做后卧底的客户端：
- * 任何阵营、任何能力都不能透视二阶段卧底。视野内：杀手看到银色（不用按键），原本能揭示他的人看到银色，其他人什么都没有；
+ * 局内任何阵营、任何能力都不能透视二阶段卧底（旁观者与创造模式玩家除外）。视野内：杀手看到银色（不用按键），原本能揭示他的人
+ * 看到银色，其他人什么都没有；
  * 杀手也不再看到红色「同伙」标签；
  * 二阶段卧底的热成像（T-7 风格）：NoellesRoles 技能键开关，没有冷却；画面由 UndercoverThermalRenderer 生成；
  * 空手 Shift + 右键（不对着玩家）：摘下面具（第二阶段不变）。
@@ -148,11 +149,12 @@ public final class UndercoverClient {
         // SparkStrength's own vetoes still win, whatever order the wrappers end up in.
         // 无论包装器最终顺序如何，SparkStrength 自己的否决依然优先。
         boolean vetoed = PerfumerClientEffects.blocksInstinct() || CorruptCopClientHooks.shouldConcealInstinct(target);
-        if (isLivingStage2Target(targetPlayer)) {
+        if (isLivingStage2Target(targetPlayer) && !GameFunctions.isPlayerSpectatingOrCreative(viewer)) {
             // No faction sees a stage-2 Undercover through walls; whoever would reveal them sees silver in view. Decided
-            // here for every viewer, never handed back to the original, so no ability inside can leak them.
-            // 任何阵营都不能透视二阶段卧底；原本能揭示他的人在视野内看到银色。对所有观察者都在此裁决，绝不交回原逻辑，
-            // 内层任何能力都泄露不了。
+            // here for every player in the round, never handed back to the original, so no ability inside can leak them.
+            // Spectators and creative players are exempt (owner 2026-10-20) and keep the original view.
+            // 任何阵营都不能透视二阶段卧底；原本能揭示他的人在视野内看到银色。对局内所有玩家都在此裁决，绝不交回原逻辑，
+            // 内层任何能力都泄露不了。旁观者与创造模式玩家不受限制（负责人 2026-10-20），保持原本的视图。
             if (vetoed || !inSight(viewer, targetPlayer)) {
                 return -1;
             }
@@ -190,11 +192,13 @@ public final class UndercoverClient {
 
     /**
      * MinecraftClient#hasOutline veto: vanilla glowing (Noisemaker backpack, Conscience bomb...) never outlines a
-     * stage-2 Undercover the viewer can't plainly see. / 原版发光（噪音制造者背包、良心炸弹……）不会给观察者看不见的二阶段卧底描边。
+     * stage-2 Undercover the viewer can't plainly see. Spectators and creative players are exempt.
+     * 原版发光（噪音制造者背包、良心炸弹……）不会给观察者看不见的二阶段卧底描边。旁观者与创造模式玩家不受限制。
      */
     public static boolean hidesOutline(Entity target) {
         ClientPlayerEntity viewer = MinecraftClient.getInstance().player;
         return viewer != null && target instanceof PlayerEntity targetPlayer && targetPlayer != viewer
+                && !GameFunctions.isPlayerSpectatingOrCreative(viewer)
                 && isLivingStage2Target(targetPlayer) && !inSight(viewer, targetPlayer);
     }
 
