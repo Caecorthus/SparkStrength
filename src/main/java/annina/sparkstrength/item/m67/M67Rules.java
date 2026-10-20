@@ -9,7 +9,7 @@ public final class M67Rules {
     public static final int CANCEL_COOLDOWN_TICKS = 40;
     public static final int THROW_COOLDOWN_TICKS = 200;
     public static final int BOMBER_COOLDOWN_TICKS = 200;
-    public static final int FUSE_TICKS = 100;
+    public static final int FUSE_TICKS = 70;
     public static final double BLAST_RADIUS = 5.0;
     public static final double WARNING_RADIUS = 7.0;
 
