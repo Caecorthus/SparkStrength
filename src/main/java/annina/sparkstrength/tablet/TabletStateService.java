@@ -458,7 +458,7 @@ public final class TabletStateService {
                 TabletIdentityRules.tasksRemaining(channel, tasksDone),
                 access.hasFeature(TabletFeature.DRONE) ? droneRows(viewer) : List.of(),
                 access.hasFeature(TabletFeature.SABOTAGE) ? SabotageTabletSnapshots.rows(world) : List.of(),
-                access.hasFeature(TabletFeature.SABOTAGE) ? SabotageTabletSnapshots.log(world) : List.of()
+                access.hasFeature(TabletFeature.SABOTAGE) ? SabotageTabletSnapshots.log(world, viewerUuid, links) : List.of()
         );
     }
 

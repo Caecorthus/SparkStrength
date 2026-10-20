@@ -152,7 +152,7 @@ public final class LightsSabotageService {
         switch (reason) {
             case REPAIRED -> {
                 sabotage.setTeamCooldownEndTick(now + SabotageRules.TEAM_COOLDOWN_TICKS);
-                sabotage.log(now, SabotageWorldComponent.LogKind.REPAIRED, "", outage.type());
+                sabotage.log(now, SabotageWorldComponent.LogKind.REPAIRED, outage.type());
                 Text restored = Text.translatable("message.sparkstrength.sabotage.power_back").formatted(Formatting.GREEN);
                 for (ServerPlayerEntity player : world.getPlayers()) {
                     player.sendMessage(restored, true);
@@ -163,11 +163,11 @@ public final class LightsSabotageService {
             }
             case REMOTE_REPAIRED -> {
                 sabotage.setTeamCooldownEndTick(now + SabotageRules.REMOTE_REPAIR_COOLDOWN_TICKS);
-                sabotage.log(now, SabotageWorldComponent.LogKind.REMOTE_REPAIRED, "", outage.type());
+                sabotage.log(now, SabotageWorldComponent.LogKind.REMOTE_REPAIRED, outage.type());
             }
             case EXPIRED -> {
                 sabotage.setTeamCooldownEndTick(now + SabotageRules.TEAM_COOLDOWN_TICKS);
-                sabotage.log(now, SabotageWorldComponent.LogKind.EXPIRED, "", outage.type());
+                sabotage.log(now, SabotageWorldComponent.LogKind.EXPIRED, outage.type());
             }
             case ROUND_END -> {
                 // Wathe keeps its blackout running through the end screen until finalize; end it now, or Blindness

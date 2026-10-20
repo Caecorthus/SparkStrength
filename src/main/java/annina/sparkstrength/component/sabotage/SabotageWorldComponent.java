@@ -75,8 +75,12 @@ public final class SabotageWorldComponent implements Component {
         }
     }
 
-    /** One line of the killers' sabotage log; {@code actor} is a game name or empty. / 杀手破坏日志的一行；actor 为游戏名或空。 */
-    public record LogEntry(long tick, LogKind kind, String actor, SabotageType type) {
+    /**
+     * One line of the killers' sabotage log; {@code actor} is a game name or empty. {@code actorUuid} never leaves the
+     * server: it decides per viewer whether the name is shown ({@link annina.sparkstrength.sabotage.SabotageActorVisibility}).
+     * 杀手破坏日志的一行；actor 为游戏名或空。actorUuid 绝不离开服务端：它按查看者决定是否显示名字。
+     */
+    public record LogEntry(long tick, LogKind kind, @Nullable UUID actorUuid, String actor, SabotageType type) {
     }
 
     /** Server-only durability of a damaged or opened box. / 受损或已打开箱子的服务端耐久。 */
@@ -334,8 +338,13 @@ public final class SabotageWorldComponent implements Component {
         appliedEnginePhase = null;
     }
 
-    public void log(long tick, LogKind kind, String actor, SabotageType type) {
-        log.addLast(new LogEntry(tick, kind, actor == null ? "" : actor, type));
+    /** A line with no actor. / 没有操作者的一行。 */
+    public void log(long tick, LogKind kind, SabotageType type) {
+        log(tick, kind, null, "", type);
+    }
+
+    public void log(long tick, LogKind kind, @Nullable UUID actorUuid, String actor, SabotageType type) {
+        log.addLast(new LogEntry(tick, kind, actorUuid, actor == null ? "" : actor, type));
         while (log.size() > SabotageRules.LOG_LIMIT) {
             log.removeFirst();
         }
