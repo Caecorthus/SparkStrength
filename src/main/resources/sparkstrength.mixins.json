@@ -106,7 +106,15 @@
     "serialkiller.SerialPistolHandSwapGuardMixin",
     "serialkiller.SerialPistolSelectedDropMixin",
     "serialkiller.SerialPistolSlotClickMixin",
-    "serialkiller.SerialKillerComponentTickMixin"
+    "serialkiller.SerialKillerComponentTickMixin",
+    "undercover.UndercoverAssassinImmunityMixin",
+    "undercover.UndercoverAssassinKillGuardMixin",
+    "undercover.UndercoverBoundItemMixin",
+    "undercover.UndercoverDeathDropMixin",
+    "undercover.UndercoverGunInventoryMixin",
+    "undercover.UndercoverGunPickupMixin",
+    "undercover.UndercoverRoleMixin",
+    "undercover.UndercoverSelectedDropMixin"
   ],
   "injectors": {
     "defaultRequire": 1

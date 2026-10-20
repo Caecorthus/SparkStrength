@@ -7,6 +7,7 @@ import annina.sparkstrength.block.JunctionBoxBlock;
 import annina.sparkstrength.compat.SparkTraitsSabotageCompat;
 import annina.sparkstrength.component.sabotage.SabotageWorldComponent;
 import annina.sparkstrength.network.sabotage.ChannelProgressS2CPacket;
+import annina.sparkstrength.role.undercover.UndercoverService;
 import dev.doctor4t.wathe.index.WatheItems;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.block.Block;
@@ -79,7 +80,7 @@ public final class JunctionBoxService {
     }
 
     public static void onPry(ServerPlayerEntity player, BlockPos pos, BlockState state) {
-        if (!SabotageAccess.canUse(player)) {
+        if (!SabotageAccess.canPryOrHack(player)) {
             player.sendMessage(Text.translatable("message.sparkstrength.sabotage.cannot_pry"), true);
             return;
         }
@@ -131,7 +132,7 @@ public final class JunctionBoxService {
     }
 
     public static void onHack(ServerPlayerEntity player, BlockPos pos, BlockState state) {
-        if (!SabotageAccess.canUse(player)) {
+        if (!SabotageAccess.canPryOrHack(player)) {
             player.sendMessage(Text.translatable("message.sparkstrength.sabotage.cannot_hack"), true);
             return;
         }
@@ -297,7 +298,7 @@ public final class JunctionBoxService {
 
     private static boolean isStillValid(ServerPlayerEntity player, Channel channel, BlockState state,
                                         SabotageWorldComponent sabotage, long now) {
-        if (!SabotageAccess.canUse(player) || player.isSneaking() || SabotageActionLocks.isLocked(player)
+        if (!SabotageAccess.canPryOrHack(player) || player.isSneaking() || SabotageActionLocks.isLocked(player)
                 || now - channel.lastHeartbeatTick > SabotageRules.HEARTBEAT_TIMEOUT_TICKS) {
             return false;
         }
@@ -382,6 +383,7 @@ public final class JunctionBoxService {
         if (type != null) {
             SabotageService.unlock(world, sabotage, type, player);
         }
+        UndercoverService.onHackCompleted(player);
     }
 
     private static void stop(ServerPlayerEntity player, int state) {

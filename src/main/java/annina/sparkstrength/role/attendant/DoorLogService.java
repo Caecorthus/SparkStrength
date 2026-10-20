@@ -142,6 +142,21 @@ public final class DoorLogService {
         }
     }
 
+    /**
+     * The Undercover's tomahawk took a whole door away (DoorBreachService): a monitored room door logs "broken", the
+     * same anonymous line a crowbar leaves. Call before the door is removed.
+     * 卧底的战术斧把整扇门拆掉（DoorBreachService）：受监控的房门记一条与撬棍相同的匿名「被破坏」。须在门被移除前调用。
+     */
+    public static void recordBroken(ServerWorld world, BlockPos lowerPos) {
+        if (!GameWorldComponent.KEY.get(world).isRunning()) {
+            return;
+        }
+        SmallDoorBlockEntity door = roomDoor(world, lowerPos);
+        if (door != null) {
+            record(world, DoorLogKind.BROKEN, door.getKeyName(), null);
+        }
+    }
+
     private static void onBlast(World world, BlockPos pos, DoorBlockEntity entity) {
         if (!(world instanceof ServerWorld serverWorld) || !GameWorldComponent.KEY.get(serverWorld).isRunning()) {
             return;

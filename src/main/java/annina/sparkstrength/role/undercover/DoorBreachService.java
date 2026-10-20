@@ -1,0 +1,361 @@
+package annina.sparkstrength.role.undercover;
+
+import annina.sparkstrength.SparkStrengthItems;
+import annina.sparkstrength.component.undercover.RemovedDoorsWorldComponent;
+import annina.sparkstrength.network.sabotage.ChannelProgressS2CPacket;
+import annina.sparkstrength.role.attendant.DoorLogService;
+import annina.sparkstrength.sabotage.SabotageActionLocks;
+import annina.sparkstrength.sabotage.SabotageRules;
+import dev.doctor4t.wathe.api.event.DoorInteraction;
+import dev.doctor4t.wathe.block.SmallDoorBlock;
+import dev.doctor4t.wathe.block.TrainDoorBlock;
+import dev.doctor4t.wathe.block_entity.DoorBlockEntity;
+import dev.doctor4t.wathe.block_entity.SmallDoorBlockEntity;
+import dev.doctor4t.wathe.index.WatheBlocks;
+import dev.doctor4t.wathe.record.GameRecordManager;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvent;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.text.Text;
+import net.minecraft.util.Hand;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.World;
+import net.minecraft.world.WorldEvents;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * The stage-2 Undercover chops doors down with the tactical tomahawk (owner 2026-10-19): holding right-click on any
+ * closed, intact door takes 5 s for glass, 10 s for wood and 30 s for steel, then the door is gone: both halves, plus
+ * the paired leaf of a double door. Afterwards the tomahawk cools down 10 / 20 / 60 s. To simply open a door, hold
+ * something else. Removed doors are saved with the world ({@link RemovedDoorsWorldComponent}) and put back at round
+ * start and end, on server stop and on the next server start, so no map ever loses one. Server thread only.
+ * 二阶段卧底用战术斧拆门（负责人 2026-10-19）：对着任何关着且完好的门按住右键，玻璃门 5 秒、木门 10 秒、钢门 30 秒后
+ * 整扇门消失：上下两半连同双开门的另一扇。之后战术斧冷却 10 / 20 / 60 秒。想正常开门就换别的东西拿在手上。
+ * 被拆的门随世界保存（RemovedDoorsWorldComponent），在回合开始与结束、服务器关闭以及下次启动时原样放回，任何地图都不会少门。
+ * 仅限服务端线程。
+ *
+ * <p>The progress bar, crack overlay and client cancel reuse the junction box channel plumbing
+ * ({@link ChannelProgressS2CPacket#KIND_BREACH}); channel ids start high so they never collide with the boxes'.
+ * 读条、裂纹与客户端取消复用接线箱的读条管线（KIND_BREACH）；读条编号从很大的值开始，不会与接线箱冲突。</p>
+ */
+public final class DoorBreachService {
+    private static final int FIRST_CHANNEL_ID = 1 << 24;
+    private static final int CHOP_SOUND_INTERVAL_TICKS = 10;
+    /**
+     * A breach runs up to 30 s, so one late packet or client hiccup must not throw it away: the server waits 1.5 s for
+     * the next heartbeat (the boxes' short channels wait 0.5 s). Letting go still ends it at once, because the client
+     * sends a cancel. / 拆门最长 30 秒，一个迟到的包或客户端卡顿不该让它前功尽弃：服务端等下一次心跳 1.5 秒（接线箱的短读条
+     * 等 0.5 秒）。松手仍会立即结束，因为客户端会发送取消。
+     */
+    private static final int HEARTBEAT_TIMEOUT_TICKS = 30;
+    private static final Map<UUID, Channel> CHANNELS = new HashMap<>();
+    private static int nextChannelId = FIRST_CHANNEL_ID;
+    private static boolean registered;
+
+    private DoorBreachService() {
+    }
+
+    private static final class Channel {
+        final int id = nextChannelId++;
+        final RegistryKey<World> world;
+        final BlockPos lowerPos;
+        final UndercoverRules.DoorKind kind;
+        long lastHeartbeatTick;
+        long lastResyncTick;
+        final long startTick;
+        int progress;
+
+        Channel(RegistryKey<World> world, BlockPos lowerPos, UndercoverRules.DoorKind kind, long now) {
+            this.world = world;
+            this.lowerPos = lowerPos.toImmutable();
+            this.kind = kind;
+            this.lastHeartbeatTick = now;
+            this.lastResyncTick = now;
+            this.startTick = now;
+        }
+    }
+
+    public static synchronized void register() {
+        if (registered) {
+            return;
+        }
+        registered = true;
+        DoorInteraction.EVENT.register(DoorBreachService::onDoorInteraction);
+        ServerTickEvents.END_WORLD_TICK.register(DoorBreachService::tick);
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> CHANNELS.remove(handler.player.getUuid()));
+        // Doors left out by a crash come back on the next start; a normal stop puts them back first.
+        // 崩溃时留下的缺门在下次启动时放回；正常关服会先放回。
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+            for (ServerWorld world : server.getWorlds()) {
+                restoreAll(world);
+            }
+        });
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+            for (ServerWorld world : server.getWorlds()) {
+                restoreAll(world);
+            }
+        });
+    }
+
+    /** Both sides: HANDLED keeps Wathe's door logic out and lets the held button resend every 4 ticks. / 双端：HANDLED 让 Wathe 门逻辑不执行，按住时每 4 tick 重发。 */
+    private static DoorInteraction.DoorInteractionResult onDoorInteraction(DoorInteraction.DoorInteractionContext context) {
+        if (!context.getHandItem().isOf(SparkStrengthItems.tacticalTomahawk())
+                || !UndercoverRoles.isLivingStage2(context.getPlayer())) {
+            return DoorInteraction.DoorInteractionResult.PASS;
+        }
+        UndercoverRules.DoorKind kind = kindOf(context.getState());
+        if (kind == null || !breachable(context.getEntity())) {
+            return DoorInteraction.DoorInteractionResult.PASS;
+        }
+        if (context.getPlayer() instanceof ServerPlayerEntity player && context.getWorld() instanceof ServerWorld world) {
+            onBreach(world, player, context.getLowerPos(), kind);
+        }
+        return DoorInteraction.DoorInteractionResult.HANDLED;
+    }
+
+    /** Glass, wood or steel; other doors (vanilla metal sheet, cockpit) are not breachable. / 玻璃、木或钢；其他门（原版金属片门、驾驶室门）不可拆。 */
+    public static @Nullable UndercoverRules.DoorKind kindOf(BlockState state) {
+        if (state.isOf(WatheBlocks.SMALL_GLASS_DOOR)) {
+            return UndercoverRules.DoorKind.GLASS;
+        }
+        if (state.isOf(WatheBlocks.SMALL_WOOD_DOOR)) {
+            return UndercoverRules.DoorKind.WOOD;
+        }
+        return state.getBlock() instanceof TrainDoorBlock ? UndercoverRules.DoorKind.STEEL : null;
+    }
+
+    /** Any closed, intact door, locked or not (owner: "右键可以对准一扇门进行破坏"). / 任何关着且完好的门，锁不锁都行。 */
+    private static boolean breachable(DoorBlockEntity door) {
+        return !door.isOpen() && !door.isBlasted();
+    }
+
+    private static void onBreach(ServerWorld world, ServerPlayerEntity player, BlockPos lowerPos,
+                                 UndercoverRules.DoorKind kind) {
+        if (SabotageActionLocks.isLocked(player)) {
+            return;
+        }
+        if (player.getItemCooldownManager().isCoolingDown(SparkStrengthItems.tacticalTomahawk())) {
+            player.sendMessage(Text.translatable("message.sparkstrength.undercover.tomahawk_cooling"), true);
+            return;
+        }
+        long now = world.getTime();
+        Channel current = CHANNELS.get(player.getUuid());
+        if (current != null && current.lowerPos.equals(lowerPos) && current.world == world.getRegistryKey()) {
+            current.lastHeartbeatTick = now;
+            return;
+        }
+        stop(player, ChannelProgressS2CPacket.STATE_STOPPED);
+        Channel channel = new Channel(world.getRegistryKey(), lowerPos, kind, now);
+        CHANNELS.put(player.getUuid(), channel);
+        send(player, channel, ChannelProgressS2CPacket.STATE_RUNNING);
+    }
+
+    /** Only the channel the client means; ids from the junction boxes fall through. / 只取消客户端所指的读条；接线箱的编号直接略过。 */
+    public static boolean handleCancel(ServerPlayerEntity player, int channelId) {
+        Channel channel = CHANNELS.get(player.getUuid());
+        if (channel != null && channel.id == channelId) {
+            stop(player, ChannelProgressS2CPacket.STATE_STOPPED);
+            return true;
+        }
+        return false;
+    }
+
+    private static void tick(ServerWorld world) {
+        long now = world.getTime();
+        Iterator<Map.Entry<UUID, Channel>> iterator = CHANNELS.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<UUID, Channel> entry = iterator.next();
+            Channel channel = entry.getValue();
+            if (channel.world != world.getRegistryKey()) {
+                continue;
+            }
+            ServerPlayerEntity player = world.getServer().getPlayerManager().getPlayer(entry.getKey());
+            if (player == null || player.getServerWorld() != world) {
+                iterator.remove();
+                continue;
+            }
+            if (!isStillValid(world, player, channel, now)) {
+                iterator.remove();
+                clearCracks(world, channel.lowerPos);
+                send(player, channel, ChannelProgressS2CPacket.STATE_STOPPED);
+                continue;
+            }
+            channel.progress++;
+            long elapsed = now - channel.startTick;
+            if (elapsed % CHOP_SOUND_INTERVAL_TICKS == 0) {
+                world.playSound(null, channel.lowerPos.up(), chopSound(channel.kind), SoundCategory.BLOCKS,
+                        0.8F, 0.9F + world.random.nextFloat() * 0.2F);
+            }
+            int stage = Math.min(9, channel.progress * 10 / channel.kind.breachTicks());
+            world.setBlockBreakingInfo(crackId(channel.lowerPos), channel.lowerPos, stage);
+            world.setBlockBreakingInfo(crackId(channel.lowerPos.up()), channel.lowerPos.up(), stage);
+            if (channel.progress >= channel.kind.breachTicks()) {
+                iterator.remove();
+                send(player, channel, ChannelProgressS2CPacket.STATE_FINISHED);
+                removeDoor(world, channel.lowerPos, channel.kind, player);
+                player.getItemCooldownManager().set(SparkStrengthItems.tacticalTomahawk(),
+                        channel.kind.cooldownTicks());
+                continue;
+            }
+            if (now - channel.lastResyncTick >= SabotageRules.PROGRESS_RESYNC_TICKS) {
+                channel.lastResyncTick = now;
+                send(player, channel, ChannelProgressS2CPacket.STATE_RUNNING);
+            }
+        }
+    }
+
+    private static boolean isStillValid(ServerWorld world, ServerPlayerEntity player, Channel channel, long now) {
+        if (!UndercoverRoles.isLivingStage2(player) || player.isSneaking() || SabotageActionLocks.isLocked(player)
+                || !player.getMainHandStack().isOf(SparkStrengthItems.tacticalTomahawk())
+                || player.getItemCooldownManager().isCoolingDown(SparkStrengthItems.tacticalTomahawk())
+                || now - channel.lastHeartbeatTick > HEARTBEAT_TIMEOUT_TICKS) {
+            return false;
+        }
+        BlockState state = world.getBlockState(channel.lowerPos);
+        if (kindOf(state) != channel.kind || !(world.getBlockEntity(channel.lowerPos) instanceof DoorBlockEntity door)
+                || door.isOpen() || door.isBlasted()) {
+            return false;
+        }
+        double reach = SabotageRules.CHANNEL_RANGE + 0.5;
+        if (player.getEyePos().squaredDistanceTo(Vec3d.ofCenter(channel.lowerPos).add(0.0, 0.5, 0.0)) > reach * reach) {
+            return false;
+        }
+        HitResult hit = player.raycast(reach, 1.0F, false);
+        return hit instanceof BlockHitResult blockHit && hit.getType() == HitResult.Type.BLOCK
+                && (blockHit.getBlockPos().equals(channel.lowerPos) || blockHit.getBlockPos().equals(channel.lowerPos.up()));
+    }
+
+    /** Takes both halves (and the paired leaf) out of the world, keeping exactly what was there. / 把上下两半（及成对的另一扇）从世界里拿走，并原样记下。 */
+    private static void removeDoor(ServerWorld world, BlockPos lowerPos, UndercoverRules.DoorKind kind,
+                                   ServerPlayerEntity player) {
+        List<BlockPos> lowers = new ArrayList<>();
+        lowers.add(lowerPos);
+        BlockState lowerState = world.getBlockState(lowerPos);
+        if (lowerState.getBlock() instanceof SmallDoorBlock) {
+            SmallDoorBlockEntity neighbor = SmallDoorBlock.getNeighborDoorEntity(lowerState, world, lowerPos);
+            if (neighbor != null) {
+                lowers.add(neighbor.getPos().toImmutable());
+            }
+        }
+        // Log before the block entity (and its key name) disappears. / 在方块实体（及钥匙名）消失前记录。
+        DoorLogService.recordBroken(world, lowerPos);
+        // Capture everything first: removing one half makes the other one update itself away.
+        // 先全部记下：移除一半会让另一半在更新中自行消失。
+        List<RemovedDoorsWorldComponent.RemovedBlock> taken = new ArrayList<>();
+        for (BlockPos lower : lowers) {
+            for (BlockPos pos : List.of(lower, lower.up())) {
+                BlockState state = world.getBlockState(pos);
+                if (kindOf(state) == null) {
+                    continue;
+                }
+                BlockEntity blockEntity = world.getBlockEntity(pos);
+                taken.add(new RemovedDoorsWorldComponent.RemovedBlock(pos.toImmutable(), state, blockEntity == null
+                        ? null : blockEntity.createNbtWithIdentifyingData(world.getRegistryManager())));
+            }
+        }
+        // Recorded before anything is removed, so a crash mid-way still knows every half.
+        // 先登记再移除，即使中途崩溃也记得每一半。
+        RemovedDoorsWorldComponent.KEY.get(world).add(taken);
+        for (RemovedDoorsWorldComponent.RemovedBlock block : taken) {
+            world.syncWorldEvent(WorldEvents.BLOCK_BROKEN, block.pos(), Block.getRawIdFromState(block.state()));
+            world.setBlockState(block.pos(), Blocks.AIR.getDefaultState(),
+                    Block.NOTIFY_LISTENERS | Block.FORCE_STATE | Block.SKIP_DROPS);
+            world.setBlockBreakingInfo(crackId(block.pos()), block.pos(), -1);
+        }
+        world.playSound(null, lowerPos.up(), breakSound(kind), SoundCategory.BLOCKS, 1.0F, 1.0F);
+        player.swingHand(Hand.MAIN_HAND, true);
+        NbtCompound extra = new NbtCompound();
+        GameRecordManager.putBlockPos(extra, "pos", lowerPos);
+        GameRecordManager.recordItemUse(player, SparkStrengthItems.TACTICAL_TOMAHAWK_ID, null, extra);
+    }
+
+    /**
+     * Round start and end, server start and stop: every removed door goes back where it was, unless something else is
+     * there now. / 回合开始与结束、服务器启动与关闭：被拆的门原样放回，除非那里已有别的东西。
+     */
+    public static void restoreAll(ServerWorld world) {
+        CHANNELS.values().removeIf(channel -> channel.world == world.getRegistryKey());
+        RemovedDoorsWorldComponent record = RemovedDoorsWorldComponent.KEY.get(world);
+        if (record.isEmpty()) {
+            return;
+        }
+        List<RemovedDoorsWorldComponent.RemovedBlock> removed = record.takeAll();
+        for (RemovedDoorsWorldComponent.RemovedBlock block : removed) {
+            if (world.getBlockState(block.pos()).isAir()) {
+                world.setBlockState(block.pos(), block.state(), Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
+            }
+        }
+        for (RemovedDoorsWorldComponent.RemovedBlock block : removed) {
+            BlockEntity blockEntity = world.getBlockEntity(block.pos());
+            if (block.blockEntity() != null && blockEntity != null && world.getBlockState(block.pos()) == block.state()) {
+                blockEntity.read(block.blockEntity(), world.getRegistryManager());
+                blockEntity.markDirty();
+                world.updateListeners(block.pos(), block.state(), block.state(), Block.NOTIFY_LISTENERS);
+            }
+        }
+    }
+
+    private static SoundEvent chopSound(UndercoverRules.DoorKind kind) {
+        return switch (kind) {
+            case GLASS -> SoundEvents.BLOCK_GLASS_HIT;
+            case WOOD -> SoundEvents.ENTITY_ZOMBIE_ATTACK_WOODEN_DOOR;
+            case STEEL -> SoundEvents.ENTITY_ZOMBIE_ATTACK_IRON_DOOR;
+        };
+    }
+
+    private static SoundEvent breakSound(UndercoverRules.DoorKind kind) {
+        return switch (kind) {
+            case GLASS -> SoundEvents.BLOCK_GLASS_BREAK;
+            case WOOD -> SoundEvents.ENTITY_ZOMBIE_BREAK_WOODEN_DOOR;
+            case STEEL -> SoundEvents.BLOCK_ANVIL_LAND;
+        };
+    }
+
+    private static void stop(ServerPlayerEntity player, int state) {
+        Channel channel = CHANNELS.remove(player.getUuid());
+        if (channel != null) {
+            clearCracks(player.getServerWorld(), channel.lowerPos);
+            send(player, channel, state);
+        }
+    }
+
+    private static void clearCracks(ServerWorld world, BlockPos lowerPos) {
+        world.setBlockBreakingInfo(crackId(lowerPos), lowerPos, -1);
+        world.setBlockBreakingInfo(crackId(lowerPos.up()), lowerPos.up(), -1);
+    }
+
+    private static void send(ServerPlayerEntity player, Channel channel, int state) {
+        if (ServerPlayNetworking.canSend(player, ChannelProgressS2CPacket.ID)) {
+            ServerPlayNetworking.send(player, new ChannelProgressS2CPacket(channel.id,
+                    ChannelProgressS2CPacket.KIND_BREACH, channel.lowerPos, state, channel.progress,
+                    channel.kind.breachTicks(), 1));
+        }
+    }
+
+    /** A stable negative breaker id per block, never a real entity id. / 每格一个稳定的负数破坏者 id，永远不会是真实实体 id。 */
+    private static int crackId(BlockPos pos) {
+        return -2048 - Math.floorMod(pos.hashCode() * 31 + 7, 1 << 27);
+    }
+}

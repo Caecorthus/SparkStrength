@@ -4,6 +4,7 @@ import annina.sparkstrength.SparkStrengthBlocks;
 import annina.sparkstrength.block.EngineUnitBlock;
 import annina.sparkstrength.compat.SparkTraitsSabotageCompat;
 import annina.sparkstrength.component.sabotage.SabotageWorldComponent;
+import annina.sparkstrength.role.undercover.UndercoverRoles;
 import annina.sparkstrength.network.sabotage.CloseBreakerRepairS2CPacket;
 import annina.sparkstrength.record.EngineRecorder;
 import annina.sparkstrength.tablet.TabletStateService;
@@ -89,7 +90,7 @@ public final class EngineSabotageService {
             return TriggerResult.NO_ENGINE_UNITS;
         }
         start(world, sabotage, world.getTime(), initiator.getUuid(), initiator.getGameProfile().getName(),
-                SparkTraitsSabotageCompat.isMasterSaboteur(initiator));
+                SparkTraitsSabotageCompat.isMasterSaboteur(initiator), UndercoverRoles.isUndercover(initiator));
         feedback(world, sabotage);
         EngineRecorder.triggered(world, initiator);
         return TriggerResult.OK;
@@ -97,9 +98,10 @@ public final class EngineSabotageService {
 
     /** Takes the outage slot and damages every unit; logging and the tablet are the caller's. / 占用破坏名额并让所有装置受损；日志与平板由调用方处理。 */
     private static void start(ServerWorld world, SabotageWorldComponent sabotage, long triggeredAt,
-                              @Nullable UUID initiator, String initiatorName, boolean masterSaboteur) {
+                              @Nullable UUID initiator, String initiatorName, boolean masterSaboteur,
+                              boolean undercoverOwned) {
         sabotage.startOutage(SabotageType.ENGINE, OutageMode.REPAIR, triggeredAt, initiator, initiatorName,
-                masterSaboteur);
+                masterSaboteur, undercoverOwned);
         sabotage.setEngineTriggeredAt(triggeredAt);
         sabotage.setAppliedEnginePhase(EnginePhase.CRITICAL);
         setUnitLooks(world, sabotage.engineUnits(), EngineCondition.DAMAGED);
@@ -309,7 +311,7 @@ public final class EngineSabotageService {
         long now = world.getTime();
         EnginePhase phase = sabotage.enginePhase(now);
         EngineRecorder.ended(world, reason, actor);
-        sabotage.endOutage();
+        SabotageWorldComponent.Outage ended = sabotage.endOutage();
         sabotage.clearEngine();
         setUnitLooks(world, sabotage.engineUnits(), EngineCondition.INTACT);
         boolean repaired = reason != EndReason.ABORTED;
@@ -317,8 +319,10 @@ public final class EngineSabotageService {
                 ? CloseBreakerRepairS2CPacket.REASON_POWER_BACK : CloseBreakerRepairS2CPacket.REASON_OTHER);
         if (repaired) {
             boolean remote = reason == EndReason.REMOTE_REPAIRED;
-            sabotage.setTeamCooldownEndTick(now + (remote
-                    ? SabotageRules.REMOTE_REPAIR_COOLDOWN_TICKS : SabotageRules.TEAM_COOLDOWN_TICKS));
+            if (ended != null) {
+                sabotage.startCooldownAfter(ended, now + (remote
+                        ? SabotageRules.REMOTE_REPAIR_COOLDOWN_TICKS : SabotageRules.TEAM_COOLDOWN_TICKS));
+            }
             sabotage.log(now, remote ? SabotageWorldComponent.LogKind.REMOTE_REPAIRED
                     : SabotageWorldComponent.LogKind.REPAIRED, SabotageType.ENGINE);
             celebrate(world, sabotage.engineUnits(), unit, phase != null && phase != EnginePhase.CRITICAL);
@@ -395,7 +399,7 @@ public final class EngineSabotageService {
             if (sabotage.outage() != null) {
                 SabotageService.finishActive(world);
             }
-            start(world, sabotage, triggeredAt, null, "", false);
+            start(world, sabotage, triggeredAt, null, "", false, false);
         } else {
             sabotage.setEngineTriggeredAt(triggeredAt);
             EnginePhase applied = sabotage.appliedEnginePhase();

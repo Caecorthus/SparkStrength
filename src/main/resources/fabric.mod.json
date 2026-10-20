@@ -30,6 +30,7 @@
   "custom": {
     "cardinal-components": [
       "sparkstrength:corrupt_cop_ability",
+      "sparkstrength:undercover_player",
       "sparkstrength:noisemaker_glow_user",
       "sparkstrength:noisemaker_glow_target",
       "sparkstrength:phantom_backpack_user",
@@ -53,6 +54,7 @@
       "sparkstrength:killer_team_economy",
       "sparkstrength:tablet_world",
       "sparkstrength:sabotage_world",
+      "sparkstrength:removed_doors",
       "sparkstrength:morph_body_disguise_world",
       "sparkstrength:pathogen_strain",
       "sparkstrength:virus_carrier",

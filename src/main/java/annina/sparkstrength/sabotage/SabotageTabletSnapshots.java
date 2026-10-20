@@ -4,9 +4,11 @@ import annina.sparkstrength.SparkStrengthBlocks;
 import annina.sparkstrength.block.JunctionBoxBlock;
 import annina.sparkstrength.component.sabotage.SabotageWorldComponent;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
+import dev.doctor4t.wathe.cca.WorldBlackoutComponent;
 import net.minecraft.block.BlockState;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,10 +23,18 @@ public final class SabotageTabletSnapshots {
     private SabotageTabletSnapshots() {
     }
 
-    public static List<TabletSnapshot.SabotageRow> rows(ServerWorld world) {
+    /**
+     * The cards on {@code track}: the killer team's (null) or a stage-2 Undercover's own. The outage itself is shared,
+     * so either side sees the other's sabotage as ACTIVE or BLOCKED.
+     * track 轨道上的卡片：杀手团队（null）或二阶段卧底自己的。破坏本身是共用的，所以双方都会看到对方的破坏为进行中或被占用。
+     */
+    public static List<TabletSnapshot.SabotageRow> rows(ServerWorld world, @Nullable UUID track) {
         SabotageWorldComponent sabotage = SabotageWorldComponent.KEY.get(world);
         SabotageWorldComponent.Outage outage = sabotage.outage();
         long now = world.getTime();
+        // Wathe's own blackout takes the slot too, so the card says BLOCKED instead of a READY the server would refuse.
+        // Wathe 自己的熄灯也占用名额，卡片显示被占用，而不是一个服务端会拒绝的「可触发」。
+        boolean nativeBlackout = outage == null && WorldBlackoutComponent.KEY.get(world).isBlackoutActive();
         List<TabletSnapshot.SabotageRow> rows = new ArrayList<>();
         for (SabotageType type : SabotageType.values()) {
             if (!type.availableOn(sabotage.hasEngineUnits())) {
@@ -32,16 +42,17 @@ public final class SabotageTabletSnapshots {
                 continue;
             }
             boolean thisActive = outage != null && outage.type() == type;
-            SabotageRowState state = SabotageRowState.of(thisActive, outage != null && !thisActive,
-                    sabotage.isUnlocked(type), now, sabotage.readyTick(type), sabotage.teamCooldownEndTick());
+            SabotageRowState state = SabotageRowState.of(thisActive, (outage != null && !thisActive) || nativeBlackout,
+                    sabotage.isUnlockedFor(track, type), now, sabotage.readyTickFor(track, type),
+                    sabotage.cooldownEndTickFor(track));
             long seconds = switch (state) {
                 // Engine: the repair window counts down, then how long the train has been halted counts up.
                 // 动力：抢修窗口向下数，之后已停驶时间向上数。
                 case ACTIVE -> type == SabotageType.ENGINE
                         ? EngineRules.cardSeconds(now, sabotage.engineTriggeredAt())
                         : (now - outage.startTick()) / 20;
-                case ARMING -> ceilSeconds(sabotage.readyTick(type) - now);
-                case COOLDOWN -> ceilSeconds(sabotage.teamCooldownEndTick() - now);
+                case ARMING -> ceilSeconds(sabotage.readyTickFor(track, type) - now);
+                case COOLDOWN -> ceilSeconds(sabotage.cooldownEndTickFor(track) - now);
                 default -> 0;
             };
             int boxes = 0;

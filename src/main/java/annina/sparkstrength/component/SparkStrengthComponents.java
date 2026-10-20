@@ -25,6 +25,8 @@ import annina.sparkstrength.component.tablet.TabletWorldComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowTargetComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
 import annina.sparkstrength.component.toxicologist.ToxicologistAntidoteComponent;
+import annina.sparkstrength.component.undercover.RemovedDoorsWorldComponent;
+import annina.sparkstrength.component.undercover.UndercoverPlayerComponent;
 import annina.sparkstrength.component.veteran.VeteranKnifeComponent;
 import annina.sparkstrength.component.vulture.SkateboardRideComponent;
 import annina.sparkstrength.component.vulture.VultureSuperCursePlayerComponent;
@@ -55,6 +57,9 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.beginRegistration(PlayerEntity.class, CorruptCopAbilityComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(CorruptCopAbilityComponent::new);
+        registry.beginRegistration(PlayerEntity.class, UndercoverPlayerComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(UndercoverPlayerComponent::new);
         registry.beginRegistration(PlayerEntity.class, NoisemakerGlowUserComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(NoisemakerGlowUserComponent::new);
@@ -145,6 +150,7 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.register(PlayerCollisionGraceWorldComponent.KEY, PlayerCollisionGraceWorldComponent::new);
         registry.register(TabletWorldComponent.KEY, TabletWorldComponent::new);
         registry.register(SabotageWorldComponent.KEY, SabotageWorldComponent::new);
+        registry.register(RemovedDoorsWorldComponent.KEY, RemovedDoorsWorldComponent::new);
         registry.register(MorphBodyDisguiseWorldComponent.KEY, MorphBodyDisguiseWorldComponent::new);
         registry.register(
                 ShadowJesterShowdownWorldComponent.KEY,

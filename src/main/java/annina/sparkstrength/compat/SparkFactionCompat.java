@@ -11,6 +11,8 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Proxy;
+import java.util.function.Predicate;
 
 /** Optional public faction API bridges; missing/old providers preserve standalone behavior.
  *  可选公开阵营 API 桥接；缺失或旧版提供方保持独立运行行为。 */
@@ -23,6 +25,33 @@ public final class SparkFactionCompat {
     public static final Identifier WITCH_FACTION_ID = Identifier.of("sparkwitch", "witch");
 
     private SparkFactionCompat() {
+    }
+
+    /**
+     * Registers a veto with SparkFactionAPI's player-affect policies: {@code action} from any actor is denied on targets
+     * {@code protectedTarget} accepts. A dynamic proxy keeps SparkFactionAPI optional; false when it is absent or old.
+     * 向 SparkFactionAPI 的玩家影响策略注册一条否决：任何人对 protectedTarget 认可的目标执行 action 都会被拒绝。
+     * 用动态代理保持 SparkFactionAPI 为可选依赖；缺失或旧版时返回 false。
+     */
+    public static boolean denyAction(Identifier action, Predicate<PlayerEntity> protectedTarget) {
+        try {
+            Class<?> api = Class.forName("dev.caecorthus.sparkfactionapi.api.SparkFactionApi");
+            Class<?> policy = Class.forName("dev.caecorthus.sparkfactionapi.api.PlayerAffectPolicy");
+            Method register = api.getMethod("registerPlayerAffectPolicy", policy);
+            Object proxy = Proxy.newProxyInstance(policy.getClassLoader(), new Class<?>[]{policy}, (self, method, args) ->
+                    switch (method.getName()) {
+                        case "canAffect" -> !(action.equals(args[2]) && args[1] instanceof PlayerEntity target
+                                && protectedTarget.test(target));
+                        case "hashCode" -> System.identityHashCode(self);
+                        case "equals" -> self == args[0];
+                        case "toString" -> "SparkStrength deny " + action;
+                        default -> null;
+                    });
+            register.invoke(null, proxy);
+            return true;
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
+            return false;
+        }
     }
 
     public static boolean canAffectPlayer(PlayerEntity actor, PlayerEntity target, Identifier action) {

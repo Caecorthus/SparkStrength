@@ -111,7 +111,10 @@ def providerBaselines = [
                 fileName       : "noellesroles-1.7.6-h1.5.6-spark.jar",
                 version        : "1.7.6-h1.5.6-spark",
                 sha256         : "fcb0da6995197afff8637dd9236f96d9d07cfc0e26484ad3777e5cf3de37d8b7",
-                abilityHandler : "lambda\$registerPackets\$5"
+                abilityHandler : "lambda\$registerPackets\$5",
+                // The Assassin guess handler, where the stage-2 Undercover's immunity cancels a guess.
+                // 刺客猜测的处理函数，二阶段卧底的刺杀免疫在此取消猜测。
+                assassinHandler: "lambda\$registerPackets\$6"
         ]
 ]
 def supersededProviderJars = [
@@ -456,6 +459,43 @@ tasks.register("verifyCompatibilityArtifact") {
                     file("libs/${providerBaselines.noellesroles.fileName}"),
                     providerBaselines.noellesroles.abilityHandler
             )
+
+            // The Undercover's Assassin immunity binds one exact lambda with require = 0: a renumbered NoellesRoles
+            // build must fail here instead of silently losing the immunity.
+            // 卧底的刺杀免疫以 require = 0 绑定一个确切的 lambda：NoellesRoles 编号变化必须在这里失败，而不是悄悄失去免疫。
+            def assassinSelector = ("${providerBaselines.noellesroles.assassinHandler}" +
+                    "(Lorg/agmas/noellesroles/packet/AssassinGuessRoleC2SPacket;" +
+                    "Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking\$Context;)V").toString()
+            def assassinMixin = readClassNode(zipFile,
+                    "annina/sparkstrength/mixin/undercover/UndercoverAssassinImmunityMixin.class")
+            def assassinHandlerNode = assassinMixin.methods.find {
+                it.name == "sparkstrength\$stage2UndercoverCannotBeAssassinated"
+            }
+            if (assassinHandlerNode == null) {
+                throw new GradleException("Missing remapped Undercover Assassin immunity handler")
+            }
+            def assassinInjection = ((assassinHandlerNode.visibleAnnotations ?: []) +
+                    (assassinHandlerNode.invisibleAnnotations ?: [])).find {
+                it.desc == "Lorg/spongepowered/asm/mixin/injection/Inject;"
+            }
+            def assassinSelectors = annotationValue(assassinInjection, "method")
+            assassinSelectors = assassinSelectors instanceof Collection
+                    ? assassinSelectors.collect { it.toString() }
+                    : [assassinSelectors?.toString()].findAll { it != null }
+            if (assassinSelectors != [assassinSelector]) {
+                throw new GradleException(
+                        "Undercover Assassin selector drift: expected ${assassinSelector}, found ${assassinSelectors}")
+            }
+            def assassinProvider = new java.util.zip.ZipFile(file("libs/${providerBaselines.noellesroles.fileName}"))
+            try {
+                def noellesRoles = readClassNode(assassinProvider, "org/agmas/noellesroles/Noellesroles.class")
+                if (!noellesRoles.methods.any { it.name + it.desc == assassinSelector }) {
+                    throw new GradleException(
+                            "${assassinProvider.name} has no ${assassinSelector} for the Undercover Assassin immunity")
+                }
+            } finally {
+                assassinProvider.close()
+            }
 
             def nestedProviderBinary = zipFile.entries().find { entry ->
                 def entryName = entry.name.toLowerCase(Locale.ROOT)

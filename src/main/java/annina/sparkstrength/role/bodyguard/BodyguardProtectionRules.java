@@ -41,6 +41,8 @@ public final class BodyguardProtectionRules {
             Map.entry(Identifier.of("wathe", "knife_stab"), new Protection(true, BLOCK, Source.MELEE)),
             Map.entry(Identifier.of("wathe", "gun_shot"), PHYSICAL),
             Map.entry(Identifier.of("wathe", "bat_hit"), new Protection(true, BLOCK, Source.MELEE)),
+            // The stage-2 Undercover's tactical tomahawk: a melee kill like the knife. / 二阶段卧底的战术斧：与刀相同的近战击杀。
+            Map.entry(Identifier.of("sparkstrength", "tomahawk"), new Protection(true, BLOCK, Source.MELEE)),
             Map.entry(Identifier.of("wathe", "grenade"), new Protection(false, BLOCK, Source.BLAST)),
             Map.entry(Identifier.of("noellesroles", "throwing_axe"), PHYSICAL),
             Map.entry(Identifier.of("noellesroles", "demon_hunter_shot"), PHYSICAL),
