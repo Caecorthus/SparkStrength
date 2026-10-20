@@ -57,7 +57,6 @@ public final class UndercoverService {
     public static final Identifier BELL_ECHO_ACTION = Identifier.of("sparkwitch", "bell_echo");
     private static final int INVISIBILITY_TICKS = 60;
     private static final int SPEED_TICKS = 60;
-    private static final int RESYNC_TICKS = 40;
 
     private UndercoverService() {
     }
@@ -87,9 +86,6 @@ public final class UndercoverService {
                 // Every tick: a gun swapped in through a slot never stays long enough to fire.
                 // 每 tick 检查：通过槽位换进来的枪留不到能开火的时候。
                 dropGuns(player);
-                if (now % RESYNC_TICKS == 0) {
-                    state.resync();
-                }
             }
             maintainBlackoutLook(player, state, stage2 && blackout);
             maintainBlackoutSpeed(player, state, UndercoverRules.blackoutSpeed(stage2, blackout,
