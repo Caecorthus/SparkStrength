@@ -1,8 +1,6 @@
 package annina.sparkstrength.component.undercover;
 
 import annina.sparkstrength.SparkStrength;
-import annina.sparkstrength.compat.SparkTraitsCompat;
-import dev.doctor4t.wathe.cca.GameWorldComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
@@ -15,11 +13,15 @@ import org.ladysnake.cca.api.v3.component.ComponentRegistry;
 import org.ladysnake.cca.api.v3.component.sync.AutoSyncedComponent;
 
 /**
- * Round state of the reworked Undercover. {@code stage2} goes to the owner and to effective killers (they draw the
- * silver line-of-sight highlight from it) and to nobody else, so a civilian client cannot tell who transformed once the
- * mask is off. Everything else is server-only.
- * 重做后卧底的本局状态。stage2 只同步给本人和有效杀手（杀手据此画出视线内的银色高亮），不发给其他人，
- * 这样面具摘下后平民客户端无从得知谁转变过。其余字段只在服务端。
+ * Round state of the reworked Undercover. {@code stage2} goes to every client: no faction may see a stage-2 Undercover
+ * through walls, and each viewer's client decides that from this flag (killers draw silver in sight, anyone whose
+ * ability would reveal them sees silver in sight, nothing out of sight). It tells no more than the client already has:
+ * Wathe syncs the whole role table to everyone, and the CQCM mask that starts stage 2 is drawn on the face. CCA sends
+ * it again whenever a client starts tracking the Undercover, so nothing is re-sent by hand. Everything else is
+ * server-only.
+ * 重做后卧底的本局状态。stage2 同步给所有客户端：任何阵营都不能透视二阶段卧底，每个观察者的客户端都要据此裁决
+ * （杀手视线内银色，原本能揭示他的人视线内银色，视线外什么都没有）。它不会多泄露什么：Wathe 本就把整张身份表同步给所有人，
+ * 开启第二阶段的 CQCM 面具也画在脸上。客户端开始追踪卧底时 CCA 会再发一次，无需手动重发。其余字段只在服务端。
  */
 public final class UndercoverPlayerComponent implements AutoSyncedComponent {
     public static final ComponentKey<UndercoverPlayerComponent> KEY = ComponentRegistry.getOrCreate(
@@ -123,22 +125,6 @@ public final class UndercoverPlayerComponent implements AutoSyncedComponent {
         if (wasStage2) {
             KEY.sync(player);
         }
-    }
-
-    /** Re-sent periodically so a viewer who became an effective killer mid-round learns it. / 定期重发，让局中才成为有效杀手的观察者也能知道。 */
-    public void resync() {
-        if (stage2) {
-            KEY.sync(player);
-        }
-    }
-
-    @Override
-    public boolean shouldSyncWith(ServerPlayerEntity recipient) {
-        if (recipient == player) {
-            return true;
-        }
-        return SparkTraitsCompat.isEffectiveKiller(
-                GameWorldComponent.KEY.get(recipient.getWorld()).getRole(recipient), recipient);
     }
 
     @Override
