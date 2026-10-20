@@ -30,8 +30,39 @@ public final class UndercoverRules {
     /** Wathe melee kill range (the knife's 3 blocks). / Wathe 近战击杀距离（与刀同为 3 格）。 */
     public static final double TOMAHAWK_RANGE = 3.0;
     public static final int TOMAHAWK_KILL_COOLDOWN_TICKS = 20 * 20;
+    /**
+     * In a blackout a kill cools down 3 s, and a longer kill cooldown still running when the lights go out is cut to
+     * this (owner 2026-10-20). Door breach cooldowns are not affected.
+     * 熄灯时击杀只冷却 3 秒；灯灭时仍在跑的更长击杀冷却也会缩到这么长（负责人 2026-10-20）。拆门冷却不受影响。
+     */
+    public static final int TOMAHAWK_BLACKOUT_KILL_COOLDOWN_TICKS = 3 * 20;
+    /** Speed I while the mask is worn in a blackout (owner 2026-10-20). / 熄灯时戴着面具获得速度 I（负责人 2026-10-20）。 */
+    public static final int BLACKOUT_SPEED_AMPLIFIER = 0;
 
     private UndercoverRules() {
+    }
+
+    /** Kill cooldown chosen at the moment of the kill. / 击杀那一刻决定的冷却。 */
+    public static int killCooldownTicks(boolean blackout) {
+        return blackout ? TOMAHAWK_BLACKOUT_KILL_COOLDOWN_TICKS : TOMAHAWK_KILL_COOLDOWN_TICKS;
+    }
+
+    /**
+     * Whether a kill cooldown with this many ticks left gets cut to the blackout length. Only the kill cooldown is
+     * tracked, so a breach cooldown never reaches this.
+     * 剩余这么多 tick 的击杀冷却是否要缩到熄灯时长。只追踪击杀冷却，所以拆门冷却不会走到这里。
+     */
+    public static boolean blackoutCutsKillCooldown(boolean blackout, long killCooldownTicksLeft) {
+        return blackout && killCooldownTicksLeft > TOMAHAWK_BLACKOUT_KILL_COOLDOWN_TICKS;
+    }
+
+    /**
+     * Speed I needs all three: a living stage-2 Undercover, a blackout, and the mask on the head. Unlike the rest of
+     * stage 2 it does not stay when the mask comes off (owner 2026-10-20).
+     * 速度 I 三者缺一不可：存活的二阶段卧底、熄灯、面具戴在头上。与第二阶段其他效果不同，摘下面具就没有（负责人 2026-10-20）。
+     */
+    public static boolean blackoutSpeed(boolean livingStage2, boolean blackout, boolean maskWorn) {
+        return livingStage2 && blackout && maskWorn;
     }
 
     /** Door materials the tomahawk can chop down. / 战术斧能拆的门的材质。 */

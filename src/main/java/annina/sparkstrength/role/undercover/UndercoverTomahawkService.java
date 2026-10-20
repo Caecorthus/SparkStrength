@@ -4,9 +4,11 @@ import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.compat.SparkFactionCompat;
 import annina.sparkstrength.compat.SparkTraitsCompat;
+import annina.sparkstrength.component.undercover.UndercoverPlayerComponent;
 import annina.sparkstrength.role.veteran.InnocentKnifeKillRules;
 import annina.sparkstrength.sabotage.SabotageActionLocks;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
+import dev.doctor4t.wathe.cca.WorldBlackoutComponent;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.record.GameRecordManager;
@@ -16,6 +18,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.ActionResult;
@@ -32,11 +35,12 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * The tactical tomahawk's left-click kill (owner 2026-10-19): attack speed 1, a fully charged swing at a living player
- * kills them with {@code sparkstrength:tomahawk}, then the tomahawk cools down 20 s (also when a vest or shield stopped
- * the kill). Killing an effective innocent costs the Undercover its life ("小脑", {@code wathe:shot_innocent}), with
- * the Veteran knife's rule. Any other tomahawk swing does nothing at all, so it never falls back to a vanilla punch.
- * 战术斧的左键击杀（负责人 2026-10-19）：攻速 1，蓄满后挥向存活玩家即以 sparkstrength:tomahawk 击杀，随后冷却 20 秒
- * （被背心或盾挡下也一样）。杀死有效好人时卧底自己「小脑」（wathe:shot_innocent），规则同老兵匕首。
+ * kills them with {@code sparkstrength:tomahawk}, then the tomahawk cools down 20 s, or 3 s in a blackout (also when a
+ * vest or shield stopped the kill). Killing an effective innocent costs the Undercover its life ("小脑",
+ * {@code wathe:shot_innocent}), with the Veteran knife's rule. Any other tomahawk swing does nothing at all, so it never
+ * falls back to a vanilla punch.
+ * 战术斧的左键击杀（负责人 2026-10-19）：攻速 1，蓄满后挥向存活玩家即以 sparkstrength:tomahawk 击杀，随后冷却 20 秒，
+ * 熄灯时 3 秒（被背心或盾挡下也一样）。杀死有效好人时卧底自己「小脑」（wathe:shot_innocent），规则同老兵匕首。
  * 其余任何挥砍都不会生效，绝不会退回到原版拳击。
  *
  * <p>{@link AttackEntityCallback} runs at the head of the attack on both sides: the client returns SUCCESS to send the
@@ -108,7 +112,12 @@ public final class UndercoverTomahawkService {
         attacker.getWorld().playSound(null, victim.getX(), victim.getY(), victim.getZ(),
                 SoundEvents.ENTITY_PLAYER_ATTACK_CRIT, SoundCategory.PLAYERS, 1.0F, 0.8F);
         GameFunctions.killPlayer(victim, true, attacker, DEATH_REASON);
-        attacker.getItemCooldownManager().set(tomahawk, UndercoverRules.TOMAHAWK_KILL_COOLDOWN_TICKS);
+        ServerWorld world = attacker.getServerWorld();
+        int cooldown = UndercoverRules.killCooldownTicks(WorldBlackoutComponent.KEY.get(world).isBlackoutActive());
+        attacker.getItemCooldownManager().set(tomahawk, cooldown);
+        // Recorded so a blackout can cut it later; UndercoverService owns it from here.
+        // 记录下来以便之后熄灯时缩短；之后由 UndercoverService 管理。
+        UndercoverPlayerComponent.KEY.get(attacker).setKillCooldownEndTick(world.getTime() + cooldown);
         // 小脑 only after a death that really happened, and never twice. / 只有确实死亡才小脑，且不会重复处死。
         if (InnocentKnifeKillRules.shouldPunish(preKill, game.isPlayerDead(victim.getUuid()),
                 GameFunctions.isPlayerPlayingAndAlive(attacker))) {

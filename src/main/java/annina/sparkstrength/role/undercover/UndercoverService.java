@@ -22,6 +22,7 @@ import net.minecraft.enchantment.Enchantments;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.entity.player.ItemCooldownManager;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -41,8 +42,10 @@ import java.util.List;
 
 /**
  * Server side of the reworked Undercover: entering stage 2 when the mask first goes on, the gun ban, the hack reward,
- * taking the mask off, and the blackout look (invisible body, black leather). Server thread only.
- * 重做后卧底的服务端：第一次戴上面具时进入第二阶段、禁枪、入侵奖励、摘面具，以及熄灯形态（身体隐身、黑色皮衣）。仅限服务端线程。
+ * taking the mask off, the blackout look (invisible body, black leather), Speed I with the mask on in a blackout, and
+ * the kill cooldown cut when the lights go out. Server thread only.
+ * 重做后卧底的服务端：第一次戴上面具时进入第二阶段、禁枪、入侵奖励、摘面具、熄灯形态（身体隐身、黑色皮衣）、
+ * 熄灯时戴面具的速度 I，以及灯灭时缩短击杀冷却。仅限服务端线程。
  */
 public final class UndercoverService {
     /** Marks the blackout outfit so only our own pieces are ever taken back. / 标记熄灯黑衣，只收回我们自己发的。 */
@@ -51,6 +54,7 @@ public final class UndercoverService {
     /** SparkWitch Bell Ringer's echo skill id, vetoed on the Undercover. / SparkWitch 敲钟人回响的技能 id，对卧底否决。 */
     public static final Identifier BELL_ECHO_ACTION = Identifier.of("sparkwitch", "bell_echo");
     private static final int INVISIBILITY_TICKS = 60;
+    private static final int SPEED_TICKS = 60;
     private static final int RESYNC_TICKS = 40;
 
     private UndercoverService() {
@@ -58,6 +62,7 @@ public final class UndercoverService {
 
     public static void tick(ServerWorld world) {
         long now = world.getTime();
+        boolean blackout = WorldBlackoutComponent.KEY.get(world).isBlackoutActive();
         for (ServerPlayerEntity player : world.getPlayers()) {
             UndercoverPlayerComponent state = UndercoverPlayerComponent.KEY.get(player);
             boolean undercover = UndercoverRoles.isUndercover(player);
@@ -84,7 +89,10 @@ public final class UndercoverService {
                     state.resync();
                 }
             }
-            maintainBlackoutLook(player, state, stage2 && WorldBlackoutComponent.KEY.get(world).isBlackoutActive());
+            maintainBlackoutLook(player, state, stage2 && blackout);
+            maintainBlackoutSpeed(player, state, UndercoverRules.blackoutSpeed(stage2, blackout,
+                    player.getEquippedStack(EquipmentSlot.HEAD).isOf(SparkStrengthItems.cqcmMask())));
+            trackKillCooldown(player, state, stage2 && blackout, now);
             if (!state.isOutfitOn()) {
                 stripStrayOutfit(player);
             }
@@ -228,6 +236,73 @@ public final class UndercoverService {
             if (current != null && current.getDuration() <= INVISIBILITY_TICKS) {
                 player.removeStatusEffect(StatusEffects.INVISIBILITY);
             }
+        }
+        releaseBlackoutSpeed(player, state);
+    }
+
+    /**
+     * Speed I while the mask is on in a blackout (owner 2026-10-20), owned like the invisibility: short and refreshed,
+     * no particles (the body is invisible), and a stronger or longer Speed from anyone else is left alone.
+     * 熄灯时戴着面具获得速度 I（负责人 2026-10-20），归属方式与隐身相同：短时长续期、无粒子（身体是隐身的），
+     * 别人给的更强或更长的速度不去碰。
+     */
+    private static void maintainBlackoutSpeed(ServerPlayerEntity player, UndercoverPlayerComponent state,
+                                              boolean wanted) {
+        if (!wanted) {
+            releaseBlackoutSpeed(player, state);
+            return;
+        }
+        StatusEffectInstance current = player.getStatusEffect(StatusEffects.SPEED);
+        if (current != null && !isOwnSpeedShape(current)) {
+            // Someone else's stronger or longer Speed took over: it is theirs to end.
+            // 别人更强或更长的速度接管了：由它自己结束。
+            state.setOwnsSpeed(false);
+        } else if (current == null || (state.ownsSpeed() && current.getDuration() < SPEED_TICKS / 2)) {
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.SPEED, SPEED_TICKS,
+                    UndercoverRules.BLACKOUT_SPEED_AMPLIFIER, false, false, true));
+            state.setOwnsSpeed(true);
+        }
+    }
+
+    private static void releaseBlackoutSpeed(ServerPlayerEntity player, UndercoverPlayerComponent state) {
+        if (!state.ownsSpeed()) {
+            return;
+        }
+        state.setOwnsSpeed(false);
+        StatusEffectInstance current = player.getStatusEffect(StatusEffects.SPEED);
+        // Speed I is the weakest Speed, so ours never hides another one underneath.
+        // 速度 I 是最弱的速度，我们的效果下面不会藏着别的速度。
+        if (current != null && isOwnSpeedShape(current)) {
+            player.removeStatusEffect(StatusEffects.SPEED);
+        }
+    }
+
+    /** Ours is never stronger than Speed I, infinite, or longer than SPEED_TICKS. / 我们给的速度不强于速度 I、不是无限、不长于 SPEED_TICKS。 */
+    private static boolean isOwnSpeedShape(StatusEffectInstance effect) {
+        return effect.getAmplifier() == UndercoverRules.BLACKOUT_SPEED_AMPLIFIER && !effect.isInfinite()
+                && effect.getDuration() <= SPEED_TICKS;
+    }
+
+    /**
+     * Forgets a kill cooldown that stopped running (ran out, or an admin cleared it); in a blackout a longer one is cut
+     * to 3 s (owner 2026-10-20). Only kills record the end tick, so a door breach cooldown is never cut.
+     * 忘掉已经不在跑的击杀冷却（自然结束或被管理员清除）；熄灯时更长的击杀冷却缩到 3 秒（负责人 2026-10-20）。
+     * 只有击杀会记录结束 tick，所以拆门冷却永远不会被缩短。
+     */
+    private static void trackKillCooldown(ServerPlayerEntity player, UndercoverPlayerComponent state, boolean blackout,
+                                          long now) {
+        if (state.killCooldownEndTick() == 0L) {
+            return;
+        }
+        Item tomahawk = SparkStrengthItems.tacticalTomahawk();
+        ItemCooldownManager cooldowns = player.getItemCooldownManager();
+        if (!cooldowns.isCoolingDown(tomahawk)) {
+            state.setKillCooldownEndTick(0L);
+            return;
+        }
+        if (UndercoverRules.blackoutCutsKillCooldown(blackout, state.killCooldownEndTick() - now)) {
+            cooldowns.set(tomahawk, UndercoverRules.TOMAHAWK_BLACKOUT_KILL_COOLDOWN_TICKS);
+            state.setKillCooldownEndTick(now + UndercoverRules.TOMAHAWK_BLACKOUT_KILL_COOLDOWN_TICKS);
         }
     }
 
