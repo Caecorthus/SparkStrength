@@ -105,6 +105,7 @@
     "sabotage.EngineWindExposureMixin",
     "sabotage.SabotageSkyLightMixin",
     "undercover.UndercoverInstinctArbiterMixin",
+    "undercover.UndercoverOutlineVetoMixin",
     "undercover.UndercoverThermalArmMixin",
     "undercover.UndercoverThermalGameRendererMixin",
     "undercover.UndercoverThermalSilhouetteMixin"

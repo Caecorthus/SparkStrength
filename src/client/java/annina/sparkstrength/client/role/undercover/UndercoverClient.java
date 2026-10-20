@@ -42,14 +42,16 @@ import java.util.function.IntSupplier;
 /**
  * Client side of the reworked Undercover.
  * <ul>
- *   <li>Killers' view of a stage-2 Undercover: silver in line of sight, nothing otherwise (instinct key or not), and no
- *   red "cohort" label any more.</li>
+ *   <li>Nobody sees a stage-2 Undercover through walls, whatever their faction or ability. In view: killers see
+ *   silver (no key needed), anyone whose ability would have revealed them sees silver, everyone else nothing. No red
+ *   "cohort" label for killers any more.</li>
  *   <li>The stage-2 Undercover's thermal vision (T-7 style): the NoellesRoles ability key toggles it, no cooldown; the
  *   image itself comes from UndercoverThermalRenderer.</li>
  *   <li>Empty hand, Shift + right-click (not at a player): take the mask off (stage 2 stays).</li>
  * </ul>
  * 重做后卧底的客户端：
- * 杀手眼中的二阶段卧底：视线内为银色，否则什么都没有（按不按本能键都一样），也不再显示红色「同伙」标签；
+ * 任何阵营、任何能力都不能透视二阶段卧底。视野内：杀手看到银色（不用按键），原本能揭示他的人看到银色，其他人什么都没有；
+ * 杀手也不再看到红色「同伙」标签；
  * 二阶段卧底的热成像（T-7 风格）：NoellesRoles 技能键开关，没有冷却；画面由 UndercoverThermalRenderer 生成；
  * 空手 Shift + 右键（不对着玩家）：摘下面具（第二阶段不变）。
  */
@@ -145,19 +147,23 @@ public final class UndercoverClient {
         }
         // SparkStrength's own vetoes still win, whatever order the wrappers end up in.
         // 无论包装器最终顺序如何，SparkStrength 自己的否决依然优先。
-        if (PerfumerClientEffects.blocksInstinct() || CorruptCopClientHooks.shouldConcealInstinct(target)) {
+        boolean vetoed = PerfumerClientEffects.blocksInstinct() || CorruptCopClientHooks.shouldConcealInstinct(target);
+        if (isLivingStage2Target(targetPlayer)) {
+            // No faction sees a stage-2 Undercover through walls; whoever would reveal them sees silver in view. Decided
+            // here for every viewer, never handed back to the original, so no ability inside can leak them.
+            // 任何阵营都不能透视二阶段卧底；原本能揭示他的人在视野内看到银色。对所有观察者都在此裁决，绝不交回原逻辑，
+            // 内层任何能力都泄露不了。
+            if (vetoed || !inSight(viewer, targetPlayer)) {
+                return -1;
+            }
+            boolean killer = isLivingKiller(viewer);
+            return UndercoverRules.viewOfStage2(killer, true, killer ? -1 : original.getAsInt());
+        }
+        if (vetoed) {
             return NO_DECISION;
         }
         boolean targetAlive = GameFunctions.isPlayerPlayingAndAlive(targetPlayer);
         double distance = viewer.distanceTo(targetPlayer);
-        if (targetAlive && UndercoverRoles.isUndercover(targetPlayer)
-                && UndercoverPlayerComponent.KEY.get(targetPlayer).isStage2()) {
-            Integer killerView = UndercoverRules.killerViewOfStage2(isLivingKiller(viewer), true,
-                    targetPlayer.isInvisible(), distance, UndercoverSight.canSee(viewer, targetPlayer));
-            if (killerView != null) {
-                return specialRevealOr(original, killerView);
-            }
-        }
         // Thermal draws its own heat image; only when it can't (an Iris shader pack, or a failed post chain) does it
         // fall back to white outlines on the living players in sight. / 热成像自己绘制热图；只有画不了时（Iris 光影包，
         // 或后处理加载失败）才退回为视线内活人的白色描边。
@@ -180,6 +186,26 @@ public final class UndercoverClient {
     private static int specialRevealOr(IntSupplier original, int rule) {
         int base = original.getAsInt();
         return base == -1 || base == INSTINCT_KILLER_RED || base == INSTINCT_CIVILIAN_GREEN ? rule : base;
+    }
+
+    /**
+     * MinecraftClient#hasOutline veto: vanilla glowing (Noisemaker backpack, Conscience bomb...) never outlines a
+     * stage-2 Undercover the viewer can't plainly see. / 原版发光（噪音制造者背包、良心炸弹……）不会给观察者看不见的二阶段卧底描边。
+     */
+    public static boolean hidesOutline(Entity target) {
+        ClientPlayerEntity viewer = MinecraftClient.getInstance().player;
+        return viewer != null && target instanceof PlayerEntity targetPlayer && targetPlayer != viewer
+                && isLivingStage2Target(targetPlayer) && !inSight(viewer, targetPlayer);
+    }
+
+    private static boolean isLivingStage2Target(PlayerEntity target) {
+        return GameFunctions.isPlayerPlayingAndAlive(target) && UndercoverRoles.isUndercover(target)
+                && UndercoverPlayerComponent.KEY.get(target).isStage2();
+    }
+
+    private static boolean inSight(PlayerEntity viewer, PlayerEntity target) {
+        return UndercoverRules.stage2InSight(target.isInvisible(), viewer.distanceTo(target),
+                UndercoverSight.canSee(viewer, target));
     }
 
     private static boolean isLivingKiller(PlayerEntity viewer) {
