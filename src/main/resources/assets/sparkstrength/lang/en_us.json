@@ -748,6 +748,7 @@
   "message.sparkstrength.undercover.hack_reward": "Hack complete, +%s coins",
   "message.sparkstrength.undercover.sabotage_ready": "[Sabotage] Your sabotage is ready: lights or engine, from the tablet.",
   "message.sparkstrength.undercover.cannot_assassinate": "This target cannot be assassinated.",
+  "message.sparkstrength.undercover.cannot_swap": "This target cannot be swapped.",
   "message.sparkstrength.undercover.tomahawk_cooling": "The tomahawk is on cooldown.",
   "message.sparkstrength.sabotage.trigger_denied.undercover_mask": "Put on the CQCM mask to sabotage.",
   "message.sparkstrength.sabotage.trigger_denied.cooldown_own": "Your sabotage is on cooldown.",

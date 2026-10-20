@@ -13,6 +13,7 @@ import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.tag.WatheItemTags;
 import dev.doctor4t.wathe.util.ShopEntry;
 import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.AttributeModifierSlot;
 import net.minecraft.component.type.AttributeModifiersComponent;
 import net.minecraft.component.type.DyedColorComponent;
 import net.minecraft.component.type.ItemEnchantmentsComponent;
@@ -20,10 +21,13 @@ import net.minecraft.component.type.NbtComponent;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.Enchantments;
 import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.entity.attribute.EntityAttributeModifier;
+import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.ItemCooldownManager;
 import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.item.ArmorItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -37,8 +41,6 @@ import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
-
-import java.util.List;
 
 /**
  * Server side of the reworked Undercover: entering stage 2 when the mask first goes on, the gun ban, the hack reward,
@@ -357,12 +359,20 @@ public final class UndercoverService {
         return data != null && data.contains(OUTFIT_MARKER);
     }
 
-    private static ItemStack outfitPiece(ServerPlayerEntity player, Item piece) {
+    private static ItemStack outfitPiece(ServerPlayerEntity player, Item item) {
+        ArmorItem piece = (ArmorItem) item;
         ItemStack stack = piece.getDefaultStack();
         stack.set(DataComponentTypes.DYED_COLOR, new DyedColorComponent(OUTFIT_COLOR, false));
-        // No armour points: kills never go through damage anyway, and no armour bar appears.
-        // 没有护甲值：击杀本来就不走伤害，也不会出现护甲条。
-        stack.set(DataComponentTypes.ATTRIBUTE_MODIFIERS, new AttributeModifiersComponent(List.of(), false));
+        // Netherite's knockback resistance and no armour points (kills never go through damage). The list must not be
+        // empty: an empty one falls back to the leather defaults.
+        // 下界合金的击退抗性、没有护甲值（击杀不走伤害）。列表不能为空：空列表会退回皮革的默认属性。
+        stack.set(DataComponentTypes.ATTRIBUTE_MODIFIERS, AttributeModifiersComponent.builder()
+                .add(EntityAttributes.GENERIC_KNOCKBACK_RESISTANCE, new EntityAttributeModifier(
+                                Identifier.ofVanilla("armor." + piece.getType().getName()),
+                                UndercoverRules.KNOCKBACK_RESISTANCE_PER_PIECE,
+                                EntityAttributeModifier.Operation.ADD_VALUE),
+                        AttributeModifierSlot.forEquipmentSlot(piece.getSlotType()))
+                .build());
         // Curse of Binding keeps it on through SparkWitch's armour slots; the glint stays hidden.
         // 绑定诅咒让它在 SparkWitch 盔甲栏里也脱不下；附魔光效隐藏。
         RegistryEntry<Enchantment> binding = player.getRegistryManager().get(RegistryKeys.ENCHANTMENT)
