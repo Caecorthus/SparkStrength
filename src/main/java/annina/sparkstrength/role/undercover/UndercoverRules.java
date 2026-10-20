@@ -15,7 +15,7 @@ public final class UndercoverRules {
     /** Paid when an Undercover completes a junction box hack (task money is RoleEconomyRules'). / 卧底完成接线箱入侵的奖励。 */
     public static final int HACK_REWARD = 100;
 
-    /** Killers see a stage-2 Undercover in line of sight in the role's own colour. / 杀手视线内的二阶段卧底显示为职业色。 */
+    /** A stage-2 Undercover in view shows in the role's own colour. / 视野内的二阶段卧底显示为职业色。 */
     public static final int HIGHLIGHT_COLOR = 0xC0C0C0;
     /**
      * Thermal's fallback outline where the T-7 heat image can't run (an Iris shader pack, or a failed post chain).
@@ -71,19 +71,34 @@ public final class UndercoverRules {
     }
 
     /**
-     * What a killer's client draws on a stage-2 Undercover: silver when it can see them (not invisible, in range, in
-     * line of sight), otherwise nothing at all, instinct key or not. Only living effective killers are affected.
-     * 杀手客户端对二阶段卧底的描边：看得见（未隐身、在范围内、视线可达）时为银色，否则什么都没有，按不按本能键都一样。
-     * 只作用于存活的有效杀手。
-     *
-     * @return the colour, -1 for none, or {@code null} when this rule does not apply / 颜色；-1 表示无；null 表示本规则不适用
+     * Whether a viewer can plainly see a living stage-2 Undercover: not invisible, in range and in line of sight.
+     * Only then may anything show on them. / 观察者能否直接看见存活的二阶段卧底：未隐身、在范围内、视线可达。只有此时才可能显示任何东西。
      */
-    public static Integer killerViewOfStage2(boolean viewerLivingKiller, boolean targetStage2, boolean targetInvisible,
-                                             double distance, boolean lineOfSight) {
-        if (!viewerLivingKiller || !targetStage2) {
-            return null;
+    public static boolean stage2InSight(boolean targetInvisible, double distance, boolean lineOfSight) {
+        return !targetInvisible && distance <= SIGHT_RANGE && lineOfSight;
+    }
+
+    /**
+     * What any viewer's client draws on a living stage-2 Undercover (owner 2026-10-20: no faction sees them through
+     * walls, they are highlighted in view):
+     * <ul>
+     *   <li>out of sight: nothing at all, for every viewer and every ability;</li>
+     *   <li>in sight, living effective killers: silver, no instinct key needed;</li>
+     *   <li>in sight, anyone else: silver if something would have revealed them ({@code original} is a colour),
+     *   nothing if not.</li>
+     * </ul>
+     * 任何观察者客户端对存活二阶段卧底的描边（负责人 2026-10-20：任何阵营都不能透视，视野内高亮）：
+     * 视线外：对所有观察者、所有能力都什么也没有；视线内的存活有效杀手：银色，不用按本能键；
+     * 视线内的其他人：原本会被揭示（original 为颜色）则为银色，否则什么也没有。
+     *
+     * @param original what the viewer would have seen without this rule, -1 for nothing / 没有本规则时观察者会看到的颜色，-1 为无
+     * @return the colour, or -1 for none / 颜色，-1 表示无
+     */
+    public static int viewOfStage2(boolean viewerLivingKiller, boolean inSight, int original) {
+        if (!inSight) {
+            return -1;
         }
-        return !targetInvisible && distance <= SIGHT_RANGE && lineOfSight ? HIGHLIGHT_COLOR : -1;
+        return viewerLivingKiller || original != -1 ? HIGHLIGHT_COLOR : -1;
     }
 
     /**
