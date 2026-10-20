@@ -114,7 +114,8 @@
     "undercover.UndercoverGunInventoryMixin",
     "undercover.UndercoverGunPickupMixin",
     "undercover.UndercoverRoleMixin",
-    "undercover.UndercoverSelectedDropMixin"
+    "undercover.UndercoverSelectedDropMixin",
+    "undercover.UndercoverSwapImmunityMixin"
   ],
   "injectors": {
     "defaultRequire": 1

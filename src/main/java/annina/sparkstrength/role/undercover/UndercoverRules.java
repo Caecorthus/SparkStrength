@@ -38,6 +38,12 @@ public final class UndercoverRules {
     public static final int TOMAHAWK_BLACKOUT_KILL_COOLDOWN_TICKS = 3 * 20;
     /** Speed I while the mask is worn in a blackout (owner 2026-10-20). / 熄灯时戴着面具获得速度 I（负责人 2026-10-20）。 */
     public static final int BLACKOUT_SPEED_AMPLIFIER = 0;
+    /**
+     * Knockback resistance of the mask and of each blackout leather piece: netherite's 0.1 per piece, so mask plus
+     * outfit resist 40% like a full netherite set (owner 2026-10-20).
+     * 面具与每件熄灯皮衣的击退抗性：与下界合金每件 0.1 相同，面具加整套皮衣共 40%，等同整套下界合金（负责人 2026-10-20）。
+     */
+    public static final float KNOCKBACK_RESISTANCE_PER_PIECE = 0.1F;
 
     private UndercoverRules() {
     }

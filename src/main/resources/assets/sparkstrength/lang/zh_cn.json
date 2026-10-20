@@ -748,6 +748,7 @@
   "message.sparkstrength.undercover.hack_reward": "入侵成功，+%s 金币",
   "message.sparkstrength.undercover.sabotage_ready": "[破坏] 你的破坏已就绪：可以在平板上开灯光或动力破坏。",
   "message.sparkstrength.undercover.cannot_assassinate": "目标无法被刺杀。",
+  "message.sparkstrength.undercover.cannot_swap": "目标无法被交换。",
   "message.sparkstrength.undercover.tomahawk_cooling": "战术斧冷却中。",
   "message.sparkstrength.sabotage.trigger_denied.undercover_mask": "戴上 CQCM 面具后才能开破坏。",
   "message.sparkstrength.sabotage.trigger_denied.cooldown_own": "你的破坏冷却中。",
