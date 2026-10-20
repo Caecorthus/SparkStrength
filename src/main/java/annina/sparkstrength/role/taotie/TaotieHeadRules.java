@@ -144,6 +144,10 @@ public final class TaotieHeadRules {
             // USEC 狙击步枪开火与配件操作，同步自控场专家列表；开镜（sparkwitch:usec_scope）在两处均放行。未注册时该 id 永远不会命中。
             Identifier.of("sparkwitch", "fire_usec_rifle"),
             Identifier.of("sparkwitch", "usec_attachment"),
+            // SparkWitch Witch Maiden Mini Wither toggle and crimson skull fire, mirrored from the Control Expert list
+            // (2026-10-20). / SparkWitch 巫女小凋灵切换与赤首射击，同步自控场专家列表（2026-10-20）。
+            Identifier.of("sparkwitch", "mini_wither_toggle"),
+            Identifier.of("sparkwitch", "fire_crimson_skull"),
 
             Identifier.of("sparkstrength", "noisemaker_glow"),
             Identifier.of("sparkstrength", "phantom_backpack_invisibility"),

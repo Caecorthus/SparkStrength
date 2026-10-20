@@ -55,7 +55,10 @@ public final class BodyguardProtectionRules {
             Map.entry(Identifier.of("sparkwitch", "ninja_knife_kill"), PHYSICAL),
             Map.entry(Identifier.of("sparkwitch", "ninja_shuriken_kill"), PHYSICAL),
             Map.entry(Identifier.of("sparkwitch", "swordfish_stab"), PHYSICAL),
-            Map.entry(Identifier.of("sparkwitch", "mighty_force"), PHYSICAL)
+            Map.entry(Identifier.of("sparkwitch", "mighty_force"), PHYSICAL),
+            // SparkWitch Witch Maiden crimson wither skull: a gunshot for protections (owner 2026-10-20).
+            // SparkWitch 巫女赤色凋灵之首：防护按枪击处理（所有者 2026-10-20）。
+            Map.entry(Identifier.of("sparkwitch", "crimson_wither_skull"), PHYSICAL)
     );
     /** A Bomber drone's blast; the carried bomb has the same reason but no blast scope. / 炸弹客无人机的爆炸；随身炸弹死因相同但没有爆炸作用域。 */
     private static final Protection DRONE_BLAST = new Protection(false, BLOCK, Source.BLAST);
