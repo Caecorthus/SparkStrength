@@ -561,6 +561,28 @@ public final class DroneWeaponHits {
         }
     }
 
+    /**
+     * Read-only competitor distance for SparkWitch's Raven Form crow step ({@code DroneSparkWitchCrowTargetsMixin} on its
+     * {@code BlackRavenCrowTargets.deviceSquared}): the squared entry of the block-clipped segment into the nearest live
+     * drone, measured like {@link #onSparkWitchRay}; +inf when none. Breaks nothing: a drone that beats the crow then
+     * absorbs in SparkWitch's Seeker step through this class's existing hooks.
+     * 供 SparkWitch 化鸦乌鸦步骤使用的只读竞争距离（{@code DroneSparkWitchCrowTargetsMixin} 挂在其
+     * {@code BlackRavenCrowTargets.deviceSquared} 上）：按方块截断的线段进入最近存活无人机处的平方距离，量法同
+     * {@link #onSparkWitchRay}；没有时为正无穷。本方法不击毁任何东西：胜过乌鸦的无人机随后经本类现有钩子在 SparkWitch 搜寻者
+     * 步骤中吸收这一击。
+     */
+    public static double nearestDroneSquared(@Nullable ServerPlayerEntity attacker, @Nullable Vec3d start,
+                                             @Nullable Vec3d end) {
+        if (attacker == null || start == null || end == null || attacker.getWorld().isClient()
+                || noDroneNear(attacker.getWorld(), start, end)) {
+            return Double.POSITIVE_INFINITY;
+        }
+        Vec3d clipped = DroneHitGeometry.clipToBlocks(attacker.getWorld(), start, end, attacker);
+        DroneHitGeometry.DroneHit hit = DroneHitGeometry.nearestDrone(attacker.getWorld(), start, clipped,
+                Double.POSITIVE_INFINITY, DroneCombatService::usable);
+        return hit == null ? Double.POSITIVE_INFINITY : hit.distanceSquared();
+    }
+
     // ---- Shared / 公共 ----
 
     /**

@@ -4,6 +4,7 @@ import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.compat.SparkFactionCompat;
 import annina.sparkstrength.compat.SparkTraitsCompat;
+import annina.sparkstrength.compat.SparkWitchCompat;
 import annina.sparkstrength.component.undercover.UndercoverPlayerComponent;
 import annina.sparkstrength.role.veteran.InnocentKnifeKillRules;
 import annina.sparkstrength.sabotage.SabotageActionLocks;
@@ -79,21 +80,42 @@ public final class UndercoverTomahawkService {
         // 先读蓄力，然后每次挥砍都会消耗，无论是否命中（连点不会保留蓄力）。
         boolean charged = player.getAttackCooldownProgress(FULL_CHARGE_BASE) >= 1.0F;
         player.resetLastAttackedTicks();
-        if (!(entity instanceof PlayerEntity target) || !UndercoverRoles.isLivingStage2(player) || !charged
+        // A SparkWitch Raven Form crow is a target too (owner 2026-10-21): the client sends the swing, the server
+        // resolves it to the Black Raven. / SparkWitch 化鸦乌鸦同样是目标（所有者 2026-10-21）：客户端发送挥砍，服务端将其
+        // 解析为黑羽鸦。
+        boolean crow = !(entity instanceof PlayerEntity) && SparkWitchCompat.isBlackRavenCrow(entity);
+        if (!(entity instanceof PlayerEntity) && !crow || !UndercoverRoles.isLivingStage2(player) || !charged
                 || player.getItemCooldownManager().isCoolingDown(tomahawk)) {
             return ActionResult.FAIL;
         }
         if (world.isClient) {
             return ActionResult.SUCCESS;
         }
-        if (player instanceof ServerPlayerEntity attacker && target instanceof ServerPlayerEntity victim) {
-            strike(attacker, victim, held, tomahawk);
+        if (player instanceof ServerPlayerEntity attacker) {
+            if (entity instanceof ServerPlayerEntity victim) {
+                strike(attacker, victim, held, tomahawk, null);
+            } else if (crow) {
+                // SparkWitch measured the reach and line on the crow and armed its owner substitution, so the strike
+                // below (gates, kill, cooldown, 小脑) runs on the Black Raven exactly as on a direct hit.
+                // SparkWitch 已在乌鸦上量取距离与视线并装好主人替身，因此下方的劈砍（门槛、击杀、冷却、小脑）与直接命中黑羽鸦完全一致。
+                ServerPlayerEntity owner = SparkWitchCompat.crowMeleeStandIn(attacker, entity,
+                        UndercoverRules.TOMAHAWK_RANGE);
+                if (owner != null) {
+                    strike(attacker, owner, held, tomahawk, entity.getPos());
+                }
+            }
         }
         return ActionResult.SUCCESS;
     }
 
-    private static void strike(ServerPlayerEntity attacker, ServerPlayerEntity victim, ItemStack held, Item tomahawk) {
-        if (!GameFunctions.isPlayerPlayingAndAlive(victim) || !inReach(attacker, victim)
+    /**
+     * @param crowPos where the Raven Form crow standing in for {@code victim} was hit (its reach was measured there and
+     *                the hit sound plays there), or null for a direct hit / 代替 {@code victim} 被命中的化鸦乌鸦位置（距离已在该处
+     *                量取，命中声也在该处播放）；直接命中时为 null
+     */
+    private static void strike(ServerPlayerEntity attacker, ServerPlayerEntity victim, ItemStack held, Item tomahawk,
+                               @Nullable Vec3d crowPos) {
+        if (!GameFunctions.isPlayerPlayingAndAlive(victim) || crowPos == null && !inReach(attacker, victim)
                 || SabotageActionLocks.isLocked(attacker)
                 || SparkTraitsCompat.isMeleeActionBlocked(attacker, held)
                 || !SparkFactionCompat.canAffectPlayer(attacker, victim, DEATH_REASON)
@@ -109,7 +131,8 @@ public final class UndercoverTomahawkService {
                 SparkTraitsCompat.hasConscience(victim),
                 SparkTraitsCompat.hasImpostor(attacker));
         GameRecordManager.recordItemUse(attacker, SparkStrengthItems.TACTICAL_TOMAHAWK_ID, victim, null);
-        attacker.getWorld().playSound(null, victim.getX(), victim.getY(), victim.getZ(),
+        Vec3d hitAt = crowPos != null ? crowPos : victim.getPos();
+        attacker.getWorld().playSound(null, hitAt.x, hitAt.y, hitAt.z,
                 SoundEvents.ENTITY_PLAYER_ATTACK_CRIT, SoundCategory.PLAYERS, 1.0F, 0.8F);
         GameFunctions.killPlayer(victim, true, attacker, DEATH_REASON);
         ServerWorld world = attacker.getServerWorld();

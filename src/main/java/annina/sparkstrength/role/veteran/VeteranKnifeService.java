@@ -13,7 +13,6 @@ import dev.doctor4t.wathe.index.WatheItems;
 import dev.doctor4t.wathe.record.GameRecordManager;
 import dev.doctor4t.wathe.util.KnifeStabPayload;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.entity.Entity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -64,10 +63,10 @@ public final class VeteranKnifeService {
         if (SparkTraitsCompat.isKillerInteractionBlocked(player) || player.isSpectator()) {
             return true;
         }
-        Entity targetEntity = player.getServerWorld().getEntityById(payload.target());
-        if (!(targetEntity instanceof ServerPlayerEntity target)
-                || target.isSpectator()
-                || target.distanceTo(player) > 3.0D) {
+        // A SparkWitch Raven Form crow id resolves to its owner (KnifeStabTargets); the Veteran rules below apply to it.
+        // SparkWitch 化鸦乌鸦 id 解析为其主人（KnifeStabTargets）；下方老兵规则同样作用于它。
+        ServerPlayerEntity target = KnifeStabTargets.resolve(player, payload.target());
+        if (target == null) {
             return true;
         }
         if (!isHoldingKnife(player)) {
@@ -113,10 +112,8 @@ public final class VeteranKnifeService {
         if (SparkTraitsCompat.isKillerInteractionBlocked(player) || player.isSpectator()) {
             return true;
         }
-        Entity targetEntity = player.getServerWorld().getEntityById(payload.target());
-        if (!(targetEntity instanceof ServerPlayerEntity target)
-                || target.isSpectator()
-                || target.distanceTo(player) > 3.0D) {
+        ServerPlayerEntity target = KnifeStabTargets.resolve(player, payload.target());
+        if (target == null) {
             return true;
         }
         if (!isHoldingKnife(player)) {
