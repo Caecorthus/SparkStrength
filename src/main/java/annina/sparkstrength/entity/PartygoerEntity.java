@@ -104,14 +104,6 @@ public class PartygoerEntity extends PathAwareEntity {
         }
     }
 
-    @Override
-    public void remove(RemovalReason reason) {
-        super.remove(reason);
-        if (getWorld() instanceof ServerWorld && brain != null) {
-            PartygoerService.onRemoved(this);
-        }
-    }
-
     // ---- Combat: only PartygoerService may end it / 战斗：只有 PartygoerService 能结束它 ----
 
     @Override

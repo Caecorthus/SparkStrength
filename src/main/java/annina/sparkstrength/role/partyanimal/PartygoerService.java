@@ -17,7 +17,9 @@ import dev.doctor4t.wathe.cca.PlayerShopComponent;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.record.GameRecordManager;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.minecraft.entity.Entity;
 import net.minecraft.nbt.NbtCompound;
@@ -25,6 +27,7 @@ import net.minecraft.network.packet.s2c.play.PlaySoundS2CPacket;
 import net.minecraft.network.packet.s2c.play.StopSoundS2CPacket;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.registry.Registries;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
@@ -92,6 +95,12 @@ public final class PartygoerService {
                 PartyRoomIndex.clear(serverWorld);
             }
         });
+        ServerEntityEvents.ENTITY_UNLOAD.register((entity, world) -> {
+            if (entity instanceof PartygoerEntity partygoer) {
+                onRemoved(partygoer);
+            }
+        });
+        ServerTickEvents.END_SERVER_TICK.register(PartygoerService::sweep);
         ServerWorldEvents.UNLOAD.register((server, world) -> {
             finishAll(world);
             PartyRoomIndex.clear(world);
@@ -182,8 +191,10 @@ public final class PartygoerService {
         switch (ending) {
             case ATE -> world.playSound(null, body.getX(), body.getEyeY(), body.getZ(), SoundEvents.ENTITY_PLAYER_BURP,
                     SoundCategory.HOSTILE, 1.2F, 0.8F);
-            case GAVE_UP -> playClip(brain, SparkStrengthSounds.PARTYGOER_VANISH);
-            case KILLED -> playClip(brain, SparkStrengthSounds.PARTYGOER_DEATH);
+            // The body is gone this tick: an entity-bound clip would stop at once, so these stay where it was.
+            // 实体本刻即消失：绑定实体的音频会立刻停止，因此这两段留在原地播放。
+            case GAVE_UP -> playClip(brain, SparkStrengthSounds.PARTYGOER_VANISH, false);
+            case KILLED -> playClip(brain, SparkStrengthSounds.PARTYGOER_DEATH, false);
             case QUIET -> {
             }
         }
@@ -200,16 +211,41 @@ public final class PartygoerService {
             }
         }
         LIVE.remove(body);
-        body.discard();
+        if (!body.isRemoved()) {
+            body.discard();
+        }
     }
 
-    /** Entity removed by something else (chunk unload, another mod): end it quietly. / 实体被其他原因移除：安静结束。 */
+    /**
+     * The entity left the world some other way (chunk unload, a rider logging out, another mod): during its round that
+     * counts as giving up (the cooldown starts), otherwise it ends quietly.
+     * 实体以其他方式离开世界（区块卸载、骑乘者下线、其他模组）：仍在其对局中时算作放弃（开始冷却），否则安静结束。
+     */
     public static void onRemoved(PartygoerEntity body) {
         PartygoerBrain brain = LIVE.get(body);
         if (brain != null && !brain.isFinished()) {
-            finish(brain, Ending.QUIET);
+            finish(brain, brain.isCurrentRound() ? Ending.GAVE_UP : Ending.QUIET);
         }
         LIVE.remove(body);
+    }
+
+    /**
+     * Every second: a Partygoer whose body is gone or stopped ticking (left the simulation distance) gives up, so its
+     * summoner is never locked out.
+     * 每秒一次：身体已消失或停止 tick（离开模拟距离）的派对客放弃，召唤者因此不会被一直锁住。
+     */
+    private static void sweep(MinecraftServer server) {
+        if (LIVE.isEmpty() || server.getTicks() % 20 != 0) {
+            return;
+        }
+        for (Map.Entry<PartygoerEntity, PartygoerBrain> entry : new ArrayList<>(LIVE.entrySet())) {
+            PartygoerBrain brain = entry.getValue();
+            if (entry.getKey().isRemoved()) {
+                onRemoved(entry.getKey());
+            } else if (brain.isStalled()) {
+                finish(brain, brain.isCurrentRound() ? Ending.GAVE_UP : Ending.QUIET);
+            }
+        }
     }
 
     public static void vanishQuietly(PartygoerEntity body) {
@@ -309,6 +345,11 @@ public final class PartygoerService {
      * 从派对客身上播放一段音频（为范围内的听众切断上一段）；召唤者在任何地方都能听到，作为技能反馈。
      */
     static void playClip(PartygoerBrain brain, SoundEvent clip) {
+        playClip(brain, clip, true);
+    }
+
+    /** {@code follow}: bound to the entity (moves with it) or left at its current spot. / 跟随实体移动，或留在当前位置。 */
+    static void playClip(PartygoerBrain brain, SoundEvent clip, boolean follow) {
         PartygoerEntity body = brain.body();
         ServerWorld world = brain.world();
         for (ServerPlayerEntity listener : world.getPlayers()) {
@@ -320,8 +361,13 @@ public final class PartygoerService {
             }
         }
         long seed = world.getRandom().nextLong();
-        world.playSoundFromEntity(null, body, Registries.SOUND_EVENT.getEntry(clip), SoundCategory.HOSTILE,
-                PartyAnimalRules.SOUND_VOLUME, 1.0F, seed);
+        if (follow) {
+            world.playSoundFromEntity(null, body, Registries.SOUND_EVENT.getEntry(clip), SoundCategory.HOSTILE,
+                    PartyAnimalRules.SOUND_VOLUME, 1.0F, seed);
+        } else {
+            world.playSound(null, body.getX(), body.getEyeY(), body.getZ(), Registries.SOUND_EVENT.getEntry(clip),
+                    SoundCategory.HOSTILE, PartyAnimalRules.SOUND_VOLUME, 1.0F, seed);
+        }
         ServerPlayerEntity owner = player(world, brain.ownerUuid());
         if (owner != null && owner.squaredDistanceTo(body) > HEARING_RANGE * HEARING_RANGE) {
             owner.networkHandler.sendPacket(new PlaySoundS2CPacket(Registries.SOUND_EVENT.getEntry(clip),

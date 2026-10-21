@@ -43,6 +43,14 @@ import java.util.UUID;
  */
 public final class PartygoerBrain {
     private static final int REPLAN_TICKS = 10;
+    private static final long STALL_TICKS = 100;
+    /** After a search that can't reach its goal, wait longer before searching again. / 搜索到不了目标后，等久一点再搜。 */
+    private static final int REPLAN_FAILED_TICKS = 40;
+    /** Charge straight at a target only this close (never through walls from afar). / 只在这么近时直线冲向目标（远处绝不穿墙）。 */
+    private static final double STRAIGHT_RANGE = 2.5;
+    private static final double STRAIGHT_VERTICAL = 1.5;
+    /** Carrying with no route at all for this long: eat where it stands. / 扛人时完全无路达到这么久：就地开吃。 */
+    private static final int CARRY_STUCK_TICKS = 60;
     private static final int DOOR_LOOKAHEAD = 3;
     /** Keep a door we walk through open at least this long. / 我们正在穿过的门至少保持打开这么久。 */
     private static final int DOOR_HOLD_TICKS = 40;
@@ -73,6 +81,8 @@ public final class PartygoerBrain {
     private int pathIndex;
     private long pathGoal = Long.MIN_VALUE;
     private int replanIn;
+    private int carryStuckTicks;
+    private long lastTickTime;
     private double footstepDistance;
 
     public PartygoerBrain(PartygoerEntity body, ServerWorld world, UUID ownerUuid, UUID roundId, TrainNavGrid grid,
@@ -84,6 +94,7 @@ public final class PartygoerBrain {
         this.grid = grid;
         this.destination = destination;
         this.preyUuid = preyUuid;
+        this.lastTickTime = world.getTime();
     }
 
     public UUID ownerUuid() {
@@ -106,6 +117,16 @@ public final class PartygoerBrain {
         return finished;
     }
 
+    /** Its round is still the running one. / 其所属对局仍在进行。 */
+    boolean isCurrentRound() {
+        return roundId.equals(DroneService.currentRoundId(world));
+    }
+
+    /** Not ticked for 5 s while still alive: its chunk left the simulation distance. / 存活却 5 秒未 tick：所在区块离开了模拟距离。 */
+    boolean isStalled() {
+        return !finished && world.getTime() - lastTickTime > STALL_TICKS;
+    }
+
     /** Alive in the world and not inside a Taotie: the only time weapons can end it. / 在场且不在饕餮肚里：只有此时武器能打死它。 */
     public boolean isKillable() {
         return !finished && state != PartygoerState.SWALLOWED && !body.isRemoved();
@@ -117,6 +138,7 @@ public final class PartygoerBrain {
         if (finished) {
             return;
         }
+        lastTickTime = world.getTime();
         if (!roundId.equals(DroneService.currentRoundId(world))) {
             PartygoerService.finish(this, PartygoerService.Ending.QUIET);
             return;
@@ -173,7 +195,11 @@ public final class PartygoerBrain {
             enter(PartygoerState.HUNT);
             return;
         }
+        // The end of a partial path is the reachable spot nearest the room, which is where it eats.
+        // 部分路径的终点是离房间最近的可达位置，就在那里吃。
         if (walkTo(destination.anchorCell(), PartyAnimalRules.CARRY_SPEED_LEVEL)) {
+            startEating(prey, PartygoerState.EAT);
+        } else if (path.isEmpty() && ++carryStuckTicks >= CARRY_STUCK_TICKS) {
             startEating(prey, PartygoerState.EAT);
         }
     }
@@ -197,9 +223,12 @@ public final class PartygoerBrain {
             return;
         }
         boolean finalBite = eatElapsed >= eatTotal;
+        // A shield bite has no killer: credited to the summoner, SparkTraits' Second Strike would retry it at once and
+        // skip that shield's 5 s. Only the final, forced bite is the summoner's kill.
+        // 啃盾的一口不记击杀者：若记给召唤者，SparkTraits 的二次打击会立刻重试，跳过这层盾的 5 秒。只有最后强制的一口才算召唤者击杀。
         biting = true;
         try {
-            GameFunctions.killPlayer(prey, false, PartygoerService.killCredit(this, prey),
+            GameFunctions.killPlayer(prey, false, finalBite ? PartygoerService.killCredit(this, prey) : null,
                     PartyAnimalRules.DEATH_REASON_EATEN, finalBite);
         } finally {
             biting = false;
@@ -341,6 +370,7 @@ public final class PartygoerBrain {
     private void enter(PartygoerState next) {
         state = next;
         stateTicks = 0;
+        carryStuckTicks = 0;
         body.setPartyState(next);
         resetPath();
         PartygoerService.publishStatus(this);
@@ -351,6 +381,9 @@ public final class PartygoerBrain {
             if (target.isSleeping()) {
                 target.wakeUp();
             }
+            // Drop a use in progress without finishing it (a charged throwing axe must not fly from its arms).
+            // 中断进行中的使用且不触发结束效果（蓄力的飞斧不能从它怀里飞出去）。
+            target.clearActiveItem();
             // Off any couch first: a seated player sinks into the floor. / 先离开座位：坐着的玩家位置在地板里。
             target.stopRiding();
             if (!target.startRiding(body, true)) {
@@ -387,21 +420,32 @@ public final class PartygoerBrain {
 
     private void chase(ServerPlayerEntity target, int speedLevel) {
         long goal = grid.snap(target.getX(), target.getY(), target.getZ());
-        double speed = PartyAnimalRules.blocksPerTick(speedLevel);
-        if (goal == Long.MIN_VALUE || walkTo(goal, speedLevel)) {
-            // Last stretch, or the target stands where the grid can't follow: straight at it.
-            // 最后一段，或目标站在网格跟不到的位置：直线冲过去。
-            stepToward(target.getPos(), speed);
+        boolean pathDone = goal != Long.MIN_VALUE && walkTo(goal, speedLevel);
+        if ((pathDone || goal == Long.MIN_VALUE) && closeEnough(target.getPos())) {
+            // Last stretch, or the target stands where the grid can't follow (a counter): straight at it, only when
+            // already close. / 最后一段，或目标站在网格跟不到的地方（柜台上）：仅在已经很近时直线冲过去。
+            stepToward(target.getPos(), PartyAnimalRules.blocksPerTick(speedLevel));
         }
     }
 
-    /** Walks the planned path towards {@code goal}; true once there. / 沿规划路径走向 goal；到达时返回 true。 */
+    private boolean closeEnough(Vec3d target) {
+        double dx = target.x - body.getX();
+        double dz = target.z - body.getZ();
+        return dx * dx + dz * dz <= STRAIGHT_RANGE * STRAIGHT_RANGE
+                && Math.abs(target.y - body.getY()) <= STRAIGHT_VERTICAL;
+    }
+
+    /**
+     * Walks the planned path towards {@code goal}; true once at its end (the goal, or the reachable cell nearest it).
+     * False while walking, and while there is no route at all (empty path: it stands still).
+     * 沿规划路径走向 goal；走到路径终点（目标或离目标最近的可达格）时返回 true。行走途中以及完全无路（空路径：原地不动）时返回 false。
+     */
     private boolean walkTo(long goal, int speedLevel) {
         if (goal != pathGoal || --replanIn <= 0) {
             replan(goal);
         }
         if (path.isEmpty()) {
-            return true;
+            return false;
         }
         openDoorsAhead();
         double remaining = PartyAnimalRules.blocksPerTick(speedLevel);
@@ -423,10 +467,10 @@ public final class PartygoerBrain {
     }
 
     private void replan(long goal) {
-        replanIn = REPLAN_TICKS;
         pathGoal = goal;
         long start = grid.snap(body.getX(), body.getY(), body.getZ());
         path = TrainPathfinder.path(grid, start, goal, TrainPathfinder.DEFAULT_BUDGET);
+        replanIn = !path.isEmpty() && path.getLast() == goal ? REPLAN_TICKS : REPLAN_FAILED_TICKS;
         // Skip the cell we stand in. / 跳过脚下所在格。
         pathIndex = path.size() > 1 ? 1 : path.size();
     }
@@ -515,8 +559,11 @@ public final class PartygoerBrain {
     private boolean inGrabReach(ServerPlayerEntity target) {
         double dx = target.getX() - body.getX();
         double dz = target.getZ() - body.getZ();
+        // Line of sight too: never through a cabin wall or a closed door (open doors don't collide).
+        // 还需视线：绝不隔着客房墙或关着的门抓人（打开的门没有碰撞）。
         return dx * dx + dz * dz <= PartyAnimalRules.GRAB_DISTANCE * PartyAnimalRules.GRAB_DISTANCE
-                && Math.abs(target.getY() - body.getY()) <= PartyAnimalRules.GRAB_VERTICAL;
+                && Math.abs(target.getY() - body.getY()) <= PartyAnimalRules.GRAB_VERTICAL
+                && body.canSee(target);
     }
 
     private void eatEffects(ServerPlayerEntity prey) {

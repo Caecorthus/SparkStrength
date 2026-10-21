@@ -25,8 +25,12 @@ public final class TrainPathfinder {
     }
 
     /**
-     * A* from {@code start} to {@code goal}; the cells in walking order (start first), or an empty list.
-     * 从 start 到 goal 的 A*；按行走顺序返回格子（首个为 start），找不到时为空列表。
+     * A* from {@code start} to {@code goal}; the cells in walking order (start first). When the goal can't be reached
+     * within the budget, the path to the explored cell nearest the goal (just {@code start} if nothing is nearer), so a
+     * target standing on a counter is still approached; check the last cell to tell. Empty only when start or goal is
+     * not standable.
+     * 从 start 到 goal 的 A*；按行走顺序返回格子（首个为 start）。预算内到不了目标时，返回通往已探索格中离目标最近者的路径（没有更近的
+     * 就只有 start），因此站在柜台上的目标仍会被靠近；用最后一格判断是否到达。仅当起点或终点不可站立时为空。
      */
     public static List<Long> path(TrainNavGrid grid, long start, long goal, int budget) {
         if (start == Long.MIN_VALUE || goal == Long.MIN_VALUE
@@ -41,6 +45,8 @@ public final class TrainPathfinder {
         PriorityQueue<Node> open = new PriorityQueue<>();
         best.put(start, 0.0);
         open.add(new Node(start, 0.0, heuristic(start, goal, grid)));
+        long closest = start;
+        double closestDistance = heuristic(start, goal, grid);
         int expanded = 0;
         while (!open.isEmpty() && expanded < budget) {
             Node node = open.poll();
@@ -49,6 +55,11 @@ public final class TrainPathfinder {
             }
             if (node.cell == goal) {
                 return rebuild(parent, goal);
+            }
+            double distance = heuristic(node.cell, goal, grid);
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closest = node.cell;
             }
             expanded++;
             grid.neighbors(node.cell, (next, step) -> {
@@ -60,7 +71,7 @@ public final class TrainPathfinder {
                 }
             });
         }
-        return List.of();
+        return rebuild(parent, closest);
     }
 
     /**

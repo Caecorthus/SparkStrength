@@ -85,7 +85,9 @@ public final class TrainNavGrid {
             return cached;
         }
         double floor = computeFloor(x, y, z);
-        floorCache.put(key, floor);
+        if (blocks.isLoaded(x, z)) {
+            floorCache.put(key, floor);
+        }
         return floor;
     }
 
@@ -282,7 +284,9 @@ public final class TrainNavGrid {
         double[][] cached = boxCache.get(key);
         if (cached == null) {
             cached = blocks.boxes(x, y, z);
-            boxCache.put(key, cached);
+            if (blocks.isLoaded(x, z)) {
+                boxCache.put(key, cached);
+            }
         }
         return cached;
     }

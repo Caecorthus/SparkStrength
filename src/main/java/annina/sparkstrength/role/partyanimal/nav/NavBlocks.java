@@ -18,4 +18,13 @@ public interface NavBlocks {
 
     /** {@link #FLAG_ROOM_DOOR} and/or {@link #FLAG_STAIRS}. / 房门与楼梯标记。 */
     int flags(int x, int y, int z);
+
+    /**
+     * Whether the column's answers can be cached: an unloaded chunk reads as solid for now but must be asked again
+     * once it loads.
+     * 该列的结果能否缓存：未加载的区块暂时视为实心，加载后必须重新询问。
+     */
+    default boolean isLoaded(int x, int z) {
+        return true;
+    }
 }

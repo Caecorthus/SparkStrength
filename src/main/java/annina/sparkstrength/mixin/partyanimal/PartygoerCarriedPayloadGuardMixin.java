@@ -40,7 +40,8 @@ public abstract class PartygoerCarriedPayloadGuardMixin {
             @Local(argsOnly = true) CustomPayload payload
     ) {
         Identifier payloadId = payload == null || payload.getId() == null ? null : payload.getId().id();
-        if (!TaotieHeadRules.isDazeBlockedPayload(payloadId)) {
+        if (!TaotieHeadRules.isDazeBlockedPayload(payloadId)
+                && (payloadId == null || !PartygoerCarry.EXTRA_BLOCKED_PAYLOADS.contains(payloadId))) {
             original.call(server, handler);
             return;
         }

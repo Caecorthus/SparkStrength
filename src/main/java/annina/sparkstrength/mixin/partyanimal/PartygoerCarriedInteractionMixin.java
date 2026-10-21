@@ -57,7 +57,9 @@ public abstract class PartygoerCarriedInteractionMixin {
         PlayerActionC2SPacket.Action action = packet.getAction();
         if (PartygoerCarry.isCarried(player) && (action == PlayerActionC2SPacket.Action.DROP_ITEM
                 || action == PlayerActionC2SPacket.Action.DROP_ALL_ITEMS
-                || action == PlayerActionC2SPacket.Action.SWAP_ITEM_WITH_OFFHAND)) {
+                || action == PlayerActionC2SPacket.Action.SWAP_ITEM_WITH_OFFHAND
+                // Releasing a charged item (throwing axe) is an attack too. / 松开蓄力物品（飞斧）同样是攻击。
+                || action == PlayerActionC2SPacket.Action.RELEASE_USE_ITEM)) {
             ci.cancel();
         }
     }

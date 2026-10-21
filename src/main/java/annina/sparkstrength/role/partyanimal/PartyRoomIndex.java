@@ -39,6 +39,8 @@ import java.util.function.LongPredicate;
  */
 public final class PartyRoomIndex {
     private static final Map<ServerWorld, Cached> CACHE = new IdentityHashMap<>();
+    /** Longer key names are cut so the picker packet stays valid. / 更长的钥匙名会被截断，保证选房数据包有效。 */
+    public static final int MAX_NAME_LENGTH = 64;
 
     private PartyRoomIndex() {
     }
@@ -53,8 +55,12 @@ public final class PartyRoomIndex {
         if (cached != null && roundId != null && roundId.equals(cached.roundId)) {
             return cached.rooms;
         }
-        List<PartyRoom> rooms = scan(world, newGrid(world));
-        CACHE.put(world, new Cached(roundId, rooms));
+        boolean[] complete = {true};
+        List<PartyRoom> rooms = scan(world, newGrid(world), complete);
+        // A scan that skipped unloaded chunks is retried on the next request. / 跳过了未加载区块的扫描下次请求时重试。
+        if (complete[0]) {
+            CACHE.put(world, new Cached(roundId, rooms));
+        }
         return rooms;
     }
 
@@ -74,7 +80,7 @@ public final class PartyRoomIndex {
                 (int) Math.floor(area.maxX), (int) Math.floor(area.maxY), (int) Math.floor(area.maxZ));
     }
 
-    private static List<PartyRoom> scan(ServerWorld world, TrainNavGrid grid) {
+    private static List<PartyRoom> scan(ServerWorld world, TrainNavGrid grid, boolean[] complete) {
         Box area = MapVariablesWorldComponent.KEY.get(world).getPlayArea();
         Map<String, List<BlockPos>> doorsByName = new TreeMap<>(PartyRoomRules.NATURAL_ORDER);
         int minChunkX = ChunkSectionPos.getSectionCoord(area.minX);
@@ -85,6 +91,7 @@ public final class PartyRoomIndex {
             for (int cz = minChunkZ; cz <= maxChunkZ; cz++) {
                 WorldChunk chunk = world.getChunkManager().getWorldChunk(cx, cz);
                 if (chunk == null) {
+                    complete[0] = false;
                     continue;
                 }
                 for (BlockEntity blockEntity : chunk.getBlockEntities().values()) {
@@ -98,7 +105,9 @@ public final class PartyRoomIndex {
                             || !area.contains(pos.toCenterPos())) {
                         continue;
                     }
-                    doorsByName.computeIfAbsent(door.getKeyName(), name -> new ArrayList<>()).add(pos.toImmutable());
+                    String name = door.getKeyName().length() > MAX_NAME_LENGTH
+                            ? door.getKeyName().substring(0, MAX_NAME_LENGTH) : door.getKeyName();
+                    doorsByName.computeIfAbsent(name, key -> new ArrayList<>()).add(pos.toImmutable());
                 }
             }
         }

@@ -76,6 +76,11 @@ public final class WorldNavBlocks implements NavBlocks {
                 || state.getBlock() instanceof DoorBlock;
     }
 
+    @Override
+    public boolean isLoaded(int x, int z) {
+        return loaded(x, z);
+    }
+
     private boolean loaded(int x, int z) {
         return world.getChunkManager().isChunkLoaded(ChunkSectionPos.getSectionCoord(x), ChunkSectionPos.getSectionCoord(z));
     }
