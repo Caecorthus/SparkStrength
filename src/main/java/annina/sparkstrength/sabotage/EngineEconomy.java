@@ -78,10 +78,10 @@ public final class EngineEconomy {
     /**
      * The value of Wathe's {@code PASSIVE_MONEY_TICKER} call for {@code player} in the killer branch of
      * {@code tickServerGameLoop}. On the two extra ticks of each period where Wathe pays nothing, an eligible player gets
-     * what the ticker pays on its own payout tick, through exactly the same credit path (Raven wallet, killer team funds
+     * what the ticker pays on its own payout tick, through exactly the same credit path (balance cap, killer team funds
      * exclusion). Wathe's own payout and every other tick keep the original.
      * tickServerGameLoop 杀手分支里 Wathe 对 player 调用 PASSIVE_MONEY_TICKER 的结果。在每个周期 Wathe 不发钱的两个额外 tick 上，
-     * 有资格的玩家得到计时器在它自己发放 tick 上给的金额，走的入账路径完全相同（黑羽鸦钱包、不计入杀手团队资金）。Wathe 自己的
+     * 有资格的玩家得到计时器在它自己发放 tick 上给的金额，走的入账路径完全相同（余额上限、不计入杀手团队资金）。Wathe 自己的
      * 发放和其他所有 tick 都保留原值。
      */
     public static Object passiveIncome(Object original, ServerWorld world, ServerPlayerEntity player) {

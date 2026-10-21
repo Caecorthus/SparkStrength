@@ -12,6 +12,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
+import java.util.UUID;
 import java.util.function.Predicate;
 
 /** Optional public faction API bridges; missing/old providers preserve standalone behavior.
@@ -21,6 +22,7 @@ public final class SparkFactionCompat {
     private static final Method REGISTER_POLICE_ROLE = findPoliceRoleMethod("register", void.class);
     private static final Method CONTAINS_POLICE_ROLE = findPoliceRoleMethod("contains", boolean.class);
     private static final Method RESOLVE_BASE_FACTION = findResolveBaseFaction();
+    private static final Method IS_SETTLEMENT_EXCLUDED = findSettlementExcluded();
     /** SparkWitch's witch faction id (Grand Witch, Accomplice, Curser). / SparkWitch 魔女阵营 id。 */
     public static final Identifier WITCH_FACTION_ID = Identifier.of("sparkwitch", "witch");
 
@@ -118,6 +120,39 @@ public final class SparkFactionCompat {
      *  SparkWitch 硬依赖 SparkFactionAPI，因此 API 不可用恰好意味着不存在魔女身份。 */
     public static boolean isWitchFactionRole(@Nullable Role role) {
         return WITCH_FACTION_ID.equals(baseFaction(role));
+    }
+
+    /**
+     * Whether SparkFactionAPI's {@code SettlementExclusions} (0.1.5.16+) says this player never counts as a living player
+     * for round settlement (SparkWitch's Black Raven). It reads the raw role, never {@code isRole}, and checks no
+     * liveness: callers keep their own alive test. Fails closed: without SparkFactionAPI, with an older one lacking the
+     * class, or on any reflective failure nobody is excluded, which is the standalone behaviour.
+     * SparkFactionAPI 的 SettlementExclusions（0.1.5.16 起）是否判定该玩家在回合结算中不算存活玩家（SparkWitch 的黑羽鸦）。
+     * 读取原始身份而非 isRole，且不判断存活，调用方保留自己的存活判断。失败即关闭：未安装 SparkFactionAPI、旧版缺少该类
+     * 或反射失败时不排除任何人，即独立运行时的行为。
+     */
+    public static boolean isSettlementExcluded(@Nullable GameWorldComponent game, @Nullable UUID player) {
+        if (IS_SETTLEMENT_EXCLUDED == null || game == null || player == null) {
+            return false;
+        }
+        try {
+            return Boolean.TRUE.equals(IS_SETTLEMENT_EXCLUDED.invoke(null, game, player));
+        } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException | LinkageError ignored) {
+            return false;
+        }
+    }
+
+    private static Method findSettlementExcluded() {
+        if (!FabricLoader.getInstance().isModLoaded("sparkfactionapi")) {
+            return null;
+        }
+        try {
+            Method method = Class.forName("dev.caecorthus.sparkfactionapi.api.settlement.SettlementExclusions")
+                    .getMethod("isExcluded", GameWorldComponent.class, UUID.class);
+            return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == boolean.class ? method : null;
+        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | LinkageError ignored) {
+            return null;
+        }
     }
 
     private static Method findResolveBaseFaction() {
