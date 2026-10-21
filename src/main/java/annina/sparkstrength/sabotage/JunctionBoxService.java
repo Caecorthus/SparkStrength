@@ -18,6 +18,7 @@ import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
@@ -38,8 +39,10 @@ import java.util.UUID;
 
 /**
  * Junction box interactions: prying with a lockpick (continuous, the damage stays), hacking with the tablet (restarts
- * when interrupted), the Engineer's repair, healing and the vanilla crack overlay. Server thread only.
- * 接线箱交互：用开锁器撬（可连续，伤害保留）、用平板入侵（中断后重来）、工程师修复、自然恢复与原版裂纹显示。仅限服务端线程。
+ * when interrupted), weapon hits from other mods, the Engineer's repair, healing and the vanilla crack overlay. Server
+ * thread only.
+ * 接线箱交互：用开锁器撬（可连续，伤害保留）、用平板入侵（中断后重来）、其他模组的武器命中、工程师修复、自然恢复与原版裂纹显示。
+ * 仅限服务端线程。
  *
  * <p>Holding right-click re-sends the block interaction every 4 ticks; each one refreshes the channel's heartbeat, and
  * the client sends {@code CancelChannelC2SPacket} the moment the button is released or the aim leaves the box.
@@ -201,6 +204,65 @@ public final class JunctionBoxService {
         if (repairedType != null) {
             sabotage.log(world.getTime(), SabotageWorldComponent.LogKind.BOX_REPAIRED, repairedType);
         }
+    }
+
+    /**
+     * Frozen cross-mod seam: a weapon hit on a closed junction box, e.g. the SparkWitch Hunter's shotgun. SparkWitch's
+     * {@code compat/SparkStrengthJunctionBoxCompat} reaches it through reflection, so the class
+     * {@code annina.sparkstrength.sabotage.JunctionBoxService}, the name {@code damageByWeapon} and the parameter types
+     * {@code (ServerPlayerEntity, BlockPos, int)} are frozen. Server thread only.
+     * 冻结的跨模组接缝：武器命中未打开的接线箱，例如 SparkWitch 猎人的猎枪。SparkWitch 的
+     * compat/SparkStrengthJunctionBoxCompat 通过反射调用，因此类名、方法名 damageByWeapon 与参数类型
+     * (ServerPlayerEntity, BlockPos, int) 均已冻结。仅限服务端线程。
+     *
+     * <p>Same gates as {@link #onPry}, but silent (a shot is not an interaction) and fail-closed: a null argument,
+     * {@code damage <= 0}, a client world or any refused gate returns false and changes nothing. The caller owns
+     * {@code damage}, in durability units ({@link SabotageRules#DURABILITY_MAX} = 100%); Master Saboteur adds nothing.
+     * A hit delays healing like a pry tick; the crack overlay and anyone prying the same box catch up in {@link #tick};
+     * a hit that empties the box opens it exactly like a pry, credited to {@code attacker}.
+     * 门槛与 onPry 相同，但静默（开枪不是交互）且失败即关闭：参数为 null、damage <= 0、客户端世界或任一门槛不通过时返回
+     * false 且不做任何改动。damage 由调用方决定，单位为耐久（DURABILITY_MAX = 100%）；破坏大师不加成。命中像撬一样推迟恢复；
+     * 裂纹与正在撬同一箱子的人在 tick 中跟上；打空耐久的一击与撬开完全相同地打开箱子，记在 attacker 名下。</p>
+     *
+     * @return true iff the box at {@code pos} took the damage / 仅当 pos 处的箱子确实受到伤害时返回 true
+     */
+    public static boolean damageByWeapon(ServerPlayerEntity attacker, BlockPos pos, int damage) {
+        if (attacker == null || pos == null || damage <= 0 || attacker.getWorld().isClient()) {
+            return false;
+        }
+        if (!SabotageAccess.canPryOrHack(attacker) || SabotageActionLocks.isLocked(attacker)) {
+            return false;
+        }
+        ServerWorld world = attacker.getServerWorld();
+        SabotageWorldComponent sabotage = SabotageWorldComponent.KEY.get(world);
+        if (!sabotage.isMapReady()) {
+            return false;
+        }
+        BlockPos at = pos.toImmutable();
+        BlockState state = world.getBlockState(at);
+        if (!state.isOf(SparkStrengthBlocks.junctionBox())
+                || state.get(JunctionBoxBlock.STATE) != JunctionBoxState.CLOSED) {
+            return false;
+        }
+        SabotageType type = JunctionBoxBlock.typeOf(state);
+        if (type == null || !type.availableOn(sabotage.hasEngineUnits()) || sabotage.isUnlocked(type)) {
+            return false;
+        }
+        sabotage.addJunctionBox(at);
+        SabotageWorldComponent.BoxProgress box = sabotage.box(at);
+        box.durability = SabotageRules.pry(box.durability, damage);
+        box.lastDamageTick = world.getTime();
+        if (box.durability <= 0) {
+            // Pry channels on this box stop on their next tick, since isStillValid wants CLOSED.
+            // 此箱上的撬读条在下一 tick 停止，因为 isStillValid 要求 CLOSED。
+            breakOpen(world, sabotage, at, state, attacker);
+        } else {
+            Vec3d front = frontOf(at, state.get(JunctionBoxBlock.FACING));
+            world.spawnParticles(ParticleTypes.ELECTRIC_SPARK, front.x, front.y, front.z, 10, 0.12, 0.12, 0.12, 0.35);
+            world.playSound(null, at, SoundEvents.ENTITY_ZOMBIE_ATTACK_IRON_DOOR, SoundCategory.BLOCKS, 0.6F,
+                    1.3F + world.random.nextFloat() * 0.2F);
+        }
+        return true;
     }
 
     /** Only the channel the client means; a stale cancel for an earlier box is ignored. / 只取消客户端所指的读条；针对之前箱子的过期取消被忽略。 */
