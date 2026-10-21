@@ -4,6 +4,7 @@ import annina.sparkstrength.item.grenade.GrenadeBlastRules;
 import annina.sparkstrength.item.grenade.GrenadeBlastService;
 import annina.sparkstrength.role.bodyguard.AttackOriginScope;
 import annina.sparkstrength.role.bomber.drone.DroneCombatService;
+import annina.sparkstrength.role.partyanimal.PartygoerWeaponHits;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
@@ -54,12 +55,15 @@ public abstract class GrenadeExplosionMixin {
     // thrower; bomb drones chain-detonate. A grenade that hits a drone directly explodes on it.
     // 在 Wathe 自身击杀与移除之后（TAIL，仅服务端）：爆炸范围内的炸弹客无人机被击毁并归属投掷者，炸弹无人机连锁引爆。
     // 直接命中无人机的手雷就地爆炸。
+    // Partygoers in the blast die too (wathe:grenade); a grenade that hits one explodes on it.
+    // 爆炸范围内的派对客同样死亡（wathe:grenade）；直接命中派对客的手雷就地爆炸。
     @Inject(method = "onCollision(Lnet/minecraft/util/hit/HitResult;)V", at = @At("TAIL"))
     private void sparkstrength$breakDronesInBlast(HitResult hitResult, CallbackInfo ci) {
         GrenadeEntity grenade = (GrenadeEntity) (Object) this;
         if (grenade.getWorld() instanceof ServerWorld world) {
-            DroneCombatService.breakDronesInBlast(world, grenade, GrenadeBlastRules.WATHE_BLAST_RADIUS,
-                    grenade.getOwner() instanceof ServerPlayerEntity thrower ? thrower : null);
+            ServerPlayerEntity thrower = grenade.getOwner() instanceof ServerPlayerEntity player ? player : null;
+            DroneCombatService.breakDronesInBlast(world, grenade, GrenadeBlastRules.WATHE_BLAST_RADIUS, thrower);
+            PartygoerWeaponHits.onGrenadeBlast(world, grenade, GrenadeBlastRules.WATHE_BLAST_RADIUS, thrower);
         }
     }
 }

@@ -2,6 +2,7 @@ package annina.sparkstrength.client.mixin.bomber;
 
 import annina.sparkstrength.role.bomber.drone.DroneHitGeometry;
 import annina.sparkstrength.role.bomber.drone.DroneWeaponRules;
+import annina.sparkstrength.role.partyanimal.PartygoerHitGeometry;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import dev.doctor4t.wathe.item.DerringerItem;
@@ -22,6 +23,10 @@ import org.spongepowered.asm.mixin.injection.At;
  * 神射手会在 HEAD 用只看玩家的射线替换 getGunTarget。先调用原方法（保留神射手射程），若有严格更近的炸弹客无人机则替换结果，
  * Wathe 随即发送无人机 id，由 DroneGunShootPayloadMixin 校验并击毁；身后的玩家不会中枪。与 SparkWitch 搜寻者在同一调用上的包装链式共存。
  * @At 目标保持默认 remap，使其中的 Minecraft 描述符类型在生产环境被重映射。
+ *
+ * <p>A Partygoer strictly nearer than that result replaces it in turn (so the nearest of player, drone and Partygoer
+ * wins); {@code DroneGunShootPayloadMixin} validates and kills it.
+ * 严格比该结果更近的派对客再次替换它（因此玩家、无人机与派对客中最近者命中）；由 DroneGunShootPayloadMixin 校验并击杀。</p>
  */
 @Mixin({RevolverItem.class, DerringerItem.class})
 public abstract class DroneGunTargetMixin {
@@ -37,6 +42,6 @@ public abstract class DroneGunTargetMixin {
         HitResult result = original.call(user);
         double range = (Object) this instanceof DerringerItem
                 ? DroneWeaponRules.DERRINGER_RANGE : DroneWeaponRules.REVOLVER_RANGE;
-        return DroneHitGeometry.preferNearerDrone(user, result, range);
+        return PartygoerHitGeometry.preferNearer(user, DroneHitGeometry.preferNearerDrone(user, result, range), range);
     }
 }

@@ -3,6 +3,7 @@ package annina.sparkstrength.role.morphling;
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.component.morphling.MorphBodyDisguiseWorldComponent;
 import annina.sparkstrength.component.morphling.MorphMarkPlayerComponent;
+import annina.sparkstrength.component.partyanimal.PartygoerCorpseComponent;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
 import com.mojang.authlib.GameProfile;
 import dev.doctor4t.wathe.api.Role;
@@ -97,6 +98,16 @@ public final class MorphlingService {
 
         Optional<SampleData> sample = getSample(stack);
         if (sample.isEmpty()) {
+            if (PartygoerCorpseComponent.isPartygoerCorpse(explicitTarget)) {
+                /*
+                 * A Partygoer corpse cannot be sampled (owner 2026-10-21): clicking one does nothing, so the reagent is
+                 * not silently filled with the Morphling's own sample. The look-at search and the client crosshair skip
+                 * it as well.
+                 * 派对客尸体不能采样（所有者 2026-10-21）：点击它什么也不发生，试剂不会被悄悄装入变形者自己的样本。
+                 * 视线查找与客户端准心同样跳过它。
+                 */
+                return TypedActionResult.fail(stack);
+            }
             SampleData sampled = sampleTarget(morphling, explicitTarget);
             setSample(stack, sampled);
             WAITING_FOR_REAGENT_RELEASE.add(morphling.getUuid());
@@ -226,7 +237,7 @@ public final class MorphlingService {
         if (target instanceof ServerPlayerEntity playerTarget && isValidLivingTarget(morphling, playerTarget)) {
             return new SampleData(playerTarget.getUuid(), playerTarget.getGameProfile().getName());
         }
-        if (target instanceof PlayerBodyEntity body) {
+        if (target instanceof PlayerBodyEntity body && !PartygoerCorpseComponent.isPartygoerCorpse(body)) {
             UUID bodyOwner = body.getPlayerUuid();
             return new SampleData(bodyOwner, resolvePlayerName(morphling.getServer(), bodyOwner));
         }
@@ -245,7 +256,7 @@ public final class MorphlingService {
         HitResult hitResult = ProjectileUtil.getCollision(
                 morphling,
                 entity -> (entity instanceof ServerPlayerEntity target && isValidLivingTarget(morphling, target))
-                        || entity instanceof PlayerBodyEntity,
+                        || (entity instanceof PlayerBodyEntity && !PartygoerCorpseComponent.isPartygoerCorpse(entity)),
                 MorphlingRules.REAGENT_TARGET_RANGE
         );
         return hitResult instanceof EntityHitResult entityHitResult ? entityHitResult.getEntity() : null;

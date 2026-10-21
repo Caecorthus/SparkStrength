@@ -1,7 +1,9 @@
 package annina.sparkstrength.mixin.bomber;
 
 import annina.sparkstrength.entity.DroneEntity;
+import annina.sparkstrength.entity.PartygoerEntity;
 import annina.sparkstrength.role.bomber.drone.DroneWeaponHits;
+import annina.sparkstrength.role.partyanimal.PartygoerWeaponHits;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.ProjectileDeflection;
 import net.minecraft.entity.projectile.ProjectileEntity;
@@ -20,6 +22,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * 投射物与炸弹客无人机（两端执行，客户端预测一致）。canHit：只有武器会与无人机碰撞（有伤害的投射物、带标签的投掷武器、Wathe 手雷），
  * 其余投掷物直接穿过；子类覆写会与此结果做与/或运算，其自身规则仍然生效。hitOrDeflect：带标签的投掷武器（如只认玩家的 SparkWitch
  * 手里剑）击毁无人机并停下（服务端）。
+ *
+ * <p>A lethal tagged thrown weapon ({@code sparkstrength:partygoer_killing_projectiles}, e.g. the shuriken) that reaches
+ * a Partygoer kills it and stops there too ({@code PartygoerWeaponHits#onTaggedProjectileHit}).
+ * 带致命标签的投掷武器（partygoer_killing_projectiles，如手里剑）碰到派对客时同样将其击杀并停下。</p>
  */
 @Mixin(ProjectileEntity.class)
 public abstract class DroneProjectileMixin {
@@ -37,6 +43,10 @@ public abstract class DroneProjectileMixin {
                                                            CallbackInfoReturnable<ProjectileDeflection> cir) {
         if (hitResult instanceof EntityHitResult entityHit && entityHit.getEntity() instanceof DroneEntity drone
                 && DroneWeaponHits.onTaggedProjectileHit((ProjectileEntity) (Object) this, drone)) {
+            cir.setReturnValue(ProjectileDeflection.NONE);
+        } else if (hitResult instanceof EntityHitResult entityHit
+                && entityHit.getEntity() instanceof PartygoerEntity partygoer
+                && PartygoerWeaponHits.onTaggedProjectileHit((ProjectileEntity) (Object) this, partygoer)) {
             cir.setReturnValue(ProjectileDeflection.NONE);
         }
     }

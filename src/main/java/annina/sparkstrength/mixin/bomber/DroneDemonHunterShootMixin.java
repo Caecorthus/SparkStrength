@@ -1,6 +1,7 @@
 package annina.sparkstrength.mixin.bomber;
 
 import annina.sparkstrength.role.bomber.drone.DroneWeaponHits;
+import annina.sparkstrength.role.partyanimal.PartygoerWeaponHits;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -19,6 +20,10 @@ import org.spongepowered.asm.mixin.injection.At;
  * NoellesRoles 猎魔枪射向炸弹客无人机（服务端）。接缝是接收器唯一一次目标查找，位于其手持、冷却与子弹检查之后。
  * 被击毁的无人机解析为 null，NoellesRoles 随后走自身未命中流程（消耗子弹、音效、冷却）；其他结果原样返回。
  * 与 SparkWitch 搜寻者在同一调用上的包装可以链式共存。
+ *
+ * <p>A Partygoer id is killed the same way ({@code PartygoerWeaponHits#onDemonHunterShot}, NoellesRoles' Demon Hunter
+ * death reason): it is a monster, so no Jester / frenzy rule applies.
+ * 派对客 id 以同样方式被击杀（PartygoerWeaponHits#onDemonHunterShot，NoellesRoles 猎魔死因）：它是怪物，不适用小丑 / 疯魔规则。</p>
  */
 @Mixin(DemonHunterShootC2SPacket.Receiver.class)
 public abstract class DroneDemonHunterShootMixin {
@@ -30,6 +35,7 @@ public abstract class DroneDemonHunterShootMixin {
                                                              DemonHunterShootC2SPacket payload,
                                                              ServerPlayNetworking.Context context) {
         Entity resolved = original.call(world, entityId);
-        return DroneWeaponHits.onDemonHunterShot(context.player(), resolved) ? null : resolved;
+        return DroneWeaponHits.onDemonHunterShot(context.player(), resolved)
+                || PartygoerWeaponHits.onDemonHunterShot(context.player(), resolved) ? null : resolved;
     }
 }

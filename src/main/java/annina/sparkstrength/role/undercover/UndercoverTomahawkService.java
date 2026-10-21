@@ -5,6 +5,8 @@ import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.compat.SparkFactionCompat;
 import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.component.undercover.UndercoverPlayerComponent;
+import annina.sparkstrength.entity.PartygoerEntity;
+import annina.sparkstrength.role.partyanimal.PartygoerWeaponHits;
 import annina.sparkstrength.role.veteran.InnocentKnifeKillRules;
 import annina.sparkstrength.sabotage.SabotageActionLocks;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -48,6 +50,11 @@ import org.jetbrains.annotations.Nullable;
  * skips vanilla's reset at the end of the attack.
  * AttackEntityCallback 在双端攻击开头执行：客户端返回 SUCCESS 以发送攻击包，服务端重新检查一切。
  * 双端都自行重置蓄力，因为非 PASS 结果会跳过原版在攻击末尾的重置。</p>
+ *
+ * <p>A Partygoer is killed by the same swing (owner rule 2026-10-21: anything that kills a player kills it): the same
+ * charge, stage-2 and cooldown gates, the same kill cooldown afterwards, but never 小脑 (it is no innocent).
+ * 派对客会被同样的挥砍击杀（主人规则 2026-10-21：能杀死玩家的东西都能杀死它）：蓄力、第二阶段与冷却门槛相同，之后的击杀冷却也相同，
+ * 但永远不会小脑（它不是好人）。</p>
  */
 public final class UndercoverTomahawkService {
     /** Pass this constant to killPlayer; other code compares death reasons by reference. / 传给 killPlayer 的常量；其他代码按引用比较死因。 */
@@ -79,6 +86,16 @@ public final class UndercoverTomahawkService {
         // 先读蓄力，然后每次挥砍都会消耗，无论是否命中（连点不会保留蓄力）。
         boolean charged = player.getAttackCooldownProgress(FULL_CHARGE_BASE) >= 1.0F;
         player.resetLastAttackedTicks();
+        if (entity instanceof PartygoerEntity partygoer) {
+            if (!UndercoverRoles.isLivingStage2(player) || !charged
+                    || player.getItemCooldownManager().isCoolingDown(tomahawk)) {
+                return ActionResult.FAIL;
+            }
+            if (!world.isClient && player instanceof ServerPlayerEntity attacker) {
+                strikePartygoer(attacker, partygoer, held, tomahawk);
+            }
+            return ActionResult.SUCCESS;
+        }
         if (!(entity instanceof PlayerEntity target) || !UndercoverRoles.isLivingStage2(player) || !charged
                 || player.getItemCooldownManager().isCoolingDown(tomahawk)) {
             return ActionResult.FAIL;
@@ -123,6 +140,29 @@ public final class UndercoverTomahawkService {
                 GameFunctions.isPlayerPlayingAndAlive(attacker))) {
             GameFunctions.killPlayer(attacker, true, null, GameConstants.DeathReasons.SHOT_INNOCENT);
         }
+    }
+
+    /**
+     * Tomahawk on a Partygoer (server): sabotage lock, then {@link PartygoerWeaponHits#onTomahawk} (attacker gate, weapon
+     * gate, reach and sight); a kill costs the ordinary kill cooldown, recorded for blackout cuts. No 小脑.
+     * 战术斧打派对客（服务端）：破坏锁，然后 PartygoerWeaponHits#onTomahawk（攻击者门槛、武器门槛、距离与视线）；击杀付出普通击杀冷却，
+     * 并记录以便熄灯时缩短。不会小脑。
+     */
+    private static void strikePartygoer(ServerPlayerEntity attacker, PartygoerEntity partygoer, ItemStack held,
+                                        Item tomahawk) {
+        double x = partygoer.getX();
+        double y = partygoer.getY();
+        double z = partygoer.getZ();
+        if (SabotageActionLocks.isLocked(attacker)
+                || !PartygoerWeaponHits.onTomahawk(attacker, partygoer, held, DEATH_REASON)) {
+            return;
+        }
+        attacker.getWorld().playSound(null, x, y, z, SoundEvents.ENTITY_PLAYER_ATTACK_CRIT, SoundCategory.PLAYERS,
+                1.0F, 0.8F);
+        ServerWorld world = attacker.getServerWorld();
+        int cooldown = UndercoverRules.killCooldownTicks(WorldBlackoutComponent.KEY.get(world).isBlackoutActive());
+        attacker.getItemCooldownManager().set(tomahawk, cooldown);
+        UndercoverPlayerComponent.KEY.get(attacker).setKillCooldownEndTick(world.getTime() + cooldown);
     }
 
     /**

@@ -5,6 +5,7 @@ import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
 import annina.sparkstrength.compat.SparkFactionCooldownCompat;
 import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.component.demonhunter.DemonHunterSniffPlayerComponent;
+import annina.sparkstrength.component.partyanimal.PartyAnimalSkillComponent;
 import annina.sparkstrength.component.vulture.VultureSuperCursePlayerComponent;
 import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
 import annina.sparkstrength.component.phantom.PhantomBackpackUserComponent;
@@ -202,6 +203,7 @@ public final class TimekeeperWatchService {
         ReporterCommunicationComponent.KEY.get(player).setCooldownTicks(0);
         DemonHunterSniffPlayerComponent.KEY.get(player).clearSniffCooldown();
         VultureSuperCursePlayerComponent.KEY.get(player).clearCooldown();
+        PartyAnimalSkillComponent.KEY.get(player).clearCooldown();
         TaotieHeadPlayerComponent.KEY.get(player).setCooldownTicks(0);
         SpiritPossessionPlayerComponent.KEY.get(player).setCooldownTicks(0);
     }

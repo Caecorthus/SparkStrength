@@ -263,5 +263,45 @@
         "volume": 0.6
       }
     ]
+  },
+  "entity.partygoer.spawn": {
+    "sounds": [
+      {
+        "name": "sparkstrength:entity/partygoer/spawn"
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.entity.partygoer.spawn"
+  },
+  "entity.partygoer.grab": {
+    "sounds": [
+      {
+        "name": "sparkstrength:entity/partygoer/grab"
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.entity.partygoer.grab"
+  },
+  "entity.partygoer.death": {
+    "sounds": [
+      {
+        "name": "sparkstrength:entity/partygoer/death"
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.entity.partygoer.death"
+  },
+  "entity.partygoer.vanish": {
+    "sounds": [
+      {
+        "name": "sparkstrength:entity/partygoer/vanish"
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.entity.partygoer.vanish"
+  },
+  "entity.partygoer.rage": {
+    "sounds": [
+      {
+        "name": "sparkstrength:entity/partygoer/rage"
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.entity.partygoer.rage"
   }
 }

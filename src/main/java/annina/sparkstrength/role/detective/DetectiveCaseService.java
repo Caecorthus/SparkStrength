@@ -5,6 +5,7 @@ import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.compat.SparkFactionCompat;
 import annina.sparkstrength.component.detective.DetectiveCasePlayerComponent;
 import annina.sparkstrength.component.detective.DetectiveCaseWorldComponent;
+import annina.sparkstrength.component.partyanimal.PartygoerCorpseComponent;
 import annina.sparkstrength.network.detective.OpenDetectiveFolderS2CPacket;
 import annina.sparkstrength.record.AchievementRecords;
 import dev.doctor4t.wathe.api.Role;
@@ -270,9 +271,13 @@ public final class DetectiveCaseService {
      * ENTITY_LOAD 在 spawnEntity 内同步触发：Wathe 击杀时受害者已被标记死亡且仍站在死亡点，尸体可能偏移至多 1 格
      * （之后还可能被拖动）。真实击杀与假尸体（SparkTraits 抑郁/最后一搏、NoellesRoles 小丑）统一记录，放大镜不会暴露假死。
      * 区块重载会再次触发该事件；每具尸体只保留首次快照。
+     *
+     * <p>A Partygoer corpse is no crime scene (owner 2026-10-21): its marker is set before it spawns, so it is skipped
+     * here and the magnifier answers "no clues" on it.
+     * 派对客尸体不是案发现场（所有者 2026-10-21）：其标记在生成前写入，因此这里直接跳过，放大镜对它回应“没有线索”。</p>
      */
     private static void captureCrimeScene(Entity entity, ServerWorld world) {
-        if (!(entity instanceof PlayerBodyEntity body)) {
+        if (!(entity instanceof PlayerBodyEntity body) || PartygoerCorpseComponent.isPartygoerCorpse(body)) {
             return;
         }
         GameWorldComponent game = GameWorldComponent.KEY.get(world);

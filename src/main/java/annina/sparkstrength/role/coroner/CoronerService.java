@@ -7,6 +7,7 @@ import annina.sparkstrength.component.coroner.CoronerBodySnapshotComponent;
 import annina.sparkstrength.component.coroner.CoronerPlayerComponent;
 import annina.sparkstrength.component.morphling.MorphBodyDisguiseWorldComponent;
 import annina.sparkstrength.component.morphling.MorphMarkPlayerComponent;
+import annina.sparkstrength.component.partyanimal.PartygoerCorpseComponent;
 import annina.sparkstrength.component.timekeeper.TimekeeperWatchComponent;
 import annina.sparkstrength.record.AchievementRecordRules;
 import annina.sparkstrength.record.AchievementRecords;
@@ -433,12 +434,19 @@ public final class CoronerService {
      * 假尸体判定（所有者 2026-10-16 决定）：只有 Wathe 把尸体主人记为死亡时尸体才算数，无需依赖任何模组即可覆盖
      * SparkWitch 魔人假死、NoellesRoles 小丑、SparkTraits 抑郁等假尸体。SparkTraits 背水一战待决尸体的主人可能已在死亡
      * 名单中，因此同时询问其公开门面；未安装 SparkTraits 时该查询为 false。假尸体不给靠近金币，也不能装袋。
+     *
+     * <p>A Partygoer corpse (owner 2026-10-21) is owned by the Partygoer's UUID, which Wathe never lists as dead, so the
+     * dead-list check already refuses it; the explicit marker check keeps it refused should such a corpse ever be given
+     * a player's UUID.
+     * 派对客尸体（所有者 2026-10-21）的主人是派对客的 UUID，Wathe 永远不会把它记为死亡，死亡名单检查已能拒绝它；
+     * 显式的标记检查保证即使这种尸体将来改用玩家 UUID 也依然被拒绝。</p>
      */
     private static boolean isRealBody(ServerWorld world, PlayerBodyEntity body) {
         UUID ownerUuid = body.getPlayerUuid();
         return ownerUuid != null
                 && GameWorldComponent.KEY.get(world).isPlayerDead(ownerUuid)
-                && !SparkTraitsReviveCompat.isFakeDeathBody(body);
+                && !SparkTraitsReviveCompat.isFakeDeathBody(body)
+                && !PartygoerCorpseComponent.isPartygoerCorpse(body);
     }
 
     private static boolean canUseCoronerAbility(ServerPlayerEntity player) {

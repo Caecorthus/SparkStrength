@@ -5,6 +5,7 @@ import annina.sparkstrength.role.coroner.CoronerService;
 import annina.sparkstrength.role.detective.DetectiveRules;
 import annina.sparkstrength.role.engineer.EngineerCaptureReport;
 import annina.sparkstrength.role.engineer.EngineerRules;
+import annina.sparkstrength.role.partyanimal.PartyAnimalRules;
 import annina.sparkstrength.role.perfumer.PerfumerRules;
 import annina.sparkstrength.role.professor.ProfessorSerumRules;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -22,9 +23,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /**
  * Adds SparkStrength's tablet, Engineer capture items, Professor serums, Morphling items, Detective tools,
  * Perfumer kit, every Bartender ingredient, the Recaller's ender pearl / chorus fruit, the Toxicologist's
- * Blue Vitriol / Blue Belladonna, the Bomber's drones, the Vulture's skateboard and the Pathogen's Virus / T-Virus to
- * NoellesRoles' hidden-equipment filter.
- * 将 SparkStrength 平板、工程师捕捉装置、教授试剂、变形怪道具、侦探道具、调香师道具、全部酒保调剂、回溯者的末影珍珠/紫颂果、毒理学家的蓝矾/蓝颠茄、炸弹客无人机、秃鹫滑板以及病原体的病毒/T病毒加入 NoellesRoles 的隐藏装备过滤器。
+ * Blue Vitriol / Blue Belladonna, the Bomber's drones, the Vulture's skateboard, the Pathogen's Virus / T-Virus and the
+ * Party Animal's Party Balloon to NoellesRoles' hidden-equipment filter.
+ * 将 SparkStrength 平板、工程师捕捉装置、教授试剂、变形怪道具、侦探道具、调香师道具、全部酒保调剂、回溯者的末影珍珠/紫颂果、毒理学家的蓝矾/蓝颠茄、炸弹客无人机、秃鹫滑板、病原体的病毒/T病毒以及派对狂的派对气球加入 NoellesRoles 的隐藏装备过滤器。
  */
 @Mixin(value = HiddenEquipmentHelper.class, remap = false)
 public abstract class HiddenEquipmentHelperMixin {
@@ -138,6 +139,14 @@ public abstract class HiddenEquipmentHelperMixin {
         if (stack.isOf(SparkStrengthItems.virus()) || stack.isOf(SparkStrengthItems.tVirus())) {
             // Only the Pathogen shop sells these; a held Virus or T-Virus would expose the role.
             // 病毒与 T病毒只由病原体商店出售；手持会暴露身份。
+            cir.setReturnValue(true);
+            return;
+        }
+
+        if (stack.isOf(SparkStrengthItems.partyBalloon())
+                && PartyAnimalRules.isPartyAnimal(GameWorldComponent.KEY.get(holder.getWorld()).getRole(holder))) {
+            // Only the Party Animal's shop sells balloons; hide them while the holder's real role is Party Animal.
+            // 派对气球只由派对狂商店出售；持有者真实身份为派对狂时对其他玩家隐藏。
             cir.setReturnValue(true);
             return;
         }

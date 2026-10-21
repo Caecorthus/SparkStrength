@@ -28,6 +28,10 @@ import annina.sparkstrength.network.tablet.SyncTabletSnapshotS2CPacket;
 import annina.sparkstrength.network.shadowjester.SyncShadowJesterShowdownMusicS2CPacket;
 import annina.sparkstrength.network.timekeeper.TimekeeperWatchModeC2SPacket;
 import annina.sparkstrength.network.vulture.VultureSuperCurseC2SPacket;
+import annina.sparkstrength.network.partyanimal.PartygoerMenuC2SPacket;
+import annina.sparkstrength.network.partyanimal.PartygoerMenuS2CPacket;
+import annina.sparkstrength.network.partyanimal.PartygoerSummonC2SPacket;
+import annina.sparkstrength.network.partyanimal.PartygoerSwallowC2SPacket;
 import annina.sparkstrength.network.taotie.TaotieHeadFireC2SPacket;
 import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.phantom.PhantomBackpackService;
@@ -40,6 +44,8 @@ import annina.sparkstrength.role.undercover.DoorBreachService;
 import annina.sparkstrength.role.undercover.UndercoverService;
 import annina.sparkstrength.role.timekeeper.TimekeeperWatchService;
 import annina.sparkstrength.role.vulture.VultureSuperCurseService;
+import annina.sparkstrength.role.partyanimal.PartygoerSkillService;
+import annina.sparkstrength.role.partyanimal.PartygoerTaotieService;
 import annina.sparkstrength.role.taotie.TaotieHeadService;
 import annina.sparkstrength.tablet.TabletStateService;
 import annina.sparkstrength.network.sabotage.CancelBreakerRepairC2SPacket;
@@ -82,6 +88,10 @@ public final class SparkStrengthPackets {
         PayloadTypeRegistry.playC2S().register(DemonHunterSniffC2SPacket.ID, DemonHunterSniffC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(UndercoverMaskOffC2SPacket.ID, UndercoverMaskOffC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(VultureSuperCurseC2SPacket.ID, VultureSuperCurseC2SPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(PartygoerMenuC2SPacket.ID, PartygoerMenuC2SPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(PartygoerSummonC2SPacket.ID, PartygoerSummonC2SPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(PartygoerSwallowC2SPacket.ID, PartygoerSwallowC2SPacket.CODEC);
+        PayloadTypeRegistry.playS2C().register(PartygoerMenuS2CPacket.ID, PartygoerMenuS2CPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(RequestTabletSnapshotC2SPacket.ID, RequestTabletSnapshotC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(SendTabletChatC2SPacket.ID, SendTabletChatC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(CallTabletMeetingC2SPacket.ID, CallTabletMeetingC2SPacket.CODEC);
@@ -146,6 +156,17 @@ public final class SparkStrengthPackets {
         // 在服务端主线程执行；服务层重新校验回合、职业、存活、技能封锁与冷却。
         ServerPlayNetworking.registerGlobalReceiver(VultureSuperCurseC2SPacket.ID,
                 (payload, context) -> VultureSuperCurseService.tryCurse(context.player()));
+        // Party Animal's Partygoer: picker request and summon; the service re-checks every gate.
+        // 派对狂的派对客：选房请求与召唤；服务层重新校验所有门槛。
+        ServerPlayNetworking.registerGlobalReceiver(PartygoerMenuC2SPacket.ID,
+                (payload, context) -> PartygoerSkillService.openMenu(context.player()));
+        ServerPlayNetworking.registerGlobalReceiver(PartygoerSummonC2SPacket.ID,
+                (payload, context) -> PartygoerSkillService.summon(context.player(), payload.spawnRoom(),
+                        payload.destinationRoom()));
+        // Taotie swallowing a Partygoer (NoellesRoles ability key); the service re-checks every gate.
+        // 饕餮吞派对客（NoellesRoles 技能键）；服务层重新校验所有门槛。
+        ServerPlayNetworking.registerGlobalReceiver(PartygoerSwallowC2SPacket.ID,
+                (payload, context) -> PartygoerTaotieService.handleSwallow(context.player(), payload));
         ServerPlayNetworking.registerGlobalReceiver(RequestTabletSnapshotC2SPacket.ID,
                 (payload, context) -> TabletStateService.requestSnapshot(context.player()));
         ServerPlayNetworking.registerGlobalReceiver(SendTabletChatC2SPacket.ID,
