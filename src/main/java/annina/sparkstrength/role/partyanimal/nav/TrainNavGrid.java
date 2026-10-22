@@ -319,6 +319,31 @@ public final class TrainNavGrid {
         }
     }
 
+    /**
+     * Columns [fromX..toX] x [fromZ..toZ] stopped being loaded (their chunk dropped out): forget the cached moves that
+     * read them. Their stair flags now read as absent, as they always did for uncached moves; floors and boxes stay
+     * cached as before.
+     * [fromX..toX] x [fromZ..toZ] 各列不再加载（所在区块退出）：忘掉读取过它们的缓存移动。这些列的楼梯标记现在读作不存在，
+     * 与未缓存的移动一贯的结果一致；地面与碰撞箱仍按原样缓存。
+     */
+    public void forgetMovesAround(int fromX, int fromZ, int toX, int toZ) {
+        // Cells outside the bounds never move and read no column inside them. / 边界外的格子不会移动，也不读取边界内的列。
+        int x0 = Math.max(fromX - 1, minX);
+        int x1 = Math.min(toX + 1, maxX);
+        int z0 = Math.max(fromZ - 1, minZ);
+        int z1 = Math.min(toZ + 1, maxZ);
+        if (x0 > x1 || z0 > z1 || edgeCache.isEmpty()) {
+            return;
+        }
+        for (int x = x0; x <= x1; x++) {
+            for (int z = z0; z <= z1; z++) {
+                for (int y = minY; y <= maxY; y++) {
+                    edgeCache.remove(key(x, y, z));
+                }
+            }
+        }
+    }
+
     private boolean anyCollision(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
         int x0 = (int) Math.floor(minX);
         int x1 = (int) Math.floor(maxX - EPS);

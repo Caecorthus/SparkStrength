@@ -17,6 +17,7 @@ import dev.doctor4t.wathe.cca.PlayerShopComponent;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.record.GameRecordManager;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -29,6 +30,7 @@ import net.minecraft.particle.ParticleTypes;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ChunkLevelType;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvent;
@@ -37,6 +39,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 
@@ -103,6 +106,13 @@ public final class PartygoerService {
             }
         });
         ServerTickEvents.END_SERVER_TICK.register(PartygoerService::sweep);
+        // Below FULL a chunk reads as unloaded to the grid (and stays that way until it is unloaded for good).
+        // 低于 FULL 时区块对网格而言已是未加载（直到真正卸载前一直如此）。
+        ServerChunkEvents.CHUNK_LEVEL_TYPE_CHANGE.register((world, chunk, oldType, newType) -> {
+            if (newType == ChunkLevelType.INACCESSIBLE) {
+                onChunkDroppedOut(world, chunk.getPos());
+            }
+        });
         ServerWorldEvents.UNLOAD.register((server, world) -> {
             finishAll(world);
             PartyRoomIndex.clear(world);
@@ -169,6 +179,19 @@ public final class PartygoerService {
             }
             for (BlockPos pos : changed) {
                 brain.grid().invalidate(pos.getX(), pos.getY(), pos.getZ());
+            }
+        }
+    }
+
+    /**
+     * A chunk stopped counting as loaded: every Partygoer in that world forgets the moves it cached across it, so a
+     * stair there is read the way an uncached move reads it.
+     * 一个区块不再算作已加载：该世界的每只派对客都忘掉跨越它缓存的移动，那里的楼梯按未缓存移动的方式读取。
+     */
+    static void onChunkDroppedOut(ServerWorld world, ChunkPos chunk) {
+        for (PartygoerBrain brain : LIVE.values()) {
+            if (brain.world() == world) {
+                brain.grid().forgetMovesAround(chunk.getStartX(), chunk.getStartZ(), chunk.getEndX(), chunk.getEndZ());
             }
         }
     }
