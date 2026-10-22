@@ -6,6 +6,7 @@ import dev.doctor4t.wathe.cca.WorldBlackoutComponent;
 import net.fabricmc.fabric.api.entity.event.v1.ServerEntityWorldChangeEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.registry.RegistryKey;
@@ -53,7 +54,12 @@ public final class BlackoutSightService {
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> refresh(newPlayer));
         ServerEntityWorldChangeEvents.AFTER_PLAYER_CHANGE_WORLD.register((player, origin, destination) ->
                 refresh(player));
-        ServerLifecycleEvents.SERVER_STOPPED.register(server -> SENT.clear());
+        // World keys are shared by every singleplayer save. / 所有单人存档共用同一组世界键。
+        ServerWorldEvents.UNLOAD.register((server, world) -> LAST_STATE.remove(world.getRegistryKey()));
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
+            LAST_STATE.clear();
+            SENT.clear();
+        });
     }
 
     public static void tick(ServerWorld world) {

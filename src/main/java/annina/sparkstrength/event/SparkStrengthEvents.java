@@ -99,6 +99,7 @@ public final class SparkStrengthEvents {
     public static void register() {
         M67RoundService.initialize();
         DroneService.register();
+        BomberTrapService.register();
         DroneCombatService.register();
         DronePilotService.register();
         CorruptCopFeatureService.register();

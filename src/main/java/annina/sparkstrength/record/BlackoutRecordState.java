@@ -64,4 +64,10 @@ public final class BlackoutRecordState<K> {
             flashlightPlayers.remove(world);
         }
     }
+
+    /** {@link #forget} for every world (server stop). / 对所有世界执行 forget（服务器停止）。 */
+    public void forgetAll() {
+        active.clear();
+        flashlightPlayers.clear();
+    }
 }

@@ -6,6 +6,8 @@ import annina.sparkstrength.role.coroner.CoronerService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.record.GameRecordManager;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
@@ -40,8 +42,23 @@ public final class BomberTrapService {
     public static final Identifier TIMED_BOMB_BED_TRIGGERED = SparkStrength.id("timed_bomb_bed_triggered");
 
     private static final Map<net.minecraft.registry.RegistryKey<World>, Set<BlockPos>> TRACKED_TRAPS = new HashMap<>();
+    private static boolean registered;
 
     private BomberTrapService() {
+    }
+
+    /**
+     * Keyed by world key, which every singleplayer save shares: forget a world's traps when it unloads, so a save
+     * quit mid-round does not hand its positions to the next one.
+     * 以世界键为索引，而所有单人存档共用同一个键：世界卸载时忘掉它的陷阱，避免中途退出的存档把坐标带进下一个存档。
+     */
+    public static synchronized void register() {
+        if (registered) {
+            return;
+        }
+        registered = true;
+        ServerWorldEvents.UNLOAD.register((server, world) -> TRACKED_TRAPS.remove(world.getRegistryKey()));
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> TRACKED_TRAPS.clear());
     }
 
     public static boolean canPlantTimedBomb(PlayerEntity player) {
