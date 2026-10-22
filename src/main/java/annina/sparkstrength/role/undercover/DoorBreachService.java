@@ -360,6 +360,13 @@ public final class DoorBreachService {
     private static void clearCracks(ServerWorld world, BlockPos lowerPos) {
         world.setBlockBreakingInfo(crackId(lowerPos), lowerPos, -1);
         world.setBlockBreakingInfo(crackId(lowerPos.up()), lowerPos.up(), -1);
+        // Crack ids belong to the door, not the chopper: anyone still chopping it sends its stage again next tick.
+        // 裂纹编号属于门而非拆门者：仍在拆这扇门的人下一 tick 重新发送其阶段。
+        for (Channel other : CHANNELS.values()) {
+            if (other.world == world.getRegistryKey() && other.lowerPos.equals(lowerPos)) {
+                other.lastCrackStage = -1;
+            }
+        }
     }
 
     private static void send(ServerPlayerEntity player, Channel channel, int state) {
