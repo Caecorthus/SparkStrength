@@ -95,6 +95,7 @@ public final class DetectiveFolderScreen extends Screen {
 
     private final DetectiveRolePicker rolePicker = new DetectiveRolePicker();
     private final DetectivePlayerPicker playerPicker = new DetectivePlayerPicker();
+    private final DetectiveFolderPaint.StickyNoteWidths stickyNoteWidths = new DetectiveFolderPaint.StickyNoteWidths();
     // Notes sent for cases no longer in the editor, kept until a sync confirms them. / 已发送但尚未被同步确认的其它案件笔记。
     private final Map<UUID, String> sentNotes = new HashMap<>();
     private final Map<UUID, Pending<Identifier>> pendingGuesses = new HashMap<>();
@@ -124,6 +125,7 @@ public final class DetectiveFolderScreen extends Screen {
     protected void init() {
         super.init();
         layout = DetectiveFolderLayout.forViewport(width, height);
+        stickyNoteWidths.clear();
         notesBox = null;
         DetectiveCasePlayerComponent folder = folder();
         if (folder == null) {
@@ -401,7 +403,7 @@ public final class DetectiveFolderScreen extends Screen {
         context.fill(body.x() + 12, body.y() + 4, body.x() + 13, body.bottom() - 4, COLOR_FOLDER_CREASE);
 
         Text note = Text.translatable("screen.sparkstrength.detective_folder.no_case");
-        int noteWidth = DetectiveFolderPaint.stickyNoteWidth(textRenderer, note, Math.min(150, Math.max(40, body.width() - 40)), 4);
+        int noteWidth = stickyNoteWidths.get(textRenderer, note, Math.min(150, Math.max(40, body.width() - 40)), 4);
         int noteHeight = DetectiveFolderPaint.stickyNoteHeight(textRenderer, note, noteWidth, 4);
         int noteX = body.x() + (body.width() - noteWidth) / 2;
         int noteY = body.y() + (body.height() - noteHeight) / 2;
@@ -718,7 +720,7 @@ public final class DetectiveFolderScreen extends Screen {
      */
     private void renderEnoughNote(DrawContext context, DetectiveFolderLayout.Rect page) {
         Text note = Text.translatable("screen.sparkstrength.detective_folder.enough");
-        int noteWidth = DetectiveFolderPaint.stickyNoteWidth(textRenderer, note, Math.max(40, page.width() - 12), 3);
+        int noteWidth = stickyNoteWidths.get(textRenderer, note, Math.max(40, page.width() - 12), 3);
         int noteHeight = DetectiveFolderPaint.stickyNoteHeight(textRenderer, note, noteWidth, 3);
         int tiltY = tiltMargin(noteWidth, noteHeight, ENOUGH_NOTE_TILT);
         int tiltX = tiltMargin(noteHeight, noteWidth, ENOUGH_NOTE_TILT);
