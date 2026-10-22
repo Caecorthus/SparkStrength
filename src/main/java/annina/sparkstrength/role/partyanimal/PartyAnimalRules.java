@@ -102,13 +102,46 @@ public final class PartyAnimalRules {
     }
 
     /**
-     * Rage needs the prey in hand (carried or being eaten), rage still unused, and a living killer other than the
-     * prey; otherwise the Partygoer gives up and vanishes.
-     * 狂怒需要猎物在手中（被扛着或正在被吃）、狂怒未用过，且击杀者是还活着的、不是猎物本人的玩家；否则派对客放弃并消失。
+     * Rage needs the prey in hand (carried or being eaten), rage still unused, and a living killer who is neither the
+     * prey nor on the summoner's team ({@link #isSummonerTeam}); otherwise the Partygoer gives up and vanishes.
+     * 狂怒需要猎物在手中（被扛着或正在被吃）、狂怒未用过，且击杀者还活着、不是猎物本人、也不是召唤者一方（isSummonerTeam）；
+     * 否则派对客放弃并消失。
      */
     public static boolean triggersRage(boolean preyInHand, boolean rageUsed, boolean killerKnown, boolean killerAlive,
-                                       boolean killerIsPrey) {
-        return preyInHand && !rageUsed && killerKnown && killerAlive && !killerIsPrey;
+                                       boolean killerIsPrey, boolean killerIsSummonerTeam) {
+        return preyInHand && !rageUsed && killerKnown && killerAlive && !killerIsPrey && !killerIsSummonerTeam;
+    }
+
+    /** A player's side for the rage rule. / 狂怒规则中玩家所属的一方。 */
+    public enum Side {
+        KILLER,
+        CIVILIAN,
+        /** Neutrals: each is a team of one. / 中立：各自一队。 */
+        OTHER
+    }
+
+    /**
+     * The side a player reads as. The Undercover reads as a killer until stage 2, like {@link #isValidPrey}, so rage
+     * never outs it.
+     * 玩家看起来属于哪一方。卧底在二阶段前看起来是杀手（与 isValidPrey 一致），因此狂怒不会暴露它。
+     */
+    public static Side side(boolean effectiveKiller, boolean effectiveCivilian, boolean undercover,
+                            boolean undercoverStage2) {
+        if (undercover) {
+            return undercoverStage2 ? Side.CIVILIAN : Side.KILLER;
+        }
+        if (effectiveKiller) {
+            return Side.KILLER;
+        }
+        return effectiveCivilian ? Side.CIVILIAN : Side.OTHER;
+    }
+
+    /**
+     * Rage never turns on its own team (owner rule 2026-10-21): the summoner and anyone on the summoner's side.
+     * 狂怒从不冲自己人（所有者规则 2026-10-21）：召唤者本人及与召唤者同一方的人。
+     */
+    public static boolean isSummonerTeam(boolean killerIsSummoner, Side summoner, Side killer) {
+        return killerIsSummoner || summoner != Side.OTHER && summoner == killer;
     }
 
     /** HUD/sync cadence: once per second, plus the last tick. / HUD 同步节奏：每秒一次，以及最后一刻。 */

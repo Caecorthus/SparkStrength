@@ -277,10 +277,11 @@ public final class PartygoerBrain {
     // ---- Events from PartygoerService / 来自 PartygoerService 的事件 ----
 
     /**
-     * Someone died (KillPlayer.AFTER). Prey killed in its hands by someone alive triggers the one rage; otherwise it gives
-     * up. The rage target dying any other way also ends it. A prey that dies before being caught is just replaced.
-     * 有人死亡（KillPlayer.AFTER）。手中猎物被活着的人杀死时触发唯一一次狂怒，否则放弃。狂怒目标以其他方式死亡也会结束。
-     * 尚未抓到的猎物死亡则只是换目标。
+     * Someone died (KillPlayer.AFTER). Prey killed in its hands by someone alive and not on the summoner's team triggers
+     * the one rage; otherwise it gives up. The rage target dying any other way also ends it. A prey that dies before
+     * being caught is just replaced.
+     * 有人死亡（KillPlayer.AFTER）。手中猎物被活着且不属于召唤者一方的人杀死时触发唯一一次狂怒，否则放弃。狂怒目标以其他方式
+     * 死亡也会结束。尚未抓到的猎物死亡则只是换目标。
      */
     public void onPlayerKilled(ServerPlayerEntity victim, @Nullable ServerPlayerEntity killer) {
         if (finished || biting) {
@@ -291,7 +292,8 @@ public final class PartygoerBrain {
             if (state.preyInHand()) {
                 boolean killerAlive = PartygoerTargeting.isReachable(killer);
                 if (PartyAnimalRules.triggersRage(true, rageUsed, killer != null, killerAlive,
-                        killer != null && killer.getUuid().equals(victimUuid))) {
+                        killer != null && killer.getUuid().equals(victimUuid),
+                        killer != null && PartygoerTargeting.isSummonerTeam(killer, ownerUuid, player(ownerUuid)))) {
                     startRage(killer);
                 } else {
                     PartygoerService.finish(this, PartygoerService.Ending.GAVE_UP);
