@@ -122,9 +122,16 @@ public class ReporterCommunicationComponent implements AutoSyncedComponent, Serv
     }
 
     public void reset() {
+        // serverTick resets every non-Reporter every tick, so only a real change reaches the client.
+        // serverTick 每 tick 都会重置所有非记者玩家，因此只有真正有变化时才同步给客户端。
+        boolean changed = this.cooldownTicks != 0
+                || this.connectionActive || this.connectionTicksRemaining != 0
+                || this.broadcastActive || this.broadcastTicksRemaining != 0;
         this.cooldownTicks = 0;
         this.clearActiveState();
-        this.sync();
+        if (changed) {
+            this.sync();
+        }
     }
 
     public void sync() {
