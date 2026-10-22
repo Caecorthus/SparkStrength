@@ -13,9 +13,9 @@ import net.minecraft.text.Text;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Paints the tablet's sabotage page: one card per sabotage type (its trigger button is a widget, see TabletScreen)
+ * Paints the tablet's sabotage page: one card per sabotage type (its trigger button is a widget, see TabletSabotagePage)
  * and the team log below. Countdowns are extrapolated from the last snapshot so they tick every frame.
- * 绘制平板破坏页：每种破坏一张卡片（触发按钮是控件，见 TabletScreen），下方为团队日志。倒计时根据上一份快照外推，每帧走动。
+ * 绘制平板破坏页：每种破坏一张卡片（触发按钮是控件，见 TabletSabotagePage），下方为团队日志。倒计时根据上一份快照外推，每帧走动。
  */
 final class TabletSabotagePainter {
     static final int CARD_H = 64;

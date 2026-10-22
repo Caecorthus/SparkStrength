@@ -2,44 +2,27 @@ package annina.sparkstrength.client.screen.tablet;
 
 import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.ButtonIcon;
 import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.ButtonStyle;
-import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.EmptyIcon;
-import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.HeroState;
 import annina.sparkstrength.client.screen.tablet.TabletTheme.Accent;
-import annina.sparkstrength.compat.SparkWitchCompat;
-import annina.sparkstrength.component.undercover.UndercoverPlayerComponent;
 import annina.sparkstrength.network.drone.DronePilotStartC2SPacket;
-import annina.sparkstrength.network.sabotage.TriggerSabotageC2SPacket;
-import annina.sparkstrength.network.tablet.ApproveSuspectRemovalC2SPacket;
-import annina.sparkstrength.network.tablet.CallTabletMeetingC2SPacket;
-import annina.sparkstrength.network.tablet.CastTabletVoteC2SPacket;
-import annina.sparkstrength.network.tablet.ConfirmTabletVoteC2SPacket;
 import annina.sparkstrength.network.tablet.RequestTabletSnapshotC2SPacket;
-import annina.sparkstrength.network.tablet.SelectTabletChannelC2SPacket;
-import annina.sparkstrength.network.tablet.SendTabletChatC2SPacket;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
-import annina.sparkstrength.role.attendant.DoorLog;
-import annina.sparkstrength.role.bomber.drone.DroneKind;
-import annina.sparkstrength.role.undercover.UndercoverRoles;
-import annina.sparkstrength.sabotage.SabotageRowState;
 import annina.sparkstrength.tablet.TabletChannel;
 import annina.sparkstrength.tablet.TabletFeature;
-import annina.sparkstrength.tablet.TabletIdentityRules;
 import annina.sparkstrength.tablet.TabletLayout;
 import annina.sparkstrength.tablet.TabletLayout.Rect;
-import annina.sparkstrength.tablet.TabletRules;
 import annina.sparkstrength.tablet.TabletUiSession;
 import annina.sparkstrength.tablet.TabletUiSession.Section;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gui.Drawable;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Element;
 import net.minecraft.client.gui.ScreenRect;
+import net.minecraft.client.gui.Selectable;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.sound.PositionedSoundInstance;
 import net.minecraft.client.util.Window;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Util;
@@ -49,12 +32,11 @@ import org.lwjgl.glfw.GLFW;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 
 import static annina.sparkstrength.client.screen.tablet.TabletSectionPainter.KEY;
@@ -72,6 +54,12 @@ import static annina.sparkstrength.client.screen.tablet.TabletSectionPainter.PIL
  * 因此控件、布局与绘制都使用逻辑单位。裁剪只通过 TabletCanvas.pushClip（物理像素），从不使用会忽略矩阵的
  * DrawContext.enableScissor。</p>
  *
+ * <p>Each section is a {@link TabletPage} created once with the screen; the screen keeps the frame (device, status bar,
+ * rail, header title), the {@link TabletChannelSwitcher} and input routing, and asks the open page for its widgets,
+ * scrolling, header chip and body.
+ * 每个分区是随界面创建一次的 TabletPage；界面自己负责外框（设备、状态栏、侧栏、页眉标题）、频道切换浮层与输入分发，
+ * 并向当前页面获取其控件、滚动、页眉胶囊与主体。</p>
+ *
  * <p>Feature sections (the Attendant door log, the Bomber drone link) ride along with any channel. A holder whose only
  * content is feature sections ("feature-only": no channel and none to switch to, e.g. a plain Attendant or a SparkTraits
  * Conscience Bomber) gets that feature's chrome instead of "No Signal": a non-clickable status chip naming it, its badge
@@ -87,18 +75,10 @@ import static annina.sparkstrength.client.screen.tablet.TabletSectionPainter.PIL
 public final class TabletScreen extends Screen {
     private static final DateTimeFormatter CLOCK_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
 
-    private static final int PENDING_SWITCH_TICKS = 40;
-    // How long a sent drone connect request shows "connecting" before the button re-arms. 连接请求显示“连接中”的时长。
-    private static final int PENDING_PILOT_TICKS = 40;
-    private static final int CHAT_SCROLL_STEP = 18;
-    // Chat edge mask: band height and column pitch (logical px). 聊天边缘遮罩：带高与列间距（逻辑像素）。
-    private static final int CHAT_MASK = 18;
-    private static final int CHAT_MASK_STEP = 12;
-    private static final int COUNTER_THRESHOLD = 100;
     private static final long SIGNAL_SWEEP_MS = 220L;
 
     // Pills (status chip, header chip, switcher chips). 胶囊（状态栏频道、页眉信息、切换浮层标签）。
-    private static final int PILL_H = 16;
+    static final int PILL_H = 16;
     // Accent glow over the screen, relative to the content origin; mirrored by screenBackdropAt.
     // 屏幕上的强调色光晕（相对内容区原点）；screenBackdropAt 按相同参数复现。
     private static final int GLOW_DX = 60;
@@ -106,8 +86,8 @@ public final class TabletScreen extends Screen {
     private static final float GLOW_RADIUS = 260f;
     private static final int GLOW_ALPHA = 0x22;
     private static final int GLOW_RINGS = 5;
-    private static final int PILL_GLYPH = 8;
-    private static final int PILL_GLYPH_GAP = 4;
+    static final int PILL_GLYPH = 8;
+    static final int PILL_GLYPH_GAP = 4;
     // Status bar channel chip: pad, dot, gap … gap, caret, pad. 状态栏频道胶囊的内边距、圆点、间隔与下拉箭头。
     private static final int CHIP_DOT = 6;
     private static final int CHIP_GAP = 5;
@@ -119,40 +99,11 @@ public final class TabletScreen extends Screen {
     private static final int SIGNAL_SIZE = 12;
     private static final int SIGNAL_DIM = 0x33FFFFFF;
 
-    // Composer. 输入栏。
-    private static final int SEND_SIZE = 26;
-    private static final int SEND_GAP = 8;
-    private static final int INPUT_INSET_X = 12;
-    private static final int INPUT_H = 9;
-    private static final int NEW_PILL_H = 16;
-    // Room kept below the member rows for a hint callout (two text lines). 成员行下方为提示卡片保留的高度（两行文字）。
-    private static final int HINT_CALLOUT_MIN_H = 42;
-
-    // Action bar buttons (meeting footer). 会议操作栏按钮。
-    private static final int ACTION_PAD = 14;
-    private static final int ACTION_GAP = 8;
-    private static final int ACTION_ICON = 12;
-    private static final int ACTION_ICON_GAP = 5;
-    private static final int ACTION_MIN_W = 74;
-
-    // Channel switcher popover. 频道切换浮层。
-    private static final int SWITCHER_WIDTH = 220;
-    private static final int SWITCHER_OFFSET = 6;
-    private static final int SWITCHER_ROWS_TOP = 26;
-    private static final int SWITCHER_ROW_H = 32;
-    private static final int SWITCHER_ROW_GAP = 4;
-    private static final int SWITCHER_COMPACT_ROW_H = 24;
-    private static final int SWITCHER_COMPACT_ROW_GAP = 2;
-    private static final int SWITCHER_INSET = 6;
-    private static final int SWITCHER_BADGE = 20;
-    private static final int SWITCHER_CARET = 6;
-    private static final int SWITCHER_HINT_PAD = 10;
-    private static final int SWITCHER_Z = 200;
-    private static final long SWITCHER_FADE_MS = 120L;
-    private static final int SWITCHER_SLIDE = 6;
-
     private final TabletUiSession session = new TabletUiSession(TabletClientState.chatDraft());
-    private final TabletChatView chatView = new TabletChatView();
+    // One page per section, created once; init() only rebuilds their widgets. 每个分区一个页面，只创建一次；init() 只重建其控件。
+    private final Map<Section, TabletPage> pages = new EnumMap<>(Section.class);
+    private final TabletChatPage chat;
+    private final TabletChannelSwitcher switcher;
 
     // Logical canvas (recomputed in init(), which vanilla also runs on resize). 逻辑画布（在 init() 中重算，原版调整窗口时也会调用）。
     private int pixelScale = 1;
@@ -169,36 +120,13 @@ public final class TabletScreen extends Screen {
     private TabletCanvas frameCanvas;
     private Accent frameAccent = TabletTheme.NONE;
 
-    // Widgets rebuilt by init(); the chat input is one persistent instance so caret/selection survive refresh().
-    // init() 重建的控件；聊天输入框为同一个持久实例，使光标/选区在 refresh() 后保留。
+    // Rail widgets rebuilt by init(). init() 重建的侧栏控件。
     private final List<TabletPressable> tabButtons = new ArrayList<>();
     private final List<Section> tabSections = new ArrayList<>();
-    private @Nullable TabletTextInput chatInput;
-    private boolean chatInputAttached;
-    private @Nullable TabletPressable sendButton;
-    private @Nullable TabletPressable newMessagesButton;
 
     private boolean requestedInitialSnapshot;
     private int lastChannelWire;
     private boolean lastCanSend;
-    private boolean switcherOpen;
-    private long switcherOpenedAtMs;
-    private int pendingChannelWire = TabletChannel.NO_CHANNEL_WIRE;
-    private int pendingSwitchTicks;
-
-    // Chat scroll anchoring. 聊天滚动锚定。
-    private List<TabletSnapshot.ChatRow> lastChatRows = List.of();
-    // Scratch layout of the kept prefix, used only to measure the anchor offset. 仅用于测量锚点偏移的前缀排版。
-    private boolean chatLayoutPrimed;
-    private boolean newMessagesPending;
-    // Door-log rows the scroll position refers to; anchors the reader when newer rows arrive. 门记录滚动位置所对应的行。
-    private List<TabletSnapshot.DoorLogRow> lastDoorLogRows = List.of();
-    // Drone button states of the current build; a snapshot that changes them rebuilds the widgets. 当前构建的无人机按钮状态。
-    private List<DroneButtonKey> lastDroneButtons = List.of();
-    private int pendingPilotEntityId = -1;
-    private int pendingPilotTicks;
-    private List<Integer> lastSabotageButtons = List.of();
-    private int pendingTriggerTicks;
 
     // Stable identity of each keyed widget in the current build, so a rebuild can restore keyboard focus.
     // 当前构建中各控件的稳定标识，供重建时恢复键盘焦点。
@@ -209,7 +137,15 @@ public final class TabletScreen extends Screen {
         TabletSnapshot snapshot = TabletClientState.snapshot();
         lastChannelWire = snapshot.channelWire();
         lastCanSend = snapshot.canSend();
-        chatView.setBackdrop(this::screenBackdropAt);
+        chat = new TabletChatPage(this);
+        switcher = new TabletChannelSwitcher(this);
+        pages.put(Section.CONNECTIONS, new TabletConnectionsPage(this));
+        pages.put(Section.CHAT, chat);
+        pages.put(Section.MEETING, new TabletMeetingPage(this));
+        pages.put(Section.SUSPECTS, new TabletSuspectsPage(this));
+        pages.put(Section.DOOR_LOG, new TabletDoorLogPage(this));
+        pages.put(Section.DRONE, new TabletDronePage(this));
+        pages.put(Section.SABOTAGE, new TabletSabotagePage(this));
         Section resume = TabletClientState.consumeResumeSection();
         if (resume != null) {
             // init() falls back to the first visible section if it is gone. 若该分区已不可见，init() 会回退到第一个可见分区。
@@ -229,17 +165,12 @@ public final class TabletScreen extends Screen {
         referenceTabs = TabletUiSession.referenceSectionCount(snapshot.channel(), snapshot.allowedChannels(), features);
         session.ensureVisible(visibleSections);
         layout = TabletLayout.forViewport(canvasWidth, canvasHeight, visibleSections.size(), referenceTabs);
-        clampRowScrolls(snapshot);
-        lastDoorLogRows = doorLogRows(snapshot);
-        lastDroneButtons = droneButtonKeys(snapshot);
-        lastSabotageButtons = sabotageButtonKeys(snapshot);
-        ensureChatInput();
+        for (TabletPage page : pages.values()) {
+            page.prepare(snapshot);
+        }
         focusKeys.clear();
         tabButtons.clear();
         tabSections.clear();
-        chatInputAttached = false;
-        sendButton = null;
-        newMessagesButton = null;
 
         // One request per open; afterwards the server pushes every change to holders, open screen or not.
         // 每次打开只请求一次；之后服务端会把每次变化推送给持有者，无论界面是否打开。
@@ -253,32 +184,15 @@ public final class TabletScreen extends Screen {
             return;
         }
         initTabs();
-        switch (session.section()) {
-            case CONNECTIONS, DOOR_LOG -> {
-                // Painted only; no widgets. 仅绘制，无控件。
-            }
-            case CHAT -> initChat(snapshot);
-            case MEETING -> {
-                if (hasMeetingFeatures(snapshot)) {
-                    initMeeting(snapshot);
-                }
-            }
-            case SUSPECTS -> {
-                if (hasMeetingFeatures(snapshot)) {
-                    initSuspects(snapshot);
-                }
-            }
-            case DRONE -> initDrones(snapshot);
-            case SABOTAGE -> initSabotage(snapshot);
-        }
+        page().init(snapshot);
     }
 
     public void refresh() {
         if (client == null) {
             return;
         }
-        rememberChatDraft();
-        String focusKey = switcherOpen ? null : focusKeys.get(getFocused());
+        chat.rememberChatDraft();
+        String focusKey = switcher.isOpen() ? null : focusKeys.get(getFocused());
         // Drop focus before removing widgets (as Screen.clearAndInit does); otherwise a detached chat input keeps
         // receiving keystrokes when the rebuild does not re-attach it (read-only holder, other section).
         // 移除控件前先清除焦点（与 Screen.clearAndInit 一致）；否则重建时若未重新挂上输入框（只读持有者、其它分区），
@@ -296,7 +210,7 @@ public final class TabletScreen extends Screen {
      * 切换浮层打开或 init() 已设置焦点（聊天输入框）时不恢复。
      */
     private void restoreFocus(@Nullable String focusKey) {
-        if (focusKey == null || switcherOpen || getFocused() != null) {
+        if (focusKey == null || switcher.isOpen() || getFocused() != null) {
             return;
         }
         for (Element child : children()) {
@@ -328,19 +242,12 @@ public final class TabletScreen extends Screen {
             onChannelChanged(previousChannelWire);
         }
 
-        int droneFirstRow = session.droneFirstRow();
-        if (layout != null) {
-            anchorDoorLog(snapshot);
-            clampRowScrolls(snapshot);
+        for (TabletPage page : pages.values()) {
+            page.onSnapshot(snapshot, layout != null);
         }
-        if (switcherOpen && featureOnly(snapshot)) {
+        if (switcher.isOpen() && featureOnly(snapshot)) {
             // Became feature-only (channels lost mid-round): the switcher has nothing to offer. 变为仅功能时关闭切换浮层。
-            switcherOpen = false;
-        }
-        if (pendingPilotEntityId >= 0 && !pendingPilotStillConnectable(snapshot)) {
-            // Linked, lost or gone: the request is settled either way. 已连接、失控或已消失：请求已有结果。
-            pendingPilotEntityId = -1;
-            pendingPilotTicks = 0;
+            switcher.close();
         }
         // Features can change mid-round (Coroner disguise ends), so the section set is re-derived on every snapshot.
         // 功能可能在回合中变化（验尸官伪装结束），因此每次快照都重新计算分区集合。
@@ -353,52 +260,22 @@ public final class TabletScreen extends Screen {
                 || sectionChanged
                 || !nextSections.equals(visibleSections)
                 || nextReference != referenceTabs
-                || session.section() == Section.MEETING
-                || session.section() == Section.SUSPECTS
-                || (session.section() == Section.DRONE && (droneFirstRow != session.droneFirstRow()
-                        || !droneButtonKeys(snapshot).equals(lastDroneButtons)))
-                || (session.section() == Section.SABOTAGE
-                        && !sabotageButtonKeys(snapshot).equals(lastSabotageButtons))) {
+                || page().needsRebuild(snapshot)) {
             refresh();
         }
     }
 
-    /**
-     * Door log is newest first: a reader scrolled down stays on the same entry when newer ones are prepended.
-     * 房门记录最新在前：已向下翻阅的读者在顶部插入新条目时保持停在同一条目。
-     */
-    private void anchorDoorLog(TabletSnapshot snapshot) {
-        List<TabletSnapshot.DoorLogRow> rows = doorLogRows(snapshot);
-        int first = session.doorLogFirstRow();
-        int anchor = -1;
-        if (first > 0 && first < lastDoorLogRows.size()) {
-            int anchorId = lastDoorLogRows.get(first).id();
-            for (int index = 0; index < rows.size(); index++) {
-                if (rows.get(index).id() == anchorId) {
-                    anchor = index;
-                    break;
-                }
-            }
-        }
-        session.applyDoorLogSnapshot(anchor, rows.size(), doorLogGrid().visibleRows());
-        lastDoorLogRows = rows;
+    private void onChannelChanged(int previousChannelWire) {
+        chat.onChannelChanged(previousChannelWire);
+        switcher.onChannelChanged();
     }
 
     @Override
     public void tick() {
         super.tick();
-        if (pendingSwitchTicks > 0 && --pendingSwitchTicks == 0) {
-            pendingChannelWire = TabletChannel.NO_CHANNEL_WIRE;
-        }
-        if (pendingTriggerTicks > 0 && --pendingTriggerTicks == 0 && session.section() == Section.SABOTAGE) {
-            refresh();
-        }
-        if (pendingPilotTicks > 0 && --pendingPilotTicks == 0) {
-            // No answer (refused, e.g. body not on the ground): re-arm the connect button. 未获响应（被拒绝）：恢复连接按钮。
-            pendingPilotEntityId = -1;
-            if (session.section() == Section.DRONE) {
-                refresh();
-            }
+        switcher.tick();
+        for (TabletPage page : pages.values()) {
+            page.tick(page == page());
         }
     }
 
@@ -446,6 +323,10 @@ public final class TabletScreen extends Screen {
         return new ScreenRect(0, 0, Math.max(1, canvasWidth), Math.max(1, canvasHeight));
     }
 
+    private TabletPage page() {
+        return pages.get(session.section());
+    }
+
     // ============================================================================================ widgets
 
     private void initCloseButton() {
@@ -480,365 +361,46 @@ public final class TabletScreen extends Screen {
     }
 
     private void selectSection(Section section) {
-        rememberChatDraft();
+        chat.rememberChatDraft();
         session.select(section);
         if (section == Section.CHAT) {
-            resetChatScroll();
+            chat.resetChatScroll();
         }
         refresh();
     }
 
-    private void ensureChatInput() {
-        if (chatInput != null) {
-            return;
-        }
-        TabletTextInput input = new TabletTextInput(textRenderer, 0, 0, 1, INPUT_H,
-                Text.translatable(KEY + "chat.placeholder"));
-        // The limit must be set before the draft (default limit is 32). 必须先设长度上限再写入草稿（默认上限为 32）。
-        input.setMaxLength(TabletRules.CHAT_MESSAGE_MAX_LENGTH);
-        input.setText(session.draft());
-        input.setTextColor(TabletTheme.TEXT);
-        input.setChangedListener(value -> {
-            session.updateDraft(value);
-            TabletClientState.setChatDraft(value);
-        });
-        chatInput = input;
-    }
-
-    private void initChat(TabletSnapshot snapshot) {
-        Composer composer = composer();
-        TabletChannel channel = snapshot.channel();
-        if (snapshot.canSend() && channel != null && chatInput != null) {
-            Rect pill = composer.pill();
-            chatInput.setDimensionsAndPosition(Math.max(1, pill.width() - 2 * INPUT_INSET_X), INPUT_H,
-                    pill.x() + INPUT_INSET_X, pill.centerY() - 4);
-            chatInput.setPlaceholder(Text.translatable(KEY + "chat.placeholder_channel",
-                    Text.translatable(channel.translationKey())));
-            chatInput.setCaretColor(frameAccentFor(snapshot).pale());
-            chatInput.setSelectionColor(TabletTheme.withAlpha(frameAccentFor(snapshot).base(), 0x66));
-            addDrawableChild(chatInput);
-            chatInputAttached = true;
-            if (!switcherOpen) {
-                setInitialFocus(chatInput);
-            }
-        }
-        // Read-only holders (dead) get a painted read-only bar instead of the input; see paintComposer.
-        // 只读持有者（死亡）不挂输入框，而是绘制只读栏；见 paintComposer。
-
-        Rect send = composer.send();
-        sendButton = addDrawableChild(new TabletPressable(send.x(), send.y(), send.width(), send.height(),
-                Text.translatable(KEY + "chat.send"), this::sendChat,
-                (context, button, hovered, delta) -> paintSendButton(button, hovered)));
-        sendButton.active = canSendChat(snapshot);
-
-        Text newLabel = Text.translatable(KEY + "chat.new");
-        Rect list = layout.list();
-        int pillWidth = Math.min(list.width(), TabletSectionPainter.visibleWidth(textRenderer, newLabel.getString())
-                + 2 * PILL_PAD + PILL_GLYPH + PILL_GLYPH_GAP);
-        newMessagesButton = addDrawableChild(new TabletPressable(list.centerX() - pillWidth / 2,
-                list.bottom() - NEW_PILL_H - 6, pillWidth, NEW_PILL_H, newLabel, this::resetChatScroll,
-                (context, button, hovered, delta) -> paintNewMessagesPill(button, newLabel, hovered)));
-        newMessagesButton.visible = false;
-    }
-
-    private void initMeeting(TabletSnapshot snapshot) {
-        TabletSnapshot.Meeting meeting = snapshot.meeting();
-        if (!meeting.active()) {
-            Rect call = TabletSectionPainter.heroButtonRect(layout.bodyNoFooter());
-            addButton("call", call, Text.translatable(KEY + "meeting.call"), ButtonStyle.DANGER,
-                    ButtonIcon.MEGAPHONE,
-                    () -> ClientPlayNetworking.send(new CallTabletMeetingC2SPacket()))
-                    .active = canCallMeeting(snapshot);
-            return;
-        }
-
-        boolean participant = snapshot.localMeetingParticipant();
-        boolean confirmed = meeting.localConfirmed();
-        Grid grid = voteGrid();
-        List<TabletSnapshot.VoteTarget> targets = meeting.targets();
-        int first = session.meetingFirstRow();
-        for (int row = 0; row < grid.visibleRows(); row++) {
-            for (int column = 0; column < grid.columns(); column++) {
-                int index = (first + row) * grid.columns() + column;
-                if (index >= targets.size()) {
-                    break;
-                }
-                TabletSnapshot.VoteTarget target = targets.get(index);
-                boolean selected = target.uuid().equals(meeting.localVoteTarget());
-                boolean clickable = participant && target.selectable() && !confirmed;
-                TabletPressable card = new TabletPressable(grid.cellX(column), grid.rowY(row), grid.cellWidth(),
-                        TabletSectionPainter.VOTE_CARD_H, Text.literal(target.name()),
-                        () -> ClientPlayNetworking.send(new CastTabletVoteC2SPacket(target.uuid())),
-                        (context, button, hovered, delta) -> TabletSectionPainter.voteCard(frameCanvas, textRenderer,
-                                button, target, selected, hovered, clickable, !participant, frameAccent));
-                card.active = clickable;
-                card.setSelectedState(selected);
-                keyed("vote:" + target.uuid(), addDrawableChild(card));
-            }
-        }
-
-        ActionBar bar = actionBar(snapshot);
-        addButton("abstain", bar.abstain(), bar.abstainLabel(), bar.abstainStyle(), ButtonIcon.NONE,
-                () -> ClientPlayNetworking.send(new CastTabletVoteC2SPacket(null)))
-                .active = participant && !confirmed;
-        addButton("confirm", bar.confirm(), bar.confirmLabel(), bar.confirmStyle(), bar.confirmIcon(),
-                () -> ClientPlayNetworking.send(new ConfirmTabletVoteC2SPacket()))
-                .active = participant && !confirmed;
-    }
-
-    private void initSuspects(TabletSnapshot snapshot) {
-        Grid grid = suspectGrid();
-        List<TabletSnapshot.SuspectRow> suspects = snapshot.suspects();
-        int first = session.suspectFirstRow();
-        for (int row = 0; row < grid.visibleRows() && first + row < suspects.size(); row++) {
-            TabletSnapshot.SuspectRow suspect = suspects.get(first + row);
-            Rect toggle = TabletSectionPainter.suspectButtonRect(textRenderer, grid.area().x(), grid.rowY(row),
-                    grid.area().width());
-            addButton("suspect:" + suspect.uuid(), toggle,
-                    Text.translatable(KEY + (suspect.localApproved() ? "suspects.cancel" : "suspects.approve")),
-                    suspect.localApproved() ? ButtonStyle.WARNING_TOGGLED : ButtonStyle.SECONDARY,
-                    ButtonIcon.NONE,
-                    () -> ClientPlayNetworking.send(new ApproveSuspectRemovalC2SPacket(suspect.uuid(), !suspect.localApproved())))
-                    .active = snapshot.localMeetingParticipant();
-        }
-    }
-
-    /**
-     * One connect button per visible drone card. Only placed, controllable drones get an active button; the others
-     * show why not (stowed, cooling down, falling, already linked, another link busy). The server re-validates every
-     * request.
-     * 每张可见无人机卡片一个连接按钮。只有已放置且可操控的无人机按钮可用；其余显示原因（在背包、冷却、坠落、已连接、
-     * 链路占线）。服务端会重新校验每个请求。
-     */
-    private void initDrones(TabletSnapshot snapshot) {
-        Grid grid = droneGrid();
-        List<TabletSnapshot.DroneRow> rows = droneRows(snapshot);
-        boolean linkBusy = droneLinkBusy(rows);
-        int first = session.droneFirstRow();
-        for (int row = 0; row < grid.visibleRows() && first + row < rows.size(); row++) {
-            TabletSnapshot.DroneRow drone = rows.get(first + row);
-            DroneAction action = droneAction(drone, linkBusy);
-            Rect rect = TabletSectionPainter.droneButtonRect(textRenderer, grid.area().x(), grid.rowY(row),
-                    grid.area().width());
-            String focusKey = drone.placed() ? "drone:" + drone.entityId() : "drone:item:" + (first + row);
-            // Drone accent whatever the channel, like the door monitor's live chip. 与房门监控相同，无论频道都用无人机强调色。
-            addButton(focusKey, rect, Text.translatable(KEY + action.labelKey()), action.style(), action.icon(),
-                    TabletTheme.DRONE, () -> connectDrone(drone))
-                    .active = action == DroneAction.CONNECT;
-        }
-    }
-
-    private void connectDrone(TabletSnapshot.DroneRow drone) {
-        // No-op when the server never declared the pilot channel (or there is no connection).
-        // 服务端未声明驾驶通道（或无连接）时不发送。
-        if (!drone.placed() || pendingPilotEntityId >= 0
-                || !ClientPlayNetworking.canSend(DronePilotStartC2SPacket.ID)) {
-            return;
-        }
-        ClientPlayNetworking.send(new DronePilotStartC2SPacket(drone.entityId()));
-        pendingPilotEntityId = drone.entityId();
-        pendingPilotTicks = PENDING_PILOT_TICKS;
-        // The pilot client closes the tablet for the drone camera; reopening it lands back on the drone list.
-        // 驾驶客户端会关闭平板以切换到无人机视角；之后再打开平板时回到无人机列表。
-        TabletClientState.resumeOnNextOpen(Section.DRONE);
-        refresh();
-    }
-
-    /**
-     * One trigger button per sabotage card; only a READY card's button is active. The server re-validates every
-     * trigger, and a short pending window stops a double click from sending twice.
-     * 每张破坏卡片一个触发按钮；只有可触发的卡片按钮可用。服务端会重新校验每次触发，短暂的等待期防止双击重复发送。
-     */
-    private void initSabotage(TabletSnapshot snapshot) {
-        List<TabletSnapshot.SabotageRow> rows = snapshot.hasFeature(TabletFeature.SABOTAGE) ? snapshot.sabotage() : List.of();
-        Rect area = layout.bodyNoFooter();
-        for (int index = 0; index < rows.size(); index++) {
-            int y = area.y() + index * TabletSabotagePainter.CARD_STEP;
-            if (y + TabletSabotagePainter.CARD_H > area.bottom()) {
-                break;
-            }
-            TabletSnapshot.SabotageRow row = rows.get(index);
-            SabotageRowState state = TabletSabotagePainter.state(row);
-            // A stage-1 Undercover watches the team's cards for cover; its own trigger needs the CQCM mask.
-            // 第一阶段卧底为了伪装能看团队卡片；它自己的触发需要 CQCM 面具。
-            boolean needsMask = state == SabotageRowState.READY && needsMaskToTrigger();
-            boolean ready = state == SabotageRowState.READY && !needsMask && pendingTriggerTicks == 0;
-            String labelKey = needsMask ? "button.needs_mask" : switch (state) {
-                case READY -> "button.trigger";
-                case LOCKED -> "button.locked";
-                case ARMING -> "button.arming";
-                case COOLDOWN -> "button.cooldown";
-                case ACTIVE -> "button.active";
-                case BLOCKED -> "button.blocked";
-            };
-            ButtonStyle style = needsMask ? ButtonStyle.LOCKED : switch (state) {
-                case READY -> ButtonStyle.DANGER;
-                case ACTIVE -> ButtonStyle.DANGER_SOFT;
-                default -> ButtonStyle.LOCKED;
-            };
-            ButtonIcon icon = needsMask ? ButtonIcon.LOCK : switch (state) {
-                case LOCKED -> ButtonIcon.LOCK;
-                case ARMING, COOLDOWN -> ButtonIcon.CLOCK;
-                case ACTIVE -> ButtonIcon.SPINNER;
-                default -> ButtonIcon.NONE;
-            };
-            Rect rect = TabletSabotagePainter.buttonRect(textRenderer, area.x(), y, area.width());
-            addButton("sabotage:" + row.typeWire(), rect, Text.translatable(KEY + "sabotage." + labelKey), style, icon,
-                    TabletTheme.SABOTAGE, () -> triggerSabotage(row))
-                    .active = ready;
-        }
-    }
-
-    private static boolean needsMaskToTrigger() {
-        ClientPlayerEntity player = MinecraftClient.getInstance().player;
-        return player != null && UndercoverRoles.isUndercover(player)
-                && !UndercoverPlayerComponent.KEY.get(player).isStage2();
-    }
-
-    private void triggerSabotage(TabletSnapshot.SabotageRow row) {
-        if (pendingTriggerTicks > 0 || !ClientPlayNetworking.canSend(TriggerSabotageC2SPacket.ID)) {
-            return;
-        }
-        ClientPlayNetworking.send(new TriggerSabotageC2SPacket(row.typeWire()));
-        pendingTriggerTicks = 20;
-        refresh();
-    }
-
-    private static List<Integer> sabotageButtonKeys(TabletSnapshot snapshot) {
-        if (!snapshot.hasFeature(TabletFeature.SABOTAGE)) {
-            return List.of();
-        }
-        ArrayList<Integer> keys = new ArrayList<>();
-        for (TabletSnapshot.SabotageRow row : snapshot.sabotage()) {
-            keys.add(row.typeWire() * 16 + row.stateWire());
-        }
-        return keys;
-    }
-
-    /** The most urgent sabotage state for the rail badge: ACTIVE, then READY. / 侧栏徽标用的最紧急状态：先进行中，再可触发。 */
-    private static @Nullable SabotageRowState sabotageAlert(TabletSnapshot snapshot) {
-        if (!snapshot.hasFeature(TabletFeature.SABOTAGE)) {
-            return null;
-        }
-        SabotageRowState alert = null;
-        for (TabletSnapshot.SabotageRow row : snapshot.sabotage()) {
-            SabotageRowState state = TabletSabotagePainter.state(row);
-            if (state == SabotageRowState.ACTIVE) {
-                return state;
-            }
-            if (state == SabotageRowState.READY) {
-                alert = state;
-            }
-        }
-        return alert;
-    }
-
-    /** Cards on top, then the newest log lines that still fit. / 上方为卡片，下方为放得下的最新日志。 */
-    private void paintSabotage(TabletSnapshot snapshot, long now) {
-        TabletCanvas c = frameCanvas;
-        Rect area = layout.bodyNoFooter();
-        List<TabletSnapshot.SabotageRow> rows = snapshot.sabotage();
-        int since = TabletClientState.secondsSinceSnapshot();
-        int y = area.y();
-        for (TabletSnapshot.SabotageRow row : rows) {
-            if (y + TabletSabotagePainter.CARD_H > area.bottom()) {
-                break;
-            }
-            TabletSabotagePainter.card(c, textRenderer, area.x(), y, area.width(), row, since, now);
-            y += TabletSabotagePainter.CARD_STEP;
-        }
-        if (y + TabletSabotagePainter.LOG_HEADER_H + TabletSabotagePainter.LOG_ROW_H > area.bottom()) {
-            return;
-        }
-        TabletSabotagePainter.logHeader(c, textRenderer, area.x(), y, area.width());
-        y += TabletSabotagePainter.LOG_HEADER_H;
-        List<TabletSnapshot.SabotageLogRow> log = snapshot.sabotageLog();
-        if (log.isEmpty()) {
-            c.text(textRenderer, TabletCanvas.trim(textRenderer,
-                            Text.translatable(KEY + "sabotage.log.empty").getString(), area.width() - 4),
-                    area.x() + 2, y + 5, TabletTheme.TEXT_3);
-            return;
-        }
-        for (TabletSnapshot.SabotageLogRow entry : log) {
-            if (y + TabletSabotagePainter.LOG_ROW_H > area.bottom()) {
-                break;
-            }
-            TabletSabotagePainter.logRow(c, textRenderer, area.x(), y, area.width(), entry);
-            y += TabletSabotagePainter.LOG_ROW_H;
-        }
-    }
-
-    /**
-     * A sabotage on (lights out, engine damaged or halted) as a red live chip, ready as a pulsing yellow one, else the
-     * cooldown or nothing.
-     * 破坏进行中（熄灯、动力受损或停驶）为红色实时胶囊，可触发为黄色脉冲胶囊，否则为冷却或不显示。
-     */
-    private int paintSabotageHeaderChip(TabletSnapshot snapshot, int right, int centerY, int maxWidth, long now) {
-        int since = TabletClientState.secondsSinceSnapshot();
-        for (TabletSnapshot.SabotageRow row : snapshot.sabotage()) {
-            SabotageRowState state = TabletSabotagePainter.state(row);
-            if (state == SabotageRowState.ACTIVE) {
-                return paintPill(right, centerY, maxWidth, TabletSabotagePainter.activeChip(row, since),
-                        TabletTheme.KILLER.pale(), TabletTheme.withAlpha(TabletTheme.DANGER, 0x33), 0,
-                        (canvas, x, y, size, color) -> paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
-                        TabletTheme.DANGER);
-            }
-        }
-        for (TabletSnapshot.SabotageRow row : snapshot.sabotage()) {
-            SabotageRowState state = TabletSabotagePainter.state(row);
-            if (state == SabotageRowState.READY) {
-                return paintPill(right, centerY, maxWidth, Text.translatable(KEY + "sabotage.chip.ready").getString(),
-                        TabletTheme.SABOTAGE.pale(), TabletTheme.withAlpha(TabletTheme.SABOTAGE.base(), 0x2E), 0,
-                        (canvas, x, y, size, color) -> paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
-                        TabletTheme.SABOTAGE.base());
-            }
-            if (state == SabotageRowState.COOLDOWN || state == SabotageRowState.ARMING) {
-                return paintPill(right, centerY, maxWidth,
-                        TabletSabotagePainter.clock(TabletSabotagePainter.liveSeconds(row, since)),
-                        TabletTheme.TEXT_2, TabletTheme.SURFACE, 0, TabletIcons::clock, TabletTheme.TEXT_2);
-            }
-        }
-        return right;
-    }
-
-    private TabletPressable addButton(String focusKey, Rect rect, Text label, ButtonStyle style, ButtonIcon icon,
-                                      Runnable action) {
+    TabletPressable addButton(String focusKey, Rect rect, Text label, ButtonStyle style, ButtonIcon icon,
+                              Runnable action) {
         return addButton(focusKey, rect, label, style, icon, null, action);
     }
 
     /** {@code accent} null = the frame accent of the frame being painted. accent 为 null 时使用当前帧的外框强调色。 */
-    private TabletPressable addButton(String focusKey, Rect rect, Text label, ButtonStyle style, ButtonIcon icon,
-                                      @Nullable Accent accent, Runnable action) {
+    TabletPressable addButton(String focusKey, Rect rect, Text label, ButtonStyle style, ButtonIcon icon,
+                              @Nullable Accent accent, Runnable action) {
         return keyed(focusKey, addDrawableChild(new TabletPressable(rect.x(), rect.y(), rect.width(), rect.height(),
                 label, action, (context, button, hovered, delta) -> TabletSectionPainter.button(frameCanvas,
                         textRenderer, button, style, icon, label, hovered, accent != null ? accent : frameAccent))));
     }
 
-    private <T extends Element> T keyed(String focusKey, T widget) {
+    <T extends Element> T keyed(String focusKey, T widget) {
         focusKeys.put(widget, focusKey);
         return widget;
     }
 
-    /** Per-frame widget state that depends on typing/scrolling rather than on the snapshot. 随输入/滚动变化的控件状态。 */
-    private void syncChatWidgets(TabletSnapshot snapshot) {
-        if (chatInputAttached && chatInput != null) {
-            Rect pill = composer().pill();
-            int reserve = counterVisible() ? textRenderer.getWidth(counterText(TabletRules.CHAT_MESSAGE_MAX_LENGTH)) + 6 : 0;
-            chatInput.setWidth(Math.max(1, pill.width() - 2 * INPUT_INSET_X - reserve));
-        }
-        if (sendButton != null) {
-            sendButton.active = canSendChat(snapshot);
-        }
-        if (newMessagesButton != null) {
-            newMessagesButton.visible = newMessagesPending && session.chatScroll() > 0;
-        }
+    /** An unkeyed widget (the chat composer's). 不参与焦点恢复的控件（聊天输入栏）。 */
+    <T extends Element & Drawable & Selectable> T addChild(T widget) {
+        return addDrawableChild(widget);
+    }
+
+    void focusInitially(Element widget) {
+        setInitialFocus(widget);
     }
 
     // ============================================================================================ input
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (switcherOpen) {
+        if (switcher.isOpen()) {
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
                 closeSwitcher();
                 return true;
@@ -846,23 +408,21 @@ public final class TabletScreen extends Screen {
             // The overlay is modal: swallow focus traversal (Tab/arrows) and activation (Space/Enter) so no widget
             // underneath can gain focus or be pressed. Other keys are not forwarded to widgets either.
             // 浮层为模态：拦截焦点切换（Tab/方向键）与激活（空格/回车），防止下层控件获得焦点或被触发；其余按键也不转发给控件。
-            return isSwitcherBlockedKey(keyCode);
+            return TabletChannelSwitcher.isBlockedKey(keyCode);
         }
         // Enter sends only from the composer; a focused button activates instead.
         // 回车仅在输入区发送；聚焦的按钮则被激活。
         Element focused = getFocused();
         if (session.section() == Section.CHAT
                 && !visibleSections.isEmpty()
-                && (focused == null || focused == chatInput || focused == sendButton)
+                && chat.sendsOnEnter(focused)
                 && (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER)) {
-            sendChat();
+            chat.sendChat();
             return true;
         }
         boolean handled = super.keyPressed(keyCode, scanCode, modifiers);
         if (session.section() == Section.CHAT
-                && chatInputAttached
-                && chatInput != null
-                && chatInput.isFocused()
+                && chat.inputFocused()
                 && isMovementKey(keyCode, scanCode)) {
             return true;
         }
@@ -871,7 +431,7 @@ public final class TabletScreen extends Screen {
 
     @Override
     public boolean charTyped(char chr, int modifiers) {
-        if (switcherOpen) {
+        if (switcher.isOpen()) {
             // Text never reaches an input hidden behind the switcher overlay. 文字输入不会传到切换浮层下方的输入框。
             return true;
         }
@@ -883,23 +443,8 @@ public final class TabletScreen extends Screen {
         double x = toLogical(mouseX);
         double y = toLogical(mouseY);
         TabletSnapshot snapshot = TabletClientState.snapshot();
-        if (switcherOpen) {
-            SwitcherGeometry switcher = switcherGeometry(snapshot);
-            if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
-                for (int index = 0; index < switcher.rows().size(); index++) {
-                    TabletChannel channel = switcher.channels().get(index);
-                    if (switcher.rows().get(index).contains(x, y) && switchState(channel, snapshot) == SwitchState.JOIN) {
-                        requestSwitch(channel);
-                        return true;
-                    }
-                }
-            }
-            // Clicks never fall through the overlay; anything outside it just dismisses it.
-            // 点击不会穿透浮层；点击浮层外部仅关闭浮层。
-            if (!switcher.box().contains(x, y)) {
-                closeSwitcher();
-            }
-            return true;
+        if (switcher.isOpen()) {
+            return switcher.mouseClicked(snapshot, x, y, button);
         }
         if (layout == null) {
             return super.mouseClicked(x, y, button);
@@ -911,16 +456,16 @@ public final class TabletScreen extends Screen {
             openSwitcher();
             return true;
         }
+        TabletTextInput input = chat.attachedInput();
         if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT
                 && session.section() == Section.CHAT
-                && chatInputAttached
-                && chatInput != null
-                && composer().pill().contains(x, y)) {
+                && input != null
+                && chat.composerPill().contains(x, y)) {
             // The whole pill focuses the input and places the caret (the input's own hit box is one text line tall);
             // dragging then extends the selection through ParentElement.mouseDragged.
             // 整个输入胶囊都能聚焦输入框并定位光标（输入框自身的命中区只有一行高）；随后拖动经 ParentElement.mouseDragged 扩展选区。
-            setFocused(chatInput);
-            chatInput.onClick(x, y);
+            setFocused(input);
+            input.onClick(x, y);
             setDragging(true);
             return true;
         }
@@ -943,9 +488,9 @@ public final class TabletScreen extends Screen {
             return;
         }
         boolean detached = !children().contains(focused);
-        boolean chatControl = focused == sendButton || focused == newMessagesButton;
+        boolean chatControl = chat.isComposerControl(focused);
         if (detached || chatControl) {
-            setFocused(chatInputAttached ? chatInput : null);
+            setFocused(chat.attachedInput());
             // Repaired focus must not inherit the click's drag, or a held-button jitter would select the draft.
             // 修复后的焦点不能继承本次点击的拖动状态，否则按住鼠标时的微小移动会选中草稿。
             setDragging(false);
@@ -959,7 +504,7 @@ public final class TabletScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
-        if (switcherOpen) {
+        if (switcher.isOpen()) {
             return true;
         }
         return super.mouseDragged(toLogical(mouseX), toLogical(mouseY), button, toLogical(deltaX), toLogical(deltaY));
@@ -972,7 +517,7 @@ public final class TabletScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        if (switcherOpen) {
+        if (switcher.isOpen()) {
             return true;
         }
         double x = toLogical(mouseX);
@@ -981,82 +526,10 @@ public final class TabletScreen extends Screen {
             return super.mouseScrolled(x, y, horizontalAmount, verticalAmount);
         }
         TabletSnapshot snapshot = TabletClientState.snapshot();
-        switch (session.section()) {
-            case CHAT -> {
-                Rect list = layout.list();
-                if (list.contains(x, y)) {
-                    session.scrollChat((int) Math.round(verticalAmount * CHAT_SCROLL_STEP), chatView.maxScroll(list.height()));
-                    if (session.chatScroll() == 0) {
-                        newMessagesPending = false;
-                    }
-                    return true;
-                }
-            }
-            case CONNECTIONS -> {
-                Grid grid = connectionsGrid();
-                if (grid.area().contains(x, y)) {
-                    // Painted only, so no rebuild is needed. 仅绘制，无需重建控件。
-                    session.scrollConnections(verticalAmount, grid.totalRows(snapshot.connections().size()), grid.visibleRows());
-                    return true;
-                }
-            }
-            case DOOR_LOG -> {
-                Grid grid = doorLogGrid();
-                if (grid.area().contains(x, y)) {
-                    // Painted only, like CONNECTIONS. 与成员分区相同，仅绘制。
-                    List<TabletSnapshot.DoorLogRow> rows = doorLogRows(snapshot);
-                    session.scrollDoorLog(verticalAmount, rows.size(), grid.visibleRows());
-                    lastDoorLogRows = rows;
-                    return true;
-                }
-            }
-            case MEETING -> {
-                Grid grid = voteGrid();
-                if (hasMeetingFeatures(snapshot) && snapshot.meeting().active() && grid.area().contains(x, y)) {
-                    int previous = session.meetingFirstRow();
-                    session.scrollMeeting(verticalAmount, grid.totalRows(snapshot.meeting().targets().size()), grid.visibleRows());
-                    if (session.meetingFirstRow() != previous) {
-                        refresh();
-                    }
-                    return true;
-                }
-            }
-            case SUSPECTS -> {
-                Grid grid = suspectGrid();
-                if (hasMeetingFeatures(snapshot) && grid.area().contains(x, y)) {
-                    int previous = session.suspectFirstRow();
-                    session.scrollSuspects(verticalAmount, grid.totalRows(snapshot.suspects().size()), grid.visibleRows());
-                    if (session.suspectFirstRow() != previous) {
-                        refresh();
-                    }
-                    return true;
-                }
-            }
-            case DRONE -> {
-                Grid grid = droneGrid();
-                if (grid.area().contains(x, y)) {
-                    // Each visible card owns a button, so a moved window rebuilds like SUSPECTS. 每张可见卡片带按钮，滚动后与嫌疑分区一样重建。
-                    int previous = session.droneFirstRow();
-                    session.scrollDrones(verticalAmount, droneRows(snapshot).size(), grid.visibleRows());
-                    if (session.droneFirstRow() != previous) {
-                        refresh();
-                    }
-                    return true;
-                }
-            }
+        if (page().mouseScrolled(snapshot, x, y, verticalAmount)) {
+            return true;
         }
         return super.mouseScrolled(x, y, horizontalAmount, verticalAmount);
-    }
-
-    private static boolean isSwitcherBlockedKey(int keyCode) {
-        return keyCode == GLFW.GLFW_KEY_TAB
-                || keyCode == GLFW.GLFW_KEY_LEFT
-                || keyCode == GLFW.GLFW_KEY_RIGHT
-                || keyCode == GLFW.GLFW_KEY_UP
-                || keyCode == GLFW.GLFW_KEY_DOWN
-                || keyCode == GLFW.GLFW_KEY_SPACE
-                || keyCode == GLFW.GLFW_KEY_ENTER
-                || keyCode == GLFW.GLFW_KEY_KP_ENTER;
     }
 
     private boolean isMovementKey(int keyCode, int scanCode) {
@@ -1072,154 +545,21 @@ public final class TabletScreen extends Screen {
                 || client.options.sprintKey.matchesKey(keyCode, scanCode);
     }
 
-    // ============================================================================================ chat actions
-
-    private void sendChat() {
-        TabletSnapshot snapshot = TabletClientState.snapshot();
-        if (!snapshot.canSend() || snapshot.channel() == null || !chatInputAttached || chatInput == null) {
-            return;
-        }
-        rememberChatDraft();
-        // The wire we were viewing travels with the message; the server drops it if its selection moved on.
-        // 随消息附带当前查看的频道；若服务端的选择已变化则丢弃该消息。
-        session.submitDraft().ifPresent(message ->
-                ClientPlayNetworking.send(new SendTabletChatC2SPacket(snapshot.channelWire(), message)));
-        TabletClientState.setChatDraft(session.draft());
-        chatInput.setText(session.draft());
-        resetChatScroll();
-    }
-
-    private void rememberChatDraft() {
-        if (chatInputAttached && chatInput != null) {
-            session.updateDraft(chatInput.getText());
-            TabletClientState.setChatDraft(session.draft());
-        }
-    }
-
-    private void resetChatScroll() {
-        session.resetChatScroll();
-        newMessagesPending = false;
-    }
-
-    private boolean canSendChat(TabletSnapshot snapshot) {
-        return snapshot.canSend()
-                && snapshot.channel() != null
-                && chatInputAttached
-                && !session.draft().isBlank();
-    }
-
-    private boolean counterVisible() {
-        return chatInput != null && chatInput.getText().length() >= COUNTER_THRESHOLD;
-    }
-
-    private static String counterText(int length) {
-        return length + "/" + TabletRules.CHAT_MESSAGE_MAX_LENGTH;
-    }
-
-    // ============================================================================================ switcher state
+    // ============================================================================================ switcher
 
     private void openSwitcher() {
-        rememberChatDraft();
-        if (chatInput != null) {
-            chatInput.setFocused(false);
-        }
+        chat.rememberChatDraft();
+        chat.blurInput();
         setFocused(null);
-        switcherOpen = true;
-        switcherOpenedAtMs = Util.getMeasuringTimeMs();
-        playClick();
+        switcher.open();
     }
 
-    private void closeSwitcher() {
-        switcherOpen = false;
-        if (chatInputAttached && chatInput != null && session.section() == Section.CHAT) {
-            setFocused(chatInput);
+    void closeSwitcher() {
+        switcher.close();
+        TabletTextInput input = chat.attachedInput();
+        if (input != null && session.section() == Section.CHAT) {
+            setFocused(input);
         }
-    }
-
-    private void requestSwitch(TabletChannel channel) {
-        ClientPlayNetworking.send(new SelectTabletChannelC2SPacket(channel.wire()));
-        pendingChannelWire = channel.wire();
-        pendingSwitchTicks = PENDING_SWITCH_TICKS;
-        playClick();
-    }
-
-    private void onChannelChanged(int previousChannelWire) {
-        // Wire 0 means "not synced yet"; only a real channel-to-channel change discards what was typed.
-        // wire 0 表示尚未同步；只有真正从一个频道切到另一个频道才丢弃已输入内容。
-        if (previousChannelWire != TabletChannel.NO_CHANNEL_WIRE) {
-            TabletClientState.clearChatDraft();
-        }
-        session.updateDraft(TabletClientState.chatDraft());
-        // Overwrite the persistent input now so refresh() cannot copy the old channel's text back into the draft.
-        // 立即覆盖持久输入框，避免 refresh() 把旧频道的文字写回草稿。
-        if (chatInput != null) {
-            chatInput.setText(session.draft());
-        }
-        switcherOpen = false;
-        pendingChannelWire = TabletChannel.NO_CHANNEL_WIRE;
-        pendingSwitchTicks = 0;
-        resetChatScroll();
-        chatLayoutPrimed = false;
-        lastChatRows = List.of();
-    }
-
-    /**
-     * Presentation-only mirror of {@code TabletChannelRules.canSwitch}; the server re-validates every request.
-     * 仅用于展示的 canSwitch 镜像；服务端会重新校验每个请求。
-     */
-    private SwitchState switchState(TabletChannel channel, TabletSnapshot snapshot) {
-        if (channel == snapshot.channel()) {
-            return SwitchState.CURRENT;
-        }
-        if (!snapshot.allowedChannels().contains(channel)) {
-            return SwitchState.LOCKED;
-        }
-        if (channel.wire() == pendingChannelWire) {
-            return SwitchState.PENDING;
-        }
-        if (snapshot.channelLocked()) {
-            return SwitchState.MEETING_LOCKED;
-        }
-        if (snapshot.channelSwitchCooldownSeconds() > 0) {
-            return SwitchState.COOLDOWN;
-        }
-        return SwitchState.JOIN;
-    }
-
-    private List<TabletChannel> switcherChannels(TabletSnapshot snapshot) {
-        EnumSet<TabletChannel> allowed = snapshot.allowedChannels();
-        TabletChannel current = snapshot.channel();
-        ArrayList<TabletChannel> channels = new ArrayList<>();
-        for (TabletChannel channel : TabletChannel.values()) {
-            // The witch network only exists with SparkWitch installed. 只有安装 SparkWitch 时才存在魔女网络。
-            if (channel == TabletChannel.WITCH
-                    && !SparkWitchCompat.isLoaded()
-                    && channel != current
-                    && !allowed.contains(channel)) {
-                continue;
-            }
-            channels.add(channel);
-        }
-        return channels;
-    }
-
-    private @Nullable SwitcherHint switcherHint(TabletSnapshot snapshot) {
-        EnumSet<TabletChannel> allowed = snapshot.allowedChannels();
-        if (snapshot.channelLocked()) {
-            return new SwitcherHint(Text.translatable(KEY + "channel.hint.meeting"), true);
-        }
-        if (allowed.size() > 1 && snapshot.channelSwitchCooldownSeconds() > 0) {
-            return new SwitcherHint(Text.translatable(KEY + "channel.hint.cooldown",
-                    snapshot.channelSwitchCooldownSeconds()), false);
-        }
-        if (allowed.size() <= 1) {
-            return new SwitcherHint(Text.translatable(KEY + "channel.hint.identity"), false);
-        }
-        return null;
-    }
-
-    private void playClick() {
-        MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.master(SoundEvents.UI_BUTTON_CLICK, 1.0F));
     }
 
     // ============================================================================================ geometry
@@ -1230,7 +570,7 @@ public final class TabletScreen extends Screen {
      * 状态栏频道胶囊；绘制与命中测试共用。仅功能持有者显示不可点击、写着功能名（房门监控、无人机）的胶囊，
      * 而不是“无信号”与全锁定的切换浮层。
      */
-    private ChannelChip channelChip(TabletSnapshot snapshot) {
+    ChannelChip channelChip(TabletSnapshot snapshot) {
         Rect status = layout.statusBar();
         boolean live = snapshot.localHasTablet();
         Section feature = live ? featureOnlySection(snapshot) : null;
@@ -1272,90 +612,8 @@ public final class TabletScreen extends Screen {
         return new Rect(close.x() - 8 - SIGNAL_SIZE, status.centerY() - SIGNAL_SIZE / 2, SIGNAL_SIZE, SIGNAL_SIZE);
     }
 
-    private Composer composer() {
-        Rect footer = layout.footer();
-        int padX = layout.mode().padX();
-        int size = Math.max(0, Math.min(SEND_SIZE, footer.height() - 6));
-        int inset = Math.max(3, (footer.height() - SEND_SIZE) / 2);
-        Rect pill = footer.inset(padX, inset, padX + size + SEND_GAP, inset);
-        Rect send = new Rect(pill.right() + SEND_GAP, pill.centerY() - size / 2, size, size);
-        return new Composer(pill, send);
-    }
-
-    /** Meeting footer: [Abstain][Confirm] right-aligned; the status line gets the rest. 会议操作栏：按钮右对齐，其余给状态行。 */
-    private ActionBar actionBar(TabletSnapshot snapshot) {
-        TabletSnapshot.Meeting meeting = snapshot.meeting();
-        Rect footer = layout.footer();
-        int padX = layout.mode().padX();
-        int height = Math.min(TabletSectionPainter.ACTION_BUTTON_H, footer.height());
-        int y = footer.centerY() - height / 2;
-        boolean confirmed = meeting.localConfirmed();
-        Text confirmLabel = Text.translatable(KEY + (confirmed ? "meeting.locked" : "meeting.confirm"));
-        ButtonIcon confirmIcon = confirmed ? ButtonIcon.LOCK : ButtonIcon.NONE;
-        ButtonStyle confirmStyle = confirmed ? ButtonStyle.LOCKED : ButtonStyle.PRIMARY;
-        Text abstainLabel = Text.translatable(KEY + "meeting.abstain");
-        ButtonStyle abstainStyle = meeting.localAbstained() ? ButtonStyle.WARNING_TOGGLED : ButtonStyle.SECONDARY;
-
-        // Widths come from the widest label each button can ever show, so nothing shifts when it locks.
-        // 宽度取各按钮可能显示的最宽文字，锁定时布局不会移动。
-        int room = Math.max(0, footer.width() - 2 * padX - ACTION_GAP);
-        int confirmWidth = Math.min(room / 2, Math.max(
-                actionButtonWidth(Text.translatable(KEY + "meeting.confirm"), ButtonIcon.NONE),
-                actionButtonWidth(Text.translatable(KEY + "meeting.locked"), ButtonIcon.LOCK)));
-        int abstainWidth = Math.min(room / 2, actionButtonWidth(abstainLabel, ButtonIcon.NONE));
-        int confirmX = footer.right() - padX - confirmWidth;
-        int abstainX = confirmX - ACTION_GAP - abstainWidth;
-        return new ActionBar(
-                new Rect(abstainX, y, abstainWidth, height), abstainLabel, abstainStyle,
-                new Rect(confirmX, y, confirmWidth, height), confirmLabel, confirmStyle, confirmIcon);
-    }
-
-    private int actionButtonWidth(Text label, ButtonIcon icon) {
-        int iconWidth = icon == ButtonIcon.NONE ? 0 : ACTION_ICON + ACTION_ICON_GAP;
-        return Math.max(ACTION_MIN_W, 2 * ACTION_PAD + iconWidth + textRenderer.getWidth(label));
-    }
-
-    private Grid connectionsGrid() {
-        return Grid.of(layout.bodyNoFooter(), TabletLayout.gridColumns(layout.bodyNoFooter().width(),
-                        TabletSectionPainter.MEMBER_MIN_W, TabletSectionPainter.GRID_GAP),
-                TabletSectionPainter.MEMBER_CARD_H, TabletSectionPainter.MEMBER_ROW_STEP);
-    }
-
-    private Grid voteGrid() {
-        Rect area = layout.list().inset(0, TabletSectionPainter.PROGRESS_BLOCK_H, 0, 0);
-        return Grid.of(area, TabletLayout.gridColumns(area.width(), TabletSectionPainter.VOTE_MIN_W,
-                TabletSectionPainter.GRID_GAP), TabletSectionPainter.VOTE_CARD_H, TabletSectionPainter.VOTE_ROW_STEP);
-    }
-
-    private Grid suspectGrid() {
-        return Grid.of(layout.bodyNoFooter(), 1, TabletSectionPainter.SUSPECT_CARD_H,
-                TabletSectionPainter.SUSPECT_ROW_STEP);
-    }
-
-    private Grid doorLogGrid() {
-        return Grid.of(layout.bodyNoFooter(), 1, TabletSectionPainter.DOOR_ROW_H, TabletSectionPainter.DOOR_ROW_STEP);
-    }
-
-    /** Above the controls footer. 位于操作提示页脚之上。 */
-    private Grid droneGrid() {
-        return Grid.of(layout.list(), 1, TabletSectionPainter.DRONE_CARD_H, TabletSectionPainter.DRONE_ROW_STEP);
-    }
-
-    /** Row scrolls are in grid rows (ceil(n / columns)); clamped on every snapshot and rebuild. 以网格行计，每次快照与重建时限制范围。 */
-    private void clampRowScrolls(TabletSnapshot snapshot) {
-        Grid members = connectionsGrid();
-        session.clampConnections(members.totalRows(snapshot.connections().size()), members.visibleRows());
-        Grid votes = voteGrid();
-        session.applyMeetingSnapshot(snapshot.meeting().active(),
-                votes.totalRows(snapshot.meeting().targets().size()), votes.visibleRows());
-        Grid suspects = suspectGrid();
-        session.applySuspectSnapshot(suspects.totalRows(snapshot.suspects().size()), suspects.visibleRows());
-        session.applyDoorLogSnapshot(-1, doorLogRows(snapshot).size(), doorLogGrid().visibleRows());
-        session.clampDrones(droneRows(snapshot).size(), droneGrid().visibleRows());
-    }
-
     /** 2 px scroll track in the right gutter of a list area. 列表右侧留白中的 2 像素滚动条轨道。 */
-    private Rect scrollTrack(Rect area) {
+    Rect scrollTrack(Rect area) {
         int offset = Math.max(2, layout.mode().padX() / 3);
         return new Rect(area.right() + offset, area.y(), 2, area.height());
     }
@@ -1365,46 +623,6 @@ public final class TabletScreen extends Screen {
             return new Rect(tab.getX() + tab.getWidth() / 2 - 7, tab.getY() + 7, 14, 14);
         }
         return new Rect(tab.getX() + tab.getWidth() / 2 - 8, tab.getY() + (tab.getHeight() - 16) / 2, 16, 16);
-    }
-
-    /**
-     * Switcher popover geometry; the single source for painting and hit testing.
-     * 切换浮层几何；绘制与命中测试共用同一来源。
-     */
-    private SwitcherGeometry switcherGeometry(TabletSnapshot snapshot) {
-        Rect screen = layout.screen();
-        Rect chip = channelChip(snapshot).rect();
-        List<TabletChannel> channels = switcherChannels(snapshot);
-        SwitcherHint hint = switcherHint(snapshot);
-        int width = Math.min(SWITCHER_WIDTH, Math.max(0, screen.width() - 16));
-        int minX = screen.x() + 8;
-        int x = Math.max(minX, Math.min(screen.right() - 8 - width, chip.centerX() - width / 2));
-        int y = chip.bottom() + SWITCHER_OFFSET;
-        List<String> hintLines = hint == null ? List.of()
-                : TabletSectionPainter.wrap(textRenderer, hint.text().getString(), width - 2 * SWITCHER_HINT_PAD, 2);
-
-        int rowHeight = SWITCHER_ROW_H;
-        int rowGap = SWITCHER_ROW_GAP;
-        if (y + switcherHeight(channels.size(), hintLines.size(), rowHeight, rowGap) > screen.bottom() - 4) {
-            rowHeight = SWITCHER_COMPACT_ROW_H;
-            rowGap = SWITCHER_COMPACT_ROW_GAP;
-        }
-        ArrayList<Rect> rows = new ArrayList<>(channels.size());
-        for (int index = 0; index < channels.size(); index++) {
-            rows.add(new Rect(x + SWITCHER_INSET, y + SWITCHER_ROWS_TOP + index * (rowHeight + rowGap),
-                    Math.max(0, width - 2 * SWITCHER_INSET), rowHeight));
-        }
-        int rowsBottom = rows.isEmpty() ? y + SWITCHER_ROWS_TOP : rows.get(rows.size() - 1).bottom();
-        int height = switcherHeight(channels.size(), hintLines.size(), rowHeight, rowGap);
-        int caretX = Math.max(x + 14, Math.min(x + width - 14, chip.centerX()));
-        return new SwitcherGeometry(new Rect(x, y, width, height), caretX, List.copyOf(channels), List.copyOf(rows),
-                hintLines, hint != null && hint.warning(), rowsBottom + 8);
-    }
-
-    private static int switcherHeight(int rowCount, int hintLines, int rowHeight, int rowGap) {
-        int rows = rowCount <= 0 ? 0 : rowCount * rowHeight + (rowCount - 1) * rowGap;
-        int hint = hintLines == 0 ? 6 : 8 + hintLines * 10 + SWITCHER_HINT_PAD - 2;
-        return SWITCHER_ROWS_TOP + rows + hint;
     }
 
     // ============================================================================================ render
@@ -1425,8 +643,8 @@ public final class TabletScreen extends Screen {
         int logicalMouseX = (int) Math.floor(toLogical(mouseX));
         int logicalMouseY = (int) Math.floor(toLogical(mouseY));
         // While the switcher is open nothing underneath reacts to hover. 切换浮层打开时，下层元素不响应悬停。
-        int hoverX = switcherOpen ? -1 : logicalMouseX;
-        int hoverY = switcherOpen ? -1 : logicalMouseY;
+        int hoverX = switcher.isOpen() ? -1 : logicalMouseX;
+        int hoverY = switcher.isOpen() ? -1 : logicalMouseY;
         // The whole frame, widgets included, is one draw batch; avatars and clips flush inside it.
         // 整帧（含控件）是一个绘制批次；头像与裁剪会在批次内提交。
         frameCanvas.batch(() -> paintScreen(context, snapshot, logicalMouseX, logicalMouseY, hoverX, hoverY, delta, now));
@@ -1441,7 +659,7 @@ public final class TabletScreen extends Screen {
         if (hasSections) {
             paintRail(snapshot, hoverX, hoverY);
             paintHeader(snapshot, now);
-            paintSectionBody(snapshot, hoverX, hoverY, now);
+            page().paintBody(snapshot, hoverX, hoverY, now);
         } else {
             paintNoSignal(snapshot, now);
         }
@@ -1452,8 +670,8 @@ public final class TabletScreen extends Screen {
             paintRailBadges(snapshot, now);
             paintTabTooltip();
         }
-        if (switcherOpen) {
-            paintSwitcher(snapshot, logicalMouseX, logicalMouseY, now);
+        if (switcher.isOpen()) {
+            switcher.paint(snapshot, logicalMouseX, logicalMouseY, now);
         }
     }
 
@@ -1504,7 +722,7 @@ public final class TabletScreen extends Screen {
      * 画布某点背后实际绘制的不透明颜色：屏幕渐变叠加强调色光晕，复现 TabletCanvas.glow 按环插值的顶点透明度。
      * 不透明遮罩（头像圆角、徽标描边）必须与之一致，否则会在光晕区域内显出暗色缺口。
      */
-    private int screenBackdropAt(int x, int y) {
+    int screenBackdropAt(int x, int y) {
         int base = screenColorAt(y);
         if (layout == null || frameAccent == null) {
             return base;
@@ -1562,7 +780,7 @@ public final class TabletScreen extends Screen {
             return;
         }
         boolean lit = chip.lit();
-        boolean hot = chip.clickable() && (switcherOpen || rect.contains(hoverX, hoverY));
+        boolean hot = chip.clickable() && (switcher.isOpen() || rect.contains(hoverX, hoverY));
         float radius = rect.height() / 2f;
         c.roundRect(rect.x(), rect.y(), rect.width(), rect.height(), radius,
                 hot ? TabletTheme.SURFACE_HOVER : TabletTheme.withAlpha(TabletTheme.SURFACE, 0xB3));
@@ -1580,7 +798,7 @@ public final class TabletScreen extends Screen {
         c.text(textRenderer, chip.name(), textX, textY, lit ? TabletTheme.TEXT : TabletTheme.TEXT_2);
         if (chip.clickable()) {
             TabletIcons.caret(c, rect.right() - PILL_PAD - CHIP_CARET, centerY - CHIP_CARET / 2f, CHIP_CARET,
-                    switcherOpen, hot ? TabletTheme.TEXT : TabletTheme.TEXT_2);
+                    switcher.isOpen(), hot ? TabletTheme.TEXT : TabletTheme.TEXT_2);
         }
     }
 
@@ -1639,7 +857,7 @@ public final class TabletScreen extends Screen {
                     frameAccent.base(), frameAccent.deep());
             c.textCentered(textRenderer, monogram(channel), badge.centerX(), textY, TabletTheme.WHITE);
         }
-        if (switcherOpen || badge.contains(hoverX, hoverY)) {
+        if (switcher.isOpen() || badge.contains(hoverX, hoverY)) {
             c.roundRectOutline(badge.x() - 2, badge.y() - 2, badge.width() + 4, badge.height() + 4, 11f, 1f,
                     TabletTheme.withAlpha(frameAccent.pale(), 0x80));
         }
@@ -1684,76 +902,31 @@ public final class TabletScreen extends Screen {
 
     /** Badges sit on the top-right of each tab icon, drawn after widgets. 徽标位于标签图标右上角，在控件之后绘制。 */
     private void paintRailBadges(TabletSnapshot snapshot, long now) {
-        TabletCanvas c = frameCanvas;
         for (int index = 0; index < tabButtons.size(); index++) {
             // The open tab needs no attention badge. 当前所在标签不显示提醒徽标。
             if (tabButtons.get(index).selectedState()) {
                 continue;
             }
-            Rect icon = tabIconBox(tabButtons.get(index));
-            float cx = icon.right();
-            float cy = icon.y() + 1;
-            switch (tabSections.get(index)) {
-                case CHAT -> {
-                    if (TabletClientState.hasUnreadChat(snapshot)) {
-                        c.circle(cx, cy, 4f, TabletTheme.mix(screenBackdropAt((int) cx, (int) cy), 0xFF000000, 0.25f));
-                        c.circle(cx, cy, 3f, frameAccent.base());
-                    }
-                }
-                case MEETING -> {
-                    if (snapshot.meeting().active()) {
-                        paintPulseDot(cx, cy, 3f, TabletTheme.DANGER, now);
-                    }
-                }
-                case SUSPECTS -> {
-                    int count = snapshot.suspects().size();
-                    if (count > 0) {
-                        String text = count > 99 ? "99+" : String.valueOf(count);
-                        int width = Math.max(11, textRenderer.getWidth(text) + 4);
-                        float left = icon.right() - 4;
-                        float top = icon.y() - 4;
-                        c.roundRect(left, top, width, 10f, 5f, TabletTheme.WARNING);
-                        c.text(textRenderer, text, Math.round(left + (width - textRenderer.getWidth(text) + 1) / 2f),
-                                Math.round(top + 2), TabletTheme.WARNING_INK);
-                    }
-                }
-                case DOOR_LOG -> {
-                    // New entries only ever surface as this red dot (no HUD). 新条目只以此红点提示（无 HUD）。
-                    if (TabletClientState.hasUnreadDoorLog(snapshot)) {
-                        c.circle(cx, cy, 4f, TabletTheme.mix(screenBackdropAt((int) cx, (int) cy), 0xFF000000, 0.25f));
-                        c.circle(cx, cy, 3f, TabletTheme.DANGER);
-                    }
-                }
-                case DRONE -> {
-                    // A falling drone is an alarm; one in the air without its pilot (draining) pulses.
-                    // 坠落中的无人机为警报红点；无人驾驶仍在空中（持续耗电）的无人机显示脉冲点。
-                    DroneAlert alert = droneAlert(snapshot);
-                    if (alert == DroneAlert.FALLING) {
-                        c.circle(cx, cy, 4f, TabletTheme.mix(screenBackdropAt((int) cx, (int) cy), 0xFF000000, 0.25f));
-                        c.circle(cx, cy, 3f, TabletTheme.DANGER);
-                    } else if (alert == DroneAlert.UNATTENDED) {
-                        paintPulseDot(cx, cy, 3f, TabletTheme.DRONE.base(), now);
-                    }
-                }
-                case SABOTAGE -> {
-                    // Ready to trigger pulses; an outage in progress is a red dot. 可触发时脉冲；熄灯进行中为红点。
-                    SabotageRowState alert = sabotageAlert(snapshot);
-                    if (alert == SabotageRowState.READY) {
-                        paintPulseDot(cx, cy, 3f, TabletTheme.SABOTAGE.base(), now);
-                    } else if (alert == SabotageRowState.ACTIVE) {
-                        c.circle(cx, cy, 4f, TabletTheme.mix(screenBackdropAt((int) cx, (int) cy), 0xFF000000, 0.25f));
-                        c.circle(cx, cy, 3f, TabletTheme.DANGER);
-                    }
-                }
-                case CONNECTIONS -> {
-                }
-            }
+            pages.get(tabSections.get(index)).paintBadge(snapshot, tabIconBox(tabButtons.get(index)), now);
         }
+    }
+
+    /** Solid badge dot on a tab icon's top-right, ringed in the darkened backdrop. 标签图标右上角的实心徽标圆点，外圈为加深的背景色。 */
+    void paintBadgeDot(Rect icon, int color) {
+        float cx = icon.right();
+        float cy = icon.y() + 1;
+        frameCanvas.circle(cx, cy, 4f, TabletTheme.mix(screenBackdropAt((int) cx, (int) cy), 0xFF000000, 0.25f));
+        frameCanvas.circle(cx, cy, 3f, color);
+    }
+
+    /** Breathing badge dot on a tab icon's top-right. 标签图标右上角的呼吸徽标圆点。 */
+    void paintBadgePulse(Rect icon, int color, long now) {
+        paintPulseDot(icon.right(), icon.y() + 1, 3f, color, now);
     }
 
     /** NARROW tabs are icon-only: show the short label in a pill to the right of the hovered tab. 窄模式悬停提示。 */
     private void paintTabTooltip() {
-        if (layout.mode() != TabletLayout.Mode.NARROW || switcherOpen) {
+        if (layout.mode() != TabletLayout.Mode.NARROW || switcher.isOpen()) {
             return;
         }
         TabletCanvas c = frameCanvas;
@@ -1782,88 +955,18 @@ public final class TabletScreen extends Screen {
         int left = header.x() + padX;
         int right = header.right() - padX;
         int centerY = header.centerY();
-        int chipX = paintHeaderChip(snapshot, right, centerY, Math.max(0, (right - left) / 2), now);
+        int chipX = page().paintHeaderChip(snapshot, right, centerY, Math.max(0, (right - left) / 2), now);
         String title = TabletCanvas.trim(textRenderer, Text.translatable(session.section().translationKey()).getString(),
                 Math.max(0, chipX - 10 - left));
         frameCanvas.text(textRenderer, title, left, centerY - 4, TabletTheme.TEXT);
-    }
-
-    /** Right-aligned detail chip; returns its left edge ({@code right} when none). 右对齐的信息胶囊；返回其左边缘（无胶囊时为 right）。 */
-    private int paintHeaderChip(TabletSnapshot snapshot, int right, int centerY, int maxWidth, long now) {
-        TabletSnapshot.Meeting meeting = snapshot.meeting();
-        return switch (session.section()) {
-            // Locked police view: a lock + task progress instead of a misleading "1 connected".
-            // 义警身份未解锁：显示锁与任务进度，而非具有误导性的“已接入 1”。
-            case CONNECTIONS -> identitiesLocked(snapshot)
-                    ? paintPill(right, centerY, maxWidth, Text.translatable(KEY + "channel.tasks_locked",
-                            identityTasksDone(snapshot), TabletIdentityRules.POLICE_REVEAL_TASKS).getString(),
-                    frameAccent.pale(), TabletTheme.withAlpha(frameAccent.base(), 0x2E), 0, TabletIcons::lock,
-                    frameAccent.pale())
-                    : paintPill(right, centerY, maxWidth, memberCount(snapshot).getString(),
-                    TabletTheme.TEXT_2, TabletTheme.SURFACE, 0, null, 0);
-            case CHAT -> paintPill(right, centerY, maxWidth, String.valueOf(snapshot.chat().size()),
-                    TabletTheme.TEXT_2, TabletTheme.SURFACE, 0, TabletIcons::chat, TabletTheme.TEXT_2);
-            case MEETING -> meeting.active()
-                    ? paintPill(right, centerY, maxWidth,
-                    Text.translatable(KEY + "meeting.timer", meeting.remainingSeconds()).getString(),
-                    TabletTheme.KILLER.pale(), TabletTheme.withAlpha(TabletTheme.DANGER, 0x33), 0,
-                    (canvas, x, y, size, color) -> paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
-                    TabletTheme.DANGER)
-                    // Inactive: the hero card already shows the remaining chances, so no duplicate chip.
-                    // 未开会：英雄卡已显示剩余次数，页眉不再重复显示。
-                    : right;
-            case SUSPECTS -> paintPill(right, centerY, maxWidth, String.valueOf(snapshot.suspects().size()),
-                    TabletTheme.TEXT_2, TabletTheme.SURFACE, 0, TabletIcons::target, TabletTheme.TEXT_2);
-            // Live indicator in the monitor accent whatever the channel: the feed belongs to the door monitor.
-            // 无论频道如何都使用监控强调色的实时指示：该画面属于房门监控。
-            case DOOR_LOG -> paintPill(right, centerY, maxWidth, Text.translatable(KEY + "door_log.live").getString(),
-                    TabletTheme.MONITOR.pale(), TabletTheme.withAlpha(TabletTheme.MONITOR.base(), 0x2E), 0,
-                    (canvas, x, y, size, color) -> paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
-                    TabletTheme.MONITOR.base());
-            case DRONE -> paintDroneHeaderChip(snapshot, right, centerY, maxWidth, now);
-            case SABOTAGE -> paintSabotageHeaderChip(snapshot, right, centerY, maxWidth, now);
-        };
-    }
-
-    /**
-     * Drones flying under control (hovering, flying, piloted) as a live drone-accent chip; with none, falling drones as
-     * a red alarm chip; else the drone count.
-     * 有受控飞行的无人机（悬停、飞行、驾驶中）时显示无人机强调色的实时胶囊；没有时若有坠落中的无人机则显示红色警报胶囊；
-     * 否则显示无人机数量。
-     */
-    private int paintDroneHeaderChip(TabletSnapshot snapshot, int right, int centerY, int maxWidth, long now) {
-        List<TabletSnapshot.DroneRow> rows = droneRows(snapshot);
-        int airborne = 0;
-        int falling = 0;
-        for (TabletSnapshot.DroneRow row : rows) {
-            if (isAirborne(row)) {
-                airborne++;
-            } else if (row.placed() && row.statusWire() == TabletSnapshot.DroneRow.STATUS_FALLING) {
-                falling++;
-            }
-        }
-        if (airborne > 0) {
-            return paintPill(right, centerY, maxWidth, Text.translatable(KEY + "drone.airborne", airborne).getString(),
-                    TabletTheme.DRONE.pale(), TabletTheme.withAlpha(TabletTheme.DRONE.base(), 0x2E), 0,
-                    (canvas, x, y, size, color) -> paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
-                    TabletTheme.DRONE.base());
-        }
-        if (falling > 0) {
-            return paintPill(right, centerY, maxWidth, Text.translatable(KEY + "drone.falling_count", falling).getString(),
-                    TabletTheme.KILLER.pale(), TabletTheme.withAlpha(TabletTheme.DANGER, 0x33), 0,
-                    (canvas, x, y, size, color) -> paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
-                    TabletTheme.DANGER);
-        }
-        return paintPill(right, centerY, maxWidth, String.valueOf(rows.size()), TabletTheme.TEXT_2, TabletTheme.SURFACE,
-                0, TabletIcons::drone, TabletTheme.TEXT_2);
     }
 
     /**
      * Right-aligned pill (h=16) with an optional leading glyph; the text is trimmed to maxWidth. Returns the left x.
      * 右对齐胶囊（高 16），可带前置图形；文字按 maxWidth 截断。返回左边缘 x。
      */
-    private int paintPill(int right, int centerY, int maxWidth, String text, int textColor, int fill, int outline,
-                          @Nullable Glyph glyph, int glyphColor) {
+    int paintPill(int right, int centerY, int maxWidth, String text, int textColor, int fill, int outline,
+                  @Nullable Glyph glyph, int glyphColor) {
         TabletCanvas c = frameCanvas;
         int glyphWidth = glyph == null ? 0 : PILL_GLYPH + PILL_GLYPH_GAP;
         String visible = TabletCanvas.trim(textRenderer, text, Math.max(0, maxWidth - 2 * PILL_PAD - glyphWidth));
@@ -1884,384 +987,8 @@ public final class TabletScreen extends Screen {
         return x;
     }
 
-    private void paintPulseDot(float cx, float cy, float radius, int color, long now) {
+    void paintPulseDot(float cx, float cy, float radius, int color, long now) {
         TabletSectionPainter.pulseDot(frameCanvas, cx, cy, radius, color, now);
-    }
-
-    // ------------------------------------------------------------------------------------------------ sections
-
-    private void paintSectionBody(TabletSnapshot snapshot, int hoverX, int hoverY, long now) {
-        switch (session.section()) {
-            case CONNECTIONS -> paintConnections(snapshot);
-            case CHAT -> paintChat(snapshot, hoverX, hoverY);
-            case MEETING -> {
-                if (hasMeetingFeatures(snapshot)) {
-                    paintMeeting(snapshot, now);
-                }
-            }
-            case SUSPECTS -> {
-                if (hasMeetingFeatures(snapshot)) {
-                    paintSuspects(snapshot);
-                }
-            }
-            case DOOR_LOG -> paintDoorLog(snapshot);
-            case DRONE -> paintDrones(snapshot, now);
-            case SABOTAGE -> paintSabotage(snapshot, now);
-        }
-    }
-
-    private void paintConnections(TabletSnapshot snapshot) {
-        TabletCanvas c = frameCanvas;
-        Grid grid = connectionsGrid();
-        List<TabletSnapshot.PlayerRow> rows = snapshot.connections();
-        if (rows.isEmpty()) {
-            TabletSectionPainter.emptyState(c, textRenderer, grid.area(), EmptyIcon.MEMBERS,
-                    Text.translatable(KEY + "connections.empty"));
-            return;
-        }
-        int totalRows = grid.totalRows(rows.size());
-        int first = session.connectionsFirstRow();
-        int shownRows = Math.min(grid.visibleRows(), totalRows - first);
-        // A locked police viewer was sent only their own row (dead viewers too, so they still learn why); an unlinked
-        // live killer was sent only theirs. 未解锁的义警查看者只收到自己的行（死亡者也显示，以便知道原因）；未互认的存活杀手同理。
-        boolean taskHint = identitiesLocked(snapshot);
-        boolean linkHint = !taskHint && snapshot.canSend() && isAnonymousChannel(snapshot) && linkedPartners(snapshot) == 0;
-        if (taskHint || linkHint) {
-            // Pin the callout to the bottom by giving up the last row(s) when it would not fit after them.
-            // 若放在最后一行之后放不下，就让出末尾的行，把提示卡片固定在列表底部。
-            while (shownRows > 0 && grid.area().bottom() - grid.rowY(shownRows) < HINT_CALLOUT_MIN_H) {
-                shownRows--;
-            }
-        }
-
-        UUID self = localUuid();
-        for (int row = 0; row < shownRows; row++) {
-            for (int column = 0; column < grid.columns(); column++) {
-                int index = (first + row) * grid.columns() + column;
-                if (index >= rows.size()) {
-                    break;
-                }
-                TabletSnapshot.PlayerRow player = rows.get(index);
-                TabletSectionPainter.memberCard(c, textRenderer, grid.cellX(column), grid.rowY(row), grid.cellWidth(),
-                        player, player.uuid().equals(self), frameAccent);
-            }
-        }
-        if (taskHint) {
-            int top = grid.rowY(shownRows);
-            TabletSectionPainter.taskHint(c, textRenderer, grid.area().x(), top, grid.area().width(),
-                    grid.area().bottom() - top, frameAccent, identityTasksDone(snapshot),
-                    TabletIdentityRules.POLICE_REVEAL_TASKS);
-        } else if (linkHint) {
-            int top = grid.rowY(shownRows);
-            TabletSectionPainter.linkHint(c, textRenderer, grid.area().x(), top, grid.area().width(),
-                    grid.area().bottom() - top, frameAccent);
-        }
-        TabletSectionPainter.scrollThumb(c, scrollTrack(grid.area()), first, grid.visibleRows(), totalRows);
-    }
-
-    private void paintChat(TabletSnapshot snapshot, int hoverX, int hoverY) {
-        TabletCanvas c = frameCanvas;
-        Rect list = layout.list();
-        List<TabletSnapshot.ChatRow> rows = snapshot.chat();
-        layoutChat(rows, list);
-        TabletClientState.markChatSeen(TabletClientState.chatSignature(rows));
-        if (rows.isEmpty()) {
-            TabletSectionPainter.emptyState(c, textRenderer, list, EmptyIcon.CHAT, Text.translatable(KEY + "chat.empty"));
-        } else {
-            c.pushClip(list.x(), list.y(), list.width(), list.height());
-            chatView.render(c, textRenderer, list.x(), list.y(), list.width(), list.height(), session.chatScroll(), frameAccent);
-            paintChatEdgeMasks(list);
-            c.popClip();
-        }
-        paintComposer(hoverX, hoverY);
-        syncChatWidgets(snapshot);
-    }
-
-    /**
-     * Fades scrolled-past chat content into the real screen backdrop at the list edges. Each band's strength grows
-     * with how far the content continues past that edge, so the resting ends (newest at scroll 0, oldest at max
-     * scroll) stay crisp. Must run inside the list clip and before the "new messages" pill (a drawable child painted
-     * later by super.render).
-     * 在列表上下边缘把滚出视野的聊天内容渐隐到真实屏幕背景。每条遮罩的强度随内容越过该边缘的距离增加，
-     * 因此静止端（滚动为 0 的最新消息、滚到顶的最早消息）保持清晰。必须在列表裁剪内、且早于“新消息”胶囊
-     * （由 super.render 稍后绘制的子控件）执行。
-     */
-    private void paintChatEdgeMasks(Rect list) {
-        int maxScroll = chatView.maxScroll(list.height());
-        int scroll = Math.max(0, Math.min(session.chatScroll(), maxScroll));
-        int band = Math.min(CHAT_MASK, list.height() / 2);
-        if (band <= 0) {
-            return;
-        }
-        paintChatMaskBand(list, list.y(), list.y() + band, (maxScroll - scroll) / (float) CHAT_MASK);
-        paintChatMaskBand(list, list.bottom(), list.bottom() - band, scroll / (float) CHAT_MASK);
-    }
-
-    /** One mask band from {@code outerY} (opaque backdrop × strength) to {@code innerY} (clear). 从外缘到内缘的一条遮罩。 */
-    private void paintChatMaskBand(Rect list, int outerY, int innerY, float strength) {
-        strength = Math.max(0f, Math.min(1f, strength));
-        if (strength < 0.01f) {
-            return;
-        }
-        int outerAlpha = Math.round(255f * strength);
-        int top = Math.min(outerY, innerY);
-        int bottom = Math.max(outerY, innerY);
-        boolean outerIsTop = outerY < innerY;
-        for (int x0 = list.x(); x0 < list.right(); x0 += CHAT_MASK_STEP) {
-            int x1 = Math.min(x0 + CHAT_MASK_STEP, list.right());
-            int topAlpha = outerIsTop ? outerAlpha : 0;
-            int bottomAlpha = outerIsTop ? 0 : outerAlpha;
-            frameCanvas.gradientQuad(x0, top, x1, bottom,
-                    TabletTheme.withAlpha(screenBackdropAt(x0, top), topAlpha),
-                    TabletTheme.withAlpha(screenBackdropAt(x1, top), topAlpha),
-                    TabletTheme.withAlpha(screenBackdropAt(x0, bottom), bottomAlpha),
-                    TabletTheme.withAlpha(screenBackdropAt(x1, bottom), bottomAlpha));
-        }
-    }
-
-    /**
-     * Re-lays out the bubbles. When messages are appended while scrolled up, the previously newest bubble stays put:
-     * scroll grows by the height appended below it, not by the net content-height change (at the history cap the
-     * server also trims the oldest row, which must not move the view). The "new messages" pill is armed only when at
-     * least one row was appended; a re-send that only reveals identities changes no message text and arms nothing.
-     * 重新排版气泡。向上翻阅时追加新消息，原最新气泡保持不动：滚动量增加“原最新气泡下方新增的高度”，而非内容总高度差
-     * （历史达到上限时服务端还会裁掉最早一行，这不应移动视口）。只有确实追加了至少一行才显示“新消息”胶囊；
-     * 仅揭示身份的重发不改变任何消息文本，不会触发。
-     */
-    private void layoutChat(List<TabletSnapshot.ChatRow> rows, Rect list) {
-        chatView.layout(textRenderer, rows, localUuid(), list.width());
-        int maxScroll = chatView.maxScroll(list.height());
-        if (!rows.equals(lastChatRows)) {
-            if (chatLayoutPrimed && session.chatScroll() > 0) {
-                int appended = appendedRowCount(lastChatRows, rows);
-                if (appended < 0) {
-                    // No overlap with the previous backlog: history was replaced, the old position means nothing.
-                    // 与之前的记录没有重叠：历史已被替换，旧位置已无意义。
-                    resetChatScroll();
-                } else if (appended > 0) {
-                    // Placement never depends on later rows, so this is exactly the height appended below the old newest bubble.
-                    // 行的位置不取决于其后的行，因此这正是原最新气泡下方新增的高度。
-                    session.scrollChat(chatView.heightBelow(rows.size() - appended - 1), maxScroll);
-                    newMessagesPending = true;
-                }
-            }
-            lastChatRows = rows;
-        }
-        chatLayoutPrimed = true;
-        session.clampChat(maxScroll);
-        if (session.chatScroll() == 0) {
-            newMessagesPending = false;
-        }
-    }
-
-    /**
-     * Smallest k such that the first (n - k) new rows repeat the last (n - k) old rows by message text (sender-agnostic,
-     * like the unread signature), i.e. k rows were appended; -1 when no non-empty overlap exists.
-     * 求最小的 k，使新记录的前 (n - k) 行与旧记录的末尾 (n - k) 行消息文本一致（不看发送者，与未读指纹一致），
-     * 即追加了 k 行；不存在非空重叠时返回 -1。
-     */
-    private static int appendedRowCount(List<TabletSnapshot.ChatRow> previous, List<TabletSnapshot.ChatRow> rows) {
-        int oldSize = previous.size();
-        int newSize = rows.size();
-        for (int appended = Math.max(0, newSize - oldSize); appended < newSize; appended++) {
-            int kept = newSize - appended;
-            boolean match = true;
-            for (int index = 0; index < kept && match; index++) {
-                match = Objects.equals(rows.get(index).message(), previous.get(oldSize - kept + index).message());
-            }
-            if (match) {
-                return appended;
-            }
-        }
-        return -1;
-    }
-
-    private void paintComposer(int hoverX, int hoverY) {
-        TabletCanvas c = frameCanvas;
-        Rect pill = composer().pill();
-        if (pill.width() <= 0 || pill.height() <= 0) {
-            return;
-        }
-        float radius = pill.height() / 2f;
-        int textY = pill.centerY() - 4;
-        if (!chatInputAttached || chatInput == null) {
-            c.roundRect(pill.x(), pill.y(), pill.width(), pill.height(), radius, TabletTheme.SURFACE_SUNKEN);
-            int lockX = pill.x() + INPUT_INSET_X;
-            TabletIcons.lock(c, lockX, pill.centerY() - 5, 10f, TabletTheme.TEXT_3);
-            int textX = lockX + 10 + 6;
-            c.text(textRenderer, TabletCanvas.trim(textRenderer, Text.translatable(KEY + "chat.read_only").getString(),
-                    Math.max(0, pill.right() - INPUT_INSET_X - textX)), textX, textY, TabletTheme.TEXT_3);
-            return;
-        }
-        boolean focused = chatInput.isFocused();
-        int outline = focused
-                ? TabletTheme.withAlpha(frameAccent.base(), 0xB3)
-                : pill.contains(hoverX, hoverY) ? 0x26FFFFFF : TabletTheme.HAIRLINE;
-        c.roundRect(pill.x(), pill.y(), pill.width(), pill.height(), radius, TabletTheme.SURFACE);
-        c.roundRectOutline(pill.x(), pill.y(), pill.width(), pill.height(), radius, 1f, outline);
-        int length = chatInput.getText().length();
-        if (length >= COUNTER_THRESHOLD) {
-            c.textRight(textRenderer, counterText(length), pill.right() - INPUT_INSET_X, textY,
-                    length >= TabletRules.CHAT_MESSAGE_MAX_LENGTH ? TabletTheme.WARNING : TabletTheme.TEXT_3);
-        }
-    }
-
-    private void paintSendButton(TabletPressable button, boolean hovered) {
-        TabletCanvas c = frameCanvas;
-        float radius = button.getWidth() / 2f;
-        float cx = button.getX() + radius;
-        float cy = button.getY() + button.getHeight() / 2f;
-        int fill = !button.active
-                ? TabletTheme.SURFACE
-                : hovered ? TabletTheme.mix(frameAccent.base(), frameAccent.pale(), 0.25f) : frameAccent.base();
-        c.circle(cx, cy, radius, fill);
-        TabletIcons.send(c, cx - 6f, cy - 6f, 12f, button.active ? TabletTheme.WHITE : TabletTheme.TEXT_3);
-        if (button.keyboardFocused()) {
-            c.ring(cx, cy, radius + 2f, 1f, frameAccent.pale());
-        }
-    }
-
-    private void paintNewMessagesPill(TabletPressable button, Text label, boolean hovered) {
-        TabletCanvas c = frameCanvas;
-        float x = button.getX();
-        float y = button.getY();
-        float w = button.getWidth();
-        float h = button.getHeight();
-        c.shadow(x, y, w, h, h / 2f, 8f, 0x80000000);
-        c.roundRect(x, y, w, h, h / 2f,
-                hovered ? TabletTheme.mix(frameAccent.base(), frameAccent.pale(), 0.25f) : frameAccent.base());
-        c.roundRectOutline(x, y, w, h, h / 2f, 1f, TabletTheme.HAIRLINE);
-        String text = TabletCanvas.trim(textRenderer, label.getString(),
-                Math.max(0, button.getWidth() - 2 * PILL_PAD - PILL_GLYPH - PILL_GLYPH_GAP));
-        int textX = button.getX() + PILL_PAD;
-        textX += c.text(textRenderer, text, textX, button.getY() + (button.getHeight() - 8) / 2, TabletTheme.WHITE);
-        TabletIcons.caret(c, textX + PILL_GLYPH_GAP, y + (h - PILL_GLYPH) / 2f, PILL_GLYPH, false, TabletTheme.WHITE);
-        TabletSectionPainter.focusRing(c, button, h / 2f, frameAccent);
-    }
-
-    private void paintMeeting(TabletSnapshot snapshot, long now) {
-        TabletCanvas c = frameCanvas;
-        TabletSnapshot.Meeting meeting = snapshot.meeting();
-        if (!meeting.active()) {
-            TabletSectionPainter.meetingHero(c, textRenderer, layout.bodyNoFooter(), heroState(snapshot),
-                    snapshot.cooldownSeconds(), snapshot.localMeetingCallsRemaining(), now);
-            return;
-        }
-        Rect list = layout.list();
-        TabletSectionPainter.meetingProgress(c, list.x(), list.y(), list.width(), meeting.remainingSeconds());
-        Grid grid = voteGrid();
-        TabletSectionPainter.scrollThumb(c, scrollTrack(grid.area()), session.meetingFirstRow(), grid.visibleRows(),
-                grid.totalRows(meeting.targets().size()));
-
-        ActionBar bar = actionBar(snapshot);
-        int statusX = layout.footer().x() + layout.mode().padX();
-        TabletSectionPainter.meetingStatus(c, textRenderer, statusX, layout.footer().centerY(),
-                Math.max(0, bar.abstain().x() - 10 - statusX), meetingStatus(snapshot), meeting.localConfirmed()
-                        && snapshot.localMeetingParticipant());
-    }
-
-    private void paintSuspects(TabletSnapshot snapshot) {
-        TabletCanvas c = frameCanvas;
-        Grid grid = suspectGrid();
-        List<TabletSnapshot.SuspectRow> suspects = snapshot.suspects();
-        if (suspects.isEmpty()) {
-            TabletSectionPainter.emptyState(c, textRenderer, grid.area(), EmptyIcon.SHIELD,
-                    Text.translatable(KEY + "suspects.none"));
-            return;
-        }
-        int first = session.suspectFirstRow();
-        for (int row = 0; row < grid.visibleRows() && first + row < suspects.size(); row++) {
-            TabletSectionPainter.suspectCard(c, textRenderer, grid.area().x(), grid.rowY(row), grid.area().width(),
-                    suspects.get(first + row), frameAccent);
-        }
-        TabletSectionPainter.scrollThumb(c, scrollTrack(grid.area()), first, grid.visibleRows(), suspects.size());
-    }
-
-    /** Newest first, painted only (no per-row widgets). 最新在前，仅绘制（每行无控件）。 */
-    private void paintDoorLog(TabletSnapshot snapshot) {
-        TabletCanvas c = frameCanvas;
-        Grid grid = doorLogGrid();
-        List<TabletSnapshot.DoorLogRow> rows = doorLogRows(snapshot);
-        int first = session.doorLogFirstRow();
-        // Only seeing the newest row clears the rail dot: entries that arrive while the reader is scrolled down (the
-        // anchor keeps them off-screen) stay unread.
-        // 只有看到最新一行才清除侧栏红点：阅读者向下滚动时到达的新记录（锚定使其不在屏幕内）保持未读。
-        if (first == 0) {
-            TabletClientState.markDoorLogSeen(snapshot);
-        }
-        if (rows.isEmpty()) {
-            TabletSectionPainter.emptyState(c, textRenderer, grid.area(), EmptyIcon.DOOR,
-                    Text.translatable(KEY + "door_log.empty"), Text.translatable(KEY + "door_log.empty_hint"));
-            return;
-        }
-        int ageColumn = TabletSectionPainter.doorAgeColumn(textRenderer);
-        // Ages come from the synced world clock, so the server never resends the log just because it got older.
-        // 经过时间取自同步的世界时钟，服务端不会仅因记录变旧而重发。
-        long worldTime = client.world == null ? 0L : client.world.getTime();
-        for (int row = 0; row < grid.visibleRows() && first + row < rows.size(); row++) {
-            TabletSnapshot.DoorLogRow entry = rows.get(first + row);
-            TabletSectionPainter.doorLogRow(c, textRenderer, grid.area().x(), grid.rowY(row), grid.area().width(), entry,
-                    Objects.requireNonNull(entry.kind()),
-                    TabletSectionPainter.doorAge(DoorLog.ageSeconds(entry.lastTick(), worldTime)), ageColumn);
-        }
-        TabletSectionPainter.scrollThumb(c, scrollTrack(grid.area()), first, grid.visibleRows(), rows.size());
-    }
-
-    /**
-     * One card per drone (connect buttons are widgets, see initDrones) above the pilot controls cheat-sheet; an empty
-     * list centres its empty state in the whole body and hides the cheat-sheet.
-     * 每架无人机一张卡片（连接按钮是控件，见 initDrones），下方为驾驶操作提示；没有无人机时空状态在整个正文区居中，且不显示操作提示。
-     */
-    private void paintDrones(TabletSnapshot snapshot, long now) {
-        TabletCanvas c = frameCanvas;
-        List<TabletSnapshot.DroneRow> rows = droneRows(snapshot);
-        if (rows.isEmpty()) {
-            TabletSectionPainter.emptyState(c, textRenderer, layout.bodyNoFooter(), EmptyIcon.DRONE,
-                    Text.translatable(KEY + "drone.empty"), Text.translatable(KEY + "drone.empty_hint"));
-            return;
-        }
-        Grid grid = droneGrid();
-        int first = session.droneFirstRow();
-        for (int row = 0; row < grid.visibleRows() && first + row < rows.size(); row++) {
-            TabletSnapshot.DroneRow drone = rows.get(first + row);
-            TabletSectionPainter.droneCard(c, textRenderer, grid.area().x(), grid.rowY(row), grid.area().width(), drone,
-                    Objects.requireNonNull(DroneKind.fromWire(drone.kindWire())), now);
-        }
-        TabletSectionPainter.scrollThumb(c, scrollTrack(grid.area()), first, grid.visibleRows(), rows.size());
-        int padX = layout.mode().padX();
-        TabletSectionPainter.droneControls(c, textRenderer, layout.footer().inset(padX, 0, padX, 0), client.options);
-    }
-
-    private static HeroState heroState(TabletSnapshot snapshot) {
-        if (snapshot.cooldownSeconds() > 0) {
-            return HeroState.COOLDOWN;
-        }
-        return canCallMeeting(snapshot) ? HeroState.READY : HeroState.DISABLED;
-    }
-
-    private static Text meetingStatus(TabletSnapshot snapshot) {
-        TabletSnapshot.Meeting meeting = snapshot.meeting();
-        if (!snapshot.localMeetingParticipant()) {
-            return Text.translatable(KEY + "meeting.status.spectator");
-        }
-        if (meeting.localConfirmed()) {
-            return Text.translatable(KEY + "meeting.status.locked");
-        }
-        if (meeting.localAbstained()) {
-            return Text.translatable(KEY + "meeting.status.abstained");
-        }
-        UUID target = meeting.localVoteTarget();
-        if (target != null) {
-            String name = "?";
-            for (TabletSnapshot.VoteTarget candidate : meeting.targets()) {
-                if (candidate.uuid().equals(target)) {
-                    name = candidate.name();
-                    break;
-                }
-            }
-            return Text.translatable(KEY + "meeting.status.voted", name);
-        }
-        return Text.translatable(KEY + "meeting.status.none");
     }
 
     // ------------------------------------------------------------------------------------------------ no signal
@@ -2303,133 +1030,9 @@ public final class TabletScreen extends Screen {
         }
     }
 
-    // ------------------------------------------------------------------------------------------------ switcher
-
-    private void paintSwitcher(TabletSnapshot snapshot, int mouseX, int mouseY, long now) {
-        TabletCanvas c = frameCanvas;
-        float fade = Math.min(1f, Math.max(0f, (now - switcherOpenedAtMs) / (float) SWITCHER_FADE_MS));
-        float eased = 1f - (1f - fade) * (1f - fade);
-        SwitcherGeometry switcher = switcherGeometry(snapshot);
-        Rect box = switcher.box();
-        Rect screen = layout.screen();
-
-        c.roundRect(screen.x(), screen.y(), screen.width(), screen.height(), layout.mode().screenRadius(),
-                TabletTheme.multiplyAlpha(0x66000000, fade));
-
-        MatrixStack matrices = c.context().getMatrices();
-        matrices.push();
-        // Slide is paint-only and whole-unit, so text stays on integer logical coordinates; hit tests use the final
-        // geometry. 滑入仅作用于绘制且取整，文字保持整数逻辑坐标；命中测试使用最终几何。
-        matrices.translate(0f, (float) -Math.round((1f - eased) * SWITCHER_SLIDE), (float) SWITCHER_Z);
-        c.shadow(box.x(), box.y(), box.width(), box.height(), 12f, 18f, TabletTheme.multiplyAlpha(0xA0000000, fade));
-        c.roundRect(box.x(), box.y(), box.width(), box.height(), 12f, TabletTheme.multiplyAlpha(TabletTheme.SURFACE_RAISED, fade));
-        c.roundRectOutline(box.x(), box.y(), box.width(), box.height(), 12f, 1f, TabletTheme.multiplyAlpha(TabletTheme.HAIRLINE, fade));
-        paintSwitcherCaret(switcher.caretX(), box.y(), fade);
-
-        String title = Text.translatable(KEY + "channel.select").getString().toUpperCase(Locale.ROOT);
-        c.text(textRenderer, TabletCanvas.trim(textRenderer, title, box.width() - 24), box.x() + 12, box.y() + 10, TabletTheme.TEXT_3);
-        for (int index = 0; index < switcher.rows().size(); index++) {
-            paintSwitcherRow(snapshot, switcher.channels().get(index), switcher.rows().get(index), mouseX, mouseY, fade, now);
-        }
-        int hintY = switcher.hintY();
-        int hintColor = switcher.hintWarning() ? TabletTheme.WARNING : TabletTheme.TEXT_3;
-        for (String line : switcher.hintLines()) {
-            c.text(textRenderer, line, box.x() + SWITCHER_HINT_PAD, hintY, hintColor);
-            hintY += 10;
-        }
-        c.flush();
-        matrices.pop();
-    }
-
-    /**
-     * Caret as part of the popover silhouette: a 45-degree triangle filled with the popover colour down through the top
-     * hairline (erasing it under the caret), then its two slanted edges stroked with the same hairline, which runs 1 px
-     * inside the silhouette like the box outline, so the border flows around the caret.
-     * 把尖角作为浮层轮廓的一部分：45 度三角形以浮层底色填充并向下盖住顶部描边（抹去尖角下方的线），
-     * 再用同一描边色描出两条斜边；斜边与盒子描边一样位于轮廓内侧 1 px，使边框连续绕过尖角。
-     */
-    private void paintSwitcherCaret(float caretX, float top, float fade) {
-        TabletCanvas c = frameCanvas;
-        float size = SWITCHER_CARET;
-        // Silhouette edges: (caretX -/+ (size + d), top + d) for d in [-size, 1]; the base sits under the hairline.
-        // 轮廓斜边经过 (caretX ∓ (size + d), top + d)，d ∈ [-size, 1]；底边位于描边之下。
-        c.polygon(new float[]{caretX - size - 1f, top + 1f, caretX, top - size, caretX + size + 1f, top + 1f},
-                TabletTheme.multiplyAlpha(TabletTheme.SURFACE_RAISED, fade));
-        // Stroke centre line sits 0.5 px inside each slanted edge (offset 0.5 * sqrt 2 vertically).
-        // 描边中心线位于各斜边内侧 0.5 px（竖直方向偏移 0.5 * √2）。
-        float inset = 0.70710677f;
-        float tipY = top - size + inset;
-        c.polyline(new float[]{caretX - size - 1f + inset, top + 1f, caretX, tipY, caretX + size + 1f - inset, top + 1f},
-                1f,
-                TabletTheme.multiplyAlpha(TabletTheme.HAIRLINE, fade));
-    }
-
-    /**
-     * One switcher row. Locked rows deliberately show only the channel name: no member counts or other data.
-     * 切换浮层中的一行。锁定行只显示频道名，刻意不显示成员人数等任何信息。
-     */
-    private void paintSwitcherRow(TabletSnapshot snapshot, TabletChannel channel, Rect row, int mouseX, int mouseY,
-                                  float fade, long now) {
-        TabletCanvas c = frameCanvas;
-        SwitchState state = switchState(channel, snapshot);
-        Accent accent = TabletTheme.accentFor(channel);
-        boolean hovered = state == SwitchState.JOIN && row.contains(mouseX, mouseY);
-        if (state == SwitchState.CURRENT) {
-            c.roundRect(row.x(), row.y(), row.width(), row.height(), 8f,
-                    TabletTheme.multiplyAlpha(TabletTheme.withAlpha(accent.base(), 0x2E), fade));
-        } else if (hovered) {
-            c.roundRect(row.x(), row.y(), row.width(), row.height(), 8f, 0x0FFFFFFF);
-        }
-
-        int badgeX = row.x() + 6;
-        int badgeY = row.centerY() - SWITCHER_BADGE / 2;
-        if (state == SwitchState.LOCKED) {
-            c.roundRect(badgeX, badgeY, SWITCHER_BADGE, SWITCHER_BADGE, 6f, TabletTheme.LOCKED_BADGE);
-            TabletIcons.lock(c, badgeX + 5f, badgeY + 5f, 10f, TabletTheme.TEXT_3);
-        } else {
-            c.roundRectGradientV(badgeX, badgeY, SWITCHER_BADGE, SWITCHER_BADGE, 6f, accent.base(), accent.deep());
-            c.textCentered(textRenderer, monogram(channel), badgeX + SWITCHER_BADGE / 2, badgeY + 6, TabletTheme.WHITE);
-        }
-
-        int chipRight = row.right() - 6;
-        int maxChip = Math.max(0, row.width() / 2);
-        int chipX = switch (state) {
-            case CURRENT -> paintPill(chipRight, row.centerY(), maxChip, Text.translatable(KEY + "channel.current").getString(),
-                    accent.pale(), TabletTheme.withAlpha(accent.base(), 0x40), 0, TabletIcons::check, accent.pale());
-            case JOIN -> hovered
-                    ? paintPill(chipRight, row.centerY(), maxChip, Text.translatable(KEY + "channel.join").getString(),
-                    TabletTheme.WHITE, accent.base(), 0, null, 0)
-                    : paintPill(chipRight, row.centerY(), maxChip, Text.translatable(KEY + "channel.join").getString(),
-                    accent.base(), 0, TabletTheme.withAlpha(accent.base(), 0x99), null, 0);
-            case PENDING -> paintPill(chipRight, row.centerY(), maxChip, Text.translatable(KEY + "channel.pending").getString(),
-                    TabletTheme.TEXT_2, TabletTheme.FAINT, 0,
-                    (canvas, x, y, size, color) -> TabletIcons.spinner(canvas, x + size / 2f, y + size / 2f, size / 2f, now, color),
-                    accent.pale());
-            case COOLDOWN -> paintPill(chipRight, row.centerY(), maxChip,
-                    Text.translatable(KEY + "channel.cooldown", snapshot.channelSwitchCooldownSeconds()).getString(),
-                    TabletTheme.TEXT_2, TabletTheme.FAINT, 0, TabletIcons::clock, TabletTheme.TEXT_2);
-            case MEETING_LOCKED -> paintPill(chipRight, row.centerY(), maxChip,
-                    Text.translatable(KEY + "channel.meeting").getString(),
-                    TabletTheme.WARNING, TabletTheme.withAlpha(TabletTheme.WARNING, 0x2E), 0, null, 0);
-            case LOCKED -> paintPill(chipRight, row.centerY(), maxChip, Text.translatable(KEY + "channel.locked").getString(),
-                    TabletTheme.TEXT_3, 0x0AFFFFFF, 0, null, 0);
-        };
-
-        int nameColor = switch (state) {
-            case CURRENT -> accent.pale();
-            case JOIN -> TabletTheme.TEXT;
-            case LOCKED -> TabletTheme.TEXT_3;
-            default -> TabletTheme.TEXT_2;
-        };
-        int nameX = badgeX + SWITCHER_BADGE + 8;
-        String name = Text.translatable(channel.translationKey()).getString();
-        c.text(textRenderer, TabletCanvas.trim(textRenderer, name, Math.max(0, chipX - 6 - nameX)), nameX,
-                row.centerY() - 4, nameColor);
-    }
-
     // ============================================================================================ helpers
 
-    private Accent frameAccentFor(TabletSnapshot snapshot) {
+    Accent frameAccentFor(TabletSnapshot snapshot) {
         Section feature = featureOnlySection(snapshot);
         TabletFeature required = feature == null ? null : feature.requiredFeature();
         return required != null ? TabletTheme.accentFor(required) : TabletTheme.accentFor(snapshot.channel());
@@ -2470,134 +1073,12 @@ public final class TabletScreen extends Screen {
         return null;
     }
 
-    /**
-     * The viewer's drone rows this client can show, in server order; empty without the feature. Rows of a kind this
-     * client does not know (newer server) are skipped.
-     * 本客户端可显示的查看者无人机行（服务端顺序）；无此功能时为空。跳过本客户端不认识的型号（更新的服务端）。
-     */
-    private static List<TabletSnapshot.DroneRow> droneRows(TabletSnapshot snapshot) {
-        if (!snapshot.hasFeature(TabletFeature.DRONE) || snapshot.drones().isEmpty()) {
-            return List.of();
-        }
-        List<TabletSnapshot.DroneRow> rows = snapshot.drones();
-        for (TabletSnapshot.DroneRow row : rows) {
-            if (DroneKind.fromWire(row.kindWire()) == null) {
-                return rows.stream().filter(candidate -> DroneKind.fromWire(candidate.kindWire()) != null).toList();
-            }
-        }
-        return rows;
-    }
-
-    /** In the air under control; a falling drone has lost control and is not counted. 受控飞行中；坠落中的无人机已失控，不计入。 */
-    private static boolean isAirborne(TabletSnapshot.DroneRow row) {
-        if (!row.placed()) {
-            return false;
-        }
-        return switch (row.statusWire()) {
-            case TabletSnapshot.DroneRow.STATUS_HOVERING, TabletSnapshot.DroneRow.STATUS_FLYING,
-                 TabletSnapshot.DroneRow.STATUS_PILOTING -> true;
-            default -> false;
-        };
-    }
-
-    private static DroneAlert droneAlert(TabletSnapshot snapshot) {
-        DroneAlert alert = DroneAlert.NONE;
-        for (TabletSnapshot.DroneRow row : droneRows(snapshot)) {
-            if (!row.placed()) {
-                continue;
-            }
-            if (row.statusWire() == TabletSnapshot.DroneRow.STATUS_FALLING) {
-                return DroneAlert.FALLING;
-            }
-            if (row.statusWire() == TabletSnapshot.DroneRow.STATUS_HOVERING
-                    || row.statusWire() == TabletSnapshot.DroneRow.STATUS_FLYING) {
-                alert = DroneAlert.UNATTENDED;
-            }
-        }
-        return alert;
-    }
-
-    /**
-     * Presentation-only: what a card's button offers. Placed drones on the ground or in the air can be linked; the
-     * server re-validates (owner, state, the pilot's body on the ground).
-     * 仅用于展示：卡片按钮提供的操作。已放置且在地面或空中的无人机可以连接；服务端会重新校验（归属、状态、驾驶者本体着地）。
-     */
-    private DroneAction droneAction(TabletSnapshot.DroneRow row, boolean linkBusy) {
-        if (!row.placed() || row.statusWire() == TabletSnapshot.DroneRow.STATUS_ITEM) {
-            return row.cooldownSeconds() > 0 ? DroneAction.COOLDOWN : DroneAction.PLACE_FIRST;
-        }
-        return switch (row.statusWire()) {
-            case TabletSnapshot.DroneRow.STATUS_PILOTING -> DroneAction.LINKED;
-            case TabletSnapshot.DroneRow.STATUS_FALLING -> DroneAction.LOST;
-            default -> row.entityId() == pendingPilotEntityId ? DroneAction.CONNECTING
-                    : linkBusy ? DroneAction.BUSY : DroneAction.CONNECT;
-        };
-    }
-
-    /**
-     * One pilot link at a time: while a drone is piloted or a connect request is pending, other cards cannot connect.
-     * 同一时间只有一条驾驶链路：有无人机正在驾驶或连接请求未决时，其它卡片不能连接。
-     */
-    private boolean droneLinkBusy(List<TabletSnapshot.DroneRow> rows) {
-        if (pendingPilotEntityId >= 0) {
-            return true;
-        }
-        for (TabletSnapshot.DroneRow row : rows) {
-            if (row.placed() && row.statusWire() == TabletSnapshot.DroneRow.STATUS_PILOTING) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private List<DroneButtonKey> droneButtonKeys(TabletSnapshot snapshot) {
-        List<TabletSnapshot.DroneRow> rows = droneRows(snapshot);
-        if (rows.isEmpty()) {
-            return List.of();
-        }
-        boolean linkBusy = droneLinkBusy(rows);
-        ArrayList<DroneButtonKey> keys = new ArrayList<>(rows.size());
-        for (TabletSnapshot.DroneRow row : rows) {
-            keys.add(new DroneButtonKey(row.entityId(), row.kindWire(), droneAction(row, linkBusy)));
-        }
-        return keys;
-    }
-
-    private boolean pendingPilotStillConnectable(TabletSnapshot snapshot) {
-        for (TabletSnapshot.DroneRow row : droneRows(snapshot)) {
-            if (row.entityId() == pendingPilotEntityId) {
-                return row.statusWire() == TabletSnapshot.DroneRow.STATUS_GROUNDED
-                        || row.statusWire() == TabletSnapshot.DroneRow.STATUS_HOVERING
-                        || row.statusWire() == TabletSnapshot.DroneRow.STATUS_FLYING;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Door-log rows this client can show, newest first; empty without the feature. Rows of a kind this client does
-     * not know (newer server) are skipped.
-     * 本客户端可显示的房门记录行（最新在前）；无此功能时为空。跳过本客户端不认识的类型（更新的服务端）。
-     */
-    private static List<TabletSnapshot.DoorLogRow> doorLogRows(TabletSnapshot snapshot) {
-        if (!snapshot.hasFeature(TabletFeature.DOOR_LOG) || snapshot.doorLog().isEmpty()) {
-            return List.of();
-        }
-        List<TabletSnapshot.DoorLogRow> rows = snapshot.doorLog();
-        for (TabletSnapshot.DoorLogRow row : rows) {
-            if (row.kind() == null) {
-                return rows.stream().filter(candidate -> candidate.kind() != null).toList();
-            }
-        }
-        return rows;
-    }
-
-    private @Nullable UUID localUuid() {
+    @Nullable UUID localUuid() {
         return client != null && client.player != null ? client.player.getUuid() : null;
     }
 
     /** Upper-cased first code point of the channel's short name. 频道简称的首个字符（大写）。 */
-    private static String monogram(TabletChannel channel) {
+    static String monogram(TabletChannel channel) {
         String name = Text.translatable(channel.shortTranslationKey()).getString();
         if (name.isEmpty()) {
             return "?";
@@ -2605,149 +1086,54 @@ public final class TabletScreen extends Screen {
         return new String(Character.toChars(Character.toUpperCase(name.codePointAt(0))));
     }
 
-    /**
-     * Header/chip member count. Anonymous channels list only the viewer plus linked partners (server-filtered), so they
-     * count partners rather than channel size. Members may include dead teammates, hence "connected", not "online".
-     * 成员计数。匿名频道只列出观看者本人与已互认同伴（服务端过滤），因此计数显示互认人数而非频道人数。
-     * 成员可能包含死亡队友，因此显示为“已接入”而非“在线”。
-     */
-    private static Text memberCount(TabletSnapshot snapshot) {
-        if (isAnonymousChannel(snapshot)) {
-            return Text.translatable(KEY + "channel.linked", linkedPartners(snapshot));
-        }
-        return Text.translatable(KEY + "channel.connected", snapshot.connections().size());
+    // ------------------------------------------------------------------------------------------------ page support
+
+    /** The canvas of the frame being painted. 当前绘制帧的画布。 */
+    TabletCanvas canvas() {
+        return frameCanvas;
     }
 
-    /**
-     * The viewed channel hides other members until this viewer completes their tasks (police); the server then sent
-     * only the viewer's own member row and sender-less chat rows for everyone else.
-     * 当前频道在查看者完成任务前隐藏其他成员（义警）；此时服务端只下发查看者自己的成员行，其他人的聊天行不带发送者。
-     */
-    private static boolean identitiesLocked(TabletSnapshot snapshot) {
-        TabletChannel channel = snapshot.channel();
-        return channel != null && channel.revealsAfterTasks() && snapshot.identityTasksRemaining() > 0;
+    /** The frame accent of the frame being painted. 当前绘制帧的外框强调色。 */
+    Accent accent() {
+        return frameAccent;
     }
 
-    private static int identityTasksDone(TabletSnapshot snapshot) {
-        return Math.max(0, TabletIdentityRules.POLICE_REVEAL_TASKS - snapshot.identityTasksRemaining());
+    TabletLayout layout() {
+        return layout;
     }
 
-    private static boolean isAnonymousChannel(TabletSnapshot snapshot) {
-        TabletChannel channel = snapshot.channel();
-        return channel != null && channel.anonymousSenders();
+    TabletUiSession session() {
+        return session;
     }
 
-    private static int linkedPartners(TabletSnapshot snapshot) {
-        // The viewer is always a member of their own selected channel. 观看者总是其所选频道的成员。
-        return Math.max(0, snapshot.connections().size() - 1);
+    TextRenderer textRenderer() {
+        return textRenderer;
     }
 
-    private static boolean hasMeetingFeatures(TabletSnapshot snapshot) {
-        TabletChannel channel = snapshot.channel();
-        return channel != null && channel.hasMeetingFeatures();
+    MinecraftClient client() {
+        return client;
     }
 
-    private static boolean canCallMeeting(TabletSnapshot snapshot) {
-        return snapshot.localMeetingParticipant()
-                && snapshot.cooldownSeconds() <= 0
-                && snapshot.localMeetingCallsRemaining() > 0;
+    boolean switcherOpen() {
+        return switcher.isOpen();
     }
 
     // ============================================================================================ types
 
-    private enum DroneAction {
-        CONNECT("drone.connect", ButtonStyle.PRIMARY, ButtonIcon.LINK),
-        CONNECTING("drone.connecting", ButtonStyle.SECONDARY, ButtonIcon.SPINNER),
-        LINKED("drone.linked", ButtonStyle.SECONDARY, ButtonIcon.LINK),
-        LOST("drone.lost", ButtonStyle.DANGER_SOFT, ButtonIcon.NONE),
-        BUSY("drone.busy", ButtonStyle.SECONDARY, ButtonIcon.NONE),
-        COOLDOWN("drone.cooling", ButtonStyle.SECONDARY, ButtonIcon.CLOCK),
-        PLACE_FIRST("drone.place_first", ButtonStyle.SECONDARY, ButtonIcon.NONE);
-
-        private final String labelKey;
-        private final ButtonStyle style;
-        private final ButtonIcon icon;
-
-        DroneAction(String labelKey, ButtonStyle style, ButtonIcon icon) {
-            this.labelKey = labelKey;
-            this.style = style;
-            this.icon = icon;
-        }
-
-        String labelKey() {
-            return labelKey;
-        }
-
-        ButtonStyle style() {
-            return style;
-        }
-
-        ButtonIcon icon() {
-            return icon;
-        }
-    }
-
-    private enum DroneAlert {
-        NONE,
-        UNATTENDED,
-        FALLING
-    }
-
-    /** Everything about a drone row that changes its button. 无人机行中会改变其按钮的全部信息。 */
-    private record DroneButtonKey(int entityId, int kindWire, DroneAction action) {
-    }
-
-    private enum SwitchState {
-        CURRENT,
-        JOIN,
-        PENDING,
-        COOLDOWN,
-        MEETING_LOCKED,
-        LOCKED
-    }
-
     @FunctionalInterface
-    private interface Glyph {
+    interface Glyph {
         void paint(TabletCanvas canvas, float x, float y, float size, int color);
     }
 
     /** {@code lit}: a live channel or a feature-only tablet (accent dot with glow, bright name). 已接入频道或仅功能平板（发光圆点、亮色名字）。 */
-    private record ChannelChip(Rect rect, String name, boolean clickable, boolean lit) {
-    }
-
-    private record Composer(Rect pill, Rect send) {
-    }
-
-    private record ActionBar(
-            Rect abstain,
-            Text abstainLabel,
-            ButtonStyle abstainStyle,
-            Rect confirm,
-            Text confirmLabel,
-            ButtonStyle confirmStyle,
-            ButtonIcon confirmIcon
-    ) {
-    }
-
-    private record SwitcherHint(Text text, boolean warning) {
-    }
-
-    private record SwitcherGeometry(
-            Rect box,
-            int caretX,
-            List<TabletChannel> channels,
-            List<Rect> rows,
-            List<String> hintLines,
-            boolean hintWarning,
-            int hintY
-    ) {
+    record ChannelChip(Rect rect, String name, boolean clickable, boolean lit) {
     }
 
     /**
      * Card grid inside a list area; a final row counts as visible when its card (not its trailing gap) fits.
      * 列表区域内的卡片网格；最后一行只要卡片本身放得下（不含行间距）即计为可见。
      */
-    private record Grid(Rect area, int columns, int cellWidth, int rowStep, int visibleRows) {
+    record Grid(Rect area, int columns, int cellWidth, int rowStep, int visibleRows) {
         static Grid of(Rect area, int columns, int cardHeight, int rowStep) {
             int safeColumns = Math.max(1, columns);
             int cellWidth = Math.max(0, (area.width() - (safeColumns - 1) * TabletSectionPainter.GRID_GAP) / safeColumns);
