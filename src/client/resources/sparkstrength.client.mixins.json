@@ -111,6 +111,7 @@
     "sabotage.EngineTrainTimeMixin",
     "sabotage.EngineWheelTimeMixin",
     "sabotage.EngineWindExposureMixin",
+    "sabotage.SabotageFixtureBlockChangeMixin",
     "sabotage.SabotageSkyLightMixin",
     "undercover.UndercoverInstinctArbiterMixin",
     "undercover.UndercoverOutlineVetoMixin",

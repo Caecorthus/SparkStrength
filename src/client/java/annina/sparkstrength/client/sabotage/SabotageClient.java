@@ -17,7 +17,6 @@ import annina.sparkstrength.sabotage.EngineHalt;
 import annina.sparkstrength.sabotage.EnginePhase;
 import annina.sparkstrength.sabotage.JunctionBoxService;
 import annina.sparkstrength.sabotage.JunctionBoxState;
-import annina.sparkstrength.sabotage.SabotageBlockScan;
 import dev.doctor4t.wathe.cca.MapVariablesWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap;
@@ -41,14 +40,13 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.random.Random;
 import org.joml.Vector3f;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Client wiring of the sabotage system: packets, the loaded-chunk scan for junction boxes and breakers, sparks from
+ * Client wiring of the sabotage system: packets, the loaded-chunk index of junction boxes and breakers, sparks from
  * opened boxes, the sky-light block during an outage, and cancelling the prying/hacking bar the moment the button is
  * released or the aim leaves the box.
- * 破坏系统的客户端接线：数据包、在已加载区块中扫描接线箱与电闸、打开的箱子冒火花、熄灯期间屏蔽天空光照，
+ * 破坏系统的客户端接线：数据包、已加载区块中接线箱与电闸的索引、打开的箱子冒火花、熄灯期间屏蔽天空光照，
  * 以及在松开按键或准星离开箱子的瞬间取消撬开/入侵进度条。
  */
 public final class SabotageClient {
@@ -92,6 +90,7 @@ public final class SabotageClient {
                 screen.onServerClose(payload.sessionId(), payload.reason());
             }
         });
+        SabotageFixtureIndex.register();
         ClientTickEvents.END_CLIENT_TICK.register(SabotageClient::tick);
         ClientTickEvents.END_CLIENT_TICK.register(EngineTrainMotion::tick);
         HudRenderCallback.EVENT.register(SabotageHud::render);
@@ -108,6 +107,7 @@ public final class SabotageClient {
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(() -> {
             SabotageClientState.reset();
+            SabotageFixtureIndex.release(client.world);
             SabotageSkyLight.set(client, null);
             EngineHalt.setClientPhase(null);
             EngineEconomy.setClientBonus(false);
@@ -149,9 +149,13 @@ public final class SabotageClient {
             SabotageClientState.setFixtures(List.of());
             return;
         }
-        List<SabotageClientState.Fixture> found = new ArrayList<>();
-        SabotageBlockScan.scan(world, area, (pos, state) -> found.add(new SabotageClientState.Fixture(pos, state)));
-        SabotageClientState.setFixtures(found);
+        // Positions come from the per-chunk index, kept current by chunk loads and block changes; as a safety net its
+        // chunks under the area are re-read from their blocks every RESYNC_TICKS.
+        // 位置来自按区块的索引，由区块加载与方块变化保持最新；作为兜底，每 RESYNC_TICKS 从方块重新读取范围内的区块。
+        if (world.getTime() % SabotageFixtureIndex.RESYNC_TICKS == 0) {
+            SabotageFixtureIndex.resync(world, area);
+        }
+        SabotageClientState.setFixtures(SabotageFixtureIndex.collect(world, area));
     }
 
     static boolean holdsConfigurator(ClientPlayerEntity player) {
