@@ -52,6 +52,7 @@ final class BreakerRepairScreen extends Screen {
     private float prevCharge;
     private boolean holding;
     private boolean submitted;
+    private boolean cancelSent;
     private int closeTicks = -1;
     private Text banner;
     private int bannerColor;
@@ -188,12 +189,33 @@ final class BreakerRepairScreen extends Screen {
         return super.mouseReleased(mouseX, mouseY, button);
     }
 
+    /**
+     * Every way off this screen ends here: close() goes through setScreen(null), and another screen replacing this one
+     * calls removed() without close(). So the cancel lives here, sent at most once, as in EngineRepairScreen.
+     * 离开此界面的所有路径都会到这里：close() 走 setScreen(null)，被其他界面替换时只调用 removed() 而不调用 close()。
+     * 因此取消包放在这里发送，且最多发送一次，与 EngineRepairScreen 相同。
+     */
     @Override
-    public void close() {
-        if (!submitted && closeTicks < 0) {
-            ClientPlayNetworking.send(new CancelBreakerRepairC2SPacket(sessionId));
+    public void removed() {
+        holding = false;
+        sendCancelOnce();
+        super.removed();
+    }
+
+    /**
+     * Drops the server session unless it is already answered (submitted, awaiting the reply) or the server closed it,
+     * or the connection is gone.
+     * 放弃服务端会话；已提交等待回复、服务端已关闭、或连接已断开时不发送。
+     */
+    private void sendCancelOnce() {
+        if (cancelSent || submitted || closeTicks >= 0) {
+            return;
         }
-        super.close();
+        cancelSent = true;
+        if (client == null || client.getNetworkHandler() == null) {
+            return;
+        }
+        ClientPlayNetworking.send(new CancelBreakerRepairC2SPacket(sessionId));
     }
 
     void onServerClose(int closedSession, int reason) {
