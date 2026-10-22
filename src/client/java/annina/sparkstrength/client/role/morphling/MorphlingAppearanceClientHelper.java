@@ -1,5 +1,6 @@
 package annina.sparkstrength.client.role.morphling;
 
+import annina.sparkstrength.client.render.ClientFrame;
 import annina.sparkstrength.client.role.partyanimal.PartygoerCorpseClient;
 import annina.sparkstrength.client.role.pathogen.PathogenGrayCrowdClient;
 import annina.sparkstrength.component.morphling.MorphBodyDisguiseWorldComponent;
@@ -10,6 +11,7 @@ import dev.doctor4t.wathe.client.WatheClient;
 import dev.doctor4t.wathe.client.model.WatheModelLayers;
 import dev.doctor4t.wathe.entity.PlayerBodyEntity;
 import dev.doctor4t.wathe.game.GameFunctions;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -38,6 +40,11 @@ import java.util.UUID;
  */
 public final class MorphlingAppearanceClientHelper {
     private static final UUID FALLBACK_BODY_SKIN_UUID = UUID.fromString("25adae11-cd98-48f4-990b-9fe1b2ee0886");
+    /** Memo marker for "no override". / 备忘中表示“不覆盖”的标记。 */
+    private static final Object NO_SKIN = new Object();
+    private static final Reference2ObjectOpenHashMap<AbstractClientPlayerEntity, Object> FRAME_SKINS =
+            new Reference2ObjectOpenHashMap<>();
+    private static int frameSkinsEpoch;
 
     private static PlayerEntityModel<AbstractClientPlayerEntity> classicPlayerModel;
     private static PlayerEntityModel<AbstractClientPlayerEntity> slimPlayerModel;
@@ -79,7 +86,37 @@ public final class MorphlingAppearanceClientHelper {
         return skinTextures.model() == SkinTextures.Model.SLIM ? slimBodyModel : classicBodyModel;
     }
 
+    /**
+     * Render thread. Asked about seven times per player per frame (renderer x3, head, texture, cape, elytra), so during a
+     * world render the answer is kept per player for the rest of the frame ({@link ClientFrame}); elsewhere (the
+     * first-person arm, screens) it is resolved on every call.
+     * 渲染线程。每帧每个玩家大约询问七次（渲染器 3 次、头部、贴图、披风、鞘翅），因此在世界渲染期间每个玩家的结果在本帧内
+     * 保留（见 ClientFrame）；其他场合（第一人称手臂、界面）每次调用都重新解析。
+     */
     public static @Nullable SkinTextures resolveActivePlayerSkinTextures(AbstractClientPlayerEntity player) {
+        if (!ClientFrame.inWorldRender()) {
+            return resolveActivePlayerSkinTexturesNow(player);
+        }
+        int epoch = ClientFrame.epoch();
+        if (frameSkinsEpoch != epoch) {
+            FRAME_SKINS.clear();
+            frameSkinsEpoch = epoch;
+        }
+        Object known = FRAME_SKINS.get(player);
+        if (known == null) {
+            SkinTextures resolved = resolveActivePlayerSkinTexturesNow(player);
+            FRAME_SKINS.put(player, resolved == null ? NO_SKIN : resolved);
+            return resolved;
+        }
+        return known == NO_SKIN ? null : (SkinTextures) known;
+    }
+
+    /** Disconnect: drop the last frame's players so no old world stays referenced. / 断开连接：丢掉上一帧的玩家，不再引用旧世界。 */
+    public static void forgetFrame() {
+        FRAME_SKINS.clear();
+    }
+
+    private static @Nullable SkinTextures resolveActivePlayerSkinTexturesNow(AbstractClientPlayerEntity player) {
         if (JesterMomentClient.isActive()) {
             return null;
         }

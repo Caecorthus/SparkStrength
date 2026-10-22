@@ -7,6 +7,7 @@ import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.client.WatheClient;
 import dev.doctor4t.wathe.game.GameFunctions;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -26,6 +27,8 @@ public final class MorphlingClientHooks {
         }
         registered = true;
         GetInstinctHighlight.EVENT.register(MorphlingClientHooks::markedPlayerHighlight);
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
+                client.execute(MorphlingAppearanceClientHelper::forgetFrame));
     }
 
     private static GetInstinctHighlight.HighlightResult markedPlayerHighlight(Entity entity) {
