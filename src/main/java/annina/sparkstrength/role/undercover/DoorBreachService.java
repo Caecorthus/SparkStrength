@@ -4,6 +4,7 @@ import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.component.undercover.RemovedDoorsWorldComponent;
 import annina.sparkstrength.network.sabotage.ChannelProgressS2CPacket;
 import annina.sparkstrength.role.attendant.DoorLogService;
+import annina.sparkstrength.role.partyanimal.PartygoerService;
 import annina.sparkstrength.sabotage.SabotageActionLocks;
 import annina.sparkstrength.sabotage.SabotageRules;
 import dev.doctor4t.wathe.api.event.DoorInteraction;
@@ -278,12 +279,16 @@ public final class DoorBreachService {
         // Recorded before anything is removed, so a crash mid-way still knows every half.
         // 先登记再移除，即使中途崩溃也记得每一半。
         RemovedDoorsWorldComponent.KEY.get(world).add(taken);
+        List<BlockPos> changed = new ArrayList<>();
         for (RemovedDoorsWorldComponent.RemovedBlock block : taken) {
             world.syncWorldEvent(WorldEvents.BLOCK_BROKEN, block.pos(), Block.getRawIdFromState(block.state()));
             world.setBlockState(block.pos(), Blocks.AIR.getDefaultState(),
                     Block.NOTIFY_LISTENERS | Block.FORCE_STATE | Block.SKIP_DROPS);
             world.setBlockBreakingInfo(crackId(block.pos()), block.pos(), -1);
+            changed.add(block.pos());
         }
+        // A chopped steel door is a way through for the Partygoer too. / 被拆的钢门对派对客也是通路。
+        PartygoerService.onBlocksChanged(world, changed);
         world.playSound(null, lowerPos.up(), breakSound(kind), SoundCategory.BLOCKS, 1.0F, 1.0F);
         player.swingHand(Hand.MAIN_HAND, true);
         NbtCompound extra = new NbtCompound();
@@ -302,11 +307,14 @@ public final class DoorBreachService {
             return;
         }
         List<RemovedDoorsWorldComponent.RemovedBlock> removed = record.takeAll();
+        List<BlockPos> changed = new ArrayList<>();
         for (RemovedDoorsWorldComponent.RemovedBlock block : removed) {
             if (world.getBlockState(block.pos()).isAir()) {
                 world.setBlockState(block.pos(), block.state(), Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
+                changed.add(block.pos());
             }
         }
+        PartygoerService.onBlocksChanged(world, changed);
         for (RemovedDoorsWorldComponent.RemovedBlock block : removed) {
             BlockEntity blockEntity = world.getBlockEntity(block.pos());
             if (block.blockEntity() != null && blockEntity != null && world.getBlockState(block.pos()) == block.state()) {
