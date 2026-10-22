@@ -10,7 +10,6 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -159,7 +158,7 @@ public final class SparkStrengthReplayFormatters {
         });
 
         ReplayRegistry.registerGlobalEventFormatter(PHANTOM_BACKPACK_INVISIBILITY_ENDED,
-                (event, match, world) -> onePlayerEvent(
+                (event, match, world) -> ReplayText.onePlayerEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.phantom_backpack_invisibility_ended"
@@ -183,61 +182,61 @@ public final class SparkStrengthReplayFormatters {
         });
 
         ReplayRegistry.registerGlobalEventFormatter(PROFESSOR_INVISIBILITY_ENDED,
-                (event, match, world) -> onePlayerEvent(
+                (event, match, world) -> ReplayText.onePlayerEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.professor_invisibility_ended"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(PROFESSOR_DOORPASSING_ENDED,
-                (event, match, world) -> onePlayerEvent(
+                (event, match, world) -> ReplayText.onePlayerEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.professor_doorpassing_ended"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(PROFESSOR_SEDATIVE_ENDED,
-                (event, match, world) -> onePlayerEvent(
+                (event, match, world) -> ReplayText.onePlayerEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.professor_sedative_ended"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(PROFESSOR_TRUTH_REVEALED,
-                (event, match, world) -> onePlayerEvent(
+                (event, match, world) -> ReplayText.onePlayerEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.professor_truth_revealed"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(CAPTURE_DEVICE_PLACED,
-                (event, match, world) -> onePlayerEvent(
+                (event, match, world) -> ReplayText.onePlayerEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.capture_device_placed"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(CAPTURE_DEVICE_TRIGGERED,
-                (event, match, world) -> onePlayerEvent(
+                (event, match, world) -> ReplayText.onePlayerEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.capture_device_triggered"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(CAPTURE_DEVICE_RELEASED,
-                (event, match, world) -> onePlayerEvent(
+                (event, match, world) -> ReplayText.onePlayerEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.capture_device_released"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(CAPTURE_DEVICE_EXPIRED,
-                (event, match, world) -> onePlayerEvent(
+                (event, match, world) -> ReplayText.onePlayerEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.capture_device_expired"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(TIMED_BOMB_TRAY_EMBEDDED,
-                (event, match, world) -> onePlayerEvent(
+                (event, match, world) -> ReplayText.onePlayerEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.timed_bomb_tray_embedded"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(TIMED_BOMB_BED_EMBEDDED,
-                (event, match, world) -> onePlayerEvent(
+                (event, match, world) -> ReplayText.onePlayerEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.timed_bomb_bed_embedded"
@@ -269,7 +268,7 @@ public final class SparkStrengthReplayFormatters {
             );
         });
         ReplayRegistry.registerGlobalEventFormatter(DEMON_HUNTER_SNIFF_NONE,
-                (event, match, world) -> onePlayerEvent(
+                (event, match, world) -> ReplayText.onePlayerEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.demon_hunter_sniff_none"
@@ -302,7 +301,7 @@ public final class SparkStrengthReplayFormatters {
             return Text.translatable(
                     "replay.global.sparkstrength.morph_reagent_sampled",
                     ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache),
-                    formatPlayerNameWithFallback(sampleUuid, data.getString("sample_name"), playerInfoCache)
+                    ReplayText.formatPlayerNameWithFallback(sampleUuid, data.getString("sample_name"), playerInfoCache)
             );
         });
         ReplayRegistry.registerGlobalEventFormatter(MORPH_REAGENT_MARKED, (event, match, world) -> {
@@ -318,7 +317,7 @@ public final class SparkStrengthReplayFormatters {
             return Text.translatable(
                     "replay.global.sparkstrength.morph_reagent_marked",
                     ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache),
-                    formatPlayerNameWithFallback(sampleUuid, data.getString("sample_name"), playerInfoCache),
+                    ReplayText.formatPlayerNameWithFallback(sampleUuid, data.getString("sample_name"), playerInfoCache),
                     ReplayGenerator.formatPlayerName(targetUuid, playerInfoCache)
             );
         });
@@ -334,23 +333,23 @@ public final class SparkStrengthReplayFormatters {
             return Text.translatable(
                     "replay.global.sparkstrength.morph_mark_triggered",
                     ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache),
-                    formatPlayerNameWithFallback(sampleUuid, data.getString("sample_name"), playerInfoCache)
+                    ReplayText.formatPlayerNameWithFallback(sampleUuid, data.getString("sample_name"), playerInfoCache)
             );
         });
         ReplayRegistry.registerGlobalEventFormatter(MORPH_MARK_ENDED,
-                (event, match, world) -> onePlayerEvent(
+                (event, match, world) -> ReplayText.onePlayerEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.morph_mark_ended"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(PERFUMER_COOLING_OIL_HIT,
-                (event, match, world) -> throwableHitEvent(
+                (event, match, world) -> ReplayText.throwableHitEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.perfumer_cooling_oil_hit"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(PERFUMER_AROMA_HIT,
-                (event, match, world) -> throwableHitEvent(
+                (event, match, world) -> ReplayText.throwableHitEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.perfumer_aroma_hit"
@@ -384,73 +383,73 @@ public final class SparkStrengthReplayFormatters {
             );
         });
         ReplayRegistry.registerGlobalEventFormatter(PARTYGOER_SUMMONED,
-                (event, match, world) -> onePlayerEvent(
+                (event, match, world) -> ReplayText.onePlayerEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.partygoer_summoned"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(PARTYGOER_GRABBED,
-                (event, match, world) -> throwableHitEvent(
+                (event, match, world) -> ReplayText.throwableHitEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.partygoer_grabbed"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(PARTYGOER_RAGED,
-                (event, match, world) -> throwableHitEvent(
+                (event, match, world) -> ReplayText.throwableHitEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.partygoer_raged"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(PARTYGOER_KILLED,
-                (event, match, world) -> throwableHitEvent(
+                (event, match, world) -> ReplayText.throwableHitEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.partygoer_killed"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(PARTYGOER_SWALLOWED,
-                (event, match, world) -> throwableHitEvent(
+                (event, match, world) -> ReplayText.throwableHitEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.partygoer_swallowed"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(PARTY_BALLOON_GIVEN,
-                (event, match, world) -> throwableHitEvent(
+                (event, match, world) -> ReplayText.throwableHitEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.party_balloon_given"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(PERFUMER_ZEPHYR_USED,
-                (event, match, world) -> onePlayerEvent(
+                (event, match, world) -> ReplayText.onePlayerEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.perfumer_zephyr_used"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(SKATEBOARD_RIDE_STARTED,
-                (event, match, world) -> onePlayerEvent(
+                (event, match, world) -> ReplayText.onePlayerEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.skateboard_ride_started"
                 ));
         // Actor = the Jester whose transformation shuffled everyone. / actor 为开始转变、打乱所有人位置的小丑。
         ReplayRegistry.registerGlobalEventFormatter(JESTER_POSITIONS_SHUFFLED,
-                (event, match, world) -> onePlayerEvent(
+                (event, match, world) -> ReplayText.onePlayerEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.jester_positions_shuffled"
                 ));
         // Actor = the Jester whose fake corpse shrugged off a kill. / actor 为假尸体挡下一次击杀的小丑。
         ReplayRegistry.registerGlobalEventFormatter(JESTER_FAKE_DEATH_KILL_BLOCKED,
-                (event, match, world) -> onePlayerEvent(
+                (event, match, world) -> ReplayText.onePlayerEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.jester_fake_death_kill_blocked"
                 ));
         ReplayRegistry.registerGlobalEventFormatter(DRONE_PLACED, (event, match, world) -> {
             NbtCompound data = event.data();
-            return onePlayerEvent(data, match, "replay.global.sparkstrength.drone_placed." + droneKindId(data));
+            return ReplayText.onePlayerEvent(data, match, "replay.global.sparkstrength.drone_placed." + droneKindId(data));
         });
         ReplayRegistry.registerGlobalEventFormatter(DRONE_GRENADE_DROPPED,
-                (event, match, world) -> onePlayerEvent(
+                (event, match, world) -> ReplayText.onePlayerEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.drone_grenade_dropped"
@@ -458,10 +457,10 @@ public final class SparkStrengthReplayFormatters {
         // Actor = who broke it (none when it crashed), target = the owner. / actor 为击毁者（坠毁时为空），target 为主人。
         ReplayRegistry.registerGlobalEventFormatter(DRONE_DESTROYED, (event, match, world) -> {
             NbtCompound data = event.data();
-            return throwableHitEvent(data, match, "replay.global.sparkstrength.drone_destroyed." + droneKindId(data));
+            return ReplayText.throwableHitEvent(data, match, "replay.global.sparkstrength.drone_destroyed." + droneKindId(data));
         });
         ReplayRegistry.registerGlobalEventFormatter(BOMB_DRONE_DETONATED,
-                (event, match, world) -> onePlayerEvent(
+                (event, match, world) -> ReplayText.onePlayerEvent(
                         event.data(),
                         match,
                         "replay.global.sparkstrength.bomb_drone_detonated"
@@ -552,36 +551,6 @@ public final class SparkStrengthReplayFormatters {
                 ));
     }
 
-    private static Text onePlayerEvent(NbtCompound data, dev.doctor4t.wathe.record.GameRecordManager.MatchRecord match, String key) {
-        var playerInfoCache = ReplayGenerator.getPlayerInfoCache(match);
-        UUID actorUuid = data.containsUuid("actor") ? data.getUuid("actor") : null;
-        if (actorUuid == null) {
-            return null;
-        }
-        return Text.translatable(key, ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache));
-    }
-
-    /**
-     * A thrower who logged off before impact is recorded with no actor, so fall back to the one-argument key.
-     * 投掷者在命中前离线时事件没有 actor，此时回退到单参数文本。
-     */
-    private static Text throwableHitEvent(NbtCompound data, dev.doctor4t.wathe.record.GameRecordManager.MatchRecord match, String key) {
-        var playerInfoCache = ReplayGenerator.getPlayerInfoCache(match);
-        UUID actorUuid = data.containsUuid("actor") ? data.getUuid("actor") : null;
-        UUID targetUuid = data.containsUuid("target") ? data.getUuid("target") : null;
-        if (targetUuid == null) {
-            return null;
-        }
-        if (actorUuid == null) {
-            return Text.translatable(key + ".unknown", ReplayGenerator.formatPlayerName(targetUuid, playerInfoCache));
-        }
-        return Text.translatable(
-                key,
-                ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache),
-                ReplayGenerator.formatPlayerName(targetUuid, playerInfoCache)
-        );
-    }
-
     /** Known drone kind id only, so a malformed event can never pick an arbitrary key. / 仅接受已知无人机型号 id。 */
     private static String droneKindId(NbtCompound data) {
         return DroneKind.BOMB.id().equals(data.getString("kind")) ? DroneKind.BOMB.id() : DroneKind.GRENADE.id();
@@ -609,15 +578,15 @@ public final class SparkStrengthReplayFormatters {
     ) {
         var playerInfoCache = ReplayGenerator.getPlayerInfoCache(match);
         UUID actorUuid = data.containsUuid("actor") ? data.getUuid("actor") : null;
-        Text first = playerFromUuidOrName(data, match, "player_one", "player_one_name");
-        Text second = playerFromUuidOrName(data, match, "player_two", "player_two_name");
+        Text first = ReplayText.playerFromUuidOrName(data, match, "player_one", "player_one_name");
+        Text second = ReplayText.playerFromUuidOrName(data, match, "player_two", "player_two_name");
         if (actorUuid == null || first == null || second == null) {
             return null;
         }
 
         Text actor = ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache);
         if (includeDeadPlayer) {
-            Text dead = playerFromUuidOrName(data, match, "dead_player", "dead_player_name");
+            Text dead = ReplayText.playerFromUuidOrName(data, match, "dead_player", "dead_player_name");
             return dead == null ? null : Text.translatable(key, actor, first, second, dead);
         }
         return Text.translatable(key, actor, first, second);
@@ -631,14 +600,14 @@ public final class SparkStrengthReplayFormatters {
     ) {
         var playerInfoCache = ReplayGenerator.getPlayerInfoCache(match);
         UUID actorUuid = data.containsUuid("actor") ? data.getUuid("actor") : null;
-        Text target = playerFromUuidOrName(data, match, "target_player", "target_player_name");
+        Text target = ReplayText.playerFromUuidOrName(data, match, "target_player", "target_player_name");
         if (actorUuid == null || target == null) {
             return null;
         }
 
         Text actor = ReplayGenerator.formatPlayerName(actorUuid, playerInfoCache);
         if (includeDeadPlayer) {
-            Text dead = playerFromUuidOrName(data, match, "dead_player", "dead_player_name");
+            Text dead = ReplayText.playerFromUuidOrName(data, match, "dead_player", "dead_player_name");
             return dead == null ? null : Text.translatable(key, actor, target, dead);
         }
         return Text.translatable(key, actor, target);
@@ -649,8 +618,8 @@ public final class SparkStrengthReplayFormatters {
             dev.doctor4t.wathe.record.GameRecordManager.MatchRecord match,
             String key
     ) {
-        Text first = playerFromUuidOrName(data, match, "player_one", "player_one_name");
-        Text second = playerFromUuidOrName(data, match, "player_two", "player_two_name");
+        Text first = ReplayText.playerFromUuidOrName(data, match, "player_one", "player_one_name");
+        Text second = ReplayText.playerFromUuidOrName(data, match, "player_two", "player_two_name");
         if (first == null || second == null) {
             return null;
         }
@@ -662,7 +631,7 @@ public final class SparkStrengthReplayFormatters {
             dev.doctor4t.wathe.record.GameRecordManager.MatchRecord match,
             String key
     ) {
-        Text target = playerFromUuidOrName(data, match, "target_player", "target_player_name");
+        Text target = ReplayText.playerFromUuidOrName(data, match, "target_player", "target_player_name");
         return target == null ? null : Text.translatable(key, target);
     }
 
@@ -671,9 +640,9 @@ public final class SparkStrengthReplayFormatters {
             dev.doctor4t.wathe.record.GameRecordManager.MatchRecord match,
             String key
     ) {
-        Text first = playerFromUuidOrName(data, match, "player_one", "player_one_name");
-        Text second = playerFromUuidOrName(data, match, "player_two", "player_two_name");
-        Text dead = playerFromUuidOrName(data, match, "dead_player", "dead_player_name");
+        Text first = ReplayText.playerFromUuidOrName(data, match, "player_one", "player_one_name");
+        Text second = ReplayText.playerFromUuidOrName(data, match, "player_two", "player_two_name");
+        Text dead = ReplayText.playerFromUuidOrName(data, match, "dead_player", "dead_player_name");
         if (first == null || second == null || dead == null) {
             return null;
         }
@@ -685,38 +654,7 @@ public final class SparkStrengthReplayFormatters {
             dev.doctor4t.wathe.record.GameRecordManager.MatchRecord match,
             String key
     ) {
-        Text dead = playerFromUuidOrName(data, match, "dead_player", "dead_player_name");
+        Text dead = ReplayText.playerFromUuidOrName(data, match, "dead_player", "dead_player_name");
         return dead == null ? null : Text.translatable(key, dead);
-    }
-
-    private static Text playerFromUuidOrName(
-            NbtCompound data,
-            dev.doctor4t.wathe.record.GameRecordManager.MatchRecord match,
-            String uuidKey,
-            String nameKey
-    ) {
-        var playerInfoCache = ReplayGenerator.getPlayerInfoCache(match);
-        String fallbackName = data.getString(nameKey);
-        if (data.containsUuid(uuidKey)) {
-            return formatPlayerNameWithFallback(data.getUuid(uuidKey), fallbackName, playerInfoCache);
-        }
-        if (fallbackName != null && !fallbackName.isBlank()) {
-            return Text.literal(fallbackName);
-        }
-        return null;
-    }
-
-    private static Text formatPlayerNameWithFallback(
-            UUID uuid,
-            String fallbackName,
-            Map<UUID, ReplayGenerator.PlayerInfo> playerInfoCache
-    ) {
-        if (playerInfoCache.containsKey(uuid)) {
-            return ReplayGenerator.formatPlayerName(uuid, playerInfoCache);
-        }
-        if (fallbackName != null && !fallbackName.isBlank()) {
-            return Text.literal(fallbackName);
-        }
-        return ReplayGenerator.formatPlayerName(uuid, playerInfoCache);
     }
 }
