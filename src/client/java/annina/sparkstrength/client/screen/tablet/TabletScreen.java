@@ -1431,7 +1431,14 @@ public final class TabletScreen extends Screen {
         // While the switcher is open nothing underneath reacts to hover. 切换浮层打开时，下层元素不响应悬停。
         int hoverX = switcherOpen ? -1 : logicalMouseX;
         int hoverY = switcherOpen ? -1 : logicalMouseY;
+        // The whole frame, widgets included, is one draw batch; avatars and clips flush inside it.
+        // 整帧（含控件）是一个绘制批次；头像与裁剪会在批次内提交。
+        frameCanvas.batch(() -> paintScreen(context, snapshot, logicalMouseX, logicalMouseY, hoverX, hoverY, delta, now));
+        matrices.pop();
+    }
 
+    private void paintScreen(DrawContext context, TabletSnapshot snapshot, int logicalMouseX, int logicalMouseY,
+                             int hoverX, int hoverY, float delta, long now) {
         paintFrame();
         paintStatusBar(snapshot, hoverX, hoverY, now);
         boolean hasSections = !visibleSections.isEmpty();
@@ -1452,8 +1459,6 @@ public final class TabletScreen extends Screen {
         if (switcherOpen) {
             paintSwitcher(snapshot, logicalMouseX, logicalMouseY, now);
         }
-        frameCanvas.flush();
-        matrices.pop();
     }
 
     // ------------------------------------------------------------------------------------------------ frame

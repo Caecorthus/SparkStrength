@@ -6,6 +6,7 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.text.OrderedText;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 
 import java.util.UUID;
@@ -15,10 +16,11 @@ import java.util.UUID;
  * 平板界面的抗锯齿矢量绘制，使用逻辑单位（1 单位 = pixelScale 个物理像素）。
  *
  * <p>Contract: geometry goes into {@link RenderLayer#getGui()} (QUADS, position+colour) with the current matrix;
- * every public shape call ends with {@code context.draw()}, so draw order equals call order relative to vanilla
- * text/texture calls. Triangles are emitted as degenerate quads (a,b,c,c) and all winding is canonicalised to the
- * order {@link DrawContext#fill} uses (TL, BL, BR, TR), so back-face culling can never drop geometry.
- * 约定：几何体以当前矩阵写入 RenderLayer.getGui()（QUADS，位置+颜色）；每个公开形状方法结束时都会调用
+ * outside a {@link #batch} every public shape call ends with {@code context.draw()}, so draw order equals call order
+ * relative to vanilla text/texture calls. Triangles are emitted as degenerate quads (a,b,c,c) and all winding is
+ * canonicalised to the order {@link DrawContext#fill} uses (TL, BL, BR, TR), so back-face culling can never drop
+ * geometry.
+ * 约定：几何体以当前矩阵写入 RenderLayer.getGui()（QUADS，位置+颜色）；在 batch 之外，每个公开形状方法结束时都会调用
  * context.draw()，因此与原版文字/贴图调用的绘制顺序与调用顺序一致。三角形以退化四边形 (a,b,c,c) 输出，
  * 所有绕序统一为 DrawContext.fill 的顺序（左上、左下、右下、右上），背面剔除永远不会丢弃几何体。</p>
  *
@@ -48,6 +50,8 @@ public final class TabletCanvas {
     private static final float[][] QUARTER_COS = new float[MAX_SEGMENTS + 1][];
     private static final float[][] QUARTER_SIN = new float[MAX_SEGMENTS + 1][];
     private static final float[][] SCRATCH = new float[7][];
+    // Context whose batch is open; canvases on it skip their per-shape flush. 正在批处理的上下文；其上的画布跳过逐形状提交。
+    private static @Nullable DrawContext batchContext;
 
     static {
         for (int segments = MIN_SEGMENTS; segments <= MAX_SEGMENTS; segments++) {
@@ -527,8 +531,49 @@ public final class TabletCanvas {
         }
     }
 
+    /**
+     * Draws everything queued so far; inside a {@link #batch} it is the barrier before a texture draw.
+     * 绘制目前排队的全部内容；在 batch 内用作贴图绘制之前的屏障。
+     */
     public void flush() {
         context.draw();
+    }
+
+    // ------------------------------------------------------------------------------------------------ batching
+
+    /**
+     * Runs {@code body} as one batch: shapes, fills and text queue up and draw together instead of one draw call each.
+     * Built on {@link DrawContext#draw(Runnable)}, so vanilla fill/text calls join it and vanilla scissor or
+     * shader-colour changes still flush first. The immediate buffer flushes by itself whenever the render layer
+     * changes (shapes to text and back), the GUI layer never sorts its quads and text sorts stably by depth, so
+     * stacking stays call order. {@link #pushClip}, {@link #popClip}, {@link #avatar} and {@link #flush} still flush
+     * inside a batch. Texture draws ({@code drawTexture}, {@code drawGuiTexture}, skins) bypass the queue and would
+     * land under the queued shapes: {@link #flush} right before one. A nested batch on the same context joins the open
+     * one; do not call {@code DrawContext.draw(Runnable)} inside a batch (vanilla's flag is not reentrant).
+     * 把 body 作为一个批次执行：形状、填充与文字先排队，最后一起绘制，而不是每个各占一次绘制调用。基于
+     * DrawContext.draw(Runnable)，因此原版填充/文字会并入批次，原版裁剪或着色器颜色变化仍会先提交。渲染层切换时
+     * （形状与文字之间）立即缓冲会自行提交，GUI 层从不排序四边形、文字按深度稳定排序，因此叠放顺序仍是调用顺序。批次内
+     * pushClip、popClip、avatar 与 flush 仍会提交。贴图绘制（drawTexture、drawGuiTexture、皮肤）绕过队列，会被排队中的形状盖住：
+     * 在其前调用 flush。同一上下文上的嵌套批次并入已打开的批次；批次内不要调用 DrawContext.draw(Runnable)
+     * （原版标记不可重入）。
+     */
+    public void batch(Runnable body) {
+        batch(context, body);
+    }
+
+    /** {@link #batch(Runnable)} for code that creates its canvases inside the body. 供在 body 内创建画布的代码使用。 */
+    public static void batch(DrawContext context, Runnable body) {
+        if (batchContext == context) {
+            body.run();
+            return;
+        }
+        DrawContext outer = batchContext;
+        batchContext = context;
+        try {
+            context.draw(body);
+        } finally {
+            batchContext = outer;
+        }
     }
 
     // ------------------------------------------------------------------------------------------------ package API
@@ -673,7 +718,9 @@ public final class TabletCanvas {
     private void end() {
         buffer = null;
         matrix = null;
-        context.draw();
+        if (batchContext != context) {
+            context.draw();
+        }
     }
 
     private void solid(int color) {
