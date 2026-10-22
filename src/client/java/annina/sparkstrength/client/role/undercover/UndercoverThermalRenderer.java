@@ -1,6 +1,7 @@
 package annina.sparkstrength.client.role.undercover;
 
 import annina.sparkstrength.SparkStrength;
+import annina.sparkstrength.client.render.ClientFrame;
 import annina.sparkstrength.role.undercover.UndercoverRules;
 import com.mojang.blaze3d.platform.GlConst;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -16,6 +17,7 @@ import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.BuiltBuffer;
+import net.minecraft.client.render.Frustum;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
@@ -28,6 +30,7 @@ import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -58,6 +61,7 @@ public final class UndercoverThermalRenderer {
     private static final String HEAT_TARGET = "heat";
     private static final int INITIAL_BUFFER_BYTES = 64 * 1024;
     private static final String IRIS_API = "net.irisshaders.iris.api.v0.IrisApi";
+    private static final boolean IRIS_LOADED = FabricLoader.getInstance().isModLoaded("iris");
 
     private static PostEffectProcessor processor;
     private static Framebuffer processorTarget;
@@ -69,6 +73,9 @@ public final class UndercoverThermalRenderer {
     private static @Nullable BufferAllocator allocator;
     private static @Nullable Method irisInstance;
     private static @Nullable Method irisPackInUse;
+    private static boolean shaderPackInUse;
+    private static int shaderPackCheckedEpoch;
+    private static boolean shaderPackChecked;
 
     private UndercoverThermalRenderer() {
     }
@@ -80,12 +87,24 @@ public final class UndercoverThermalRenderer {
 
     /**
      * An Iris shader pack renders into its own buffers; any failure to ask Iris counts as "in use" (fail closed).
-     * Iris 光影包渲染到自己的缓冲区；询问 Iris 失败也按“正在使用”处理。
+     * Asked once per client tick and frame ({@link ClientFrame}): the thermal outline fallback asks for every player.
+     * Iris 光影包渲染到自己的缓冲区；询问 Iris 失败也按“正在使用”处理。每个客户端 tick 与每帧只询问一次（见 ClientFrame）：
+     * 热成像的描边退回逻辑会对每个玩家询问。
      */
     public static boolean shaderPackInUse() {
-        if (!FabricLoader.getInstance().isModLoaded("iris")) {
+        if (!IRIS_LOADED) {
             return false;
         }
+        int epoch = ClientFrame.epoch();
+        if (!shaderPackChecked || shaderPackCheckedEpoch != epoch) {
+            shaderPackInUse = askIris();
+            shaderPackCheckedEpoch = epoch;
+            shaderPackChecked = true;
+        }
+        return shaderPackInUse;
+    }
+
+    private static boolean askIris() {
         try {
             if (irisInstance == null || irisPackInUse == null) {
                 Class<?> api = Class.forName(IRIS_API);
@@ -128,7 +147,7 @@ public final class UndercoverThermalRenderer {
             heat.clear(MinecraftClient.IS_SYSTEM_MAC);
             heat.copyDepthFrom(main);
             renderBodies(client, heat, main, context.projectionMatrix(), context.positionMatrix(),
-                    context.camera().getPos(), context.tickCounter().getTickDelta(true));
+                    context.camera().getPos(), context.frustum(), context.tickCounter().getTickDelta(true));
         } catch (RuntimeException exception) {
             warnOnce("Undercover thermal heat capture failed", exception);
         } finally {
@@ -158,7 +177,7 @@ public final class UndercoverThermalRenderer {
     }
 
     private static void renderBodies(MinecraftClient client, Framebuffer heat, Framebuffer main, Matrix4f projection,
-                                     Matrix4f viewRotation, Vec3d camera, float tickDelta) {
+                                     Matrix4f viewRotation, Vec3d camera, @Nullable Frustum frustum, float tickDelta) {
         BufferBuilder builder = new BufferBuilder(allocator(), VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
         WhiteVertexConsumer white = new WhiteVertexConsumer(builder);
         VertexConsumerProvider provider = layer -> white;
@@ -170,7 +189,8 @@ public final class UndercoverThermalRenderer {
                 if (body == client.player && client.options.getPerspective().isFirstPerson()) {
                     continue;
                 }
-                if (!GameFunctions.isPlayerPlayingAndAlive(body) || body.squaredDistanceTo(camera) > range) {
+                if (!GameFunctions.isPlayerPlayingAndAlive(body) || body.squaredDistanceTo(camera) > range
+                        || !inView(frustum, body)) {
                     continue;
                 }
                 emitBody(dispatcher, body, camera, tickDelta, provider);
@@ -259,6 +279,24 @@ public final class UndercoverThermalRenderer {
             RenderSystem.enableDepthTest();
             client.getFramebuffer().beginWrite(false);
         }
+    }
+
+    /**
+     * The frustum test of EntityRenderer#shouldRender (its render-distance check aside, as before): a body vanilla culls
+     * as off screen has no pixel in the heat image either. No frustum yet: draw it, as before.
+     * EntityRenderer#shouldRender 的视锥判断（与之前一样不含其渲染距离判断）：原版视为屏幕外而剔除的人体，在热图中同样
+     * 没有像素。尚无视锥时照常绘制。
+     */
+    private static boolean inView(@Nullable Frustum frustum, AbstractClientPlayerEntity body) {
+        if (frustum == null || body.ignoreCameraFrustum) {
+            return true;
+        }
+        Box box = body.getVisibilityBoundingBox().expand(0.5);
+        if (box.isNaN() || box.getAverageSideLength() == 0.0) {
+            box = new Box(body.getX() - 2.0, body.getY() - 2.0, body.getZ() - 2.0,
+                    body.getX() + 2.0, body.getY() + 2.0, body.getZ() + 2.0);
+        }
+        return frustum.isVisible(box);
     }
 
     private static void emitBody(EntityRenderDispatcher dispatcher, AbstractClientPlayerEntity body, Vec3d camera,
