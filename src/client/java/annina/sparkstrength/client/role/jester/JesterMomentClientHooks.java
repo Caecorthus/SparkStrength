@@ -1,15 +1,8 @@
 package annina.sparkstrength.client.role.jester;
 
 import annina.sparkstrength.SparkStrength;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
+import annina.sparkstrength.client.render.ManagedPostEffect;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
-import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.resource.ResourceManager;
-import net.minecraft.resource.ResourceType;
-import net.minecraft.util.Identifier;
 
 /**
  * Lifecycle for the Jester Moment grayscale: tick the fade, and release the processor on resource reload, disconnect
@@ -22,19 +15,7 @@ public final class JesterMomentClientHooks {
 
     public static void register() {
         ClientTickEvents.END_CLIENT_TICK.register(JesterMomentGrayscale::tick);
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(JesterMomentGrayscale::reset));
-        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> JesterMomentGrayscale.reset());
-        ResourceManagerHelper.get(ResourceType.CLIENT_RESOURCES).registerReloadListener(
-                new SimpleSynchronousResourceReloadListener() {
-                    @Override
-                    public Identifier getFabricId() {
-                        return SparkStrength.id("jester_moment_grayscale");
-                    }
-
-                    @Override
-                    public void reload(ResourceManager manager) {
-                        MinecraftClient.getInstance().execute(JesterMomentGrayscale::close);
-                    }
-                });
+        ManagedPostEffect.registerLifecycle(SparkStrength.id("jester_moment_grayscale"),
+                JesterMomentGrayscale::reset, JesterMomentGrayscale::reset, JesterMomentGrayscale::close);
     }
 }

@@ -2,6 +2,7 @@ package annina.sparkstrength.client.role.undercover;
 
 import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.client.render.ClientFrame;
+import annina.sparkstrength.client.render.ManagedPostEffect;
 import annina.sparkstrength.role.undercover.UndercoverRules;
 import com.mojang.blaze3d.platform.GlConst;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -37,7 +38,6 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 
-import java.io.IOException;
 import java.lang.reflect.Method;
 
 /**
@@ -64,12 +64,9 @@ public final class UndercoverThermalRenderer {
     private static final boolean IRIS_LOADED = FabricLoader.getInstance().isModLoaded("iris");
     /** Frustum margin around a body; vanilla culls entities with 0.5. / 人体周围的视锥余量；原版剔除实体用 0.5。 */
     private static final double CULL_MARGIN = 1.5;
+    private static final ManagedPostEffect EFFECT =
+            new ManagedPostEffect(SHADER, "Unable to load the Undercover thermal shader");
 
-    private static PostEffectProcessor processor;
-    private static Framebuffer processorTarget;
-    private static int processorWidth = -1;
-    private static int processorHeight = -1;
-    private static boolean loadFailed;
     private static boolean rendering;
     private static boolean warned;
     private static @Nullable BufferAllocator allocator;
@@ -124,7 +121,7 @@ public final class UndercoverThermalRenderer {
      * back to white outlines. / 无法绘制热图时（Iris 光影包，或后处理加载失败）为 true：热成像退回白色描边。
      */
     public static boolean outlineFallback() {
-        return loadFailed || shaderPackInUse();
+        return EFFECT.loadFailed() || shaderPackInUse();
     }
 
     private static boolean active(MinecraftClient client) {
@@ -135,11 +132,11 @@ public final class UndercoverThermalRenderer {
     public static void captureHeat(WorldRenderContext context) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (!active(client)) {
-            closeProcessor();
+            EFFECT.release();
             return;
         }
         Framebuffer main = client.getFramebuffer();
-        PostEffectProcessor active = ensureProcessor(client, main);
+        PostEffectProcessor active = EFFECT.acquire(client, main);
         Framebuffer heat = active == null ? null : active.getSecondaryTarget(HEAT_TARGET);
         if (heat == null) {
             return;
@@ -160,22 +157,15 @@ public final class UndercoverThermalRenderer {
     /** Render thread, after the world and before the HUD. / 渲染线程：世界之后、HUD 之前。 */
     public static void render(MinecraftClient client, float tickDelta) {
         if (!active(client)) {
-            closeProcessor();
+            EFFECT.release();
             return;
         }
         Framebuffer framebuffer = client.getFramebuffer();
-        PostEffectProcessor activeProcessor = ensureProcessor(client, framebuffer);
+        PostEffectProcessor activeProcessor = EFFECT.acquire(client, framebuffer);
         if (activeProcessor == null) {
             return;
         }
-        RenderSystem.disableBlend();
-        RenderSystem.disableDepthTest();
-        RenderSystem.resetTextureMatrix();
-        try {
-            activeProcessor.render(tickDelta);
-        } finally {
-            framebuffer.beginWrite(false);
-        }
+        EFFECT.draw(framebuffer, tickDelta);
     }
 
     private static void renderBodies(MinecraftClient client, Framebuffer heat, Framebuffer main, Matrix4f projection,
@@ -246,10 +236,11 @@ public final class UndercoverThermalRenderer {
      */
     public static void renderArmHeat(MatrixStack matrices, ModelPart arm, ModelPart sleeve) {
         MinecraftClient client = MinecraftClient.getInstance();
-        if (processor == null || !active(client)) {
+        PostEffectProcessor loaded = EFFECT.current();
+        if (loaded == null || !active(client)) {
             return;
         }
-        Framebuffer heat = processor.getSecondaryTarget(HEAT_TARGET);
+        Framebuffer heat = loaded.getSecondaryTarget(HEAT_TARGET);
         if (heat == null) {
             return;
         }
@@ -328,35 +319,6 @@ public final class UndercoverThermalRenderer {
         }
     }
 
-    private static @Nullable PostEffectProcessor ensureProcessor(MinecraftClient client, Framebuffer framebuffer) {
-        if (loadFailed || framebuffer.textureWidth <= 0 || framebuffer.textureHeight <= 0) {
-            return null;
-        }
-        if (processor != null && processorTarget != framebuffer) {
-            closeProcessor();
-        }
-        if (processor == null) {
-            try {
-                processor = new PostEffectProcessor(
-                        client.getTextureManager(), client.getResourceManager(), framebuffer, SHADER);
-            } catch (IOException | RuntimeException exception) {
-                SparkStrength.LOGGER.warn("Unable to load the Undercover thermal shader", exception);
-                closeProcessor();
-                loadFailed = true;
-                return null;
-            }
-            processorTarget = framebuffer;
-            processorWidth = -1;
-            processorHeight = -1;
-        }
-        if (processorWidth != framebuffer.textureWidth || processorHeight != framebuffer.textureHeight) {
-            processor.setupDimensions(framebuffer.textureWidth, framebuffer.textureHeight);
-            processorWidth = framebuffer.textureWidth;
-            processorHeight = framebuffer.textureHeight;
-        }
-        return processor;
-    }
-
     private static BufferAllocator allocator() {
         if (allocator == null) {
             allocator = new BufferAllocator(INITIAL_BUFFER_BYTES);
@@ -373,22 +335,11 @@ public final class UndercoverThermalRenderer {
 
     /** Resource reload, disconnect and shutdown: frees everything and allows a fresh load. / 资源重载、断开连接与关闭：释放一切并允许重新加载。 */
     public static void close() {
-        closeProcessor();
-        loadFailed = false;
+        EFFECT.close();
         if (allocator != null) {
             allocator.close();
             allocator = null;
         }
-    }
-
-    private static void closeProcessor() {
-        if (processor != null) {
-            processor.close();
-            processor = null;
-        }
-        processorTarget = null;
-        processorWidth = -1;
-        processorHeight = -1;
     }
 
     /**

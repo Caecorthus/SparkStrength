@@ -34,14 +34,14 @@ public final class PartygoerTaotieClient {
     }
 
     /**
-     * Called from {@code PartygoerTaotieAbilityKeyMixin} with the original {@code wasPressed} result. Returns
-     * {@link PartygoerTaotieRules#NO_CLAIM} to leave the press to NoellesRoles; otherwise the press is claimed and the
-     * result is the Partygoer's entity id to send, or {@link PartygoerTaotieRules#CLAIM_WITHOUT_SWALLOW} when it shields
-     * the press but stands outside the server's feet-to-feet reach. Cheap gates first: key identity, connection,
-     * readiness, and only then the crosshair.
-     * 由 {@code PartygoerTaotieAbilityKeyMixin} 以原始 wasPressed 结果调用。返回 NO_CLAIM 表示把按键留给 NoellesRoles；否则按键
-     * 被认领，结果为要发送的派对客实体 id，或在它遮挡按键但超出服务端脚到脚距离时返回 CLAIM_WITHOUT_SWALLOW。廉价判定优先：
-     * 按键身份、连接、就绪状态，最后才读准星。
+     * Called from the client key gate ({@code ClientKeyGate#claimsClick}) with the {@code wasPressed} result so far.
+     * Returns {@link PartygoerTaotieRules#NO_CLAIM} to leave the press to NoellesRoles; otherwise the press is claimed
+     * and the result is the Partygoer's entity id to send, or {@link PartygoerTaotieRules#CLAIM_WITHOUT_SWALLOW} when
+     * it shields the press but stands outside the server's feet-to-feet reach. Cheap gates first: key identity,
+     * connection, readiness, and only then the crosshair.
+     * 由客户端按键闸门（{@code ClientKeyGate#claimsClick}）以当前的 wasPressed 结果调用。返回 NO_CLAIM 表示把按键留给
+     * NoellesRoles；否则按键被认领，结果为要发送的派对客实体 id，或在它遮挡按键但超出服务端脚到脚距离时返回
+     * CLAIM_WITHOUT_SWALLOW。廉价判定优先：按键身份、连接、就绪状态，最后才读准星。
      */
     public static int claimPress(@Nullable KeyBinding keyBinding, boolean pressed) {
         if (!pressed || keyBinding == null || keyBinding != NoellesrolesClient.abilityBind) {

@@ -1,6 +1,7 @@
 package annina.sparkstrength.client.role.undercover;
 
 import annina.sparkstrength.SparkStrengthItems;
+import annina.sparkstrength.client.render.ManagedPostEffect;
 import annina.sparkstrength.client.role.corruptcop.CorruptCopClientHooks;
 import annina.sparkstrength.client.role.perfumer.PerfumerClientEffects;
 import annina.sparkstrength.compat.SparkTraitsCompat;
@@ -12,14 +13,7 @@ import dev.doctor4t.wathe.api.event.ShouldShowCohort;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import annina.sparkstrength.SparkStrength;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
-import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
-import net.minecraft.resource.ResourceManager;
-import net.minecraft.resource.ResourceType;
-import net.minecraft.util.Identifier;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
@@ -83,23 +77,10 @@ public final class UndercoverClient {
         WorldRenderEvents.BEFORE_DEBUG_RENDER.register(UndercoverThermalRenderer::captureHeat);
         ShouldShowCohort.EVENT.register(UndercoverClient::cohort);
         HudRenderCallback.EVENT.register((context, tickCounter) -> renderHud(context));
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(() -> {
+        ManagedPostEffect.registerLifecycle(SparkStrength.id("undercover_thermal"), () -> {
             thermalOn = false;
             UndercoverThermalRenderer.close();
-        }));
-        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> UndercoverThermalRenderer.close());
-        ResourceManagerHelper.get(ResourceType.CLIENT_RESOURCES).registerReloadListener(
-                new SimpleSynchronousResourceReloadListener() {
-                    @Override
-                    public Identifier getFabricId() {
-                        return SparkStrength.id("undercover_thermal");
-                    }
-
-                    @Override
-                    public void reload(ResourceManager manager) {
-                        MinecraftClient.getInstance().execute(UndercoverThermalRenderer::close);
-                    }
-                });
+        }, UndercoverThermalRenderer::close, UndercoverThermalRenderer::close);
     }
 
     public static boolean isThermalOn() {
