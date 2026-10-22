@@ -195,6 +195,10 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
         linkRequests.remove(new LinkKey(from, to));
     }
 
+    public boolean hasLinkRequests() {
+        return !linkRequests.isEmpty();
+    }
+
     /** All stored requests, expired ones included; the caller prunes. / 所有已存请求（含已过期），由调用方清理。 */
     public List<LinkRequest> linkRequests() {
         return List.copyOf(linkRequests.values());

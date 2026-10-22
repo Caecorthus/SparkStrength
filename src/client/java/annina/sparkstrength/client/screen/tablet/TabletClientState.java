@@ -4,7 +4,8 @@ import annina.sparkstrength.network.tablet.TabletSnapshot;
 import annina.sparkstrength.tablet.TabletChannel;
 import annina.sparkstrength.tablet.TabletFeature;
 import annina.sparkstrength.tablet.TabletUiSession;
-import net.minecraft.util.Util;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.world.ClientWorld;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -29,7 +30,7 @@ public final class TabletClientState {
     private static long chatSeenSignature = 0L;
     private static int lastLiveChannelWire = TabletChannel.NO_CHANNEL_WIRE;
     private static int doorLogSeenId;
-    private static long snapshotAppliedAtMs = Util.getMeasuringTimeMs();
+    private static long snapshotAppliedAtTick;
     private static @Nullable TabletUiSession.Section resumeSection;
 
     private TabletClientState() {
@@ -41,7 +42,7 @@ public final class TabletClientState {
 
     public static void apply(TabletSnapshot nextSnapshot) {
         snapshot = nextSnapshot == null ? TabletSnapshot.empty() : nextSnapshot;
-        snapshotAppliedAtMs = Util.getMeasuringTimeMs();
+        snapshotAppliedAtTick = clientWorldTime();
         int newestDoorLogId = newestDoorLogId(snapshot);
         // Server entry ids only grow within a session (round resets keep counting), so a smaller newest id means a
         // new server session: start over and treat its entries as unread. Empty/revoked snapshots never reset.
@@ -112,9 +113,21 @@ public final class TabletClientState {
         return chatSignature(current.chat()) != chatSeenSignature;
     }
 
-    /** Whole seconds since the current snapshot arrived; extrapolates server-computed ages between polls. 当前快照到达后经过的整秒数。 */
+    /**
+     * Whole seconds of world time since the current snapshot arrived; extrapolates server countdowns between pushes.
+     * World time rather than the wall clock, because an unchanged snapshot is not resent and a frozen world
+     * ({@code /tick freeze}) must not keep counting.
+     * 当前快照到达后经过的世界时间整秒数，用于在两次推送之间外推服务端倒计时。使用世界时间而不是墙钟，因为未变化的快照
+     * 不会重发，而冻结的世界（/tick freeze）不能继续计时。
+     */
     public static int secondsSinceSnapshot() {
-        return (int) Math.max(0L, (Util.getMeasuringTimeMs() - snapshotAppliedAtMs) / 1000L);
+        return (int) Math.max(0L, (clientWorldTime() - snapshotAppliedAtTick) / 20L);
+    }
+
+    private static long clientWorldTime() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        ClientWorld world = client == null ? null : client.world;
+        return world == null ? 0L : world.getTime();
     }
 
     public static int newestDoorLogId(TabletSnapshot current) {

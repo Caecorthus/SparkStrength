@@ -83,7 +83,15 @@ public final class DoorLog {
      * Seconds since the entry last happened, never negative. / 条目最后一次发生至今的秒数，不为负。
      */
     public static int ageSeconds(Entry entry, long nowTick) {
-        return (int) Math.min(Integer.MAX_VALUE, Math.max(0L, nowTick - entry.lastTick()) / 20L);
+        return ageSeconds(entry.lastTick(), nowTick);
+    }
+
+    /**
+     * Seconds since {@code lastTick}, never negative; the tablet client calls it with its synced world time.
+     * 自 lastTick 起经过的秒数，不为负；平板客户端用其同步的世界时间调用。
+     */
+    public static int ageSeconds(long lastTick, long nowTick) {
+        return (int) Math.min(Integer.MAX_VALUE, Math.max(0L, nowTick - lastTick) / 20L);
     }
 
     static String truncate(String text, int maxChars) {

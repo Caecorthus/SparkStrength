@@ -21,6 +21,9 @@ import annina.sparkstrength.sabotage.SabotageTabletSnapshots;
 import com.mojang.authlib.GameProfile;
 import dev.doctor4t.wathe.api.event.TaskComplete;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
+import net.fabricmc.fabric.api.entity.event.v1.ServerEntityWorldChangeEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.entity.player.ItemCooldownManager;
 import net.minecraft.entity.player.PlayerInventory;
@@ -35,6 +38,7 @@ import org.jetbrains.annotations.Nullable;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,8 +71,17 @@ import java.util.UUID;
  * <p>Drone rows are filled only for viewers holding {@link TabletFeature#DRONE} and list only the viewer's own drones;
  * besides the periodic sync, {@code DronePilotService} pushes a snapshot when a pilot session starts or ends.
  * 无人机行只为拥有无人机功能的观看者填充，且只列出查看者自己的无人机；除周期同步外，DronePilotService 在驾驶会话开始或结束时推送快照。</p>
+ *
+ * <p>The server remembers the last snapshot each client holds: periodic and fan-out syncs skip a viewer whose
+ * snapshot is unchanged, while direct single-player syncs ({@link #syncTo}, {@link #syncPair}, a client request) always
+ * send. The memory is dropped on join, disconnect, world change, server stop, round clear and client request, so a
+ * client that may have discarded its copy is always answered.
+ * 服务端记住每个客户端当前持有的最近一份快照：周期同步与群发同步跳过快照未变化的观看者，而直接的单人同步（syncTo、syncPair、
+ * 客户端请求）总会发送。加入、断线、切换世界、服务器停止、清局与客户端请求时清除该记录，因此可能已丢弃副本的客户端总能得到回应。</p>
  */
 public final class TabletStateService {
+    // What each client currently holds (server thread only). / 每个客户端当前持有的快照（仅服务端线程）。
+    private static final Map<UUID, TabletSnapshot> SENT_SNAPSHOTS = new HashMap<>();
     private static boolean registered;
 
     private TabletStateService() {
@@ -80,6 +93,11 @@ public final class TabletStateService {
         }
         registered = true;
         TaskComplete.EVENT.register((player, taskType) -> onTaskComplete(player));
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> forgetSentSnapshot(handler.player));
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> forgetSentSnapshot(handler.player));
+        ServerEntityWorldChangeEvents.AFTER_PLAYER_CHANGE_WORLD.register(
+                (player, origin, destination) -> forgetSentSnapshot(player));
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> SENT_SNAPSHOTS.clear());
     }
 
     /**
@@ -167,18 +185,23 @@ public final class TabletStateService {
     }
 
     /**
-     * Full sync pass: resolve every holder once, send each its snapshot, then revoke viewers that lost the tablet.
-     * 完整同步轮次：每个持有者只解析一次并各自发送快照，随后撤销已失去平板的观看者。
+     * Full sync pass: resolve every holder once, send each a changed snapshot, then revoke viewers that lost the tablet.
+     * 完整同步轮次：每个持有者只解析一次，快照有变化才发送，随后撤销已失去平板的观看者。
      */
     public static void syncToTabletHolders(ServerWorld world) {
         syncAll(prepare(world));
     }
 
-    /** Client polling entry; throttled per player. / 客户端轮询入口；按玩家限流。 */
+    /**
+     * Client request (the tablet screen opened); throttled per player. A throttled request is still answered by the
+     * next periodic sync, because the remembered snapshot is dropped either way.
+     * 客户端请求（打开平板界面）；按玩家限流。被限流的请求仍会由下一次周期同步回应，因为无论如何都会清除已记录的快照。
+     */
     public static void requestSnapshot(ServerPlayerEntity player) {
         if (player == null) {
             return;
         }
+        forgetSentSnapshot(player);
         if (acceptSnapshotRequest(player)) {
             syncTo(player);
         }
@@ -410,6 +433,7 @@ public final class TabletStateService {
 
     public static void clearRoundState(ServerWorld world) {
         TabletWorldComponent.KEY.get(world).clearRoundState();
+        SENT_SNAPSHOTS.clear();
         syncToTabletHolders(world);
     }
 
@@ -455,7 +479,7 @@ public final class TabletStateService {
                 meetingFeatures ? meetingSnapshot(world, tablet, viewer, electorate) : TabletSnapshot.Meeting.inactive(),
                 meetingFeatures ? suspectRows(world, tablet, viewerUuid, electorate) : List.of(),
                 access.featureMask(),
-                access.hasFeature(TabletFeature.DOOR_LOG) ? doorLogRows(viewer, tablet, now) : List.of(),
+                access.hasFeature(TabletFeature.DOOR_LOG) ? doorLogRows(viewer, tablet) : List.of(),
                 TabletIdentityRules.tasksRemaining(channel, tasksDone),
                 access.hasFeature(TabletFeature.DRONE) ? droneRows(viewer) : List.of(),
                 access.hasFeature(TabletFeature.SABOTAGE)
@@ -546,7 +570,7 @@ public final class TabletStateService {
      * disguised player's real uuid; a viewer whose names are hidden sees every actor as anonymous.
      * 单个观看者的房门记录，最新在前。条目只存表面身份（考虑伪装），绝不存伪装者的真实 UUID；名字被隐藏的观看者看到的操作者全部匿名。
      */
-    private static List<TabletSnapshot.DoorLogRow> doorLogRows(ServerPlayerEntity viewer, TabletWorldComponent tablet, long now) {
+    private static List<TabletSnapshot.DoorLogRow> doorLogRows(ServerPlayerEntity viewer, TabletWorldComponent tablet) {
         List<DoorLog.Entry> entries = tablet.doorLog().newestFirst();
         if (entries.isEmpty()) {
             return List.of();
@@ -562,7 +586,7 @@ public final class TabletStateService {
                             actor != null,
                             actor == null ? null : actor.displayUuid(),
                             actor == null ? "" : actor.displayName(),
-                            DoorLog.ageSeconds(entry, now),
+                            entry.lastTick(),
                             entry.count()
                     );
                 })
@@ -730,14 +754,14 @@ public final class TabletStateService {
 
     private static void syncAll(SyncPass pass) {
         for (ServerPlayerEntity holder : pass.holders()) {
-            sendSnapshot(holder, buildSnapshot(holder, pass.roster()));
+            pushSnapshot(holder, buildSnapshot(holder, pass.roster()));
         }
         revokeStaleViewers(pass);
     }
 
     private static void syncChannelMembers(SyncPass pass, TabletChannel channel) {
         for (ServerPlayerEntity member : TabletAccess.channelMembers(pass.holders(), pass.roster(), channel)) {
-            sendSnapshot(member, buildSnapshot(member, pass.roster()));
+            pushSnapshot(member, buildSnapshot(member, pass.roster()));
         }
     }
 
@@ -794,14 +818,34 @@ public final class TabletStateService {
     }
 
     /**
-     * Clients without the current (v6) payload are skipped instead of being disconnected by unknown bytes.
-     * 未注册当前（v6）负载的客户端直接跳过，避免因未知字节断线。
+     * Fan-out send: skipped when the client already holds an equal snapshot (records compare deeply).
+     * 群发：客户端已持有相同快照时跳过（record 逐层比较）。
+     */
+    private static void pushSnapshot(ServerPlayerEntity player, TabletSnapshot snapshot) {
+        if (snapshot.equals(SENT_SNAPSHOTS.get(player.getUuid()))) {
+            TabletWorldComponent.KEY.get(player.getServerWorld()).markSyncedViewer(player.getUuid());
+            return;
+        }
+        sendSnapshot(player, snapshot);
+    }
+
+    private static void forgetSentSnapshot(@Nullable ServerPlayerEntity player) {
+        if (player != null) {
+            SENT_SNAPSHOTS.remove(player.getUuid());
+        }
+    }
+
+    /**
+     * Clients without the current (v8) payload are skipped instead of being disconnected by unknown bytes. Every
+     * snapshot that goes out, empty ones included, becomes what that client holds.
+     * 未注册当前（v8）负载的客户端直接跳过，避免因未知字节断线。每份发出的快照（包括空快照）都记为该客户端当前持有的快照。
      */
     private static boolean sendPacket(ServerPlayerEntity player, TabletSnapshot snapshot) {
         if (!ServerPlayNetworking.canSend(player, SyncTabletSnapshotS2CPacket.ID)) {
             return false;
         }
         ServerPlayNetworking.send(player, new SyncTabletSnapshotS2CPacket(snapshot));
+        SENT_SNAPSHOTS.put(player.getUuid(), snapshot);
         return true;
     }
 

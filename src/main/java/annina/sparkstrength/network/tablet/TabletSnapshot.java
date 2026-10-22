@@ -21,8 +21,8 @@ import java.util.UUID;
  * 服务端还会按查看者裁剪身份：杀手匿名频道按互认状态，义警频道按查看者本局已完成的任务数。被隐藏发送者的聊天行不含 UUID
  * 与名字，被隐藏成员不会出现在 connections 中。</p>
  *
- * <p>Wire layout (v7, in order; changing it requires a new sync payload id):
- * 线上布局（v7，按顺序；修改它必须更换同步包 id）：
+ * <p>Wire layout (v8, in order; changing it requires a new sync payload id):
+ * 线上布局（v8，按顺序；修改它必须更换同步包 id）：
  * <ol>
  *   <li>bool localHasTablet, varint channelWire, varint allowedChannelMask, bool canSend,
  *   varint channelSwitchCooldownSeconds, bool channelLocked</li>
@@ -33,6 +33,7 @@ import java.util.UUID;
  *   <li>v5: varint identityTasksRemaining</li>
  *   <li>v6: list drones ({@link DroneRow})</li>
  *   <li>v7: list sabotage ({@link SabotageRow}), list sabotageLog ({@link SabotageLogRow})</li>
+ *   <li>v8: a door-log row carries its absolute world tick (varlong) instead of an age</li>
  * </ol>
  * Lists are a varint count followed by the rows.
  * 列表为 varint 数量后接各行。</p>
@@ -303,11 +304,13 @@ public record TabletSnapshot(
     }
 
     /**
-     * One door-log line. {@code id} is the server's monotonic entry id (unread tracking); {@code ageSeconds} is
-     * computed at snapshot time. Only {@link DoorLogKind#KEY_OPENED} rows carry an actor; an anonymous actor has no
-     * uuid and no name. {@code actorUuid} is the apparent (disguise-aware) identity, never a disguised player's real uuid.
-     * 一行房门记录。id 为服务端单调递增的条目 id（用于未读）；ageSeconds 在生成快照时计算。只有 KEY_OPENED 行带操作者；
-     * 匿名操作者不带 uuid 与名字。actorUuid 是表面身份（考虑伪装），绝不是伪装者的真实 uuid。
+     * One door-log line. {@code id} is the server's monotonic entry id (unread tracking); {@code lastTick} is the world
+     * tick the entry last happened, and the client derives the age from its synced world time, so an ageing log never
+     * changes the snapshot. Only {@link DoorLogKind#KEY_OPENED} rows carry an actor; an anonymous actor has no uuid and
+     * no name. {@code actorUuid} is the apparent (disguise-aware) identity, never a disguised player's real uuid.
+     * 一行房门记录。id 为服务端单调递增的条目 id（用于未读）；lastTick 为该条目最后一次发生时的世界 tick，客户端用同步的世界时间
+     * 计算经过时间，因此记录变旧不会改变快照。只有 KEY_OPENED 行带操作者；匿名操作者不带 uuid 与名字。actorUuid 是表面身份
+     * （考虑伪装），绝不是伪装者的真实 uuid。
      */
     public record DoorLogRow(
             int id,
@@ -316,7 +319,7 @@ public record TabletSnapshot(
             boolean hasActor,
             @Nullable UUID actorUuid,
             String actorName,
-            int ageSeconds,
+            long lastTick,
             int count
     ) {
         public DoorLogRow {
@@ -327,7 +330,7 @@ public record TabletSnapshot(
             } else if (actorName == null) {
                 actorName = "";
             }
-            ageSeconds = Math.max(0, ageSeconds);
+            lastTick = Math.max(0L, lastTick);
             count = Math.max(1, count);
         }
 
@@ -349,7 +352,7 @@ public record TabletSnapshot(
                 writeOptionalUuid(buf, actorUuid);
                 buf.writeString(actorName);
             }
-            buf.writeVarInt(ageSeconds);
+            buf.writeVarLong(lastTick);
             buf.writeVarInt(count);
         }
 
@@ -364,7 +367,7 @@ public record TabletSnapshot(
                 actorUuid = readOptionalUuid(buf);
                 actorName = buf.readString(32767);
             }
-            return new DoorLogRow(id, kindWire, doorName, hasActor, actorUuid, actorName, buf.readVarInt(), buf.readVarInt());
+            return new DoorLogRow(id, kindWire, doorName, hasActor, actorUuid, actorName, buf.readVarLong(), buf.readVarInt());
         }
     }
 
