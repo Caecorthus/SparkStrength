@@ -62,6 +62,8 @@ public final class UndercoverThermalRenderer {
     private static final int INITIAL_BUFFER_BYTES = 64 * 1024;
     private static final String IRIS_API = "net.irisshaders.iris.api.v0.IrisApi";
     private static final boolean IRIS_LOADED = FabricLoader.getInstance().isModLoaded("iris");
+    /** Frustum margin around a body; vanilla culls entities with 0.5. / 人体周围的视锥余量；原版剔除实体用 0.5。 */
+    private static final double CULL_MARGIN = 1.5;
 
     private static PostEffectProcessor processor;
     private static Framebuffer processorTarget;
@@ -189,11 +191,10 @@ public final class UndercoverThermalRenderer {
                 if (body == client.player && client.options.getPerspective().isFirstPerson()) {
                     continue;
                 }
-                if (!GameFunctions.isPlayerPlayingAndAlive(body) || body.squaredDistanceTo(camera) > range
-                        || !inView(frustum, body)) {
+                if (!GameFunctions.isPlayerPlayingAndAlive(body) || body.squaredDistanceTo(camera) > range) {
                     continue;
                 }
-                emitBody(dispatcher, body, camera, tickDelta, provider);
+                emitBody(dispatcher, body, camera, frustum, tickDelta, provider);
             }
         } finally {
             rendering = false;
@@ -282,25 +283,29 @@ public final class UndercoverThermalRenderer {
     }
 
     /**
-     * The frustum test of EntityRenderer#shouldRender (its render-distance check aside, as before): a body vanilla culls
-     * as off screen has no pixel in the heat image either. No frustum yet: draw it, as before.
-     * EntityRenderer#shouldRender 的视锥判断（与之前一样不含其渲染距离判断）：原版视为屏幕外而剔除的人体，在热图中同样
-     * 没有像素。尚无视锥时照常绘制。
+     * Conservative frustum cull: only a body that cannot put a pixel on screen is skipped. The box is swept from the
+     * last to the current tick position (emitBody draws in between), stretched by the renderer offset and grown by
+     * {@link #CULL_MARGIN}, wider than vanilla's 0.5: the heat pass draws against the world depth, so arms, held items,
+     * capes or a skateboard reaching past vanilla's margin still glow. No frustum or no usable box: draw it, as before.
+     * 保守的视锥剔除：只跳过不可能在屏幕上留下像素的人体。包围盒从上一 tick 位置扫到当前 tick 位置（emitBody 画在两者之间），
+     * 按渲染偏移拉伸，并按比原版 0.5 更宽的 CULL_MARGIN 扩大：热图以世界深度做深度测试，所以伸出原版余量的手臂、手持物品、
+     * 披风或滑板仍会发热。没有视锥或包围盒不可用时照常绘制。
      */
-    private static boolean inView(@Nullable Frustum frustum, AbstractClientPlayerEntity body) {
+    private static boolean inView(@Nullable Frustum frustum, AbstractClientPlayerEntity body, Vec3d offset) {
         if (frustum == null || body.ignoreCameraFrustum) {
             return true;
         }
-        Box box = body.getVisibilityBoundingBox().expand(0.5);
-        if (box.isNaN() || box.getAverageSideLength() == 0.0) {
-            box = new Box(body.getX() - 2.0, body.getY() - 2.0, body.getZ() - 2.0,
-                    body.getX() + 2.0, body.getY() + 2.0, body.getZ() + 2.0);
+        Box now = body.getVisibilityBoundingBox();
+        if (now.isNaN() || now.getAverageSideLength() == 0.0) {
+            return true;
         }
-        return frustum.isVisible(box);
+        Box last = now.offset(body.lastRenderX - body.getX(), body.lastRenderY - body.getY(),
+                body.lastRenderZ - body.getZ());
+        return frustum.isVisible(now.union(last).stretch(offset).expand(CULL_MARGIN));
     }
 
     private static void emitBody(EntityRenderDispatcher dispatcher, AbstractClientPlayerEntity body, Vec3d camera,
-                                 float tickDelta, VertexConsumerProvider provider) {
+                                 @Nullable Frustum frustum, float tickDelta, VertexConsumerProvider provider) {
         // Same placement as WorldRenderer#renderEntity + EntityRenderDispatcher#render, minus shadow, fire, hitbox.
         // 与 WorldRenderer#renderEntity + EntityRenderDispatcher#render 摆放一致，但不画阴影、火焰与碰撞箱。
         double x = MathHelper.lerp(tickDelta, body.lastRenderX, body.getX()) - camera.x;
@@ -311,6 +316,9 @@ public final class UndercoverThermalRenderer {
         try {
             EntityRenderer<? super AbstractClientPlayerEntity> renderer = dispatcher.getRenderer(body);
             Vec3d offset = renderer.getPositionOffset(body, tickDelta);
+            if (!inView(frustum, body, offset)) {
+                return;
+            }
             matrices.translate(x + offset.x, y + offset.y, z + offset.z);
             renderer.render(body, yaw, tickDelta, matrices, provider, LightmapTextureManager.MAX_LIGHT_COORDINATE);
         } catch (RuntimeException exception) {
