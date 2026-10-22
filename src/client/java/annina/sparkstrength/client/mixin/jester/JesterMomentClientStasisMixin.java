@@ -35,6 +35,11 @@ public abstract class JesterMomentClientStasisMixin {
             return;
         }
         GameWorldComponent game = GameWorldComponent.KEY.get(client.world);
+        // Every tick, so nothing to look for between rounds: Wathe clears the role map before a round goes inactive.
+        // 每 tick 执行，因此对局之间无需查找：Wathe 在对局转为未进行之前就已清空身份表。
+        if (!game.isRunning()) {
+            return;
+        }
         for (AbstractClientPlayerEntity player : client.world.getPlayers()) {
             if (game.isRole(player, Noellesroles.JESTER) && JesterPlayerComponent.KEY.get(player).inStasis) {
                 activeJesterUuid = player.getUuid();
