@@ -18,6 +18,7 @@ import net.minecraft.entity.mob.PathAwareEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundEvent;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
@@ -41,8 +42,12 @@ public class PartygoerEntity extends PathAwareEntity {
     private static final TrackedData<Byte> STATE =
             DataTracker.registerData(PartygoerEntity.class, TrackedDataHandlerRegistry.BYTE);
 
-    /** Where the carried player rides: in front of the chest, on the outstretched arms. / 被扛玩家的位置：胸前、伸出的手臂上。 */
-    private static final Vec3d CARRY_ATTACHMENT = new Vec3d(0.0, 1.05, 0.55);
+    /**
+     * Where the carried player rides: standing in front of the chest, inside the outstretched arms, feet on the floor
+     * (a player rides {@code PlayerEntity.VEHICLE_ATTACHMENT_POS} = 0.6 above its feet).
+     * 被抱玩家的位置：站在胸前、伸出的双臂之间，双脚着地（玩家的骑乘点在脚上方 0.6 格，即 VEHICLE_ATTACHMENT_POS）。
+     */
+    private static final Vec3d CARRY_ATTACHMENT = new Vec3d(0.0, 0.6, 0.5);
 
     private @Nullable PartygoerBrain brain;
 
@@ -168,9 +173,14 @@ public class PartygoerEntity extends PathAwareEntity {
         return passenger instanceof PlayerEntity && getPassengerList().isEmpty();
     }
 
+    /**
+     * Turned with the body, as the vanilla attachments are turned with the yaw: the client draws the body, and the
+     * rider's own body follows it.
+     * 随身体朝向旋转（原版附着点随 yaw 旋转）：客户端按身体朝向绘制，被抱者的身体也跟随它。
+     */
     @Override
     protected Vec3d getPassengerAttachmentPos(Entity passenger, EntityDimensions dimensions, float scaleFactor) {
-        return CARRY_ATTACHMENT;
+        return CARRY_ATTACHMENT.rotateY(-bodyYaw * MathHelper.RADIANS_PER_DEGREE);
     }
 
     @Override
