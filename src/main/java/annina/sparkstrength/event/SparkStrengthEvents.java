@@ -1,19 +1,9 @@
 package annina.sparkstrength.event;
 
 import annina.sparkstrength.compat.SparkFactionCompat;
-import annina.sparkstrength.component.detective.DetectiveCasePlayerComponent;
 import annina.sparkstrength.component.collision.PlayerCollisionGraceWorldComponent;
-import annina.sparkstrength.component.demonhunter.DemonHunterSniffPlayerComponent;
-import annina.sparkstrength.component.vulture.VultureSuperCursePlayerComponent;
 import annina.sparkstrength.component.morphling.MorphBodyDisguiseWorldComponent;
-import annina.sparkstrength.component.noisemaker.NoisemakerGlowTargetComponent;
-import annina.sparkstrength.component.noisemaker.NoisemakerGlowUserComponent;
-import annina.sparkstrength.component.phantom.PhantomBackpackTargetComponent;
-import annina.sparkstrength.component.phantom.PhantomBackpackUserComponent;
-import annina.sparkstrength.component.professor.ProfessorSerumTargetComponent;
-import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
 import annina.sparkstrength.item.m67.M67RoundService;
-import annina.sparkstrength.component.reporter.ReporterCommunicationComponent;
 import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.phantom.PhantomBackpackService;
 import annina.sparkstrength.role.attendant.AttendantFlashlightService;
@@ -213,39 +203,9 @@ public final class SparkStrengthEvents {
             }
         });
 
-        ResetPlayer.EVENT.register(player -> {
-            // Wathe fires ResetPlayer in baseInitialize (round start) and in resetPlayer, which serverTick runs while no
-            // game is running for players still inside the play area; never on death.
-            // Wathe 只在开局 baseInitialize，以及非对局期间 serverTick 对仍在游戏区域内玩家调用的 resetPlayer 中触发 ResetPlayer；死亡时不会触发。
-            // 这里把点亮冷却和目标倒计时都清掉，避免跨局残留。
-            NoisemakerGlowUserComponent.KEY.get(player).reset();
-            NoisemakerGlowTargetComponent.KEY.get(player).reset();
-            PhantomBackpackUserComponent.KEY.get(player).reset();
-            PhantomBackpackTargetComponent.KEY.get(player).reset();
-            ProfessorSerumUserComponent.KEY.get(player).reset();
-            ProfessorSerumTargetComponent.KEY.get(player).reset();
-            ReporterCommunicationComponent.KEY.get(player).reset();
-            if (player instanceof ServerPlayerEntity serverPlayer) {
-                WaiterTaskRevealService.reset(serverPlayer);
-                UndercoverService.reset(serverPlayer);
-                TimekeeperWatchComponent.KEY.get(serverPlayer).reset();
-            }
-            DetectiveCasePlayerComponent.KEY.get(player).clearAll();
-            DemonHunterSniffPlayerComponent.KEY.get(player).clearSniff();
-            VultureSuperCursePlayerComponent.KEY.get(player).clear();
-            if (player instanceof ServerPlayerEntity serverPlayer) {
-                CorruptCopAbilityService.reset(serverPlayer);
-                CoronerService.clearPlayer(serverPlayer);
-                EngineerCaptureDeviceService.clearPlayer(serverPlayer);
-                MorphlingService.reset(serverPlayer);
-                ToxicologistAntidoteService.clearPlayer(serverPlayer);
-                ToxicologistBluePassiveService.clearPlayer(serverPlayer);
-                VeteranKnifeService.reset(serverPlayer);
-                BodyguardShieldService.resetRound(serverPlayer);
-                PartyBalloonService.clearPlayer(serverPlayer);
-                PartygoerSkillService.reset(serverPlayer);
-            }
-        });
+        // Per-player round reset (round start, round end, lobby); PlayerRoundReset lists where Wathe fires it.
+        // 单人回合重置（开局、终局、大厅）；Wathe 的触发位置见 PlayerRoundReset。
+        ResetPlayer.EVENT.register(PlayerRoundReset::reset);
 
         KillPlayer.AFTER.register((victim, killer, deathReason) -> {
             // 大嗓门死亡后的“杀手发光 15 秒”是被动效果，不写入回放。
@@ -271,28 +231,10 @@ public final class SparkStrengthEvents {
                 VeteranBlackoutService.clear(serverWorld);
                 BlackoutSightService.clear(serverWorld);
                 VeteranEconomyService.clearRoundState();
-                for (ServerPlayerEntity player : serverWorld.getPlayers()) {
-                    CorruptCopAbilityService.reset(player);
-                    CoronerService.clearPlayer(player);
-                    DetectiveCasePlayerComponent.KEY.get(player).clearAll();
-                    EngineerCaptureDeviceService.clearPlayer(player);
-                    MorphlingService.reset(player);
-                    PhantomBackpackService.clearPlayer(player);
-                    ToxicologistAntidoteService.clearPlayer(player);
-                    ToxicologistBluePassiveService.clearPlayer(player);
-                    ProfessorSerumUserComponent.KEY.get(player).reset();
-                    ProfessorSerumTargetComponent.KEY.get(player).reset();
-                    ReporterCommunicationComponent.KEY.get(player).reset();
-                    WaiterTaskRevealService.reset(player);
-                    DemonHunterSniffService.clearPlayer(player);
-                    VultureSuperCurseService.clearPlayer(player);
-                    PartygoerSkillService.reset(player);
-                    VeteranKnifeService.reset(player);
-                    TimekeeperWatchComponent.KEY.get(player).reset();
-                    BodyguardShieldService.resetRound(player);
-                    UndercoverService.reset(player);
-                    PartyBalloonService.clearPlayer(player);
-                }
+                // Per-player state is already reset: finalizeGame runs resetPlayer, and with it PlayerRoundReset, for
+                // every player of this world just before it clears the role map and fires this event.
+                // 单人状态此时已重置：finalizeGame 在清空身份表并触发本事件之前，已对本世界每名玩家执行 resetPlayer，
+                // 也就执行了 PlayerRoundReset。
                 // Chopped-down doors come back for the next round. / 被拆掉的门在下一局前放回。
                 DoorBreachService.restoreAll(serverWorld);
             }
