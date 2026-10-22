@@ -1,13 +1,17 @@
 package annina.sparkstrength.role.partyanimal.nav;
 
+import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.function.LongPredicate;
 
@@ -40,38 +44,31 @@ public final class TrainPathfinder {
         if (start == goal) {
             return List.of(start);
         }
-        Map<Long, Double> best = new HashMap<>();
-        Map<Long, Long> parent = new HashMap<>();
-        PriorityQueue<Node> open = new PriorityQueue<>();
-        best.put(start, 0.0);
-        open.add(new Node(start, 0.0, heuristic(start, goal, grid)));
+        Search search = new Search(grid, goal, true);
+        search.best.put(start, 0.0);
+        search.open.add(start, 0.0, heuristic(start, goal, grid));
         long closest = start;
         double closestDistance = heuristic(start, goal, grid);
         int expanded = 0;
-        while (!open.isEmpty() && expanded < budget) {
-            Node node = open.poll();
-            if (node.cost > best.getOrDefault(node.cell, Double.MAX_VALUE)) {
+        while (!search.open.isEmpty() && expanded < budget) {
+            search.open.poll();
+            long cell = search.open.polledCell;
+            double cost = search.open.polledCost;
+            if (cost > search.best.get(cell)) {
                 continue;
             }
-            if (node.cell == goal) {
-                return rebuild(parent, goal);
+            if (cell == goal) {
+                return rebuild(search.parent, goal);
             }
-            double distance = heuristic(node.cell, goal, grid);
+            double distance = heuristic(cell, goal, grid);
             if (distance < closestDistance) {
                 closestDistance = distance;
-                closest = node.cell;
+                closest = cell;
             }
             expanded++;
-            grid.neighbors(node.cell, (next, step) -> {
-                double cost = node.cost + step;
-                if (cost < best.getOrDefault(next, Double.MAX_VALUE)) {
-                    best.put(next, cost);
-                    parent.put(next, node.cell);
-                    open.add(new Node(next, cost, cost + heuristic(next, goal, grid)));
-                }
-            });
+            search.expand(cell, cost);
         }
-        return rebuild(parent, closest);
+        return rebuild(search.parent, closest);
     }
 
     /**
@@ -85,27 +82,23 @@ public final class TrainPathfinder {
         if (goals.contains(start)) {
             return start;
         }
-        Map<Long, Double> best = new HashMap<>();
-        PriorityQueue<Node> open = new PriorityQueue<>();
-        best.put(start, 0.0);
-        open.add(new Node(start, 0.0, 0.0));
+        LongSet goalCells = goals instanceof LongSet cells ? cells : new LongOpenHashSet(goals);
+        Search search = new Search(grid, Long.MIN_VALUE, false);
+        search.best.put(start, 0.0);
+        search.open.add(start, 0.0, 0.0);
         int expanded = 0;
-        while (!open.isEmpty() && expanded < budget) {
-            Node node = open.poll();
-            if (node.cost > best.getOrDefault(node.cell, Double.MAX_VALUE)) {
+        while (!search.open.isEmpty() && expanded < budget) {
+            search.open.poll();
+            long cell = search.open.polledCell;
+            double cost = search.open.polledCost;
+            if (cost > search.best.get(cell)) {
                 continue;
             }
-            if (goals.contains(node.cell)) {
-                return node.cell;
+            if (goalCells.contains(cell)) {
+                return cell;
             }
             expanded++;
-            grid.neighbors(node.cell, (next, step) -> {
-                double cost = node.cost + step;
-                if (cost < best.getOrDefault(next, Double.MAX_VALUE)) {
-                    best.put(next, cost);
-                    open.add(new Node(next, cost, cost));
-                }
-            });
+            search.expand(cell, cost);
         }
         return Long.MIN_VALUE;
     }
@@ -143,10 +136,10 @@ public final class TrainPathfinder {
         return Math.sqrt(dx * dx + dz * dz) + 0.5 * Math.abs(dy);
     }
 
-    private static List<Long> rebuild(Map<Long, Long> parent, long goal) {
+    private static List<Long> rebuild(Long2LongOpenHashMap parent, long goal) {
         List<Long> cells = new ArrayList<>();
-        Long cell = goal;
-        while (cell != null) {
+        long cell = goal;
+        while (cell != Long.MIN_VALUE) {
             cells.add(cell);
             cell = parent.get(cell);
         }
@@ -154,10 +147,125 @@ public final class TrainPathfinder {
         return cells;
     }
 
-    private record Node(long cell, double cost, double estimate) implements Comparable<Node> {
+    /**
+     * One search's tables, and the neighbour sink reused for every expansion (no lambda per cell). Without a goal it
+     * is Dijkstra: the estimate is the cost and no parents are kept.
+     * 一次搜索的表，以及每次扩展复用的邻格回调（不为每格新建 lambda）。没有目标时即 Dijkstra：估值等于代价，不记父格。
+     */
+    private static final class Search implements TrainNavGrid.NeighborSink {
+        final TrainNavGrid grid;
+        final long goal;
+        final Long2DoubleOpenHashMap best = new Long2DoubleOpenHashMap();
+        final Long2LongOpenHashMap parent;
+        final OpenSet open = new OpenSet();
+        long fromCell;
+        double fromCost;
+
+        Search(TrainNavGrid grid, long goal, boolean keepParents) {
+            this.grid = grid;
+            this.goal = goal;
+            best.defaultReturnValue(Double.MAX_VALUE);
+            parent = keepParents ? new Long2LongOpenHashMap() : null;
+            if (parent != null) {
+                parent.defaultReturnValue(Long.MIN_VALUE);
+            }
+        }
+
+        void expand(long cell, double cost) {
+            fromCell = cell;
+            fromCost = cost;
+            grid.neighbors(cell, this);
+        }
+
         @Override
-        public int compareTo(Node other) {
-            return Double.compare(estimate, other.estimate);
+        public void accept(long next, double step) {
+            double cost = fromCost + step;
+            if (cost < best.get(next)) {
+                best.put(next, cost);
+                if (parent != null) {
+                    parent.put(next, fromCell);
+                    open.add(next, cost, cost + heuristic(next, goal, grid));
+                } else {
+                    open.add(next, cost, cost);
+                }
+            }
+        }
+    }
+
+    /**
+     * Binary min-heap on the estimate over parallel primitive arrays. Sifts exactly like {@link java.util.PriorityQueue}
+     * so equal estimates leave in the same order, and paths stay the same.
+     * 以估值为键、基于并行基本类型数组的二叉小顶堆。上浮下沉与 PriorityQueue 完全一致，估值相同时出堆顺序不变，路径也就不变。
+     */
+    static final class OpenSet {
+        private long[] cells = new long[64];
+        private double[] costs = new double[64];
+        private double[] estimates = new double[64];
+        private int size;
+        long polledCell;
+        double polledCost;
+
+        boolean isEmpty() {
+            return size == 0;
+        }
+
+        void add(long cell, double cost, double estimate) {
+            if (size == cells.length) {
+                int capacity = size * 2;
+                cells = Arrays.copyOf(cells, capacity);
+                costs = Arrays.copyOf(costs, capacity);
+                estimates = Arrays.copyOf(estimates, capacity);
+            }
+            int k = size++;
+            while (k > 0) {
+                int up = (k - 1) >>> 1;
+                if (Double.compare(estimate, estimates[up]) >= 0) {
+                    break;
+                }
+                move(up, k);
+                k = up;
+            }
+            set(k, cell, cost, estimate);
+        }
+
+        /** Removes the head into {@link #polledCell} and {@link #polledCost}. / 取出堆顶到 polledCell 与 polledCost。 */
+        void poll() {
+            polledCell = cells[0];
+            polledCost = costs[0];
+            int n = --size;
+            if (n == 0) {
+                return;
+            }
+            long cell = cells[n];
+            double cost = costs[n];
+            double estimate = estimates[n];
+            int k = 0;
+            int half = n >>> 1;
+            while (k < half) {
+                int child = (k << 1) + 1;
+                int right = child + 1;
+                if (right < n && Double.compare(estimates[child], estimates[right]) > 0) {
+                    child = right;
+                }
+                if (Double.compare(estimate, estimates[child]) <= 0) {
+                    break;
+                }
+                move(child, k);
+                k = child;
+            }
+            set(k, cell, cost, estimate);
+        }
+
+        private void move(int from, int to) {
+            cells[to] = cells[from];
+            costs[to] = costs[from];
+            estimates[to] = estimates[from];
+        }
+
+        private void set(int at, long cell, double cost, double estimate) {
+            cells[at] = cell;
+            costs[at] = cost;
+            estimates[at] = estimate;
         }
     }
 }

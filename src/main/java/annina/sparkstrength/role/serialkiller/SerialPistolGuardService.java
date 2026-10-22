@@ -69,21 +69,29 @@ public final class SerialPistolGuardService {
                 changed = true;
             }
         }
-        for (ScreenHandler handler : new ScreenHandler[]{player.playerScreenHandler, player.currentScreenHandler}) {
-            if (SerialPistolInventoryRules.isPistol(handler.getCursorStack())) {
-                handler.setCursorStack(ItemStack.EMPTY);
-                changed = true;
-            }
-            for (Slot slot : handler.slots) {
-                if (slot.inventory != inventory && SerialPistolInventoryRules.isPistol(slot.getStack())) {
-                    slot.setStack(ItemStack.EMPTY);
-                    changed = true;
-                }
-            }
+        changed |= removeFromHandler(player.playerScreenHandler, inventory);
+        // With no screen open both are the same handler: scan it once. / 没开界面时两者是同一个界面：只扫一次。
+        if (player.currentScreenHandler != player.playerScreenHandler) {
+            changed |= removeFromHandler(player.currentScreenHandler, inventory);
         }
         if (changed) {
             inventory.markDirty();
             player.currentScreenHandler.sendContentUpdates();
         }
+    }
+
+    private static boolean removeFromHandler(ScreenHandler handler, PlayerInventory inventory) {
+        boolean changed = false;
+        if (SerialPistolInventoryRules.isPistol(handler.getCursorStack())) {
+            handler.setCursorStack(ItemStack.EMPTY);
+            changed = true;
+        }
+        for (Slot slot : handler.slots) {
+            if (slot.inventory != inventory && SerialPistolInventoryRules.isPistol(slot.getStack())) {
+                slot.setStack(ItemStack.EMPTY);
+                changed = true;
+            }
+        }
+        return changed;
     }
 }

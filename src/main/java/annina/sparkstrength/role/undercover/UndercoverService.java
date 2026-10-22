@@ -67,8 +67,12 @@ public final class UndercoverService {
         for (ServerPlayerEntity player : world.getPlayers()) {
             UndercoverPlayerComponent state = UndercoverPlayerComponent.KEY.get(player);
             boolean undercover = UndercoverRoles.isUndercover(player);
+            // Only the Undercover's outfit is ever put on below, so anyone else whose outfit is off loses stray pieces
+            // in the same pass as the bound gear.
+            // 下面只会给卧底穿上黑衣，因此黑衣未穿的其他人在收绑定装备的同一遍里收走残留黑衣。
+            boolean outfitSwept = !undercover && !state.isOutfitOn();
             if (!undercover) {
-                stripBoundGear(player);
+                stripBoundGear(player, outfitSwept);
             }
             boolean livingUndercover = undercover && GameFunctions.isPlayerPlayingAndAlive(player);
             if (livingUndercover && !state.isStage2() && player.getEquippedStack(EquipmentSlot.HEAD)
@@ -91,7 +95,7 @@ public final class UndercoverService {
             maintainBlackoutSpeed(player, state, UndercoverRules.blackoutSpeed(stage2, blackout,
                     player.getEquippedStack(EquipmentSlot.HEAD).isOf(SparkStrengthItems.cqcmMask())));
             trackKillCooldown(player, state, stage2 && blackout, now);
-            if (!state.isOutfitOn()) {
+            if (!outfitSwept && !state.isOutfitOn()) {
                 stripStrayOutfit(player);
             }
         }
@@ -308,12 +312,15 @@ public final class UndercoverService {
      * The mask and the tomahawk only ever belong to the real Undercover: anyone else who ends up with one (a container
      * swap, an armour-slot trick) loses it at once.
      * 面具与战术斧只属于真卧底：其他人无论通过什么途径（容器交换、盔甲槽操作）拿到，都会立刻失去。
+     * {@code strayOutfit}: also take left-over outfit pieces, as {@link #stripStrayOutfit} would.
+     * {@code strayOutfit}：同时收走残留黑衣，与 stripStrayOutfit 相同。
      */
-    private static void stripBoundGear(ServerPlayerEntity player) {
+    private static void stripBoundGear(ServerPlayerEntity player, boolean strayOutfit) {
         PlayerInventory inventory = player.getInventory();
         for (int slot = 0; slot < inventory.size(); slot++) {
             ItemStack stack = inventory.getStack(slot);
-            if (stack.isOf(SparkStrengthItems.cqcmMask()) || stack.isOf(SparkStrengthItems.tacticalTomahawk())) {
+            if (stack.isOf(SparkStrengthItems.cqcmMask()) || stack.isOf(SparkStrengthItems.tacticalTomahawk())
+                    || strayOutfit && isOutfit(stack)) {
                 inventory.setStack(slot, ItemStack.EMPTY);
             }
         }

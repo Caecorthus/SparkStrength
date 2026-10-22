@@ -4,6 +4,7 @@ import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.component.undercover.RemovedDoorsWorldComponent;
 import annina.sparkstrength.network.sabotage.ChannelProgressS2CPacket;
 import annina.sparkstrength.role.attendant.DoorLogService;
+import annina.sparkstrength.role.partyanimal.PartygoerService;
 import annina.sparkstrength.sabotage.SabotageActionLocks;
 import annina.sparkstrength.sabotage.SabotageRules;
 import dev.doctor4t.wathe.api.event.DoorInteraction;
@@ -86,6 +87,9 @@ public final class DoorBreachService {
         long lastResyncTick;
         final long startTick;
         int progress;
+        /** Cracks go out on a stage change or a refresh, not every tick. / 裂纹只在阶段变化或定期刷新时发送，而非每 tick。 */
+        int lastCrackStage = -1;
+        long lastCrackSentTick;
 
         Channel(RegistryKey<World> world, BlockPos lowerPos, UndercoverRules.DoorKind kind, long now) {
             this.world = world;
@@ -209,8 +213,13 @@ public final class DoorBreachService {
                         0.8F, 0.9F + world.random.nextFloat() * 0.2F);
             }
             int stage = Math.min(9, channel.progress * 10 / channel.kind.breachTicks());
-            world.setBlockBreakingInfo(crackId(channel.lowerPos), channel.lowerPos, stage);
-            world.setBlockBreakingInfo(crackId(channel.lowerPos.up()), channel.lowerPos.up(), stage);
+            if (stage != channel.lastCrackStage
+                    || now - channel.lastCrackSentTick >= SabotageRules.CRACK_REFRESH_TICKS) {
+                world.setBlockBreakingInfo(crackId(channel.lowerPos), channel.lowerPos, stage);
+                world.setBlockBreakingInfo(crackId(channel.lowerPos.up()), channel.lowerPos.up(), stage);
+                channel.lastCrackStage = stage;
+                channel.lastCrackSentTick = now;
+            }
             if (channel.progress >= channel.kind.breachTicks()) {
                 iterator.remove();
                 send(player, channel, ChannelProgressS2CPacket.STATE_FINISHED);
@@ -278,12 +287,16 @@ public final class DoorBreachService {
         // Recorded before anything is removed, so a crash mid-way still knows every half.
         // 先登记再移除，即使中途崩溃也记得每一半。
         RemovedDoorsWorldComponent.KEY.get(world).add(taken);
+        List<BlockPos> changed = new ArrayList<>();
         for (RemovedDoorsWorldComponent.RemovedBlock block : taken) {
             world.syncWorldEvent(WorldEvents.BLOCK_BROKEN, block.pos(), Block.getRawIdFromState(block.state()));
             world.setBlockState(block.pos(), Blocks.AIR.getDefaultState(),
                     Block.NOTIFY_LISTENERS | Block.FORCE_STATE | Block.SKIP_DROPS);
             world.setBlockBreakingInfo(crackId(block.pos()), block.pos(), -1);
+            changed.add(block.pos());
         }
+        // A chopped steel door is a way through for the Partygoer too. / 被拆的钢门对派对客也是通路。
+        PartygoerService.onBlocksChanged(world, changed);
         world.playSound(null, lowerPos.up(), breakSound(kind), SoundCategory.BLOCKS, 1.0F, 1.0F);
         player.swingHand(Hand.MAIN_HAND, true);
         NbtCompound extra = new NbtCompound();
@@ -302,11 +315,14 @@ public final class DoorBreachService {
             return;
         }
         List<RemovedDoorsWorldComponent.RemovedBlock> removed = record.takeAll();
+        List<BlockPos> changed = new ArrayList<>();
         for (RemovedDoorsWorldComponent.RemovedBlock block : removed) {
             if (world.getBlockState(block.pos()).isAir()) {
                 world.setBlockState(block.pos(), block.state(), Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
+                changed.add(block.pos());
             }
         }
+        PartygoerService.onBlocksChanged(world, changed);
         for (RemovedDoorsWorldComponent.RemovedBlock block : removed) {
             BlockEntity blockEntity = world.getBlockEntity(block.pos());
             if (block.blockEntity() != null && blockEntity != null && world.getBlockState(block.pos()) == block.state()) {
@@ -344,6 +360,13 @@ public final class DoorBreachService {
     private static void clearCracks(ServerWorld world, BlockPos lowerPos) {
         world.setBlockBreakingInfo(crackId(lowerPos), lowerPos, -1);
         world.setBlockBreakingInfo(crackId(lowerPos.up()), lowerPos.up(), -1);
+        // Crack ids belong to the door, not the chopper: anyone still chopping it sends its stage again next tick.
+        // 裂纹编号属于门而非拆门者：仍在拆这扇门的人下一 tick 重新发送其阶段。
+        for (Channel other : CHANNELS.values()) {
+            if (other.world == world.getRegistryKey() && other.lowerPos.equals(lowerPos)) {
+                other.lastCrackStage = -1;
+            }
+        }
     }
 
     private static void send(ServerPlayerEntity player, Channel channel, int state) {

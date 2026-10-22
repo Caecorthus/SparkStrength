@@ -1,7 +1,9 @@
 package annina.sparkstrength.role.partyanimal.nav;
 
-import java.util.HashMap;
-import java.util.Map;
+import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+
+import java.util.Arrays;
 
 /**
  * Walkable-cell grid of the train for the Partygoer, built lazily from collision boxes. Vanilla pathfinding cannot be
@@ -31,6 +33,8 @@ public final class TrainNavGrid {
             {1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
     };
     private static final int[] DY_ORDER = {0, 1, -1};
+    private static final double UNKNOWN_FLOOR = Double.NEGATIVE_INFINITY;
+    private static final long[] NO_EDGES = new long[0];
 
     private final NavBlocks blocks;
     private final int minX;
@@ -39,8 +43,13 @@ public final class TrainNavGrid {
     private final int maxX;
     private final int maxY;
     private final int maxZ;
-    private final Map<Long, double[][]> boxCache = new HashMap<>();
-    private final Map<Long, Double> floorCache = new HashMap<>();
+    private final Long2ObjectOpenHashMap<double[][]> boxCache = new Long2ObjectOpenHashMap<>();
+    private final Long2DoubleOpenHashMap floorCache = new Long2DoubleOpenHashMap();
+    /**
+     * Per cell, the {@link #neighbors} answer as (cell, cost bits) pairs, so repeated searches skip the collision sweeps.
+     * 每格的 neighbors 结果，按（格子, 代价位）成对存放，重复搜索时不再做碰撞扫掠。
+     */
+    private final Long2ObjectOpenHashMap<long[]> edgeCache = new Long2ObjectOpenHashMap<>();
 
     /** Bounds are inclusive block coordinates (Wathe's play area). / 边界为闭区间方块坐标（Wathe 游玩区）。 */
     public TrainNavGrid(NavBlocks blocks, int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
@@ -51,6 +60,7 @@ public final class TrainNavGrid {
         this.maxX = maxX;
         this.maxY = maxY;
         this.maxZ = maxZ;
+        floorCache.defaultReturnValue(UNKNOWN_FLOOR);
     }
 
     // ---- Cell keys (same packing as BlockPos#asLong) / 单元格键（与 BlockPos#asLong 相同的打包方式） ----
@@ -80,8 +90,8 @@ public final class TrainNavGrid {
     /** Absolute feet height in the cell, or NaN when nothing can stand there. / 该格内的绝对脚高，不可站立时为 NaN。 */
     public double floor(int x, int y, int z) {
         long key = key(x, y, z);
-        Double cached = floorCache.get(key);
-        if (cached != null) {
+        double cached = floorCache.get(key);
+        if (cached != UNKNOWN_FLOOR) {
             return cached;
         }
         double floor = computeFloor(x, y, z);
@@ -183,13 +193,28 @@ public final class TrainNavGrid {
      * 对 cell 的每个可达邻格调用 sink，并给出步进代价（水平距离，高度变化略加代价，让平路优先）。
      */
     public void neighbors(long cell, NeighborSink sink) {
+        long[] edges = edgeCache.get(cell);
+        if (edges == null) {
+            edges = computeEdges(cell);
+            if (aroundLoaded(x(cell), z(cell))) {
+                edgeCache.put(cell, edges);
+            }
+        }
+        for (int i = 0; i < edges.length; i += 2) {
+            sink.accept(edges[i], Double.longBitsToDouble(edges[i + 1]));
+        }
+    }
+
+    private long[] computeEdges(long cell) {
         int x = x(cell);
         int y = y(cell);
         int z = z(cell);
         double from = floor(x, y, z);
         if (Double.isNaN(from)) {
-            return;
+            return NO_EDGES;
         }
+        long[] edges = new long[DIRECTIONS.length * 2];
+        int size = 0;
         for (int[] direction : DIRECTIONS) {
             int nx = x + direction[0];
             int nz = z + direction[1];
@@ -200,11 +225,29 @@ public final class TrainNavGrid {
                 }
                 if (canMove(x, y, z, nx, ny, nz)) {
                     double horizontal = direction[0] != 0 && direction[1] != 0 ? Math.sqrt(2.0) : 1.0;
-                    sink.accept(key(nx, ny, nz), horizontal + 0.5 * Math.abs(floor(nx, ny, nz) - from));
+                    edges[size++] = key(nx, ny, nz);
+                    edges[size++] = Double.doubleToRawLongBits(
+                            horizontal + 0.5 * Math.abs(floor(nx, ny, nz) - from));
                 }
                 break;
             }
         }
+        return size == edges.length ? edges : Arrays.copyOf(edges, size);
+    }
+
+    /**
+     * A cell's moves read only the columns next to it, so they can be cached once all nine are loaded.
+     * 一格的移动只读取其相邻各列，九列都已加载时即可缓存。
+     */
+    private boolean aroundLoaded(int x, int z) {
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                if (!blocks.isLoaded(x + dx, z + dz)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /**
@@ -254,6 +297,51 @@ public final class TrainNavGrid {
     public void invalidate() {
         boxCache.clear();
         floorCache.clear();
+        edgeCache.clear();
+    }
+
+    /**
+     * Forget what depends on the block at (x, y, z), e.g. one half of a chopped-down door. A cell's floor reads its own
+     * column from one block below to two above; its moves read the columns next to it from two below to three above.
+     * 忘掉依赖 (x, y, z) 处方块的缓存，例如被拆门的一半。一格的地面读取本列下方一格到上方两格；其移动读取相邻各列下方两格到上方三格。
+     */
+    public void invalidate(int x, int y, int z) {
+        boxCache.remove(key(x, y, z));
+        for (int cy = y - 2; cy <= y + 1; cy++) {
+            floorCache.remove(key(x, cy, z));
+        }
+        for (int cx = x - 1; cx <= x + 1; cx++) {
+            for (int cz = z - 1; cz <= z + 1; cz++) {
+                for (int cy = y - 3; cy <= y + 2; cy++) {
+                    edgeCache.remove(key(cx, cy, cz));
+                }
+            }
+        }
+    }
+
+    /**
+     * Columns [fromX..toX] x [fromZ..toZ] stopped being loaded (their chunk dropped out): forget the cached moves that
+     * read them. Their stair flags now read as absent, as they always did for uncached moves; floors and boxes stay
+     * cached as before.
+     * [fromX..toX] x [fromZ..toZ] 各列不再加载（所在区块退出）：忘掉读取过它们的缓存移动。这些列的楼梯标记现在读作不存在，
+     * 与未缓存的移动一贯的结果一致；地面与碰撞箱仍按原样缓存。
+     */
+    public void forgetMovesAround(int fromX, int fromZ, int toX, int toZ) {
+        // Cells outside the bounds never move and read no column inside them. / 边界外的格子不会移动，也不读取边界内的列。
+        int x0 = Math.max(fromX - 1, minX);
+        int x1 = Math.min(toX + 1, maxX);
+        int z0 = Math.max(fromZ - 1, minZ);
+        int z1 = Math.min(toZ + 1, maxZ);
+        if (x0 > x1 || z0 > z1 || edgeCache.isEmpty()) {
+            return;
+        }
+        for (int x = x0; x <= x1; x++) {
+            for (int z = z0; z <= z1; z++) {
+                for (int y = minY; y <= maxY; y++) {
+                    edgeCache.remove(key(x, y, z));
+                }
+            }
+        }
     }
 
     private boolean anyCollision(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
