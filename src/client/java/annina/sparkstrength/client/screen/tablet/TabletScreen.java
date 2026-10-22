@@ -87,7 +87,6 @@ import static annina.sparkstrength.client.screen.tablet.TabletSectionPainter.PIL
 public final class TabletScreen extends Screen {
     private static final DateTimeFormatter CLOCK_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
 
-    private static final int SNAPSHOT_POLL_TICKS = 20;
     private static final int PENDING_SWITCH_TICKS = 40;
     // How long a sent drone connect request shows "connecting" before the button re-arms. 连接请求显示“连接中”的时长。
     private static final int PENDING_PILOT_TICKS = 40;
@@ -179,7 +178,6 @@ public final class TabletScreen extends Screen {
     private @Nullable TabletPressable sendButton;
     private @Nullable TabletPressable newMessagesButton;
 
-    private int snapshotRequestTicks;
     private boolean requestedInitialSnapshot;
     private int lastChannelWire;
     private boolean lastCanSend;
@@ -243,6 +241,8 @@ public final class TabletScreen extends Screen {
         sendButton = null;
         newMessagesButton = null;
 
+        // One request per open; afterwards the server pushes every change to holders, open screen or not.
+        // 每次打开只请求一次；之后服务端会把每次变化推送给持有者，无论界面是否打开。
         if (!requestedInitialSnapshot) {
             requestedInitialSnapshot = true;
             requestSnapshot();
@@ -290,9 +290,9 @@ public final class TabletScreen extends Screen {
     }
 
     /**
-     * Snapshot rebuilds (Meeting/Suspects refresh every poll) keep keyboard focus on the equivalent new widget;
+     * Snapshot rebuilds (Meeting/Suspects refresh on every snapshot) keep keyboard focus on the equivalent new widget;
      * skipped while the switcher is open or when init() already focused something (the chat input).
-     * 快照重建（会议/嫌疑人分区每次轮询都会刷新）时把键盘焦点保留在对应的新控件上；
+     * 快照重建（会议/嫌疑人分区每次收到快照都会刷新）时把键盘焦点保留在对应的新控件上；
      * 切换浮层打开或 init() 已设置焦点（聊天输入框）时不恢复。
      */
     private void restoreFocus(@Nullable String focusKey) {
@@ -399,11 +399,6 @@ public final class TabletScreen extends Screen {
             if (session.section() == Section.DRONE) {
                 refresh();
             }
-        }
-        snapshotRequestTicks++;
-        if (snapshotRequestTicks >= SNAPSHOT_POLL_TICKS) {
-            snapshotRequestTicks = 0;
-            requestSnapshot();
         }
     }
 
