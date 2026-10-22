@@ -370,7 +370,7 @@ tasks.register("verifyCompatibilityArtifact") {
 
             def expectedMixinConfigs = [
                     "sparkstrength.mixins.json"        : "corruptcop.CorruptCopAbilityPacketMixin",
-                    "sparkstrength.client.mixins.json" : "corruptcop.CorruptCopHudMixin"
+                    "sparkstrength.client.mixins.json" : "hud.MainHudDispatchMixin"
             ]
             expectedMixinConfigs.each { configName, requiredMixin ->
                 def mixinEntry = zipFile.getEntry(configName)
