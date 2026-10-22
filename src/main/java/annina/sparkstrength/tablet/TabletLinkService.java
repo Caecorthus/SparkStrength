@@ -128,6 +128,9 @@ public final class TabletLinkService {
      */
     public static void tick(ServerWorld world) {
         TabletWorldComponent tablet = TabletWorldComponent.KEY.get(world);
+        if (!tablet.hasLinkRequests()) {
+            return;
+        }
         long now = world.getTime();
         Set<UUID> expiredTargets = new HashSet<>();
         Map<UUID, List<TabletWorldComponent.LinkRequest>> liveByTarget = new LinkedHashMap<>();
