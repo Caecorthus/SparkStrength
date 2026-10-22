@@ -22,6 +22,8 @@ import dev.doctor4t.wathe.entity.PlayerBodyEntity;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheItems;
 import dev.doctor4t.wathe.record.GameRecordManager;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.NbtComponent;
 import net.minecraft.component.type.WrittenBookContentComponent;
@@ -55,9 +57,12 @@ import org.agmas.noellesroles.morphling.MorphlingPlayerComponent;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -72,6 +77,13 @@ public final class CoronerService {
     private static final String TEMP_DISGUISE_KEY = "Disguise";
     private static final String TEMP_ROLE_ID_KEY = "RoleId";
     private static final String TEMP_KIND_KEY = "Kind";
+    /**
+     * Loaded item entities holding a Demon Hunter pistol, anyone's. The frenzy-over cleanup scans the world for dropped
+     * temporary pistols only while one exists; when it runs, the scan is the same as before.
+     * 已加载的、装着恶魔猎人手枪（不论是谁的）的掉落物实体。只有存在这样的掉落物时，疯魔结束后的清理才会扫描世界寻找丢出的临时手枪；
+     * 一旦执行，扫描与原来完全相同。
+     */
+    private static final Set<ItemEntity> LOADED_PISTOL_ITEMS = Collections.newSetFromMap(new IdentityHashMap<>());
     private static boolean registered;
 
     private CoronerService() {
@@ -85,6 +97,19 @@ public final class CoronerService {
         ShouldPunishGunShooter.EVENT.register(CoronerService::shouldPunishGunShooter);
         PsychoModeEvents.ON_PSYCHO_START.register(CoronerService::onPsychoStart);
         PsychoModeEvents.ON_PSYCHO_END.register(CoronerService::onPsychoEnd);
+        ServerEntityEvents.ENTITY_LOAD.register((entity, world) -> {
+            if (entity instanceof ItemEntity item && item.getStack().isOf(ModItems.DEMON_HUNTER_PISTOL)) {
+                LOADED_PISTOL_ITEMS.add(item);
+            }
+        });
+        // Only once removed: an item in a chunk that stops being tracked is still in the world's entity index.
+        // 只在真正移除时去掉：所在区块不再追踪的掉落物仍在世界的实体索引里。
+        ServerEntityEvents.ENTITY_UNLOAD.register((entity, world) -> {
+            if (entity instanceof ItemEntity item && item.isRemoved()) {
+                LOADED_PISTOL_ITEMS.remove(item);
+            }
+        });
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> LOADED_PISTOL_ITEMS.clear());
     }
 
     public static void assignForRole(ServerPlayerEntity player, Role role) {
@@ -776,6 +801,10 @@ public final class CoronerService {
             if (stack.isOf(ModItems.DEMON_HUNTER_PISTOL) && isTemporaryGrantOwnedBy(stack, player.getUuid())) {
                 player.getInventory().setStack(slot, ItemStack.EMPTY);
             }
+        }
+        LOADED_PISTOL_ITEMS.removeIf(ItemEntity::isRemoved);
+        if (LOADED_PISTOL_ITEMS.isEmpty()) {
+            return;
         }
         for (ItemEntity itemEntity : player.getServerWorld().getEntitiesByType(EntityType.ITEM,
                 itemEntity -> itemEntity.getStack().isOf(ModItems.DEMON_HUNTER_PISTOL)
