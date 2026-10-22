@@ -17,6 +17,7 @@ import annina.sparkstrength.network.tablet.RequestTabletSnapshotC2SPacket;
 import annina.sparkstrength.network.tablet.SelectTabletChannelC2SPacket;
 import annina.sparkstrength.network.tablet.SendTabletChatC2SPacket;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
+import annina.sparkstrength.role.attendant.DoorLog;
 import annina.sparkstrength.role.bomber.drone.DroneKind;
 import annina.sparkstrength.role.undercover.UndercoverRoles;
 import annina.sparkstrength.sabotage.SabotageRowState;
@@ -2194,12 +2195,14 @@ public final class TabletScreen extends Screen {
             return;
         }
         int ageColumn = TabletSectionPainter.doorAgeColumn(textRenderer);
-        int elapsed = TabletClientState.secondsSinceSnapshot();
+        // Ages come from the synced world clock, so the server never resends the log just because it got older.
+        // 经过时间取自同步的世界时钟，服务端不会仅因记录变旧而重发。
+        long worldTime = client.world == null ? 0L : client.world.getTime();
         for (int row = 0; row < grid.visibleRows() && first + row < rows.size(); row++) {
             TabletSnapshot.DoorLogRow entry = rows.get(first + row);
             TabletSectionPainter.doorLogRow(c, textRenderer, grid.area().x(), grid.rowY(row), grid.area().width(), entry,
-                    Objects.requireNonNull(entry.kind()), TabletSectionPainter.doorAge(entry.ageSeconds() + elapsed),
-                    ageColumn);
+                    Objects.requireNonNull(entry.kind()),
+                    TabletSectionPainter.doorAge(DoorLog.ageSeconds(entry.lastTick(), worldTime)), ageColumn);
         }
         TabletSectionPainter.scrollThumb(c, scrollTrack(grid.area()), first, grid.visibleRows(), rows.size());
     }

@@ -455,7 +455,7 @@ public final class TabletStateService {
                 meetingFeatures ? meetingSnapshot(world, tablet, viewer, electorate) : TabletSnapshot.Meeting.inactive(),
                 meetingFeatures ? suspectRows(world, tablet, viewerUuid, electorate) : List.of(),
                 access.featureMask(),
-                access.hasFeature(TabletFeature.DOOR_LOG) ? doorLogRows(viewer, tablet, now) : List.of(),
+                access.hasFeature(TabletFeature.DOOR_LOG) ? doorLogRows(viewer, tablet) : List.of(),
                 TabletIdentityRules.tasksRemaining(channel, tasksDone),
                 access.hasFeature(TabletFeature.DRONE) ? droneRows(viewer) : List.of(),
                 access.hasFeature(TabletFeature.SABOTAGE)
@@ -546,7 +546,7 @@ public final class TabletStateService {
      * disguised player's real uuid; a viewer whose names are hidden sees every actor as anonymous.
      * 单个观看者的房门记录，最新在前。条目只存表面身份（考虑伪装），绝不存伪装者的真实 UUID；名字被隐藏的观看者看到的操作者全部匿名。
      */
-    private static List<TabletSnapshot.DoorLogRow> doorLogRows(ServerPlayerEntity viewer, TabletWorldComponent tablet, long now) {
+    private static List<TabletSnapshot.DoorLogRow> doorLogRows(ServerPlayerEntity viewer, TabletWorldComponent tablet) {
         List<DoorLog.Entry> entries = tablet.doorLog().newestFirst();
         if (entries.isEmpty()) {
             return List.of();
@@ -562,7 +562,7 @@ public final class TabletStateService {
                             actor != null,
                             actor == null ? null : actor.displayUuid(),
                             actor == null ? "" : actor.displayName(),
-                            DoorLog.ageSeconds(entry, now),
+                            entry.lastTick(),
                             entry.count()
                     );
                 })
@@ -794,8 +794,8 @@ public final class TabletStateService {
     }
 
     /**
-     * Clients without the current (v6) payload are skipped instead of being disconnected by unknown bytes.
-     * 未注册当前（v6）负载的客户端直接跳过，避免因未知字节断线。
+     * Clients without the current (v8) payload are skipped instead of being disconnected by unknown bytes.
+     * 未注册当前（v8）负载的客户端直接跳过，避免因未知字节断线。
      */
     private static boolean sendPacket(ServerPlayerEntity player, TabletSnapshot snapshot) {
         if (!ServerPlayNetworking.canSend(player, SyncTabletSnapshotS2CPacket.ID)) {
