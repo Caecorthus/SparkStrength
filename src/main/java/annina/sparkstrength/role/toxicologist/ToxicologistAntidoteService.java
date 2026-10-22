@@ -3,12 +3,11 @@ package annina.sparkstrength.role.toxicologist;
 import annina.sparkstrength.component.toxicologist.ToxicologistAntidoteComponent;
 import annina.sparkstrength.mixin.minecraft.ItemCooldownEntryAccessor;
 import annina.sparkstrength.mixin.minecraft.ItemCooldownManagerAccessor;
+import annina.sparkstrength.role.PoisonOnset;
 import annina.sparkstrength.role.coroner.CoronerService;
 import annina.sparkstrength.util.SparkPlayers;
 import dev.doctor4t.wathe.api.Role;
-import dev.doctor4t.wathe.api.event.PlayerPoisoned;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
-import dev.doctor4t.wathe.cca.PlayerPoisonComponent;
 import dev.doctor4t.wathe.cca.PlayerShopComponent;
 import net.minecraft.entity.player.ItemCooldownManager;
 import net.minecraft.entity.player.PlayerEntity;
@@ -16,11 +15,6 @@ import net.minecraft.item.Item;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import org.agmas.noellesroles.ModItems;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
 
 /**
  * 毒理学家解毒剂加强服务。
@@ -31,7 +25,6 @@ import java.util.UUID;
  * 3. 抵扣可以在无冷却时积攒，在解毒剂进入冷却后自动消费，剩余抵扣继续保留到下次。</p>
  */
 public final class ToxicologistAntidoteService {
-    private static final Map<UUID, PendingPoisonCount> PENDING_POISON_COUNTS = new HashMap<>();
     private static boolean registered;
 
     private ToxicologistAntidoteService() {
@@ -42,47 +35,8 @@ public final class ToxicologistAntidoteService {
             return;
         }
         registered = true;
-        PlayerPoisoned.BEFORE.register(ToxicologistAntidoteService::beforePlayerPoisoned);
-        PlayerPoisoned.AFTER.register(ToxicologistAntidoteService::afterPlayerPoisoned);
-    }
-
-    private static @Nullable PlayerPoisoned.PoisonResult beforePlayerPoisoned(
-            PlayerEntity target,
-            int ticks,
-            UUID poisoner
-    ) {
-        // 每次投毒流程开始都清理旧记录，避免取消/失败的投毒污染下一次成功投毒。
-        PENDING_POISON_COUNTS.remove(target.getUuid());
-
-        if (!(target instanceof ServerPlayerEntity) || ticks <= 0 || !SparkPlayers.isLivingParticipant(target)) {
-            return null;
-        }
-
-        PlayerPoisonComponent poisonComponent = PlayerPoisonComponent.KEY.get(target);
-        if (poisonComponent.poisonTicks > 0) {
-            // 需求确认：只统计“从未中毒/已清毒 -> 中毒”的新中毒，刷新或加速已有中毒不累计。
-            return null;
-        }
-
-        PENDING_POISON_COUNTS.put(target.getUuid(), new PendingPoisonCount(target.getWorld().getTime()));
-        return null;
-    }
-
-    private static void afterPlayerPoisoned(PlayerEntity target, int ticks, UUID poisoner) {
-        if (!(target instanceof ServerPlayerEntity serverTarget) || ticks <= 0) {
-            return;
-        }
-
-        PendingPoisonCount pending = PENDING_POISON_COUNTS.remove(target.getUuid());
-        if (pending == null || pending.worldTime() != target.getWorld().getTime()) {
-            return;
-        }
-
-        if (!SparkPlayers.isLivingParticipant(target)) {
-            return;
-        }
-
-        grantReductionToAliveToxicologists(serverTarget.getServerWorld());
+        // 需求确认：只统计“从未中毒/已清毒 -> 中毒”的新中毒（PoisonOnset 的口径），刷新或加速已有中毒不累计；投毒者不限。
+        PoisonOnset.subscribe((target, poisoner) -> grantReductionToAliveToxicologists(target.getServerWorld()));
     }
 
     /**
@@ -181,8 +135,5 @@ public final class ToxicologistAntidoteService {
         int endTick = ((ItemCooldownEntryAccessor) entry).sparkstrength$getEndTick();
         int currentTick = ((ItemCooldownManagerAccessor) cooldownManager).sparkstrength$getTick();
         return Math.max(0, endTick - currentTick);
-    }
-
-    private record PendingPoisonCount(long worldTime) {
     }
 }
