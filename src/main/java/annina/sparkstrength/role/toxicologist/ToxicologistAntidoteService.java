@@ -4,12 +4,12 @@ import annina.sparkstrength.component.toxicologist.ToxicologistAntidoteComponent
 import annina.sparkstrength.mixin.minecraft.ItemCooldownEntryAccessor;
 import annina.sparkstrength.mixin.minecraft.ItemCooldownManagerAccessor;
 import annina.sparkstrength.role.coroner.CoronerService;
+import annina.sparkstrength.util.SparkPlayers;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.PlayerPoisoned;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerPoisonComponent;
 import dev.doctor4t.wathe.cca.PlayerShopComponent;
-import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.player.ItemCooldownManager;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
@@ -54,7 +54,7 @@ public final class ToxicologistAntidoteService {
         // 每次投毒流程开始都清理旧记录，避免取消/失败的投毒污染下一次成功投毒。
         PENDING_POISON_COUNTS.remove(target.getUuid());
 
-        if (!(target instanceof ServerPlayerEntity) || ticks <= 0 || !isAliveGamePlayer(target)) {
+        if (!(target instanceof ServerPlayerEntity) || ticks <= 0 || !SparkPlayers.isLivingParticipant(target)) {
             return null;
         }
 
@@ -78,7 +78,7 @@ public final class ToxicologistAntidoteService {
             return;
         }
 
-        if (!isAliveGamePlayer(target)) {
+        if (!SparkPlayers.isLivingParticipant(target)) {
             return;
         }
 
@@ -124,7 +124,7 @@ public final class ToxicologistAntidoteService {
     private static void grantReductionToAliveToxicologists(ServerWorld world) {
         GameWorldComponent game = GameWorldComponent.KEY.get(world);
         for (ServerPlayerEntity player : world.getPlayers()) {
-            if (!isAliveGamePlayer(player)
+            if (!SparkPlayers.isLivingParticipant(player)
                     || !(ToxicologistCapsuleRules.isToxicologist(game.getRole(player))
                     || CoronerService.hasToxicologistDisguise(player))) {
                 continue;
@@ -138,18 +138,13 @@ public final class ToxicologistAntidoteService {
     }
 
     private static boolean isRewardableToxicologist(ServerPlayerEntity player) {
-        if (!isAliveGamePlayer(player)) {
+        if (!SparkPlayers.isLivingParticipant(player)) {
             return false;
         }
 
         GameWorldComponent game = GameWorldComponent.KEY.get(player.getWorld());
         Role role = game.getRole(player);
         return ToxicologistCapsuleRules.isToxicologist(role) || CoronerService.hasToxicologistDisguise(player);
-    }
-
-    private static boolean isAliveGamePlayer(PlayerEntity player) {
-        return GameFunctions.isPlayerAliveAndSurvival(player)
-                && GameFunctions.isPlayerPlayingAndAlive(player);
     }
 
     private static void applyStoredReduction(ServerPlayerEntity toxicologist) {

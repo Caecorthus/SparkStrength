@@ -1,10 +1,10 @@
 package annina.sparkstrength.role.poisoner;
 
+import annina.sparkstrength.util.SparkPlayers;
 import dev.doctor4t.wathe.api.event.PlayerPoisoned;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerPoisonComponent;
 import dev.doctor4t.wathe.cca.PlayerShopComponent;
-import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import org.jetbrains.annotations.Nullable;
@@ -57,7 +57,7 @@ public final class PoisonerEconomyService {
         }
 
         // 奖励只统计当前游戏里的全局存活玩家；旁观、创造、已标记死亡或未分配角色都不算。
-        if (!isAliveGamePlayer(target)) {
+        if (!SparkPlayers.isLivingParticipant(target)) {
             return null;
         }
 
@@ -83,7 +83,7 @@ public final class PoisonerEconomyService {
         }
 
         // AFTER 已经代表毒状态成功写入；这里再检查一次目标仍处于有效游戏存活状态，防止边界事件误发。
-        if (!isAliveGamePlayer(target)) {
+        if (!SparkPlayers.isLivingParticipant(target)) {
             return;
         }
 
@@ -95,16 +95,11 @@ public final class PoisonerEconomyService {
         PlayerShopComponent.KEY.get(poisonerPlayer).addToBalance(PoisonerEconomyRules.POISON_REWARD);
     }
 
-    private static boolean isAliveGamePlayer(PlayerEntity player) {
-        return GameFunctions.isPlayerAliveAndSurvival(player)
-                && GameFunctions.isPlayerPlayingAndAlive(player);
-    }
-
     private static boolean isRewardablePoisoner(
             ServerPlayerEntity target,
             @Nullable ServerPlayerEntity poisoner
     ) {
-        if (poisoner == null || !isAliveGamePlayer(poisoner)) {
+        if (poisoner == null || !SparkPlayers.isLivingParticipant(poisoner)) {
             return false;
         }
 

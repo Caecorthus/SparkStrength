@@ -35,7 +35,7 @@ public final class TabletChannelRules {
      * @param impostor     active SparkTraits Impostor / SparkTraits 内鬼天赋
      * @param conscience   active SparkTraits Conscience / SparkTraits 善良天赋
      * @param witchFaction SparkFactionAPI base faction {@code sparkwitch:witch} / 魔女阵营基础阵营
-     * @param undercover   real NoellesRoles Undercover role {@link TabletShopRules#isUndercover} / 真实身份为 NoellesRoles 卧底
+     * @param undercover   real NoellesRoles Undercover role {@code UndercoverRoleRules#isUndercover} / 真实身份为 NoellesRoles 卧底
      */
     public record Facts(
             boolean hasRole,

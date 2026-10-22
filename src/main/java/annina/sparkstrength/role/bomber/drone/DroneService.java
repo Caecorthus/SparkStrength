@@ -11,6 +11,7 @@ import annina.sparkstrength.mixin.minecraft.ItemCooldownManagerAccessor;
 import annina.sparkstrength.role.AbilityLocks;
 import annina.sparkstrength.role.AbilityLocks.Lock;
 import annina.sparkstrength.role.coroner.CoronerRules;
+import annina.sparkstrength.util.SparkPlayers;
 import dev.doctor4t.wathe.api.event.GameEvents;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
@@ -118,7 +119,7 @@ public final class DroneService {
 
     /** Real round role is the NoellesRoles Bomber (Coroner disguises never count). / 真实局内身份为炸弹客（验尸官伪装不算）。 */
     public static boolean isRealBomber(@Nullable PlayerEntity player) {
-        return player != null && CoronerRules.isBomber(GameWorldComponent.KEY.get(player.getWorld()).getRole(player));
+        return player != null && CoronerRules.isBomber(SparkPlayers.roleOf(player));
     }
 
     /**

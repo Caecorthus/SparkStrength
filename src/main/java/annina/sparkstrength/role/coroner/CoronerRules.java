@@ -1,5 +1,6 @@
 package annina.sparkstrength.role.coroner;
 
+import annina.sparkstrength.role.undercover.UndercoverRoleRules;
 import dev.doctor4t.wathe.api.Faction;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
@@ -31,7 +32,6 @@ public final class CoronerRules {
     public static final Identifier NOELLES_ATTENDANT_ID = Identifier.of("noellesroles", "attendant");
     public static final Identifier NOELLES_SURVIVAL_MASTER_ID = Identifier.of("noellesroles", "survival_master");
     public static final Identifier NOELLES_TIMEKEEPER_ID = Identifier.of("noellesroles", "time_keeper");
-    public static final Identifier NOELLES_UNDERCOVER_ID = Identifier.of("noellesroles", "undercover");
     public static final Identifier NOELLES_NOISEMAKER_ID = Identifier.of("noellesroles", "noisemaker");
     public static final Identifier NOELLES_SILENCER_ID = Identifier.of("noellesroles", "silencer");
     public static final Identifier NOELLES_RECALLER_ID = Identifier.of("noellesroles", "recaller");
@@ -145,7 +145,7 @@ public final class CoronerRules {
     }
 
     public static boolean isUndercover(@Nullable Role role) {
-        return hasRoleId(role, NOELLES_UNDERCOVER_ID);
+        return UndercoverRoleRules.isUndercover(role);
     }
 
     public static boolean isNoisemaker(@Nullable Role role) {

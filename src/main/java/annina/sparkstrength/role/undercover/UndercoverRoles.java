@@ -1,8 +1,8 @@
 package annina.sparkstrength.role.undercover;
 
 import annina.sparkstrength.component.undercover.UndercoverPlayerComponent;
+import annina.sparkstrength.util.SparkPlayers;
 import dev.doctor4t.wathe.api.Role;
-import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.player.PlayerEntity;
 import org.jetbrains.annotations.Nullable;
@@ -21,7 +21,7 @@ public final class UndercoverRoles {
     }
 
     public static boolean isUndercover(@Nullable PlayerEntity player) {
-        return player != null && isUndercover(GameWorldComponent.KEY.get(player.getWorld()).getRole(player));
+        return player != null && isUndercover(SparkPlayers.roleOf(player));
     }
 
     /** The real Undercover in stage 2 (mask put on at least once this round). / 处于第二阶段的真卧底。 */

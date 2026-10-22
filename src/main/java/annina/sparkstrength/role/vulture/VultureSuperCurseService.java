@@ -9,7 +9,6 @@ import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.GameEvents;
 import dev.doctor4t.wathe.api.event.KillPlayer;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
-import dev.doctor4t.wathe.game.GameFunctions;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.minecraft.network.packet.s2c.play.StopSoundS2CPacket;
@@ -19,7 +18,6 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.util.Identifier;
-import org.agmas.noellesroles.taotie.SwallowedPlayerComponent;
 
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -94,7 +92,7 @@ public final class VultureSuperCurseService {
     public static void tryCurse(ServerPlayerEntity player) {
         ServerWorld world = player.getServerWorld();
         if (GameWorldComponent.KEY.get(world).getGameStatus() != GameWorldComponent.GameStatus.ACTIVE
-                || !isActiveVulture(player)
+                || !VultureSkateboardService.isActiveVulture(player)
                 || AbilityLocks.isLocked(player, AbilityLocks.ROLE_SKILL)) {
             return;
         }
@@ -116,17 +114,6 @@ public final class VultureSuperCurseService {
         component.startCooldown();
         ACTIVE_CURSES.computeIfAbsent(world, ignored -> new HashMap<>())
                 .put(player.getUuid(), VultureSuperCurseRules.curseEndTick(world.getTime()));
-    }
-
-    /**
-     * Alive, playing, in survival, not swallowed by the Taotie, and currently the Vulture.
-     * 存活、参与对局、处于生存模式、未被饕餮吞噬，且当前职业为秃鹫。
-     */
-    private static boolean isActiveVulture(ServerPlayerEntity player) {
-        return GameFunctions.isPlayerPlayingAndAlive(player)
-                && GameFunctions.isPlayerAliveAndSurvival(player)
-                && !SwallowedPlayerComponent.isPlayerSwallowed(player)
-                && VultureSuperCurseRules.isVulture(GameWorldComponent.KEY.get(player.getWorld()).getRole(player));
     }
 
     private static void onKilled(ServerPlayerEntity victim) {

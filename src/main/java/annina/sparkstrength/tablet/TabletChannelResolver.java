@@ -6,6 +6,7 @@ import annina.sparkstrength.component.tablet.TabletWorldComponent;
 import annina.sparkstrength.role.attendant.AttendantRules;
 import annina.sparkstrength.role.coroner.CoronerRules;
 import annina.sparkstrength.role.coroner.CoronerService;
+import annina.sparkstrength.role.undercover.UndercoverRoleRules;
 import annina.sparkstrength.sabotage.SabotageAccess;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
@@ -49,7 +50,7 @@ public final class TabletChannelResolver {
                 hasRole && SparkFactionCompat.isWitchFactionRole(role),
                 // Real round role only: a disguise (e.g. a Coroner shown as Undercover) never joins the network.
                 // 仅看真实局内身份：伪装（如显示为卧底的验尸官）不会加入该网络。
-                hasRole && TabletShopRules.isUndercover(role)
+                hasRole && UndercoverRoleRules.isUndercover(role)
         );
     }
 
