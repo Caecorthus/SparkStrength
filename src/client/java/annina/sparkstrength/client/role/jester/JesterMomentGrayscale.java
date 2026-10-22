@@ -1,8 +1,8 @@
 package annina.sparkstrength.client.role.jester;
 
 import annina.sparkstrength.SparkStrength;
+import annina.sparkstrength.client.render.ManagedPostEffect;
 import annina.sparkstrength.role.jester.JesterMomentRules;
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.Framebuffer;
 import net.minecraft.client.gl.PostEffectProcessor;
@@ -10,8 +10,6 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
 import org.agmas.noellesroles.jester.JesterPlayerComponent;
-
-import java.io.IOException;
 
 /**
  * The Jester's screen greys 10% per Jester Moment kill, up to 50%, like SparkTraits Depression's grayscale. The kill
@@ -25,14 +23,11 @@ import java.io.IOException;
 public final class JesterMomentGrayscale {
     private static final Identifier SHADER = SparkStrength.id("shaders/post/jester_grayscale.json");
     private static final float MIN_VISIBLE_GRAYSCALE = 0.005F;
+    private static final ManagedPostEffect EFFECT =
+            new ManagedPostEffect(SHADER, "Unable to load Jester Moment grayscale shader");
 
     private static float previousGrayscale;
     private static float grayscale;
-    private static PostEffectProcessor processor;
-    private static Framebuffer processorTarget;
-    private static int processorWidth = -1;
-    private static int processorHeight = -1;
-    private static boolean loadFailed;
 
     private JesterMomentGrayscale() {
     }
@@ -55,56 +50,16 @@ public final class JesterMomentGrayscale {
     public static void render(MinecraftClient client, float tickDelta) {
         float amount = MathHelper.lerp(tickDelta, previousGrayscale, grayscale);
         if (amount < MIN_VISIBLE_GRAYSCALE) {
-            closeProcessor();
+            EFFECT.release();
             return;
         }
         Framebuffer framebuffer = client.getFramebuffer();
-        PostEffectProcessor activeProcessor = ensureProcessor(client, framebuffer);
+        PostEffectProcessor activeProcessor = EFFECT.acquire(client, framebuffer);
         if (activeProcessor == null) {
             return;
         }
         activeProcessor.setUniforms("Saturation", 1.0F - amount);
-        // Same state reset vanilla performs before its own post effect. / 与原版运行自身后处理前的状态重置一致。
-        RenderSystem.disableBlend();
-        RenderSystem.disableDepthTest();
-        RenderSystem.resetTextureMatrix();
-        try {
-            activeProcessor.render(tickDelta);
-        } finally {
-            // The last pass unbinds the main target; rebind it for the HUD. / 最后一个 pass 会解绑主帧缓冲，为 HUD 重新绑定。
-            framebuffer.beginWrite(false);
-        }
-    }
-
-    private static PostEffectProcessor ensureProcessor(MinecraftClient client, Framebuffer framebuffer) {
-        if (loadFailed || framebuffer.textureWidth <= 0 || framebuffer.textureHeight <= 0) {
-            return null;
-        }
-        if (processor != null && processorTarget != framebuffer) {
-            closeProcessor();
-        }
-        if (processor == null) {
-            try {
-                processor = new PostEffectProcessor(
-                        client.getTextureManager(), client.getResourceManager(), framebuffer, SHADER);
-            } catch (IOException | RuntimeException exception) {
-                SparkStrength.LOGGER.warn("Unable to load Jester Moment grayscale shader", exception);
-                closeProcessor();
-                loadFailed = true;
-                return null;
-            }
-            processorTarget = framebuffer;
-            processorWidth = -1;
-            processorHeight = -1;
-        }
-        if (processorWidth != framebuffer.textureWidth || processorHeight != framebuffer.textureHeight) {
-            // Window resize: resize the swap target and projection in place, like vanilla's onResized.
-            // 窗口尺寸变化：像原版 onResized 一样原地调整交换目标与投影。
-            processor.setupDimensions(framebuffer.textureWidth, framebuffer.textureHeight);
-            processorWidth = framebuffer.textureWidth;
-            processorHeight = framebuffer.textureHeight;
-        }
-        return processor;
+        EFFECT.draw(framebuffer, tickDelta);
     }
 
     /** Render thread: disconnect and client shutdown. Clears the fade so the next server starts clean. / 断开连接与关闭客户端时调用，清除渐变状态。 */
@@ -116,17 +71,6 @@ public final class JesterMomentGrayscale {
 
     /** Render thread: resource reload, disconnect and shutdown. Allows a fresh load attempt. / 资源重载等时调用，允许重新加载。 */
     public static void close() {
-        closeProcessor();
-        loadFailed = false;
-    }
-
-    private static void closeProcessor() {
-        if (processor != null) {
-            processor.close();
-            processor = null;
-        }
-        processorTarget = null;
-        processorWidth = -1;
-        processorHeight = -1;
+        EFFECT.close();
     }
 }

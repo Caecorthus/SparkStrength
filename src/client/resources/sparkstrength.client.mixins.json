@@ -61,7 +61,7 @@
     "engineer.EngineerStunnedStickyKeyMixin",
     "engineer.EngineerStunnedMouseMixin",
     "jester.JesterMomentClientStasisMixin",
-    "jester.JesterMomentGrayscaleGameRendererMixin",
+    "render.WorldPostEffectsMixin",
     "m67.M67OutlineMixin",
     "m67.M67OutlineColorMixin",
     "m67.M67SprintMixin",
@@ -79,7 +79,6 @@
     "morphling.MorphlingRendererDispatchMixin",
     "morphling.MorphlingRoleNameRendererMixin",
     "perfumer.PerfumerAromaMouseMixin",
-    "perfumer.PerfumerBlurGameRendererMixin",
     "perfumer.PerfumerInstinctGateMixin",
     "perfumer.PerfumerInstinctKeyMixin",
     "perfumer.PerfumerOverlayHudMixin",
@@ -115,7 +114,6 @@
     "undercover.UndercoverInstinctArbiterMixin",
     "undercover.UndercoverOutlineVetoMixin",
     "undercover.UndercoverThermalArmMixin",
-    "undercover.UndercoverThermalGameRendererMixin",
     "undercover.UndercoverThermalSilhouetteMixin"
   ],
   "injectors": {
