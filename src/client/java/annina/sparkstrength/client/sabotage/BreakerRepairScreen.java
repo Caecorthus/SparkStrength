@@ -3,18 +3,12 @@ package annina.sparkstrength.client.sabotage;
 import annina.sparkstrength.SparkStrengthSounds;
 import annina.sparkstrength.client.screen.tablet.TabletCanvas;
 import annina.sparkstrength.client.screen.tablet.TabletTheme;
-import annina.sparkstrength.network.sabotage.CancelBreakerRepairC2SPacket;
 import annina.sparkstrength.network.sabotage.CloseBreakerRepairS2CPacket;
-import annina.sparkstrength.network.sabotage.CompleteBreakerRepairC2SPacket;
 import annina.sparkstrength.network.sabotage.OpenBreakerRepairS2CPacket;
 import annina.sparkstrength.sabotage.SabotageRules;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.sound.PositionedSoundInstance;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
-import net.minecraft.util.math.MathHelper;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -27,7 +21,7 @@ import java.util.Random;
  * 电闸维修面板：把每个跳闸的空开拨回上方，再拉住主闸直到电压指针稳定在绿区。服务端只在最短用时之后才接受结果，
  * 并重新校验会话。
  */
-final class BreakerRepairScreen extends Screen {
+final class BreakerRepairScreen extends AbstractRepairScreen {
     private static final int PANEL_W = 300;
     private static final int PANEL_H = 176;
     private static final int SWITCH_W = 26;
@@ -35,33 +29,14 @@ final class BreakerRepairScreen extends Screen {
     private static final int SWITCH_GAP = 8;
     private static final int LEVER_W = 40;
     private static final int LEVER_H = 104;
-    private static final int CLOSE_DELAY_TICKS = 16;
-    /** No answer this long after submitting: the packet was dropped (e.g. dazed), so let the player try again. / 提交后这么久没有回复：包被丢弃（例如被眩晕），允许玩家重试。 */
-    private static final int REPLY_TIMEOUT_TICKS = 40;
-    /** Margin over the server's minimum time. / 相对服务端最短用时的余量。 */
-    private static final int SUBMIT_MARGIN_TICKS = 2;
 
-    private final int sessionId;
-    private final int holdTicks;
-    private final int minTicks;
-    private int openTicks;
-    private int awaitTicks;
     private final boolean[] tripped = new boolean[SabotageRules.REPAIR_SWITCH_SLOTS];
     private final float[] flip = new float[SabotageRules.REPAIR_SWITCH_SLOTS];
-    private float charge;
-    private float prevCharge;
     private boolean holding;
-    private boolean submitted;
-    private boolean cancelSent;
-    private int closeTicks = -1;
-    private Text banner;
-    private int bannerColor;
 
     BreakerRepairScreen(OpenBreakerRepairS2CPacket packet) {
-        super(Text.translatable("screen.sparkstrength.breaker.title"));
-        this.sessionId = packet.sessionId();
-        this.holdTicks = Math.max(1, packet.holdTicks());
-        this.minTicks = SabotageRules.repairMinTicks(packet.switches(), this.holdTicks);
+        super(Text.translatable("screen.sparkstrength.breaker.title"), packet.sessionId(), packet.holdTicks(),
+                SabotageRules.repairMinTicks(packet.switches(), Math.max(1, packet.holdTicks())));
         List<Integer> slots = new ArrayList<>();
         for (int i = 0; i < tripped.length; i++) {
             slots.add(i);
@@ -74,11 +49,6 @@ final class BreakerRepairScreen extends Screen {
         for (int i = 0; i < flip.length; i++) {
             flip[i] = tripped[i] ? 0.0F : 1.0F;
         }
-    }
-
-    @Override
-    public boolean shouldPause() {
-        return false;
     }
 
     private int left() {
@@ -115,53 +85,37 @@ final class BreakerRepairScreen extends Screen {
     }
 
     @Override
-    public void tick() {
-        openTicks++;
-        prevCharge = charge;
+    protected void tickPanel() {
         for (int i = 0; i < flip.length; i++) {
             float target = tripped[i] ? 0.0F : 1.0F;
             flip[i] += (target - flip[i]) * 0.5F;
         }
-        if (closeTicks >= 0) {
-            if (--closeTicks <= 0) {
-                close();
-            }
-            return;
-        }
-        if (submitted) {
-            if (awaitTicks > 0 && --awaitTicks == 0) {
-                // The completion never arrived; the server session is still open, so start the lever again.
-                // 完成包没有送达；服务端会话仍然有效，重新拉闸即可。
-                submitted = false;
-                charge = 0.0F;
-                prevCharge = 0.0F;
-                banner = Text.translatable("screen.sparkstrength.breaker.retry");
-                bannerColor = TabletTheme.DANGER;
-            }
-            return;
-        }
-        if (holding && allReset()) {
-            charge = Math.min(holdTicks, charge + 1.0F);
-        } else {
-            charge = Math.max(0.0F, charge - 2.0F);
-        }
+    }
+
+    @Override
+    protected void tickRepair() {
+        stepCharge(holding && allReset());
         // Full but faster than the server's minimum: hold the needle until that time has passed (the server starts its
         // clock before this screen opens, so waiting here is always enough).
         // 已拉满但快于服务端最短用时：指针保持在顶，直到时间够了（服务端的计时早于界面打开，因此在这里等就足够）。
-        if (charge >= holdTicks && openTicks >= minTicks + SUBMIT_MARGIN_TICKS) {
-            submitted = true;
+        if (charged() && submitDue()) {
             holding = false;
-            awaitTicks = REPLY_TIMEOUT_TICKS;
-            banner = Text.translatable("screen.sparkstrength.breaker.restoring");
-            bannerColor = TabletTheme.SUCCESS;
-            ClientPlayNetworking.send(new CompleteBreakerRepairC2SPacket(sessionId));
+            submit(Text.translatable("screen.sparkstrength.breaker.restoring"));
             playClick(SparkStrengthSounds.CIRCUIT_BREAKER_SWITCH, 0.7F);
         }
     }
 
     @Override
+    protected void onReplyTimeout() {
+        // The completion never arrived; the server session is still open, so start the lever again.
+        // 完成包没有送达；服务端会话仍然有效，重新拉闸即可。
+        banner = Text.translatable("screen.sparkstrength.breaker.retry");
+        bannerColor = TabletTheme.DANGER;
+    }
+
+    @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0 && !submitted && closeTicks < 0) {
+        if (button == 0 && !submitted() && !closing()) {
             for (int i = 0; i < tripped.length; i++) {
                 if (tripped[i] && inside(mouseX, mouseY, switchX(i), switchY(i), SWITCH_W, SWITCH_H)) {
                     tripped[i] = false;
@@ -182,48 +136,12 @@ final class BreakerRepairScreen extends Screen {
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (button == 0) {
-            holding = false;
-        }
-        return super.mouseReleased(mouseX, mouseY, button);
+    protected void releaseHolds() {
+        holding = false;
     }
 
-    /**
-     * Every way off this screen ends here: close() goes through setScreen(null), and another screen replacing this one
-     * calls removed() without close(). So the cancel lives here, sent at most once, as in EngineRepairScreen.
-     * 离开此界面的所有路径都会到这里：close() 走 setScreen(null)，被其他界面替换时只调用 removed() 而不调用 close()。
-     * 因此取消包放在这里发送，且最多发送一次，与 EngineRepairScreen 相同。
-     */
     @Override
-    public void removed() {
-        holding = false;
-        sendCancelOnce();
-        super.removed();
-    }
-
-    /**
-     * Drops the server session unless it is already answered (submitted, awaiting the reply) or the server closed it,
-     * or the connection is gone.
-     * 放弃服务端会话；已提交等待回复、服务端已关闭、或连接已断开时不发送。
-     */
-    private void sendCancelOnce() {
-        if (cancelSent || submitted || closeTicks >= 0) {
-            return;
-        }
-        cancelSent = true;
-        if (client == null || client.getNetworkHandler() == null) {
-            return;
-        }
-        ClientPlayNetworking.send(new CancelBreakerRepairC2SPacket(sessionId));
-    }
-
-    void onServerClose(int closedSession, int reason) {
-        if (closedSession != sessionId || closeTicks >= 0) {
-            return;
-        }
-        submitted = true;
-        holding = false;
+    protected void closedByServer(int reason) {
         switch (reason) {
             case CloseBreakerRepairS2CPacket.REASON_REPAIRED -> {
                 banner = Text.translatable("screen.sparkstrength.breaker.repaired");
@@ -238,19 +156,10 @@ final class BreakerRepairScreen extends Screen {
                 bannerColor = TabletTheme.DANGER;
             }
         }
-        closeTicks = CLOSE_DELAY_TICKS;
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        super.render(context, mouseX, mouseY, delta);
-        int scale = Math.max(1, (int) Math.round(client.getWindow().getScaleFactor()));
-        TabletCanvas canvas = new TabletCanvas(context, scale, client.getWindow().getFramebufferHeight());
-        // One draw batch for the panel (its clip still flushes). / 整个面板一个绘制批次（裁剪仍会提交）。
-        canvas.batch(() -> drawScreen(canvas, mouseX, mouseY, delta));
-    }
-
-    private void drawScreen(TabletCanvas canvas, int mouseX, int mouseY, float delta) {
+    protected void drawScreen(TabletCanvas canvas, int mouseX, int mouseY, float delta) {
         int x = left();
         int y = top();
         canvas.shadow(x, y, PANEL_W, PANEL_H, 10, 14, 0x90000000);
@@ -311,8 +220,8 @@ final class BreakerRepairScreen extends Screen {
     private void drawLever(TabletCanvas canvas, float delta, int mouseX, int mouseY) {
         int lx = leverX();
         int ly = leverY();
-        boolean ready = allReset() && !submitted;
-        float progress = MathHelper.lerp(delta, prevCharge, charge) / holdTicks;
+        boolean ready = allReset() && !submitted();
+        float progress = chargeProgress(delta);
         canvas.roundRect(lx, ly, LEVER_W, LEVER_H, 6, 0xFF1C1F24);
         canvas.roundRectOutline(lx, ly, LEVER_W, LEVER_H, 6, 1.0F,
                 ready ? (holding ? 0xFFF5C451 : 0xFFE0A526) : 0xFF3A4048);
@@ -332,7 +241,7 @@ final class BreakerRepairScreen extends Screen {
         float cx = leverX() + LEVER_W + 22;
         int gy = leverY();
         int gh = LEVER_H;
-        float progress = MathHelper.lerp(delta, prevCharge, charge) / holdTicks;
+        float progress = chargeProgress(delta);
         canvas.roundRect(cx - 6, gy, 12, gh, 6, 0xFF0D0F12);
         float green = gh * 0.2F;
         canvas.roundRect(cx - 6, gy, 12, green, 6, TabletTheme.withAlpha(TabletTheme.SUCCESS, 0x55));
@@ -348,9 +257,5 @@ final class BreakerRepairScreen extends Screen {
         if (client != null) {
             client.getSoundManager().play(PositionedSoundInstance.master(sound, pitch));
         }
-    }
-
-    private static boolean inside(double mx, double my, float x, float y, float w, float h) {
-        return mx >= x && mx < x + w && my >= y && my < y + h;
     }
 }

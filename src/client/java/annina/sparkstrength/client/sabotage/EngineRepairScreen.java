@@ -5,17 +5,13 @@ import annina.sparkstrength.SparkStrengthSounds;
 import annina.sparkstrength.block.EngineUnitBlock;
 import annina.sparkstrength.client.screen.tablet.TabletCanvas;
 import annina.sparkstrength.client.screen.tablet.TabletTheme;
-import annina.sparkstrength.network.sabotage.CancelBreakerRepairC2SPacket;
 import annina.sparkstrength.network.sabotage.CloseBreakerRepairS2CPacket;
-import annina.sparkstrength.network.sabotage.CompleteBreakerRepairC2SPacket;
 import annina.sparkstrength.network.sabotage.OpenEngineRepairS2CPacket;
 import annina.sparkstrength.sabotage.EngineCondition;
 import annina.sparkstrength.sabotage.EngineRepairMode;
 import annina.sparkstrength.sabotage.EngineRules;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.sound.PositionedSoundInstance;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.sound.SoundEvents;
@@ -39,7 +35,7 @@ import java.util.Random;
  * 压力表不通电），再调表、更长的重启。状态面板（会话 0）：同一块面板，只能看，跟随方块的实时状态。服务端只在最短用时
  * 之后才接受结果，并重新校验会话。
  */
-final class EngineRepairScreen extends Screen {
+final class EngineRepairScreen extends AbstractRepairScreen {
     private static final int PANEL_W = 320;
     private static final int PANEL_H = 190;
     /** The status panel has no knobs or restart button, so it is shorter. / 状态面板没有旋钮和重启按钮，因此更矮。 */
@@ -60,11 +56,6 @@ final class EngineRepairScreen extends Screen {
     private static final int BUTTON_H = 20;
     private static final int BUTTON_Y = 121;
     private static final float KNOB_R = 7.0F;
-    private static final int CLOSE_DELAY_TICKS = 16;
-    /** No answer this long after submitting: the packet was dropped (e.g. dazed), so let the player try again. / 提交后这么久没有回复：包被丢弃（例如被眩晕），允许玩家重试。 */
-    private static final int REPLY_TIMEOUT_TICKS = 40;
-    /** Margin over the server's minimum time. / 相对服务端最短用时的余量。 */
-    private static final int SUBMIT_MARGIN_TICKS = 2;
 
     /** Dial sweep: 0 at 8 o'clock, 1 at 4 o'clock. / 表盘量程：0 在 8 点方向，1 在 4 点方向。 */
     private static final float START_DEG = -120.0F;
@@ -109,15 +100,12 @@ final class EngineRepairScreen extends Screen {
     private static final int END_SUCCESS = 1;
     private static final int END_FAILURE = 2;
 
-    private final int sessionId;
     private final BlockPos pos;
     private final EngineRepairMode mode;
     /** A real repair session; otherwise a read-only status panel that never sends anything. / 真正的维修会话；否则是只读的状态面板，不发送任何包。 */
     private final boolean repair;
     private final int panelH;
     private final int gaugeCount;
-    private final int holdTicks;
-    private final int minTicks;
 
     private final float[] bandLo = new float[EngineRules.MAX_GAUGES];
     private final float[] bandHi = new float[EngineRules.MAX_GAUGES];
@@ -143,20 +131,13 @@ final class EngineRepairScreen extends Screen {
 
     @Nullable
     private EngineCondition condition;
-    private int openTicks;
-    private int awaitTicks;
-    private int closeTicks = -1;
     private int endState = END_NONE;
-    private float charge;
-    private float prevCharge;
     private float tach;
     private float prevTach;
     private float power;
     private float prevPower;
     private boolean holdingRestart;
     private boolean restarted;
-    private boolean submitted;
-    private boolean cancelSent;
     private boolean fuseHold;
     private int dragGauge = -1;
     private double lastMouseX = -1;
@@ -164,22 +145,17 @@ final class EngineRepairScreen extends Screen {
     private float ratchet;
     private int soundCooldown;
     private int chugTicks;
-    @Nullable
-    private Text banner;
-    private int bannerColor;
     private boolean bannerRetry;
 
     EngineRepairScreen(OpenEngineRepairS2CPacket packet) {
-        super(Text.translatable(titleKey(EngineRepairMode.byWire(packet.modeWire()), packet.sessionId())));
-        this.sessionId = packet.sessionId();
+        super(Text.translatable(titleKey(EngineRepairMode.byWire(packet.modeWire()), packet.sessionId())),
+                packet.sessionId(), packet.holdTicks(), Math.max(0, packet.minTicks()));
         this.pos = packet.pos();
         EngineRepairMode wireMode = EngineRepairMode.byWire(packet.modeWire());
         this.repair = wireMode != EngineRepairMode.STATUS && packet.sessionId() != 0;
         this.mode = repair ? wireMode : EngineRepairMode.STATUS;
         this.panelH = repair ? PANEL_H : STATUS_PANEL_H;
         this.gaugeCount = MathHelper.clamp(packet.gauges(), 1, EngineRules.MAX_GAUGES);
-        this.holdTicks = Math.max(1, packet.holdTicks());
-        this.minTicks = Math.max(0, packet.minTicks());
 
         // Needles: one draw sequence per possible gauge, so the count never reshuffles the others.
         // 指针：每个可能的表位各取一组随机数，表的数量不会打乱其他表的布局。
@@ -267,11 +243,6 @@ final class EngineRepairScreen extends Screen {
             case OVERHAUL -> "screen.sparkstrength.engine.title_overhaul";
             case STATUS -> "screen.sparkstrength.engine.title";
         };
-    }
-
-    @Override
-    public boolean shouldPause() {
-        return false;
     }
 
     @Override
@@ -412,9 +383,14 @@ final class EngineRepairScreen extends Screen {
         return count;
     }
 
+    @Override
+    protected boolean hasSession() {
+        return repair;
+    }
+
     /** Controls take input only while a live repair is in progress. / 只有维修进行中时控件才接受输入。 */
     private boolean live() {
-        return repair && !submitted && !restarted && closeTicks < 0;
+        return repair && !submitted() && !restarted && !closing();
     }
 
     private boolean restartReady() {
@@ -427,7 +403,7 @@ final class EngineRepairScreen extends Screen {
      * 引擎已点着（已重启、等待回复或已确认）。失败的关闭优先于它，因为 onServerClose 会把所有会话标为已提交。
      */
     private boolean engineCaught() {
-        return endState == END_SUCCESS || (endState == END_NONE && (restarted || submitted));
+        return endState == END_SUCCESS || (endState == END_NONE && (restarted || submitted()));
     }
 
     @Nullable
@@ -450,8 +426,7 @@ final class EngineRepairScreen extends Screen {
     // ------------------------------------------------------------------------------------------------ tick
 
     @Override
-    public void tick() {
-        openTicks++;
+    protected void tickPanel() {
         if (soundCooldown > 0) {
             soundCooldown--;
         }
@@ -463,7 +438,6 @@ final class EngineRepairScreen extends Screen {
             // 因此所有按住操作都以物理按键状态为准。
             releaseHolds();
         }
-        prevCharge = charge;
         prevTach = tach;
         prevPower = power;
         System.arraycopy(needle, 0, prevNeedle, 0, needle.length);
@@ -479,39 +453,36 @@ final class EngineRepairScreen extends Screen {
         float powerTarget = endState == END_FAILURE ? POWER_OFF : gaugesPowered() ? 1.0F : POWER_OFF;
         power += (powerTarget - power) * 0.2F;
         tach += (tachTarget() - tach) * 0.45F;
+    }
 
-        if (closeTicks >= 0) {
-            // Closing: success swings every needle to the middle of its green, failure lets them drop.
-            // 关闭中：成功时每根指针摆到绿区中央，失败时指针落回止点。
-            for (int i = 0; i < gaugeCount; i++) {
-                set[i] = endState == END_SUCCESS && inBand(i, needle[i]);
-            }
-            if (--closeTicks <= 0) {
-                close();
-            }
-            return;
+    @Override
+    protected void tickClosing() {
+        // Closing: success swings every needle to the middle of its green, failure lets them drop.
+        // 关闭中：成功时每根指针摆到绿区中央，失败时指针落回止点。
+        for (int i = 0; i < gaugeCount; i++) {
+            set[i] = endState == END_SUCCESS && inBand(i, needle[i]);
         }
-        if (!repair) {
-            for (int i = 0; i < gaugeCount; i++) {
-                set[i] = inBand(i, needle[i]);
-            }
-            return;
-        }
-        if (submitted) {
-            if (awaitTicks > 0 && --awaitTicks == 0) {
-                // The completion never arrived; the server session is still open, so restart again.
-                // 完成包没有送达；服务端会话仍然有效，重新按住重启即可。
-                submitted = false;
-                restarted = false;
-                charge = 0.0F;
-                prevCharge = 0.0F;
-                banner = Text.translatable("screen.sparkstrength.engine.retry");
-                bannerColor = TabletTheme.DANGER;
-                bannerRetry = true;
-            }
-            return;
-        }
+    }
 
+    @Override
+    protected void tickReadOnly() {
+        for (int i = 0; i < gaugeCount; i++) {
+            set[i] = inBand(i, needle[i]);
+        }
+    }
+
+    @Override
+    protected void onReplyTimeout() {
+        // The completion never arrived; the server session is still open, so restart again.
+        // 完成包没有送达；服务端会话仍然有效，重新按住重启即可。
+        restarted = false;
+        banner = Text.translatable("screen.sparkstrength.engine.retry");
+        bannerColor = TabletTheme.DANGER;
+        bannerRetry = true;
+    }
+
+    @Override
+    protected void tickRepair() {
         tickFuses();
         tickGauges();
         tickRestart();
@@ -542,7 +513,7 @@ final class EngineRepairScreen extends Screen {
             }
             return;
         }
-        float t = openTicks;
+        float t = openTicks();
         for (int i = 0; i < gaugeCount; i++) {
             if (condition == EngineCondition.INTACT) {
                 float mid = (bandLo[i] + bandHi[i]) / 2.0F;
@@ -564,12 +535,12 @@ final class EngineRepairScreen extends Screen {
         if (endState == END_FAILURE) {
             return 0.0F;
         }
-        float t = openTicks;
+        float t = openTicks();
         if (repair) {
-            if (restarted || submitted) {
+            if (restarted || submitted()) {
                 return TACH_GOAL + 0.012F * MathHelper.sin(t * 0.4F);
             }
-            return charge / holdTicks * TACH_GOAL;
+            return chargeFraction() * TACH_GOAL;
         }
         if (condition == EngineCondition.INTACT) {
             return TACH_GOAL + 0.02F * MathHelper.sin(t * 0.07F);
@@ -625,10 +596,10 @@ final class EngineRepairScreen extends Screen {
 
     private void tickRestart() {
         if (!restarted) {
-            boolean ready = restartReady();
-            if (holdingRestart && ready) {
-                charge = Math.min(holdTicks, charge + 1.0F);
-                float progress = charge / holdTicks;
+            boolean held = holdingRestart && restartReady();
+            stepCharge(held);
+            if (held) {
+                float progress = chargeFraction();
                 if (--chugTicks <= 0) {
                     // The engine turning over: faster and higher as it spins up.
                     // 引擎在盘车：转得越快，声音越密越高。
@@ -636,14 +607,13 @@ final class EngineRepairScreen extends Screen {
                     chugTicks = Math.max(2, 6 - (int) (progress * 5.0F));
                 }
             } else {
-                charge = Math.max(0.0F, charge - 2.0F);
                 chugTicks = 0;
             }
-            if (charge >= holdTicks) {
+            if (charged()) {
                 restarted = true;
                 holdingRestart = false;
                 playSound(SoundEvents.ENTITY_IRON_GOLEM_REPAIR, 1.0F, 0.7F);
-                if (openTicks < minTicks + SUBMIT_MARGIN_TICKS) {
+                if (!submitDue()) {
                     banner = Text.translatable("screen.sparkstrength.engine.settling");
                     bannerColor = TabletTheme.WARNING;
                     bannerRetry = false;
@@ -653,13 +623,9 @@ final class EngineRepairScreen extends Screen {
         // Done but faster than the server's minimum: keep the engine idling until that time has passed (the server
         // starts its clock before this screen opens, so waiting here is always enough).
         // 已完成但快于服务端最短用时：让引擎保持怠速直到时间够了（服务端的计时早于界面打开，因此在这里等就足够）。
-        if (restarted && openTicks >= minTicks + SUBMIT_MARGIN_TICKS) {
-            submitted = true;
-            awaitTicks = REPLY_TIMEOUT_TICKS;
-            banner = Text.translatable("screen.sparkstrength.engine.restarting");
-            bannerColor = TabletTheme.SUCCESS;
+        if (restarted && submitDue()) {
             bannerRetry = false;
-            ClientPlayNetworking.send(new CompleteBreakerRepairC2SPacket(sessionId));
+            submit(Text.translatable("screen.sparkstrength.engine.restarting"));
         }
     }
 
@@ -669,7 +635,7 @@ final class EngineRepairScreen extends Screen {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         lastMouseX = mouseX;
         lastMouseY = mouseY;
-        if (button == 0 && repair && closeTicks < 0) {
+        if (button == 0 && repair && !closing()) {
             if (mode == EngineRepairMode.OVERHAUL && fuseAt(mouseX, mouseY) >= 0) {
                 if (live() && !fusesDone()) {
                     fuseHold = true;
@@ -694,7 +660,7 @@ final class EngineRepairScreen extends Screen {
                         banner = null;
                         bannerRetry = false;
                     }
-                } else if (!restarted && !submitted) {
+                } else if (!restarted && !submitted()) {
                     playSound(SoundEvents.BLOCK_IRON_TRAPDOOR_CLOSE, 0.6F, 0.25F);
                 }
                 return true;
@@ -704,14 +670,7 @@ final class EngineRepairScreen extends Screen {
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (button == 0) {
-            releaseHolds();
-        }
-        return super.mouseReleased(mouseX, mouseY, button);
-    }
-
-    private void releaseHolds() {
+    protected void releaseHolds() {
         holdingRestart = false;
         fuseHold = false;
         dragGauge = -1;
@@ -745,7 +704,7 @@ final class EngineRepairScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        if (repair && closeTicks < 0) {
+        if (repair && !closing()) {
             double amount = verticalAmount != 0.0 ? verticalAmount : horizontalAmount;
             for (int i = 0; i < gaugeCount; i++) {
                 if (overGauge(mouseX, mouseY, i)) {
@@ -785,41 +744,8 @@ final class EngineRepairScreen extends Screen {
         }
     }
 
-    /**
-     * Every way off this screen ends here: close() goes through setScreen(null), and another screen replacing this one
-     * calls removed() without close(). So the cancel lives here, sent at most once.
-     * 离开此界面的所有路径都会到这里：close() 走 setScreen(null)，被其他界面替换时只调用 removed() 而不调用 close()。
-     * 因此取消包放在这里发送，且最多发送一次。
-     */
     @Override
-    public void removed() {
-        releaseHolds();
-        sendCancelOnce();
-        super.removed();
-    }
-
-    /**
-     * Drops the server session unless there is none (status panel), it is already answered (submitted, awaiting the
-     * reply) or the server closed it, or the connection is gone.
-     * 放弃服务端会话；没有会话（状态面板）、已提交等待回复、服务端已关闭、或连接已断开时不发送。
-     */
-    private void sendCancelOnce() {
-        if (cancelSent || !repair || submitted || closeTicks >= 0) {
-            return;
-        }
-        cancelSent = true;
-        if (client == null || client.getNetworkHandler() == null) {
-            return;
-        }
-        ClientPlayNetworking.send(new CancelBreakerRepairC2SPacket(sessionId));
-    }
-
-    void onServerClose(int closedSession, int reason) {
-        if (closedSession != sessionId || closeTicks >= 0) {
-            return;
-        }
-        submitted = true;
-        releaseHolds();
+    protected void closedByServer(int reason) {
         switch (reason) {
             case CloseBreakerRepairS2CPacket.REASON_REPAIRED -> {
                 banner = Text.translatable("screen.sparkstrength.engine.repaired");
@@ -843,27 +769,23 @@ final class EngineRepairScreen extends Screen {
             }
         }
         bannerRetry = false;
-        closeTicks = CLOSE_DELAY_TICKS;
     }
 
     // ------------------------------------------------------------------------------------------------ render
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        super.render(context, mouseX, mouseY, delta);
         lastMouseX = mouseX;
         lastMouseY = mouseY;
-        int scale = Math.max(1, (int) Math.round(client.getWindow().getScaleFactor()));
-        TabletCanvas canvas = new TabletCanvas(context, scale, client.getWindow().getFramebufferHeight());
-        // One draw batch for the panel (its clips still flush). / 整个面板一个绘制批次（裁剪仍会提交）。
-        canvas.batch(() -> drawScreen(canvas, mouseX, mouseY, delta));
+        super.render(context, mouseX, mouseY, delta);
     }
 
-    private void drawScreen(TabletCanvas canvas, int mouseX, int mouseY, float delta) {
+    @Override
+    protected void drawScreen(TabletCanvas canvas, int mouseX, int mouseY, float delta) {
         int x = left();
         int y = top();
         boolean scorched = scorched();
-        float time = openTicks + delta;
+        float time = openTicks() + delta;
         float lit = MathHelper.lerp(delta, prevPower, power);
 
         drawPanel(canvas, x, y, scorched);
@@ -975,7 +897,7 @@ final class EngineRepairScreen extends Screen {
             // Closing: the step hints no longer apply, so repeat the outcome. / 关闭中：步骤提示已不适用，改为重复结果。
             hint = banner.getString();
             hintColor = bannerColor;
-        } else if (restarted || submitted) {
+        } else if (restarted || submitted()) {
             hint = Text.translatable("screen.sparkstrength.engine.hint_wait").getString();
         } else if (!gaugesPowered()) {
             hint = Text.translatable("screen.sparkstrength.engine.hint_fuses").getString();
@@ -1017,11 +939,11 @@ final class EngineRepairScreen extends Screen {
                 on = 1.0F;
             } else if (condition == EngineCondition.DAMAGED) {
                 color = TabletTheme.DANGER;
-                on = (openTicks / 8) % 2 == 0 ? 1.0F : 0.0F;
+                on = (openTicks() / 8) % 2 == 0 ? 1.0F : 0.0F;
             } else if (condition == EngineCondition.WRECKED) {
                 color = TabletTheme.DANGER;
                 on = switch (k) {
-                    case 0 -> ((openTicks * 7 + 3) % 11) < 3 ? 0.8F : 0.0F;
+                    case 0 -> ((openTicks() * 7 + 3) % 11) < 3 ? 0.8F : 0.0F;
                     case 1 -> 0.45F;
                     default -> 0.0F;
                 };
@@ -1253,7 +1175,7 @@ final class EngineRepairScreen extends Screen {
         boolean failed = endState == END_FAILURE;
         boolean pressed = holdingRestart && ready;
         boolean hover = ready && inside(mouseX, mouseY, bx - 4, by - 4, BUTTON_W + 8, BUTTON_H + 8);
-        float progress = failed ? 0.0F : done ? 1.0F : MathHelper.lerp(delta, prevCharge, charge) / holdTicks;
+        float progress = failed ? 0.0F : done ? 1.0F : chargeProgress(delta);
 
         // Housing with a brass frame. / 黄铜边框的按钮座。
         canvas.roundRect(bx - 3, by - 3, BUTTON_W + 6, BUTTON_H + 6, 6, INK);
@@ -1323,9 +1245,5 @@ final class EngineRepairScreen extends Screen {
         if (client != null) {
             client.getSoundManager().play(PositionedSoundInstance.master(sound, pitch, volume));
         }
-    }
-
-    private static boolean inside(double mx, double my, float x, float y, float w, float h) {
-        return mx >= x && mx < x + w && my >= y && my < y + h;
     }
 }
