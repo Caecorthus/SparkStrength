@@ -13,7 +13,6 @@ import org.ladysnake.cca.api.v3.component.ComponentKey;
 import org.ladysnake.cca.api.v3.component.ComponentProvider;
 import org.ladysnake.cca.api.v3.component.ComponentRegistry;
 import org.ladysnake.cca.api.v3.component.sync.AutoSyncedComponent;
-import org.ladysnake.cca.api.v3.component.tick.ClientTickingComponent;
 import org.ladysnake.cca.api.v3.component.tick.ServerTickingComponent;
 
 /**
@@ -22,13 +21,14 @@ import org.ladysnake.cca.api.v3.component.tick.ServerTickingComponent;
  * <p>组件挂在完成任务的目标玩家身上，而不是挂在服务员身上。这样每个目标只需要
  * 同步一个简单的倒计时，客户端高亮事件再判断当前观看者是否是服务员或服务员伪装。</p>
  *
- * <p>Synced only when a reveal starts or ends (the client counts down by itself), and only to players who can see
- * reveals ({@link WaiterTaskRevealService#canSeeReveals}). Someone who becomes such a viewer mid-reveal is sent every
- * player's current state at once.
- * 只在透视开始或结束时同步（客户端自行倒计时），且只发给能看到透视的玩家。中途获得资格的观察者会立即收到所有玩家的当前状态。</p>
+ * <p>Synced only when a reveal starts, is refreshed or ends, and only to players who can see reveals
+ * ({@link WaiterTaskRevealService#canSeeReveals}). The client keeps the server's value until the end packet and never
+ * counts down by itself, so a server running behind cannot see the reveal end early on the client. Someone who becomes
+ * such a viewer mid-reveal is sent every player's current state at once.
+ * 只在透视开始、刷新或结束时同步，且只发给能看到透视的玩家。客户端保留服务端的数值直到收到结束包，从不自行倒计时，
+ * 因此服务端变慢时客户端也不会提前结束透视。中途获得资格的观察者会立即收到所有玩家的当前状态。</p>
  */
-public final class WaiterTaskRevealComponent
-        implements AutoSyncedComponent, ServerTickingComponent, ClientTickingComponent {
+public final class WaiterTaskRevealComponent implements AutoSyncedComponent, ServerTickingComponent {
     public static final ComponentKey<WaiterTaskRevealComponent> KEY = ComponentRegistry.getOrCreate(
             SparkStrength.id("waiter_task_reveal"), WaiterTaskRevealComponent.class
     );
@@ -110,14 +110,6 @@ public final class WaiterTaskRevealComponent
             }
         }
         this.revealViewer = canSee;
-    }
-
-    @Override
-    public void clientTick() {
-        // 客户端本地递减，让透视结束不必等待下一次服务端同步。
-        if (this.revealTicks > 0) {
-            this.revealTicks--;
-        }
     }
 
     @Override
