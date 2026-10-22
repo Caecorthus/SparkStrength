@@ -1,7 +1,6 @@
-package annina.sparkstrength.mixin.bomber;
+package annina.sparkstrength.mixin.viewpoint;
 
-import annina.sparkstrength.entity.DroneEntity;
-import annina.sparkstrength.role.bomber.drone.DronePilotService;
+import annina.sparkstrength.viewpoint.RemoteViewpoint;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.entity.Entity;
@@ -19,13 +18,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.Set;
 
 /**
- * Unlimited drone range, entity tracking: the pilot always tracks the drone it pilots (whatever the distance to its
- * body), and other entities are tracked by their distance to that drone, so the pilot sees what is around it. Every
- * branch falls back to vanilla when {@link DronePilotService#droneOf} returns null; the pilot's per-tick
- * {@code updatePosition} re-evaluation (DronePilotService) then restores body-based tracking.
- * 无人机无限距离（实体追踪）：驾驶者始终追踪自己驾驶的无人机（无论与身体相距多远），其他实体按与该无人机的距离判断是否追踪，
- * 使驾驶者能看到无人机周围的事物。droneOf 返回 null 时所有分支都回退为原版；DronePilotService 每刻调用 updatePosition
- * 重新评估，从而恢复以身体为准的追踪。
+ * Remote viewpoint at any distance, entity tracking: the viewer always tracks its anchor, the drone it pilots or the
+ * Wraith it possesses (whatever the distance to its body), and other entities are tracked by their distance to
+ * {@link RemoteViewpoint#anchorOf}, so the viewer sees what is around it. Every branch falls back to vanilla when the
+ * viewer has no anchor; the per-tick {@code updatePosition} re-evaluation (RemoteViewSessions) then restores
+ * body-based tracking.
+ * 远程视点无视距离（实体追踪）：观看者始终追踪自己的锚点，即所驾驶的无人机或所附身的冤魂（无论与身体相距多远），其他实体按与
+ * anchorOf 的距离判断是否追踪，使观看者能看到锚点周围的事物。观看者没有锚点时所有分支都回退为原版；RemoteViewSessions 每刻调用
+ * updatePosition 重新评估，从而恢复以身体为准的追踪。
  *
  * <p>NoellesRoles also shadows {@code entity}/{@code listeners} on this class for a different method; no conflict.
  * NoellesRoles 也在此类上影射 entity/listeners，但作用于其他方法，互不冲突。</p>
@@ -35,7 +35,7 @@ import java.util.Set;
  * 两个注入都为 {@code require = 0}：区块系统模组改写 updateTrackedStatus 时跳过而不是启动崩溃，追踪保持原版（只追踪身体范围内的实体）。</p>
  */
 @Mixin(targets = "net.minecraft.server.world.ServerChunkLoadingManager$EntityTracker")
-public abstract class DronePilotEntityTrackerMixin {
+public abstract class RemoteViewpointEntityTrackerMixin {
     @Shadow
     @Final
     Entity entity;
@@ -54,8 +54,8 @@ public abstract class DronePilotEntityTrackerMixin {
             cancellable = true,
             require = 0
     )
-    private void sparkstrength$alwaysTrackPilotedDrone(ServerPlayerEntity player, CallbackInfo ci) {
-        if (!(entity instanceof DroneEntity) || DronePilotService.droneOf(player) != entity) {
+    private void sparkstrength$alwaysTrackRemoteViewpoint(ServerPlayerEntity player, CallbackInfo ci) {
+        if (!RemoteViewpoint.isAnchor(player, entity)) {
             return;
         }
         if (listeners.add(player.networkHandler)) {
@@ -70,10 +70,10 @@ public abstract class DronePilotEntityTrackerMixin {
                     target = "Lnet/minecraft/server/network/ServerPlayerEntity;getPos()Lnet/minecraft/util/math/Vec3d;"),
             require = 0
     )
-    private Vec3d sparkstrength$measureFromPilotedDrone(
+    private Vec3d sparkstrength$measureFromRemoteViewpoint(
             Vec3d original, @Local(argsOnly = true) ServerPlayerEntity player
     ) {
-        DroneEntity drone = DronePilotService.droneOf(player);
-        return drone == null ? original : drone.getPos();
+        Entity anchor = RemoteViewpoint.anchorOf(player);
+        return anchor == null ? original : anchor.getPos();
     }
 }
