@@ -53,6 +53,9 @@ public final class TimekeeperWatchComponent implements AutoSyncedComponent, Serv
     }
 
     public void reset() {
+        if (itemRefreshCooldownTicks == 0 && abilityRefreshCooldownTicks == 0) {
+            return;
+        }
         itemRefreshCooldownTicks = 0;
         abilityRefreshCooldownTicks = 0;
         sync();

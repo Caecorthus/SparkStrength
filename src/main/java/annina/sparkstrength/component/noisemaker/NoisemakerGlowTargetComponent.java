@@ -50,6 +50,9 @@ public class NoisemakerGlowTargetComponent implements AutoSyncedComponent, Serve
     }
 
     public void reset() {
+        if (this.glowTicksRemaining == 0) {
+            return;
+        }
         this.glowTicksRemaining = 0;
         this.sync();
     }

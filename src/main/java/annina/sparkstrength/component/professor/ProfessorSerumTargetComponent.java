@@ -82,6 +82,9 @@ public class ProfessorSerumTargetComponent implements AutoSyncedComponent, Serve
     }
 
     public void reset() {
+        if (invisibilityTicks == 0 && doorpassingTicks == 0 && sedativeTicks == 0) {
+            return;
+        }
         invisibilityTicks = 0;
         doorpassingTicks = 0;
         sedativeTicks = 0;

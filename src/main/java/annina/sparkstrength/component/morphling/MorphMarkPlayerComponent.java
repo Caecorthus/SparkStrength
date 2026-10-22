@@ -67,6 +67,10 @@ public class MorphMarkPlayerComponent implements AutoSyncedComponent, ServerTick
     }
 
     public void clear() {
+        if (this.markerUuid == null && this.sampleUuid == null && this.sampleName.isEmpty()
+                && this.markedName.isEmpty() && this.activeTicks == 0) {
+            return;
+        }
         this.markerUuid = null;
         this.sampleUuid = null;
         this.sampleName = "";

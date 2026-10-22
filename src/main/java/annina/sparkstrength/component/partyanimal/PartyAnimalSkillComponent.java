@@ -101,6 +101,10 @@ public final class PartyAnimalSkillComponent implements AutoSyncedComponent, Ser
 
     /** New role or new round. / 新职业或新对局。 */
     public void reset() {
+        if (completedTasks == 0 && cooldownTicks == 0 && activeState == 0 && activeTarget.isEmpty()
+                && activeSeconds == 0) {
+            return;
+        }
         completedTasks = 0;
         cooldownTicks = 0;
         activeState = 0;
