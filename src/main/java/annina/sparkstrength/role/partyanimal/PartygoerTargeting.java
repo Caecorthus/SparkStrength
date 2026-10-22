@@ -6,6 +6,7 @@ import annina.sparkstrength.entity.PartygoerEntity;
 import annina.sparkstrength.role.partyanimal.nav.TrainNavGrid;
 import annina.sparkstrength.role.partyanimal.nav.TrainPathfinder;
 import annina.sparkstrength.role.undercover.UndercoverRoles;
+import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -41,6 +42,32 @@ public final class PartygoerTargeting {
                 affected,
                 player.getVehicle() instanceof PartygoerEntity
         );
+    }
+
+    /**
+     * Whether {@code killer} is the summoner or on the summoner's side, so the Partygoer won't rage at them. An offline
+     * summoner is judged by its role alone.
+     * killer 是否是召唤者本人或与召唤者同一方，是则派对客不会对其狂怒。召唤者离线时只按其身份判断。
+     */
+    public static boolean isSummonerTeam(ServerPlayerEntity killer, UUID summonerUuid,
+                                         @Nullable ServerPlayerEntity summoner) {
+        GameWorldComponent game = GameWorldComponent.KEY.get(killer.getWorld());
+        PartyAnimalRules.Side summonerSide;
+        if (summoner != null) {
+            summonerSide = side(game, summoner);
+        } else {
+            Role role = game.getRole(summonerUuid);
+            summonerSide = PartyAnimalRules.side(role != null && role.canUseKiller(), role != null && role.isInnocent(),
+                    UndercoverRoles.isUndercover(role), false);
+        }
+        return PartyAnimalRules.isSummonerTeam(killer.getUuid().equals(summonerUuid), summonerSide, side(game, killer));
+    }
+
+    private static PartyAnimalRules.Side side(GameWorldComponent game, ServerPlayerEntity player) {
+        Role role = game.getRole(player);
+        return PartyAnimalRules.side(SparkTraitsCompat.isEffectiveKiller(role, player),
+                SparkTraitsCompat.isEffectiveCivilian(role, player),
+                UndercoverRoles.isUndercover(player), UndercoverRoles.isStage2(player));
     }
 
     /**
