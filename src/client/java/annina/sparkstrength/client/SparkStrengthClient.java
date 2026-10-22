@@ -4,6 +4,7 @@ import annina.sparkstrength.client.item.CapsuleClient;
 import annina.sparkstrength.client.item.FlashlightModelClient;
 import annina.sparkstrength.client.item.M67Client;
 import annina.sparkstrength.client.item.PerfumerItemsClient;
+import annina.sparkstrength.client.render.ClientFrame;
 import annina.sparkstrength.client.role.attendant.flashlight.FlashlightLights;
 import annina.sparkstrength.client.role.attendant.flashlight.FlashlightRenderer;
 import annina.sparkstrength.client.role.bodyguard.BodyguardClient;
@@ -59,6 +60,8 @@ import annina.sparkstrength.role.timekeeper.TimekeeperWatchMode;
 public final class SparkStrengthClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
+        // Clock for the per-frame caches of hot render hooks (instinct outlines, skins). / 热点渲染钩子逐帧缓存的时钟。
+        ClientFrame.register();
         BodyguardClient.register();
         CapsuleClient.register();
         FlashlightModelClient.register();

@@ -25,10 +25,19 @@ public final class PerfumerClientEffects {
     private PerfumerClientEffects() {
     }
 
-    /** Cooling Oil blocks every instinct path while active. / 风油精生效期间屏蔽所有本能路径。 */
+    /**
+     * Cooling Oil blocks every instinct path while active. Asked for every outline and instinct gate, so the oil flag
+     * is read before the world game component (same answer as {@code activeScent()} with Cooling Oil).
+     * 风油精生效期间屏蔽所有本能路径。每次描边与本能入口都会询问，因此先读风油精标记再读世界游戏组件（结果与
+     * {@code activeScent()} 判定风油精一致）。
+     */
     public static boolean blocksInstinct() {
-        PerfumerScentComponent scent = activeScent();
-        return scent != null && scent.hasCoolingOil();
+        ClientPlayerEntity player = MinecraftClient.getInstance().player;
+        if (player == null) {
+            return false;
+        }
+        PerfumerScentComponent scent = PerfumerScentComponent.KEY.getNullable(player);
+        return scent != null && scent.hasCoolingOil() && GameFunctions.isPlayerPlayingAndAlive(player);
     }
 
     /** Cheap identity check first: KeyBinding queries run for every key every tick. / 先做廉价的身份比较：每个按键每 tick 都会查询。 */

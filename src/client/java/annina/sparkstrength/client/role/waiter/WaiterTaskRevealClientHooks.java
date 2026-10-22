@@ -1,12 +1,10 @@
 package annina.sparkstrength.client.role.waiter;
 
+import annina.sparkstrength.client.instinct.InstinctViewer;
 import annina.sparkstrength.component.waiter.WaiterTaskRevealComponent;
-import annina.sparkstrength.role.coroner.CoronerService;
+import annina.sparkstrength.role.coroner.CoronerRules;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
-import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import org.agmas.noellesroles.Noellesroles;
@@ -27,17 +25,20 @@ public final class WaiterTaskRevealClientHooks {
     }
 
     private static GetInstinctHighlight.HighlightResult highlight(Entity entity) {
-        ClientPlayerEntity viewer = MinecraftClient.getInstance().player;
-        if (viewer == null || !(entity instanceof PlayerEntity target) || viewer == target
-                || !GameFunctions.isPlayerPlayingAndAlive(viewer)
-                || !GameFunctions.isPlayerPlayingAndAlive(target)) {
+        if (!(entity instanceof PlayerEntity target)) {
+            return null;
+        }
+        InstinctViewer frame = InstinctViewer.current();
+        if (frame == null || frame.player() == target) {
             return null;
         }
 
-        GameWorldComponent game = GameWorldComponent.KEY.get(viewer.getWorld());
-        boolean waiter = game.isRole(viewer, Noellesroles.WAITER)
-                || CoronerService.hasWaiterDisguise(viewer);
-        if (!waiter || !WaiterTaskRevealComponent.KEY.get(target).isRevealed()) {
+        // Viewer first (resolved once per frame), then the target's reveal flag, then the alive checks.
+        // 先判观察者（每帧解析一次），再判目标的透视标记，最后才做存活判定。
+        boolean waiter = frame.game().isRole(frame.player(), Noellesroles.WAITER)
+                || CoronerRules.grantsWaiterDoublePickup(frame.disguiseRole());
+        if (!waiter || !frame.playingAndAlive() || !WaiterTaskRevealComponent.KEY.get(target).isRevealed()
+                || !GameFunctions.isPlayerPlayingAndAlive(target)) {
             return null;
         }
 

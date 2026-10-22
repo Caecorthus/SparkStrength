@@ -35,16 +35,16 @@ public final class MorphlingClientHooks {
 
         MinecraftClient client = MinecraftClient.getInstance();
         PlayerEntity localPlayer = client.player;
-        if (localPlayer == null
-                || target == localPlayer
-                || !GameFunctions.isPlayerPlayingAndAlive(localPlayer)
-                || !GameFunctions.isPlayerAliveAndSurvival(localPlayer)) {
+        if (localPlayer == null || target == localPlayer) {
             return null;
         }
 
+        // Role first: nearly every viewer is no Morphling. / 先判身份：几乎所有观察者都不是变形怪。
         GameWorldComponent game = GameWorldComponent.KEY.get(localPlayer.getWorld());
         Role localRole = game.getRole(localPlayer);
-        if (!MorphlingRules.isMorphling(localRole)) {
+        if (!MorphlingRules.isMorphling(localRole)
+                || !GameFunctions.isPlayerPlayingAndAlive(localPlayer)
+                || !GameFunctions.isPlayerAliveAndSurvival(localPlayer)) {
             return null;
         }
 

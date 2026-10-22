@@ -49,13 +49,18 @@ public final class PathogenClientHooks {
             return null;
         }
         PlayerEntity viewer = MinecraftClient.getInstance().player;
-        if (viewer == null || viewer == target || !WatheClient.isPlayerPlayingAndAlive()
-                || !GameFunctions.isPlayerPlayingAndAlive(target)) {
+        if (viewer == null || viewer == target || !WatheClient.isPlayerPlayingAndAlive()) {
             return null;
         }
+        boolean pathogenViewer = PathogenVisibility.isPathogen(viewer);
         boolean carrier = VirusCarrierComponent.isCarrier(target);
+        // Everyone but a Pathogen only ever sees carriers: skip the alive lookups for the rest of the crowd.
+        // 病原体以外的人只会看到带毒者：其余人群跳过存活查询。
+        if (!pathogenViewer && !carrier || !GameFunctions.isPlayerPlayingAndAlive(target)) {
+            return null;
+        }
         Integer color = null;
-        if (PathogenVisibility.isPathogen(viewer)) {
+        if (pathogenViewer) {
             color = PathogenRules.pathogenViewColor(
                     PathogenVisibility.isPathogen(target), carrier, carrier && viewer.canSee(target));
         } else if (carrier && PathogenVisibility.isToxicologistViewer(viewer)) {

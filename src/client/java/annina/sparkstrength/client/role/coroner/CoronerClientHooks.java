@@ -1,14 +1,16 @@
 package annina.sparkstrength.client.role.coroner;
 
+import annina.sparkstrength.client.instinct.InstinctViewer;
 import annina.sparkstrength.compat.SparkTraitsCompat;
+import annina.sparkstrength.role.coroner.CoronerRules;
 import annina.sparkstrength.role.coroner.CoronerService;
+import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.api.event.ShouldShowCohort;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerPoisonComponent;
 import dev.doctor4t.wathe.cca.PlayerPsychoComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -53,12 +55,14 @@ public final class CoronerClientHooks {
      * SparkStrength 不会因此对 SparkTraits 形成硬依赖。</p>
      */
     public static @Nullable Integer resolveKillerDisguiseInstinctColor(Entity target) {
-        ClientPlayerEntity viewer = MinecraftClient.getInstance().player;
-        if (viewer == null || !(target instanceof PlayerEntity targetPlayer) || targetPlayer.isSpectator()) {
+        if (!(target instanceof PlayerEntity targetPlayer) || targetPlayer.isSpectator()) {
+            return null;
+        }
+        InstinctViewer viewer = InstinctViewer.current();
+        if (viewer == null) {
             return null;
         }
 
-        GameWorldComponent game = GameWorldComponent.KEY.get(viewer.getWorld());
         /*
          * 使用 SparkTraits 的公开软兼容门面判断观察者是否属于有效杀手阵营。
          * 没有 SparkTraits 时，该门面会自动回退到 Wathe 原生 canUseKiller 结果，
@@ -66,16 +70,23 @@ public final class CoronerClientHooks {
          *
          * 使用有效阵营而不是 game.canUseKillerFeatures(viewer)，才能让“原始好人
          * + 内鬼词条”的观察者也获得验尸官杀手伪装的红色本能和同伙提示。
+         * The viewer's side is resolved once per frame (InstinctViewer); the target's disguise before its alive check.
+         * 观察者一侧每帧只解析一次（InstinctViewer）；目标的伪装判定先于其存活判定。
          */
-        if (!SparkTraitsCompat.isEffectiveKiller(game.getRole(viewer), viewer)
-                || !GameFunctions.isPlayerPlayingAndAlive(viewer)
-                || !GameFunctions.isPlayerPlayingAndAlive(targetPlayer)
-                || !(CoronerService.hasKillerFactionDisguise(targetPlayer)
-                || CoronerService.hasUndercoverDisguise(targetPlayer))) {
+        if (!viewer.effectiveKiller()
+                || !viewer.playingAndAlive()
+                || !hasKillerCohortDisguise(targetPlayer)
+                || !GameFunctions.isPlayerPlayingAndAlive(targetPlayer)) {
             return null;
         }
 
         return KILLER_COHORT_RED;
+    }
+
+    /** Disguised as a killer-faction or Undercover corpse. / 伪装成杀手阵营或卧底的尸体身份。 */
+    private static boolean hasKillerCohortDisguise(PlayerEntity player) {
+        Role disguise = CoronerService.activeDisguiseRoleForRules(player);
+        return CoronerRules.isKillerFaction(disguise) || CoronerRules.isUndercover(disguise);
     }
 
     private static GetInstinctHighlight.HighlightResult highlightKillerDisguise(Entity target) {
@@ -103,8 +114,7 @@ public final class CoronerClientHooks {
         if (!SparkTraitsCompat.isEffectiveKiller(game.getRole(viewer), viewer)
                 || !GameFunctions.isPlayerPlayingAndAlive(viewer)
                 || !GameFunctions.isPlayerPlayingAndAlive(target)
-                || !(CoronerService.hasKillerFactionDisguise(target)
-                || CoronerService.hasUndercoverDisguise(target))) {
+                || !hasKillerCohortDisguise(target)) {
             return null;
         }
 
@@ -112,27 +122,32 @@ public final class CoronerClientHooks {
     }
 
     private static GetInstinctHighlight.HighlightResult highlightBorrowedRoleInstincts(Entity target) {
-        ClientPlayerEntity viewer = MinecraftClient.getInstance().player;
-        if (viewer == null || !(target instanceof PlayerEntity targetPlayer)) {
+        if (!(target instanceof PlayerEntity targetPlayer)) {
             return null;
         }
-        if (!GameFunctions.isPlayerPlayingAndAlive(viewer) || !GameFunctions.isPlayerPlayingAndAlive(targetPlayer)) {
+        InstinctViewer frame = InstinctViewer.current();
+        if (frame == null || !frame.playingAndAlive() || !GameFunctions.isPlayerPlayingAndAlive(targetPlayer)) {
             return null;
         }
 
-        GameWorldComponent game = GameWorldComponent.KEY.get(viewer.getWorld());
+        ClientPlayerEntity viewer = frame.player();
+        GameWorldComponent game = frame.game();
+        // Each disguise is resolved once: the target's here, the viewer's once per frame (InstinctViewer).
+        // 每个伪装只解析一次：目标的在这里，观察者的每帧一次（InstinctViewer）。
+        Role targetDisguise = CoronerService.activeDisguiseRoleForRules(targetPlayer);
+        Role viewerDisguise = frame.disguiseRole();
         boolean hiddenSurvivalMaster = (game.isRole(targetPlayer, Noellesroles.SURVIVAL_MASTER)
-                || CoronerService.hasSurvivalMasterDisguise(targetPlayer)) && !viewer.canSee(targetPlayer);
+                || CoronerRules.isSurvivalMaster(targetDisguise)) && !viewer.canSee(targetPlayer);
         if (hiddenSurvivalMaster) {
             return GetInstinctHighlight.HighlightResult.skip();
         }
 
-        if (CoronerService.hasBomberDisguise(viewer)
+        if (CoronerRules.isBomber(viewerDisguise)
                 && BomberPlayerComponent.KEY.get(targetPlayer).hasBomb()) {
             return GetInstinctHighlight.HighlightResult.always(Noellesroles.BOMBER.color());
         }
 
-        if (CoronerService.hasDemonHunterDisguise(viewer)) {
+        if (CoronerRules.isDemonHunter(viewerDisguise)) {
             DemonHunterPlayerComponent hunterComp = DemonHunterPlayerComponent.KEY.get(viewer);
             if (hunterComp.isPlayerFrenzied(targetPlayer.getUuid())
                     && !game.isRole(targetPlayer, Noellesroles.SILENCER)) {
@@ -142,26 +157,26 @@ public final class CoronerClientHooks {
 
         if (PlayerPsychoComponent.KEY.get(viewer).getPsychoTicks() > 0
                 && !game.isRole(viewer, Noellesroles.JESTER)
-                && CoronerService.hasDemonHunterDisguise(targetPlayer)) {
+                && CoronerRules.isDemonHunter(targetDisguise)) {
             return GetInstinctHighlight.HighlightResult.always(Noellesroles.DEMON_HUNTER.color());
         }
 
-        if (CoronerService.hasBartenderDisguise(viewer) && viewer.canSee(targetPlayer)
+        if (CoronerRules.isBartender(viewerDisguise) && viewer.canSee(targetPlayer)
                 && BartenderPlayerComponent.KEY.get(targetPlayer).glowTicks > 0) {
             return GetInstinctHighlight.HighlightResult.always(Color.GREEN.getRGB());
         }
 
-        if (CoronerService.hasProfessorDisguise(viewer) && viewer.canSee(targetPlayer)
+        if (CoronerRules.isProfessor(viewerDisguise) && viewer.canSee(targetPlayer)
                 && IronManPlayerComponent.KEY.get(targetPlayer).hasBuff()) {
             return GetInstinctHighlight.HighlightResult.always(Color.BLUE.getRGB());
         }
 
-        if (CoronerService.hasToxicologistDisguise(viewer) && viewer.canSee(targetPlayer)
+        if (CoronerRules.isToxicologist(viewerDisguise) && viewer.canSee(targetPlayer)
                 && PlayerPoisonComponent.KEY.get(targetPlayer).poisonTicks > 0) {
             return GetInstinctHighlight.HighlightResult.always(Noellesroles.TOXICOLOGIST.color());
         }
 
-        if (CoronerService.hasPoisonerDisguise(viewer)
+        if (CoronerRules.isPoisoner(viewerDisguise)
                 && PlayerPoisonComponent.KEY.get(targetPlayer).poisonTicks > 0) {
             /*
              * 验尸官伪装为毒师时，沿用 NoellesRoles 毒师的中毒透视：
