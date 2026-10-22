@@ -85,6 +85,7 @@
     "serialkiller.SerialKillerCrosshairMixin",
     "serialkiller.SerialKillerClientUseMixin",
     "serialkiller.SerialKillerClientSlotLockMixin",
+    "serialkiller.SerialKillerClientSlotWriteMixin",
     "serialkiller.SerialKillerBipedEntityModelMixin",
     "serialkiller.SerialKillerPlayerInventoryClientMixin",
     "sabotage.BlackoutInstinctSightMixin",
