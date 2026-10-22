@@ -60,6 +60,7 @@
     "economy.KillerTeamMoneyHudMixin",
     "engineer.EngineerCaptureReportItemEntityRendererMixin",
     "engineer.EngineerStunnedKeyBindingMixin",
+    "engineer.EngineerStunnedStickyKeyMixin",
     "engineer.EngineerStunnedMouseMixin",
     "jester.JesterMomentClientStasisMixin",
     "jester.JesterMomentGrayscaleGameRendererMixin",
