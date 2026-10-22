@@ -152,6 +152,14 @@ public final class TaotieHeadRules {
             // (2026-10-20). / SparkWitch 巫女小凋灵切换与赤首射击，同步自控场专家列表（2026-10-20）。
             Identifier.of("sparkwitch", "mini_wither_toggle"),
             Identifier.of("sparkwitch", "fire_crimson_skull"),
+            // SparkWitch police Black Raven crow skill (化鸦): start/end, crow flight, crow interaction and the
+            // one-shot feather drop, mirrored from the Control Expert list (2026-10-21). An unregistered id never matches.
+            // SparkWitch 警察黑羽鸦化鸦技能：开始/结束、乌鸦飞行、乌鸦交互与一次性丢出归羽，同步自控场专家列表
+            // （2026-10-21）。未注册时该 id 永远不会命中。
+            Identifier.of("sparkwitch", "black_raven_crow_toggle"),
+            Identifier.of("sparkwitch", "black_raven_crow_move"),
+            Identifier.of("sparkwitch", "black_raven_crow_use"),
+            Identifier.of("sparkwitch", "black_raven_crow_drop_feather"),
 
             Identifier.of("sparkstrength", "noisemaker_glow"),
             Identifier.of("sparkstrength", "phantom_backpack_invisibility"),

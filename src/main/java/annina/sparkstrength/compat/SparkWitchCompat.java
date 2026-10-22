@@ -6,8 +6,10 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Method;
@@ -226,6 +228,79 @@ public final class SparkWitchCompat {
         }
     }
 
+    /**
+     * Side-neutral: whether {@code entity} is a SparkWitch Black Raven Raven Form crow (化鸦), through the frozen
+     * {@code SparkWitchApi.isBlackRavenCrow(Entity)}. Lets a client gate that accepts only players (the Undercover
+     * tomahawk) still send the attack on a crow; the server decides through {@link #crowMeleeStandIn}. False without
+     * SparkWitch, with an older facade, or when the call fails, so then no crow is ever attacked.
+     * 两端通用：{@code entity} 是否为 SparkWitch 黑羽鸦化鸦乌鸦，经冻结的 {@code SparkWitchApi.isBlackRavenCrow} 查询。让只接受
+     * 玩家的客户端门槛（卧底战术斧）对乌鸦也发送攻击；由服务端经 {@link #crowMeleeStandIn} 判定。未安装 SparkWitch、门面较旧或
+     * 调用失败时返回 false，此时永远不会攻击乌鸦。
+     */
+    public static boolean isBlackRavenCrow(@Nullable Entity entity) {
+        Method method = RavenCrowQueries.IS_CROW;
+        if (method == null || entity == null || entity instanceof PlayerEntity) {
+            return false;
+        }
+        try {
+            return Boolean.TRUE.equals(method.invoke(null, entity));
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            return false;
+        }
+    }
+
+    /**
+     * Server thread: the Black Raven that a melee stab or strike on {@code target} reaches when {@code target} is its
+     * Raven Form crow, through SparkWitch's frozen
+     * {@code SparkWitchApi.crowMeleeStandIn(ServerPlayerEntity, Entity, double)}: a crow {@code attacker} may hit within
+     * {@code reach} (+0.5 latency, lag-compensated, clear line) returns its owner and arms SparkWitch's owner
+     * substitution, so the caller runs its own player path on that owner, skipping only its own distance check on the
+     * body; its {@code killPlayer} then ends the Raven Form session first. Null (nothing armed) for players, nulls,
+     * other entities, without SparkWitch, with an older facade, or when the call fails, so the caller keeps today's
+     * non-player handling.
+     * 服务端线程：{@code target} 是黑羽鸦化鸦乌鸦时，对其的近战刺击或劈砍所命中的黑羽鸦，经 SparkWitch 冻结的
+     * {@code SparkWitchApi.crowMeleeStandIn} 查询：{@code attacker} 可命中、位于 {@code reach}（+0.5 延迟、延迟补偿、视线畅通）内的
+     * 乌鸦返回其主人并装好 SparkWitch 的主人替身，调用方随后对该主人执行自身的玩家路径，只跳过自身对本体的距离检查；其
+     * {@code killPlayer} 会先结束化鸦会话。玩家、null、其他实体、未安装 SparkWitch、门面较旧或调用失败时返回 null（不装入替身），
+     * 调用方保持现有的非玩家处理。
+     */
+    public static @Nullable ServerPlayerEntity crowMeleeStandIn(@Nullable ServerPlayerEntity attacker,
+                                                                @Nullable Entity target, double reach) {
+        Method method = RavenCrowQueries.MELEE_STAND_IN;
+        if (method == null || attacker == null || target == null || target instanceof PlayerEntity) {
+            return null;
+        }
+        try {
+            return method.invoke(null, attacker, target, reach) instanceof ServerPlayerEntity owner ? owner : null;
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * Server thread, after a SparkStrength blast killed its players: kills the Black Raven behind every Raven Form crow
+     * within {@code radius} of {@code center} (box centre, clear line from the centre) through SparkWitch's frozen
+     * {@code SparkWitchApi.killCrowsInBlast(ServerWorld, Vec3d, double, ServerPlayerEntity, Identifier)}, credited to
+     * {@code killer} with {@code deathReason} passed through as the same instance. Returns how many crows were hit; 0
+     * without SparkWitch, with an older facade, when the call fails, and for nulls (no crow is touched).
+     * 服务端线程，在 SparkStrength 爆炸击杀其范围内玩家之后：经 SparkWitch 冻结的 {@code SparkWitchApi.killCrowsInBlast}，处死
+     * {@code center} 周围 {@code radius} 内（箱体中心、与爆心视线畅通）每只化鸦乌鸦背后的黑羽鸦，记在 {@code killer} 名下，
+     * {@code deathReason} 按同一实例原样传递。返回被命中的乌鸦数量；未安装 SparkWitch、门面较旧、调用失败及参数为 null 时返回 0
+     * （不触碰任何乌鸦）。
+     */
+    public static int killCrowsInBlast(@Nullable ServerWorld world, @Nullable Vec3d center, double radius,
+                                       @Nullable ServerPlayerEntity killer, @Nullable Identifier deathReason) {
+        Method method = RavenCrowQueries.BLAST;
+        if (method == null || world == null || center == null || deathReason == null) {
+            return 0;
+        }
+        try {
+            return method.invoke(null, world, center, radius, killer, deathReason) instanceof Integer hit ? hit : 0;
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            return 0;
+        }
+    }
+
     private static @Nullable Method blindFeatureGate() {
         if (!blindFeatureGateResolved) {
             blindFeatureGateResolved = true;
@@ -310,6 +385,34 @@ public final class SparkWitchCompat {
             } catch (ReflectiveOperationException | SecurityException | LinkageError ignored) {
                 // SparkWitch builds before 2026-10-07 lack this seam; the vest and shield keep their usual rules.
                 // 2026-10-07 之前的 SparkWitch 没有此接缝；防弹衣与盾牌保持原有规则。
+                return null;
+            }
+        }
+    }
+
+    /**
+     * SparkWitch's Raven Form crow seam (2026-10-21), resolved once on first use; each method is null when SparkWitch is
+     * absent or older, or its signature or return type differs.
+     * SparkWitch 的化鸦乌鸦接缝（2026-10-21），首次使用时解析一次；SparkWitch 缺失、版本较旧或签名与返回类型不符时为 null。
+     */
+    private static final class RavenCrowQueries {
+        private static final @Nullable Method IS_CROW = resolve("isBlackRavenCrow", boolean.class, Entity.class);
+        private static final @Nullable Method MELEE_STAND_IN = resolve("crowMeleeStandIn",
+                ServerPlayerEntity.class, ServerPlayerEntity.class, Entity.class, double.class);
+        private static final @Nullable Method BLAST = resolve("killCrowsInBlast",
+                int.class, ServerWorld.class, Vec3d.class, double.class, ServerPlayerEntity.class, Identifier.class);
+
+        private static @Nullable Method resolve(String name, Class<?> returnType, Class<?>... parameterTypes) {
+            if (!isLoaded()) {
+                return null;
+            }
+            try {
+                Method method = Class.forName(PUBLIC_API).getMethod(name, parameterTypes);
+                return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == returnType
+                        ? method : null;
+            } catch (ReflectiveOperationException | SecurityException | LinkageError ignored) {
+                // SparkWitch builds before 2026-10-21 lack this seam; crows stay out of reach of these weapons.
+                // 2026-10-21 之前的 SparkWitch 没有此接缝；这些武器随之打不到乌鸦。
                 return null;
             }
         }

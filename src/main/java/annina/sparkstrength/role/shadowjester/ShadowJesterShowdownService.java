@@ -1,5 +1,6 @@
 package annina.sparkstrength.role.shadowjester;
 
+import annina.sparkstrength.compat.SparkFactionCompat;
 import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.component.shadowjester.ShadowJesterShowdownWorldComponent;
 import annina.sparkstrength.network.shadowjester.SyncShadowJesterShowdownMusicS2CPacket;
@@ -380,6 +381,12 @@ public final class ShadowJesterShowdownService {
             }
             if (player.getUuid().equals(component.getFirstJester())
                     || player.getUuid().equals(component.getSecondJester())) {
+                continue;
+            }
+            // Settlement-excluded roles (SparkWitch's Black Raven, via SparkFactionAPI) never count as alive here, so
+            // they cannot hold up the clearing win; nobody is skipped without that API.
+            // 结算排除的身份（经 SparkFactionAPI，例如 SparkWitch 的黑羽鸦）在此不算存活，不会拖住清场胜利；没有该 API 时不跳过任何人。
+            if (SparkFactionCompat.isSettlementExcluded(game, player.getUuid())) {
                 continue;
             }
             livingOthers.add(player);

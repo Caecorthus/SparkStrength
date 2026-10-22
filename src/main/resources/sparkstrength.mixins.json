@@ -28,6 +28,7 @@
     "bomber.DroneKnifeStabPayloadMixin",
     "bomber.DroneProjectileMixin",
     "bomber.DroneSparkWitchHitsMixin",
+    "bomber.DroneSparkWitchCrowTargetsMixin",
     "bomber.DroneThrowingAxeMixin",
     "bomber.DronePilotChunkDataSenderMixin",
     "bomber.DronePilotChunkLoadingManagerMixin",

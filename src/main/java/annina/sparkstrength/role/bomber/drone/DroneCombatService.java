@@ -3,6 +3,7 @@ package annina.sparkstrength.role.bomber.drone;
 import annina.sparkstrength.SparkStrengthEntities;
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.SparkStrengthSounds;
+import annina.sparkstrength.compat.SparkWitchCompat;
 import annina.sparkstrength.entity.DroneEntity;
 import annina.sparkstrength.entity.M67GrenadeEntity;
 import annina.sparkstrength.item.grenade.GrenadeBlastService;
@@ -61,8 +62,10 @@ import java.util.UUID;
  *   45 s cooldown; bomb drone detonates immediately.
  *   投弹无人机掉落可拾取的 M67（不会爆炸）并以 45 秒冷却返还主人；炸弹无人机立即引爆。</li>
  *   <li>{@link #detonate}: bomb drone blast, radius {@link DroneRules#BOMB_BLAST_RADIUS}, M67 path judgement, kills
- *   credited to the owner with the NoellesRoles bomb death reason; chains into other drones in the blast.
- *   炸弹无人机爆炸，沿用 M67 路径判定，击杀归属主人并使用 NoellesRoles 炸弹死因；会连锁击毁范围内的其他无人机。</li>
+ *   credited to the owner with the NoellesRoles bomb death reason; then kills the Black Raven behind every SparkWitch
+ *   Raven Form crow in the radius ({@code SparkWitchCompat.killCrowsInBlast}); chains into other drones in the blast.
+ *   炸弹无人机爆炸，沿用 M67 路径判定，击杀归属主人并使用 NoellesRoles 炸弹死因；随后处死半径内每只 SparkWitch 化鸦乌鸦
+ *   背后的黑羽鸦（SparkWitchCompat.killCrowsInBlast）；会连锁击毁范围内的其他无人机。</li>
  * </ul>
  *
  * <p>Re-entrancy: a drone being removed is held in {@link #BUSY}; every entry point ignores it, so a blast that breaks
@@ -248,6 +251,14 @@ public final class DroneCombatService {
                     AttackOriginScope.runBlast(center, () ->
                             GameFunctions.killPlayer(victim, true, owner, Noellesroles.DEATH_REASON_BOMB));
                 }
+            }
+            if (roundId.equals(DroneService.currentRoundId(world))) {
+                // A SparkWitch Raven Form crow in the blast kills its Black Raven like a player here (owner 2026-10-21):
+                // same radius, the pilot credited, NoellesRoles' bomb reason instance, inside this blast's scope.
+                // 爆炸范围内的 SparkWitch 化鸦乌鸦与此处的玩家一样处死其黑羽鸦（所有者 2026-10-21）：同一半径、记在驾驶者
+                // 名下、NoellesRoles 炸弹死因实例，并处于本次爆炸作用域内。
+                AttackOriginScope.runBlast(center, () -> SparkWitchCompat.killCrowsInBlast(world, center,
+                        DroneRules.BOMB_BLAST_RADIUS, owner, Noellesroles.DEATH_REASON_BOMB));
             }
             if (roundId.equals(DroneService.currentRoundId(world))) {
                 breakDronesInBlast(world, center, DroneRules.BOMB_BLAST_RADIUS, drone, owner);
