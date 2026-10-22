@@ -1,11 +1,10 @@
 package annina.sparkstrength.client.role.waiter;
 
+import annina.sparkstrength.client.instinct.InstinctViewer;
 import annina.sparkstrength.component.waiter.WaiterTaskRevealComponent;
 import annina.sparkstrength.role.waiter.WaiterTaskRevealService;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.game.GameFunctions;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import org.agmas.noellesroles.Noellesroles;
@@ -26,15 +25,21 @@ public final class WaiterTaskRevealClientHooks {
     }
 
     private static GetInstinctHighlight.HighlightResult highlight(Entity entity) {
-        ClientPlayerEntity viewer = MinecraftClient.getInstance().player;
-        if (viewer == null || !(entity instanceof PlayerEntity target) || viewer == target
-                || !GameFunctions.isPlayerPlayingAndAlive(target)) {
+        if (!(entity instanceof PlayerEntity target)) {
+            return null;
+        }
+        InstinctViewer frame = InstinctViewer.current();
+        if (frame == null || frame.player() == target) {
             return null;
         }
 
-        // Same predicate as the server's sync recipients. / 与服务端同步对象使用同一判定。
-        if (!WaiterTaskRevealService.canSeeReveals(viewer)
-                || !WaiterTaskRevealComponent.KEY.get(target).isRevealed()) {
+        // Viewer first (resolved once per frame; same predicate as the server's sync recipients), then the target's
+        // reveal flag, then its alive check.
+        // 先判观察者（每帧解析一次；与服务端同步对象使用同一判定），再判目标的透视标记，最后才做目标存活判定。
+        if (!WaiterTaskRevealService.canSeeReveals(frame.playingAndAlive(),
+                frame.game().isRole(frame.player(), Noellesroles.WAITER), frame.disguiseRole())
+                || !WaiterTaskRevealComponent.KEY.get(target).isRevealed()
+                || !GameFunctions.isPlayerPlayingAndAlive(target)) {
             return null;
         }
 

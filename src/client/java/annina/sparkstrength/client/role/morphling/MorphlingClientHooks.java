@@ -7,6 +7,8 @@ import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.client.WatheClient;
 import dev.doctor4t.wathe.game.GameFunctions;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -26,6 +28,10 @@ public final class MorphlingClientHooks {
         }
         registered = true;
         GetInstinctHighlight.EVENT.register(MorphlingClientHooks::markedPlayerHighlight);
+        // The skin memo lives only inside a world render. / 皮肤备忘只在世界渲染期间存在。
+        WorldRenderEvents.END.register(context -> MorphlingAppearanceClientHelper.forgetFrame());
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
+                client.execute(MorphlingAppearanceClientHelper::forgetFrame));
     }
 
     private static GetInstinctHighlight.HighlightResult markedPlayerHighlight(Entity entity) {
@@ -35,16 +41,16 @@ public final class MorphlingClientHooks {
 
         MinecraftClient client = MinecraftClient.getInstance();
         PlayerEntity localPlayer = client.player;
-        if (localPlayer == null
-                || target == localPlayer
-                || !GameFunctions.isPlayerPlayingAndAlive(localPlayer)
-                || !GameFunctions.isPlayerAliveAndSurvival(localPlayer)) {
+        if (localPlayer == null || target == localPlayer) {
             return null;
         }
 
+        // Role first: nearly every viewer is no Morphling. / 先判身份：几乎所有观察者都不是变形怪。
         GameWorldComponent game = GameWorldComponent.KEY.get(localPlayer.getWorld());
         Role localRole = game.getRole(localPlayer);
-        if (!MorphlingRules.isMorphling(localRole)) {
+        if (!MorphlingRules.isMorphling(localRole)
+                || !GameFunctions.isPlayerPlayingAndAlive(localPlayer)
+                || !GameFunctions.isPlayerAliveAndSurvival(localPlayer)) {
             return null;
         }
 

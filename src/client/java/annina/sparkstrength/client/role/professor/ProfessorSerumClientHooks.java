@@ -1,10 +1,10 @@
 package annina.sparkstrength.client.role.professor;
 
+import annina.sparkstrength.client.instinct.InstinctViewer;
 import annina.sparkstrength.component.professor.ProfessorSerumTargetComponent;
-import annina.sparkstrength.role.coroner.CoronerService;
+import annina.sparkstrength.role.coroner.CoronerRules;
 import annina.sparkstrength.role.professor.ProfessorSerumRules;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
-import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.client.WatheClient;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
@@ -40,9 +40,10 @@ public final class ProfessorSerumClientHooks {
         }
 
         ProfessorSerumTargetComponent targetComponent = ProfessorSerumTargetComponent.KEY.get(target);
-        GameWorldComponent gameWorld = GameWorldComponent.KEY.get(localPlayer.getWorld());
-        boolean localProfessor = gameWorld.isRole(localPlayer, Noellesroles.PROFESSOR)
-                || CoronerService.hasProfessorDisguise(localPlayer);
+        // The viewer's disguise is resolved once per frame (InstinctViewer). / 观察者的伪装每帧只解析一次。
+        InstinctViewer frame = InstinctViewer.current();
+        boolean localProfessor = frame != null && (frame.game().isRole(localPlayer, Noellesroles.PROFESSOR)
+                || CoronerRules.isProfessor(frame.disguiseRole()));
 
         if (localProfessor) {
             int color = targetComponent.highestPriorityHighlightColor();

@@ -68,13 +68,13 @@ public final class DemonHunterSniffClientHooks {
         if (viewer == null || !(target instanceof PlayerEntity targetPlayer)) {
             return null;
         }
-        if (viewer.getUuid().equals(targetPlayer.getUuid()) || !GameFunctions.isPlayerPlayingAndAlive(viewer)) {
-            return null;
-        }
-
+        // Role first: nearly every viewer is no Demon Hunter. / 先判身份：几乎所有观察者都不是猎魔人。
         GameWorldComponent game = GameWorldComponent.KEY.get(viewer.getWorld());
         Role viewerRole = game.getRole(viewer);
         if (!DemonHunterSniffRules.isDemonHunter(viewerRole)) {
+            return null;
+        }
+        if (viewer.getUuid().equals(targetPlayer.getUuid()) || !GameFunctions.isPlayerPlayingAndAlive(viewer)) {
             return null;
         }
 

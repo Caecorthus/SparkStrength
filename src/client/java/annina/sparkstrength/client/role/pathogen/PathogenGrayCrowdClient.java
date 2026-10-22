@@ -39,8 +39,9 @@ public final class PathogenGrayCrowdClient {
     /** Render thread: the gray Steve for this player, or {@code null} to keep its usual look. / 渲染线程。 */
     public static @Nullable SkinTextures skinFor(PlayerEntity target) {
         ClientPlayerEntity viewer = MinecraftClient.getInstance().player;
-        if (viewer == null || !PathogenRules.seesAsGrayCrowd(
-                PathogenVisibility.isLivingConvertedPathogen(viewer),
+        // The viewer's own flag first: almost nobody is a converted Pathogen. / 先判观察者自身：几乎没有人是转化病原体。
+        if (viewer == null || !PathogenVisibility.isLivingConvertedPathogen(viewer) || !PathogenRules.seesAsGrayCrowd(
+                true,
                 viewer.getUuid().equals(target.getUuid()),
                 PathogenVisibility.isPathogen(target))) {
             return null;
@@ -52,8 +53,8 @@ public final class PathogenGrayCrowdClient {
     public static @Nullable SkinTextures skinForBody(PlayerBodyEntity body) {
         ClientPlayerEntity viewer = MinecraftClient.getInstance().player;
         UUID owner = body.getPlayerUuid();
-        if (viewer == null || !PathogenRules.seesAsGrayCrowd(
-                PathogenVisibility.isLivingConvertedPathogen(viewer),
+        if (viewer == null || !PathogenVisibility.isLivingConvertedPathogen(viewer) || !PathogenRules.seesAsGrayCrowd(
+                true,
                 viewer.getUuid().equals(owner),
                 owner != null && PathogenRules.isPathogen(GameWorldComponent.KEY.get(viewer.getWorld()).getRole(owner)))) {
             return null;

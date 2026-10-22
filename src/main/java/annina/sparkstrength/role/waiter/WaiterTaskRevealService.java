@@ -1,13 +1,16 @@
 package annina.sparkstrength.role.waiter;
 
 import annina.sparkstrength.component.waiter.WaiterTaskRevealComponent;
+import annina.sparkstrength.role.coroner.CoronerRules;
 import annina.sparkstrength.role.coroner.CoronerService;
 import dev.doctor4t.wathe.api.event.TaskComplete;
+import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import org.agmas.noellesroles.Noellesroles;
+import org.jetbrains.annotations.Nullable;
 
 /** 服务员“任务完成后透视目标”能力的服务端事件注册。 */
 public final class WaiterTaskRevealService {
@@ -43,7 +46,15 @@ public final class WaiterTaskRevealService {
         if (viewer == null || !GameFunctions.isPlayerPlayingAndAlive(viewer)) {
             return false;
         }
-        return GameWorldComponent.KEY.get(viewer.getWorld()).isRole(viewer, Noellesroles.WAITER)
-                || CoronerService.hasWaiterDisguise(viewer);
+        return canSeeReveals(true, GameWorldComponent.KEY.get(viewer.getWorld()).isRole(viewer, Noellesroles.WAITER),
+                CoronerService.activeDisguiseRoleForRules(viewer));
+    }
+
+    /**
+     * {@link #canSeeReveals(PlayerEntity)} from facts already resolved (the client's per-frame instinct viewer).
+     * 用已解析的事实判定（客户端每帧的本能观察者）。
+     */
+    public static boolean canSeeReveals(boolean playingAndAlive, boolean waiterRole, @Nullable Role disguiseRole) {
+        return playingAndAlive && (waiterRole || CoronerRules.grantsWaiterDoublePickup(disguiseRole));
     }
 }

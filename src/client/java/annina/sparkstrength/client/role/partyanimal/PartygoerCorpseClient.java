@@ -1,6 +1,7 @@
 package annina.sparkstrength.client.role.partyanimal;
 
 import annina.sparkstrength.SparkStrength;
+import annina.sparkstrength.client.world.LoadedEntities;
 import annina.sparkstrength.component.partyanimal.PartygoerCorpseComponent;
 import annina.sparkstrength.role.partyanimal.PartygoerCorpseRules;
 import dev.doctor4t.wathe.api.event.CanSeeBodyRole;
@@ -52,12 +53,21 @@ public final class PartygoerCorpseClient {
         return PartygoerCorpseComponent.isPartygoerCorpse(body) ? SKIN : null;
     }
 
+    /** Disconnect: forget the label so no old world stays referenced. / 断开连接：忘掉标签，不再引用旧世界。 */
+    static void reset() {
+        target = null;
+        alpha = 0.0F;
+        fullBodyInfo = false;
+    }
+
     /** Render thread, from the end of Wathe's {@code RoleNameRenderer.renderHud}. / 渲染线程。 */
     public static void renderLabel(TextRenderer renderer, ClientPlayerEntity player, DrawContext context,
                                    RenderTickCounter tickCounter) {
         float step = tickCounter.getTickDelta(true) / 4;
         boolean spectatorInformation = WatheClient.canSeeSpectatorInformation();
-        if (ProjectileUtil.getCollision(player,
+        // The look-at raycast runs every frame; it can only find a Partygoer corpse while one is loaded.
+        // 注视射线每帧执行；只有加载了派对客尸体时它才可能找到。
+        if (LoadedEntities.anyPartygoerCorpse(player.getWorld()) && ProjectileUtil.getCollision(player,
                 entity -> entity instanceof PlayerBodyEntity body && CanTargetBody.EVENT.invoker().canTarget(player, body),
                 PartygoerCorpseRules.labelRange(spectatorInformation)) instanceof EntityHitResult hit
                 && hit.getEntity() instanceof PlayerBodyEntity body

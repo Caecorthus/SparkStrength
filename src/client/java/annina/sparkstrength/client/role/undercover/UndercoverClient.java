@@ -146,37 +146,39 @@ public final class UndercoverClient {
         if (viewer == null || !(target instanceof PlayerEntity targetPlayer) || targetPlayer == viewer) {
             return NO_DECISION;
         }
-        // SparkStrength's own vetoes still win, whatever order the wrappers end up in.
-        // 无论包装器最终顺序如何，SparkStrength 自己的否决依然优先。
-        boolean vetoed = PerfumerClientEffects.blocksInstinct() || CorruptCopClientHooks.shouldConcealInstinct(target);
         if (isLivingStage2Target(targetPlayer) && !GameFunctions.isPlayerSpectatingOrCreative(viewer)) {
             // No faction sees a stage-2 Undercover through walls; whoever would reveal them sees silver in view. Decided
             // here for every player in the round, never handed back to the original, so no ability inside can leak them.
             // Spectators and creative players are exempt (owner 2026-10-20) and keep the original view.
             // 任何阵营都不能透视二阶段卧底；原本能揭示他的人在视野内看到银色。对局内所有玩家都在此裁决，绝不交回原逻辑，
             // 内层任何能力都泄露不了。旁观者与创造模式玩家不受限制（负责人 2026-10-20），保持原本的视图。
-            if (vetoed || !inSight(viewer, targetPlayer)) {
+            if (vetoed(target) || !inSight(viewer, targetPlayer)) {
                 return -1;
             }
             boolean killer = isLivingKiller(viewer);
             return UndercoverRules.viewOfStage2(killer, true, killer ? -1 : original.getAsInt());
         }
-        if (vetoed) {
+        // Thermal draws its own heat image; only when it can't (an Iris shader pack, or a failed post chain) does it
+        // fall back to white outlines on the living players in sight. Checked before the vetoes and the distance: for
+        // everyone else this rule has nothing to say. / 热成像自己绘制热图；只有画不了时（Iris 光影包，或后处理加载失败）
+        // 才退回为视线内活人的白色描边。先于否决与距离判断：对其他人本规则不适用。
+        if (!thermalOn || !UndercoverRoles.isLivingStage2(viewer) || !UndercoverThermalRenderer.outlineFallback()
+                || vetoed(target)) {
             return NO_DECISION;
         }
         boolean targetAlive = GameFunctions.isPlayerPlayingAndAlive(targetPlayer);
         double distance = viewer.distanceTo(targetPlayer);
-        // Thermal draws its own heat image; only when it can't (an Iris shader pack, or a failed post chain) does it
-        // fall back to white outlines on the living players in sight. / 热成像自己绘制热图；只有画不了时（Iris 光影包，
-        // 或后处理加载失败）才退回为视线内活人的白色描边。
-        if (thermalOn && UndercoverRoles.isLivingStage2(viewer) && UndercoverThermalRenderer.outlineFallback()) {
-            Integer thermal = UndercoverRules.thermalView(true, targetAlive, distance,
-                    targetAlive && distance <= UndercoverRules.SIGHT_RANGE && UndercoverSight.canSee(viewer, targetPlayer));
-            if (thermal != null) {
-                return specialRevealOr(original, thermal);
-            }
-        }
-        return NO_DECISION;
+        Integer thermal = UndercoverRules.thermalView(true, targetAlive, distance,
+                targetAlive && distance <= UndercoverRules.SIGHT_RANGE && UndercoverSight.canSee(viewer, targetPlayer));
+        return thermal != null ? specialRevealOr(original, thermal) : NO_DECISION;
+    }
+
+    /**
+     * SparkStrength's own vetoes still win, whatever order the wrappers end up in.
+     * 无论包装器最终顺序如何，SparkStrength 自己的否决依然优先。
+     */
+    private static boolean vetoed(Entity target) {
+        return PerfumerClientEffects.blocksInstinct() || CorruptCopClientHooks.shouldConcealInstinct(target);
     }
 
     /**

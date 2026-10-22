@@ -70,10 +70,16 @@ public final class SerialPistolItem extends RevolverItem {
         return TypedActionResult.consume(stack);
     }
 
-    /** Crosshair helper: the player Wathe's revolver ray would hit, or null. / 准心用：Wathe 左轮射线会命中的玩家，或 null。 */
-    public static EntityHitResult findTarget(PlayerEntity user) {
-        HitResult result = PartygoerHitGeometry.preferNearer(user, RevolverItem.getGunTarget(user),
-                SerialKillerConstants.PISTOL_RANGE_BLOCKS);
+    /**
+     * Crosshair helper: the player Wathe's revolver ray would hit, or null. {@code partygoersLoaded} false skips the
+     * Partygoer step, which can only find nothing then.
+     * 准心用：Wathe 左轮射线会命中的玩家，或 null。{@code partygoersLoaded} 为 false 时跳过派对客一步，那时它只会一无所获。
+     */
+    public static EntityHitResult findTarget(PlayerEntity user, boolean partygoersLoaded) {
+        HitResult result = RevolverItem.getGunTarget(user);
+        if (partygoersLoaded) {
+            result = PartygoerHitGeometry.preferNearer(user, result, SerialKillerConstants.PISTOL_RANGE_BLOCKS);
+        }
         return result instanceof EntityHitResult entityHitResult ? entityHitResult : null;
     }
 

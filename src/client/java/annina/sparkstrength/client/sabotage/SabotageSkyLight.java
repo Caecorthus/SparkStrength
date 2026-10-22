@@ -40,6 +40,14 @@ public final class SabotageSkyLight {
         }
     }
 
+    /**
+     * Handed out for every section fully inside the area. Shared, so it must never be written: the client's sky
+     * sections are only read (Sodium's LevelSlice reads them, vanilla's own callers are server-side). Like Sodium's
+     * default light arrays it has no backing bytes and reads 0 everywhere.
+     * 完全位于区域内的区段都返回它。它是共享的，因此绝不能写入：客户端的天空区段只会被读取（Sodium 的 LevelSlice 读取它们，
+     * 原版自己的调用方都在服务端）。与 Sodium 的默认光照数组一样，它没有底层字节，处处读数为 0。
+     */
+    private static final ChunkNibbleArray DARK_SECTION = new ChunkNibbleArray(0);
     private static volatile @Nullable Area area;
 
     private SabotageSkyLight() {
@@ -63,7 +71,7 @@ public final class SabotageSkyLight {
             return null;
         }
         if (current.covers(pos)) {
-            return new ChunkNibbleArray(0);
+            return DARK_SECTION;
         }
         // A missing sky section means open sky (15), like Sodium assumes. / 缺失的天空区段表示露天（15），与 Sodium 的假设一致。
         ChunkNibbleArray partial = original == null ? new ChunkNibbleArray(15) : original.copy();

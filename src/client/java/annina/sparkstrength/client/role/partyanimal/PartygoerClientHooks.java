@@ -6,6 +6,7 @@ import annina.sparkstrength.client.compat.SparkWitchSecondaryKeyCompat;
 import annina.sparkstrength.client.renderer.PartygoerEntityRenderer;
 import annina.sparkstrength.network.partyanimal.PartygoerMenuC2SPacket;
 import annina.sparkstrength.network.partyanimal.PartygoerMenuS2CPacket;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.loader.api.FabricLoader;
@@ -34,6 +35,7 @@ public final class PartygoerClientHooks {
         EntityRendererRegistry.register(SparkStrengthEntities.partygoer(), PartygoerEntityRenderer::new);
         ClientPlayNetworking.registerGlobalReceiver(PartygoerMenuS2CPacket.ID,
                 (payload, context) -> context.client().setScreen(new PartygoerRoomScreen(payload.rooms())));
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(PartygoerCorpseClient::reset));
         if (!FabricLoader.getInstance().isModLoaded("sparkwitch")) {
             return;
         }
