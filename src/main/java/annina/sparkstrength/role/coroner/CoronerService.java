@@ -60,10 +60,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.WeakHashMap;
 
 /**
  * 验尸官增强的服务端权威逻辑。
@@ -78,12 +78,13 @@ public final class CoronerService {
     private static final String TEMP_ROLE_ID_KEY = "RoleId";
     private static final String TEMP_KIND_KEY = "Kind";
     /**
-     * Loaded item entities holding a Demon Hunter pistol, anyone's. The frenzy-over cleanup scans the world for dropped
-     * temporary pistols only while one exists; when it runs, the scan is the same as before.
-     * 已加载的、装着恶魔猎人手枪（不论是谁的）的掉落物实体。只有存在这样的掉落物时，疯魔结束后的清理才会扫描世界寻找丢出的临时手枪；
-     * 一旦执行，扫描与原来完全相同。
+     * Every loaded item entity, whatever it holds (a stack can change after it loads). The frenzy-over cleanup filters
+     * these exactly as its world scan did, instead of walking every entity in the world. Weak, so an item removed
+     * without an unload event (its chunk untracked) cannot leak.
+     * 所有已加载的掉落物实体，不论装着什么（物品堆在加载后仍可能改变）。疯魔结束后的清理按原先世界扫描的条件筛选它们，
+     * 而不是遍历世界中的每个实体。弱引用：没有卸载事件就被移除的掉落物（所在区块未追踪）不会泄漏。
      */
-    private static final Set<ItemEntity> LOADED_PISTOL_ITEMS = Collections.newSetFromMap(new IdentityHashMap<>());
+    private static final Set<ItemEntity> LOADED_ITEMS = Collections.newSetFromMap(new WeakHashMap<>());
     private static boolean registered;
 
     private CoronerService() {
@@ -97,19 +98,20 @@ public final class CoronerService {
         ShouldPunishGunShooter.EVENT.register(CoronerService::shouldPunishGunShooter);
         PsychoModeEvents.ON_PSYCHO_START.register(CoronerService::onPsychoStart);
         PsychoModeEvents.ON_PSYCHO_END.register(CoronerService::onPsychoEnd);
+        // Same type test as getEntitiesByType(EntityType.ITEM, ...). / 与 getEntitiesByType(EntityType.ITEM, ...) 相同的类型判断。
         ServerEntityEvents.ENTITY_LOAD.register((entity, world) -> {
-            if (entity instanceof ItemEntity item && item.getStack().isOf(ModItems.DEMON_HUNTER_PISTOL)) {
-                LOADED_PISTOL_ITEMS.add(item);
+            if (entity.getType() == EntityType.ITEM && entity instanceof ItemEntity item) {
+                LOADED_ITEMS.add(item);
             }
         });
         // Only once removed: an item in a chunk that stops being tracked is still in the world's entity index.
         // 只在真正移除时去掉：所在区块不再追踪的掉落物仍在世界的实体索引里。
         ServerEntityEvents.ENTITY_UNLOAD.register((entity, world) -> {
             if (entity instanceof ItemEntity item && item.isRemoved()) {
-                LOADED_PISTOL_ITEMS.remove(item);
+                LOADED_ITEMS.remove(item);
             }
         });
-        ServerLifecycleEvents.SERVER_STOPPED.register(server -> LOADED_PISTOL_ITEMS.clear());
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> LOADED_ITEMS.clear());
     }
 
     public static void assignForRole(ServerPlayerEntity player, Role role) {
@@ -802,14 +804,26 @@ public final class CoronerService {
                 player.getInventory().setStack(slot, ItemStack.EMPTY);
             }
         }
-        LOADED_PISTOL_ITEMS.removeIf(ItemEntity::isRemoved);
-        if (LOADED_PISTOL_ITEMS.isEmpty()) {
+        LOADED_ITEMS.removeIf(ItemEntity::isRemoved);
+        if (LOADED_ITEMS.isEmpty()) {
             return;
         }
-        for (ItemEntity itemEntity : player.getServerWorld().getEntitiesByType(EntityType.ITEM,
-                itemEntity -> itemEntity.getStack().isOf(ModItems.DEMON_HUNTER_PISTOL)
-                        && isTemporaryGrantOwnedBy(itemEntity.getStack(), player.getUuid()))) {
-            itemEntity.discard();
+        // Collected first: discarding fires the unload event, which edits the set. / 先收集：丢弃会触发卸载事件并修改集合。
+        ServerWorld world = player.getServerWorld();
+        List<ItemEntity> dropped = null;
+        for (ItemEntity itemEntity : LOADED_ITEMS) {
+            if (itemEntity.getWorld() == world && itemEntity.getStack().isOf(ModItems.DEMON_HUNTER_PISTOL)
+                    && isTemporaryGrantOwnedBy(itemEntity.getStack(), player.getUuid())) {
+                if (dropped == null) {
+                    dropped = new ArrayList<>();
+                }
+                dropped.add(itemEntity);
+            }
+        }
+        if (dropped != null) {
+            for (ItemEntity itemEntity : dropped) {
+                itemEntity.discard();
+            }
         }
     }
 
