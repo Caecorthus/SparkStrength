@@ -4,6 +4,7 @@ import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.client.compat.SparkWitchSecondaryKeyCompat;
 import annina.sparkstrength.client.compat.SparkWitchWraithViewerCompat;
 import annina.sparkstrength.client.mixin.spiritualist.SpiritPossessionCameraAccessor;
+import annina.sparkstrength.client.viewpoint.BodySettleHold;
 import annina.sparkstrength.compat.SparkWitchCompat;
 import annina.sparkstrength.component.spiritualist.SpiritPossessionPlayerComponent;
 import annina.sparkstrength.network.spiritualist.SpiritPossessC2SPacket;
@@ -23,8 +24,6 @@ import net.minecraft.client.input.KeyboardInput;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.option.Perspective;
-import net.minecraft.client.render.Camera;
-import net.minecraft.client.world.ClientChunkManager;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -34,7 +33,6 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.Box;
-import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
 import net.minecraft.block.ShapeContext;
@@ -58,8 +56,6 @@ import org.jetbrains.annotations.Nullable;
  * 保持不动，并在重新居中的区块视野卸载了肉身区块时冻结肉身（1.21.1 的 ClientWorld.isChunkLoaded 恒为 true，原版会让它下落）。</p>
  */
 public final class SpiritPossessionClient {
-    /** Cap on the post-possession body hold while its chunks come back. / 附身结束后等待肉身区块回来的保持上限。 */
-    private static final int BODY_SETTLE_MAX_TICKS = 200;
     private static final int FEEDBACK_COLOR = 0xA064DC;
     /** Beyond this the possessed Wraith is snapped to the server's position rather than interpolated. / 超过此距离直接对齐服务端位置而非插值。 */
     private static final double SNAP_DISTANCE_SQUARED = 8.0D * 8.0D;
@@ -75,8 +71,7 @@ public final class SpiritPossessionClient {
     private static @Nullable ClientPlayerEntity sessionPlayer;
     private static @Nullable ClientWorld sessionWorld;
     // Post-possession body hold. / 附身结束后的肉身保持。
-    private static @Nullable ClientPlayerEntity settleBody;
-    private static int settleTicks;
+    private static final BodySettleHold BODY_HOLD = new BodySettleHold();
     // Aim, refreshed every tick for the HUD and the key. / 瞄准结果，每刻刷新，供 HUD 与按键使用。
     private static @Nullable PlayerEntity aimedWraith;
     private static boolean keyAvailable;
@@ -169,7 +164,7 @@ public final class SpiritPossessionClient {
         if (player != MinecraftClient.getInstance().player) {
             return false;
         }
-        return targetId >= 0 || (settleTicks > 0 && player == settleBody && !bodyChunksLoaded(player));
+        return targetId >= 0 || BODY_HOLD.holds(player);
     }
 
     // ------------------------------------------------------------------------------------------------ input
@@ -200,19 +195,6 @@ public final class SpiritPossessionClient {
             return;
         }
         ClientPlayNetworking.send(new SpiritPossessC2SPacket(target.getId()));
-    }
-
-    /**
-     * Render-grid centre axis for {@code WorldRenderer.setupTerrain} (vanilla renderer only): the camera while
-     * possessing, otherwise vanilla's player position. Axis 0/1/2 = x/y/z.
-     * WorldRenderer.setupTerrain 的渲染网格中心坐标（仅原版渲染器）：附身时取镜头位置，否则保持原版的玩家位置。axis 0/1/2 = x/y/z。
-     */
-    public static double renderGridCenter(double original, Camera camera, int axis) {
-        if (targetId < 0) {
-            return original;
-        }
-        Vec3d pos = camera.getPos();
-        return axis == 0 ? pos.x : axis == 1 ? pos.y : pos.z;
     }
 
     /** Mouse look is dropped while possessing: the view is the Wraith's eyes. / 附身时丢弃鼠标转向：画面就是冤魂的视线。 */
@@ -250,8 +232,7 @@ public final class SpiritPossessionClient {
         exitWaitTicks = 0;
         sessionPlayer = client.player;
         sessionWorld = client.world;
-        settleBody = null;
-        settleTicks = 0;
+        BODY_HOLD.clear();
         aimedWraith = null;
         // NoellesRoles enables a projection on its next tick, so an inactive spirit view means the body.
         // NoellesRoles 在下一刻才开启出窍，因此灵魂画面未开启即表示从肉身发动。
@@ -276,8 +257,7 @@ public final class SpiritPossessionClient {
         ClientPlayerEntity body = sessionPlayer;
         clearSession();
         // Keep the body still until its chunks are back (see freezesBody). / 肉身区块重新送达前保持静止（见 freezesBody）。
-        settleBody = body;
-        settleTicks = BODY_SETTLE_MAX_TICKS;
+        BODY_HOLD.start(body);
         if (restoreCamera) {
             restoreCamera(client);
         }
@@ -314,8 +294,7 @@ public final class SpiritPossessionClient {
 
     private static void reset() {
         clearSession();
-        settleBody = null;
-        settleTicks = 0;
+        BODY_HOLD.clear();
         aimedWraith = null;
     }
 
@@ -332,7 +311,7 @@ public final class SpiritPossessionClient {
     private static void tick(MinecraftClient client) {
         ClientPlayerEntity player = client.player;
         if (targetId < 0) {
-            settle(client);
+            BODY_HOLD.tick(client);
             aimedWraith = player != null && isLocalSpiritualist(player) && keyAvailable ? findAimedWraith(client) : null;
             return;
         }
@@ -466,18 +445,6 @@ public final class SpiritPossessionClient {
         }
     }
 
-    /** Ends the post-possession body hold once its chunks are back, or at the cap. / 肉身区块回来后（或到达上限时）结束保持。 */
-    private static void settle(MinecraftClient client) {
-        if (settleTicks <= 0) {
-            return;
-        }
-        ClientPlayerEntity body = client.player;
-        if (body == null || body != settleBody || --settleTicks <= 0 || bodyChunksLoaded(body)) {
-            settleBody = null;
-            settleTicks = 0;
-        }
-    }
-
     // ------------------------------------------------------------------------------------------------ aim
 
     /**
@@ -508,24 +475,6 @@ public final class SpiritPossessionClient {
                         && SparkWitchCompat.isWraithActive(candidate),
                 reachSquared);
         return hit != null && hit.getEntity() instanceof PlayerEntity wraith ? wraith : null;
-    }
-
-    /** Every chunk the body's hitbox overlaps is loaded on this client. / 肉身碰撞箱覆盖的区块在本客户端均已加载。 */
-    private static boolean bodyChunksLoaded(ClientPlayerEntity body) {
-        Box box = body.getBoundingBox();
-        ClientChunkManager chunks = body.clientWorld.getChunkManager();
-        int minX = ChunkSectionPos.getSectionCoord(box.minX);
-        int maxX = ChunkSectionPos.getSectionCoord(box.maxX);
-        int minZ = ChunkSectionPos.getSectionCoord(box.minZ);
-        int maxZ = ChunkSectionPos.getSectionCoord(box.maxZ);
-        for (int x = minX; x <= maxX; x++) {
-            for (int z = minZ; z <= maxZ; z++) {
-                if (!chunks.isChunkLoaded(x, z)) {
-                    return false;
-                }
-            }
-        }
-        return true;
     }
 
     private static void feedback(MinecraftClient client, Text text) {
