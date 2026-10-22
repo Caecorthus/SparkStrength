@@ -39,7 +39,12 @@ import java.util.List;
 final class FlashlightReceiverCache {
     private static final int MAX_SECTIONS = 128;
     private static final int MAX_BUILDS_PER_FRAME = 2;
-    private static final long BUILD_BUDGET_NANOS = 4_000_000L;
+    /**
+     * A second build runs only when the first finished within this budget, so a burst (light on, cone reaching new
+     * sections, doors changing) costs one section mesh per frame unless meshing is cheap.
+     * 只有第一个区段在此预算内建完才会再建第二个，因此突发构建（开灯、光锥触及新区段、开关门）每帧只建一个区段，除非网格化很快。
+     */
+    private static final long BUILD_BUDGET_NANOS = 1_000_000L;
     private static final int INITIAL_ALLOCATOR_BYTES = 256 * 1024;
     /** Bounding-sphere radius of a section. / 区段包围球半径。 */
     private static final double SECTION_RADIUS = Math.sqrt(3.0) * 8.0;
