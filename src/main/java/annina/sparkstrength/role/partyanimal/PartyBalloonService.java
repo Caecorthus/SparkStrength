@@ -6,8 +6,8 @@ import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.component.partyanimal.PartyBalloonMarkComponent;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
 import annina.sparkstrength.role.undercover.UndercoverRoles;
+import annina.sparkstrength.util.SparkPlayers;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
-import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.record.GameRecordManager;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
@@ -41,12 +41,12 @@ public final class PartyBalloonService {
     public static boolean giveBalloon(ServerPlayerEntity user, ServerPlayerEntity target) {
         GameWorldComponent game = GameWorldComponent.KEY.get(user.getWorld());
         boolean userIsLivingPartyAnimal = game.getGameStatus() == GameWorldComponent.GameStatus.ACTIVE
-                && isLivingParticipant(user)
+                && SparkPlayers.isLivingParticipant(user)
                 && PartyAnimalRules.isPartyAnimal(game.getRole(user));
         PartyBalloonRules.Verdict verdict = PartyBalloonRules.verdict(
                 userIsLivingPartyAnimal,
                 SwallowedPlayerComponent.isPlayerSwallowed(user),
-                target != user && isLivingParticipant(target),
+                target != user && SparkPlayers.isLivingParticipant(target),
                 SwallowedPlayerComponent.isPlayerSwallowed(target),
                 SparkFactionCompat.canAffectPlayer(user, target, BALLOON_ACTION_ID),
                 SparkTraitsCompat.isEffectiveKiller(game.getRole(target), target),
@@ -91,9 +91,5 @@ public final class PartyBalloonService {
     /** Death, reset and round end. / 死亡、重置与局末。 */
     public static void clearPlayer(PlayerEntity player) {
         PartyBalloonMarkComponent.KEY.get(player).clear();
-    }
-
-    private static boolean isLivingParticipant(PlayerEntity player) {
-        return GameFunctions.isPlayerPlayingAndAlive(player) && GameFunctions.isPlayerAliveAndSurvival(player);
     }
 }

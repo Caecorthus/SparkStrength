@@ -3,6 +3,7 @@ package annina.sparkstrength.role.pathogen;
 import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.component.pathogen.VirusCarrierComponent;
 import annina.sparkstrength.compat.SparkFactionCompat;
+import annina.sparkstrength.util.SparkPlayers;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.record.GameRecordManager;
@@ -50,12 +51,12 @@ public final class VirusService {
     public static boolean useVirus(ServerPlayerEntity user, ServerPlayerEntity target) {
         GameWorldComponent game = GameWorldComponent.KEY.get(user.getWorld());
         boolean userIsLivingPathogen = game.getGameStatus() == GameWorldComponent.GameStatus.ACTIVE
-                && isLivingParticipant(user)
+                && SparkPlayers.isLivingParticipant(user)
                 && PathogenVisibility.isPathogen(user);
         PathogenRules.VirusVerdict verdict = PathogenRules.virusVerdict(
                 userIsLivingPathogen,
                 SwallowedPlayerComponent.isPlayerSwallowed(user),
-                isLivingParticipant(target),
+                SparkPlayers.isLivingParticipant(target),
                 SwallowedPlayerComponent.isPlayerSwallowed(target),
                 PathogenVisibility.isPathogen(target),
                 VirusCarrierComponent.isCarrier(target),
@@ -146,7 +147,7 @@ public final class VirusService {
             if (distanceSquared >= rangeSquared) {
                 continue;
             }
-            boolean eligible = isLivingParticipant(other)
+            boolean eligible = SparkPlayers.isLivingParticipant(other)
                     && !PathogenVisibility.isPathogen(other)
                     && !InfectedPlayerComponent.KEY.get(other).isInfected()
                     && !SwallowedPlayerComponent.isPlayerSwallowed(other);
@@ -185,10 +186,6 @@ public final class VirusService {
     /** Death, reset and round end. / 死亡、重置与局末。 */
     public static void clearPlayer(PlayerEntity player) {
         VirusCarrierComponent.KEY.get(player).clear();
-    }
-
-    static boolean isLivingParticipant(PlayerEntity player) {
-        return GameFunctions.isPlayerPlayingAndAlive(player) && !player.isSpectator() && !player.isCreative();
     }
 
     /** NoellesRoles' sneeze, at the sneezing player. / NoellesRoles 的喷嚏音效，在打喷嚏的玩家处播放。 */

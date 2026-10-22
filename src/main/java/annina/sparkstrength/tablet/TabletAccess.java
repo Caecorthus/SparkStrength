@@ -35,11 +35,16 @@ public final class TabletAccess {
         return false;
     }
 
-    public static boolean isInGame(PlayerEntity player) {
+    /**
+     * Has a role this round, alive or dead (unlike {@code SparkPlayers.isLivingParticipant}).
+     * 本局拥有身份即可，存活与否不论（与 SparkPlayers.isLivingParticipant 不同）。
+     */
+    public static boolean hasRoundRole(PlayerEntity player) {
         return player != null && GameWorldComponent.KEY.get(player.getWorld()).hasAnyRole(player.getUuid());
     }
 
-    public static boolean isInGame(ServerWorld world, java.util.UUID uuid) {
+    /** {@link #hasRoundRole(PlayerEntity)} by uuid. / 按 uuid 判断的 hasRoundRole。 */
+    public static boolean hasRoundRole(ServerWorld world, java.util.UUID uuid) {
         return GameWorldComponent.KEY.get(world).hasAnyRole(uuid);
     }
 

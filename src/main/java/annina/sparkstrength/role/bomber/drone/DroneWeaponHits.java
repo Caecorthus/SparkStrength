@@ -4,14 +4,11 @@ import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.compat.SparkTraitsDroneCompat;
 import annina.sparkstrength.entity.DroneEntity;
-import annina.sparkstrength.role.coroner.CoronerService;
+import annina.sparkstrength.role.NonPlayerTargetWeapons;
 import annina.sparkstrength.role.partyanimal.PartygoerWeaponHits;
 import annina.sparkstrength.role.taotie.TaotieHeadDazeGuards;
-import annina.sparkstrength.role.veteran.VeteranRules;
-import dev.doctor4t.wathe.api.WatheGameModes;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.entity.GrenadeEntity;
-import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheItems;
 import dev.doctor4t.wathe.item.KnifeItem;
@@ -42,8 +39,6 @@ import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
-import org.agmas.noellesroles.Noellesroles;
-import org.agmas.noellesroles.shadowjester.ShadowJesterPlayerComponent;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -150,7 +145,7 @@ public final class DroneWeaponHits {
                 || SparkTraitsCompat.isMeleeActionBlocked(attacker, weapon)
                 // A knife that may not stab here (Shadow Jester fake knife, betrayal trophy) may not swing at drones
                 // either. / 此处不可刺击的刀（影子小丑假刀、背叛战利品）同样不能挥砍无人机。
-                || weapon.getItem() instanceof KnifeItem && noellesRolesBlocksStab(attacker)) {
+                || weapon.getItem() instanceof KnifeItem && NonPlayerTargetWeapons.noellesRolesBlocksStab(attacker)) {
             return false;
         }
         // Vanilla checks reach only; re-check it and line of sight against forged packets. / 原版只查距离，补查距离与视线。
@@ -179,11 +174,11 @@ public final class DroneWeaponHits {
      */
     public static void onKnifeStab(ServerPlayerEntity attacker, DroneEntity drone) {
         if (attacker == null || attacker.isSpectator() || !DroneCombatService.usable(drone)
-                || drone.getWorld() != attacker.getWorld() || !mayBreak(attacker) || noellesRolesBlocksStab(attacker)) {
+                || drone.getWorld() != attacker.getWorld() || !mayBreak(attacker)
+                || NonPlayerTargetWeapons.noellesRolesBlocksStab(attacker)) {
             return;
         }
-        Hand hand = attacker.getMainHandStack().getItem() instanceof KnifeItem ? Hand.MAIN_HAND
-                : attacker.getOffHandStack().getItem() instanceof KnifeItem ? Hand.OFF_HAND : null;
+        Hand hand = NonPlayerTargetWeapons.knifeHand(attacker);
         if (hand == null) {
             return;
         }
@@ -199,39 +194,7 @@ public final class DroneWeaponHits {
         }
         DroneCombatService.destroy(drone, attacker);
         attacker.swingHand(hand, true);
-        applyKnifeStabCooldown(attacker, knife);
-    }
-
-    /**
-     * Mirrors NoellesRoles' ShadowJesterKnifeMixin (a higher-priority HEAD handler our drone stab hook runs before):
-     * a Shadow Jester without the real knife may only stab its duel partner, which a drone never is, and a betrayal
-     * trophy holder's stabs never work. Re-check against NoellesRoles when it changes that mixin.
-     * 镜像 NoellesRoles 的 ShadowJesterKnifeMixin（优先级更高的 HEAD 处理，我们的无人机刀刺钩子先于它执行）：没有真刀的影子小丑只能刺其
-     * 决斗搭档（无人机永远不是），背叛战利品持有者的刺击永远无效。NoellesRoles 修改该 mixin 时需同步复核。
-     */
-    private static boolean noellesRolesBlocksStab(ServerPlayerEntity attacker) {
-        ShadowJesterPlayerComponent shadow = ShadowJesterPlayerComponent.KEY.get(attacker);
-        if (GameWorldComponent.KEY.get(attacker.getWorld()).isRole(attacker, Noellesroles.SHADOW_JESTER)) {
-            return !shadow.isRealKnife();
-        }
-        return shadow.isBetrayalTrophy();
-    }
-
-    private static void applyKnifeStabCooldown(ServerPlayerEntity attacker, ItemStack knife) {
-        GameWorldComponent game = GameWorldComponent.KEY.get(attacker.getWorld());
-        if (attacker.isCreative() || game.getGameMode() == WatheGameModes.LOOSE_ENDS
-                || VeteranRules.isVeteran(game.getRole(attacker))
-                || CoronerService.hasInstantSilentKnifeDisguise(attacker)) {
-            return;
-        }
-        int cooldown = DroneWeaponRules.knifeCooldownTicks(
-                GameConstants.ITEM_COOLDOWNS.getOrDefault(WatheItems.KNIFE, GameConstants.getInTicks(1, 0)),
-                attacker.getServerWorld().getPlayers().size(),
-                game.getAllKillerTeamPlayers().size(),
-                game.getKillerDividend(),
-                GameConstants.getInTicks(0, 10),
-                GameConstants.getInTicks(0, 5));
-        attacker.getItemCooldownManager().set(knife.getItem(), cooldown);
+        NonPlayerTargetWeapons.applyKnifeStabCooldown(attacker, knife);
     }
 
     // ---- Client-picked guns / 客户端选目标的枪械 ----

@@ -18,7 +18,6 @@ import java.util.Set;
  */
 public final class TabletShopRules {
     public static final Identifier VIGILANTE_ID = Identifier.of("wathe", "vigilante");
-    public static final Identifier UNDERCOVER_ID = Identifier.of("noellesroles", "undercover");
     /**
      * Mid-round grant reconciliation cadence while the round is ACTIVE. / 对局 ACTIVE 期间局中补发对账的间隔。
      */
@@ -53,10 +52,6 @@ public final class TabletShopRules {
 
     public static boolean isVigilante(@Nullable Role role) {
         return role != null && VIGILANTE_ID.equals(role.identifier());
-    }
-
-    public static boolean isUndercover(@Nullable Role role) {
-        return role != null && UNDERCOVER_ID.equals(role.identifier());
     }
 
     /**

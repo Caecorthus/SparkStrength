@@ -7,6 +7,7 @@ import annina.sparkstrength.component.pathogen.VirusCarrierComponent;
 import annina.sparkstrength.compat.SparkTraitsReviveCompat;
 import annina.sparkstrength.mixin.noellesroles.HiddenBodiesWorldComponentAccessor;
 import annina.sparkstrength.mixin.wathe.GameWorldComponentDeadPlayersAccessor;
+import annina.sparkstrength.util.SparkPlayers;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.RoleAssigned;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -62,7 +63,7 @@ public final class PathogenReviveService {
                 : world.getServer().getPlayerManager().getPlayer(ownerId);
         PathogenRules.ReviveVerdict verdict = PathogenRules.reviveVerdict(
                 game.getGameStatus() == GameWorldComponent.GameStatus.ACTIVE
-                        && VirusService.isLivingParticipant(user)
+                        && SparkPlayers.isLivingParticipant(user)
                         && PathogenVisibility.isPathogen(user),
                 SwallowedPlayerComponent.isPlayerSwallowed(user),
                 owner != null,

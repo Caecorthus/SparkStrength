@@ -4,7 +4,7 @@ import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.compat.SparkFactionCompat;
 import annina.sparkstrength.component.tablet.TabletWorldComponent;
 import annina.sparkstrength.role.attendant.AttendantRules;
-import annina.sparkstrength.role.coroner.CoronerRules;
+import annina.sparkstrength.role.bomber.drone.DroneService;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.player.PlayerEntity;
@@ -93,7 +93,9 @@ public final class TabletShopService {
         TabletChannelRules.Facts facts = TabletChannelResolver.facts(player);
         EnumSet<TabletChannel> channels = TabletChannelRules.allowed(facts);
         boolean realAttendant = isRealAttendant(player);
-        boolean realBomber = isRealBomber(player);
+        // Real round role only: a Coroner's Bomber disguise gets no drones, so no drone tablet either.
+        // 只看真实局内身份：验尸官的炸弹客伪装没有无人机，因此也不发无人机平板。
+        boolean realBomber = DroneService.isRealBomber(player);
         if (!TabletShopRules.isTabletEligible(facts.hasRole(), !channels.isEmpty(), realAttendant, realBomber)) {
             // Not settled: a later role/trait/faction change can still make this player eligible this round.
             // 不记为已结算：本局之后的身份/天赋/阵营变化仍可能让该玩家获得资格。
@@ -120,12 +122,6 @@ public final class TabletShopService {
         // Real round role only: a Coroner's Attendant disguise is lent a temporary tablet by CoronerService instead.
         // 只看真实局内身份：验尸官的乘务员伪装改由 CoronerService 借出临时平板。
         return AttendantRules.isAttendant(GameWorldComponent.KEY.get(player.getWorld()).getRole(player));
-    }
-
-    private static boolean isRealBomber(PlayerEntity player) {
-        // Real round role only: a Coroner's Bomber disguise gets no drones, so no drone tablet either.
-        // 只看真实局内身份：验尸官的炸弹客伪装没有无人机，因此也不发无人机平板。
-        return CoronerRules.isBomber(GameWorldComponent.KEY.get(player.getWorld()).getRole(player));
     }
 
     private static boolean hasTabletAnywhere(ServerPlayerEntity player) {

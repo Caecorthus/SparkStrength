@@ -2,18 +2,17 @@ package annina.sparkstrength.role.vulture;
 
 import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.SparkStrengthItems;
-import annina.sparkstrength.compat.SparkTraitsDroneCompat;
-import annina.sparkstrength.component.engineer.EngineerStunnedPlayerComponent;
 import annina.sparkstrength.component.vulture.SkateboardRideComponent;
 import annina.sparkstrength.mixin.minecraft.ItemCooldownEntryAccessor;
 import annina.sparkstrength.mixin.minecraft.ItemCooldownManagerAccessor;
 import annina.sparkstrength.record.AchievementRecords;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
+import annina.sparkstrength.role.AbilityLocks;
+import annina.sparkstrength.util.SparkPlayers;
 import dev.doctor4t.wathe.api.event.GameEvents;
 import dev.doctor4t.wathe.api.event.KillPlayer;
 import dev.doctor4t.wathe.api.event.ResetPlayer;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
-import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.record.GameRecordManager;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -101,10 +100,9 @@ public final class VultureSkateboardService {
      */
     public static boolean isActiveVulture(@Nullable PlayerEntity player) {
         return player != null
-                && GameFunctions.isPlayerPlayingAndAlive(player)
-                && GameFunctions.isPlayerAliveAndSurvival(player)
+                && SparkPlayers.isLivingParticipant(player)
                 && !SwallowedPlayerComponent.isPlayerSwallowed(player)
-                && VultureSkateboardRules.isVulture(GameWorldComponent.KEY.get(player.getWorld()).getRole(player));
+                && VultureSkateboardRules.isVulture(SparkPlayers.roleOf(player));
     }
 
     /**
@@ -117,7 +115,7 @@ public final class VultureSkateboardService {
         if (!isActive(world) || !isActiveVulture(player)
                 || player.getItemCooldownManager().isCoolingDown(skateboard)
                 || SkateboardRideComponent.KEY.get(player).hasRide()
-                || isSkillLocked(player)) {
+                || AbilityLocks.isLocked(player, AbilityLocks.ROLE_SKILL)) {
             return false;
         }
         Round round = ROUNDS.get(world);
@@ -237,11 +235,11 @@ public final class VultureSkateboardService {
             if (hasRideState(player)) {
                 boolean riding = SkateboardRideComponent.KEY.get(player).isRiding();
                 boolean eligible = active && isActiveVulture(player);
-                if (!riding || !eligible || isSkillLocked(player)) {
+                if (!riding || !eligible || AbilityLocks.isLocked(player, AbilityLocks.ROLE_SKILL)) {
                     // Only a ride that simply ran out makes the hop-off sound; forced ends (swallowed, stunned, role
                     // change, round over) stay silent so the sound never marks where something happened.
                     // 只有自然结束的滑行才发出下板声；强制结束（被吞噬、被定身、身份变化、回合结束）保持安静，避免声音暴露事发位置。
-                    endRide(player, !riding && eligible && !isSkillLocked(player));
+                    endRide(player, !riding && eligible && !AbilityLocks.isLocked(player, AbilityLocks.ROLE_SKILL));
                 }
             }
             if (round != null && active && isActiveVulture(player)) {
@@ -313,17 +311,6 @@ public final class VultureSkateboardService {
 
     private static boolean isActive(ServerWorld world) {
         return GameWorldComponent.KEY.get(world).getGameStatus() == GameWorldComponent.GameStatus.ACTIVE;
-    }
-
-    /**
-     * Riding is a role skill: Engineer stuns and SparkTraits skill locks refuse a ride and end one in progress, as they
-     * do for the Bomber's drone piloting.
-     * 滑行属于职业技能：工程师定身与 SparkTraits 技能封锁会拒绝上板并结束进行中的滑行，与炸弹客驾驶无人机一致。
-     */
-    private static boolean isSkillLocked(ServerPlayerEntity player) {
-        return EngineerStunnedPlayerComponent.KEY.get(player).isStunned()
-                || SparkTraitsDroneCompat.isRoleSkillBlocked(player)
-                || SparkTraitsDroneCompat.isLastStandPending(player);
     }
 
     /**

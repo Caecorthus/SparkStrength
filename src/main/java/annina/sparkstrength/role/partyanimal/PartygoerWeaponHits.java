@@ -4,20 +4,18 @@ import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.compat.SparkTraitsDroneCompat;
 import annina.sparkstrength.entity.PartygoerEntity;
+import annina.sparkstrength.role.NonPlayerTargetWeapons;
 import annina.sparkstrength.role.bomber.drone.DroneHitGeometry;
 import annina.sparkstrength.role.bomber.drone.DroneWeaponHits;
 import annina.sparkstrength.role.bomber.drone.DroneWeaponRules;
 import annina.sparkstrength.role.coroner.CoronerService;
 import annina.sparkstrength.role.silencer.SilencerQuietService;
-import annina.sparkstrength.role.veteran.VeteranRules;
 import dev.doctor4t.wathe.api.Role;
-import dev.doctor4t.wathe.api.WatheGameModes;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheItems;
 import dev.doctor4t.wathe.index.WatheSounds;
-import dev.doctor4t.wathe.item.KnifeItem;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
@@ -45,7 +43,6 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.agmas.noellesroles.Noellesroles;
 import org.agmas.noellesroles.bomber.BomberPlayerComponent;
-import org.agmas.noellesroles.shadowjester.ShadowJesterPlayerComponent;
 import org.jetbrains.annotations.Nullable;
 import org.ladysnake.cca.api.v3.component.ComponentKey;
 import org.ladysnake.cca.api.v3.component.ComponentRegistry;
@@ -182,12 +179,11 @@ public final class PartygoerWeaponHits {
      */
     public static void onKnifeStab(ServerPlayerEntity attacker, PartygoerEntity partygoer) {
         if (attacker == null || attacker.isSpectator() || partygoer.getWorld() != attacker.getWorld()
-                || !mayKill(attacker) || noellesRolesBlocksStab(attacker)
+                || !mayKill(attacker) || NonPlayerTargetWeapons.noellesRolesBlocksStab(attacker)
                 || !PartygoerHitGeometry.isTargetable(partygoer)) {
             return;
         }
-        Hand hand = attacker.getMainHandStack().getItem() instanceof KnifeItem ? Hand.MAIN_HAND
-                : attacker.getOffHandStack().getItem() instanceof KnifeItem ? Hand.OFF_HAND : null;
+        Hand hand = NonPlayerTargetWeapons.knifeHand(attacker);
         if (hand == null) {
             return;
         }
@@ -200,39 +196,8 @@ public final class PartygoerWeaponHits {
         }
         if (PartygoerService.killByWeapon(attacker, partygoer, GameConstants.DeathReasons.KNIFE)) {
             attacker.swingHand(hand, true);
-            applyKnifeStabCooldown(attacker, knife);
+            NonPlayerTargetWeapons.applyKnifeStabCooldown(attacker, knife);
         }
-    }
-
-    /**
-     * Mirrors NoellesRoles' ShadowJesterKnifeMixin (our priority-900 stab hook runs before it): a Shadow Jester without
-     * the real knife may only stab its duel partner, which a Partygoer never is; a betrayal trophy never stabs.
-     * 镜像 NoellesRoles 的 ShadowJesterKnifeMixin（我们的优先级 900 刀刺钩子先于它执行）：没有真刀的影子小丑只能刺其决斗搭档
-     * （派对客永远不是），背叛战利品永远无法刺击。
-     */
-    private static boolean noellesRolesBlocksStab(ServerPlayerEntity attacker) {
-        ShadowJesterPlayerComponent shadow = ShadowJesterPlayerComponent.KEY.get(attacker);
-        if (GameWorldComponent.KEY.get(attacker.getWorld()).isRole(attacker, Noellesroles.SHADOW_JESTER)) {
-            return !shadow.isRealKnife();
-        }
-        return shadow.isBetrayalTrophy();
-    }
-
-    private static void applyKnifeStabCooldown(ServerPlayerEntity attacker, ItemStack knife) {
-        GameWorldComponent game = GameWorldComponent.KEY.get(attacker.getWorld());
-        if (attacker.isCreative() || game.getGameMode() == WatheGameModes.LOOSE_ENDS
-                || VeteranRules.isVeteran(game.getRole(attacker))
-                || CoronerService.hasInstantSilentKnifeDisguise(attacker)) {
-            return;
-        }
-        int cooldown = DroneWeaponRules.knifeCooldownTicks(
-                GameConstants.ITEM_COOLDOWNS.getOrDefault(WatheItems.KNIFE, GameConstants.getInTicks(1, 0)),
-                attacker.getServerWorld().getPlayers().size(),
-                game.getAllKillerTeamPlayers().size(),
-                game.getKillerDividend(),
-                GameConstants.getInTicks(0, 10),
-                GameConstants.getInTicks(0, 5));
-        attacker.getItemCooldownManager().set(knife.getItem(), cooldown);
     }
 
     // ---- Client-picked guns / 客户端选目标的枪械 ----

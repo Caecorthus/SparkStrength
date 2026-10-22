@@ -3,13 +3,13 @@ package annina.sparkstrength.role.bomber.drone;
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.compat.SparkTraitsDroneCompat;
-import annina.sparkstrength.compat.SparkWitchCompat;
-import annina.sparkstrength.component.engineer.EngineerStunnedPlayerComponent;
 import annina.sparkstrength.entity.DroneEntity;
 import annina.sparkstrength.network.drone.DronePilotActionC2SPacket;
 import annina.sparkstrength.network.drone.DronePilotCorrectionS2CPacket;
 import annina.sparkstrength.network.drone.DronePilotMoveC2SPacket;
 import annina.sparkstrength.network.drone.DronePilotStateS2CPacket;
+import annina.sparkstrength.role.AbilityLocks;
+import annina.sparkstrength.role.AbilityLocks.Lock;
 import annina.sparkstrength.tablet.TabletStateService;
 import annina.sparkstrength.viewpoint.RemoteViewSessions;
 import dev.doctor4t.wathe.game.GameFunctions;
@@ -22,6 +22,7 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -65,6 +66,12 @@ import java.util.UUID;
  * 区块批次与实体追踪；会话结束后视野回到身体。</p>
  */
 public final class DronePilotService {
+    /**
+     * Engineer stun or SparkWitch Control Expert stun. The CE stun's payload deny-list leaves drone moves and exit open,
+     * so the session itself must end here. / 工程师眩晕或 SparkWitch 控场专家眩晕。控场专家的数据包拦截放行无人机移动与退出，
+     * 因此须在此结束会话本身。
+     */
+    private static final Set<Lock> STUN_LOCKS = AbilityLocks.of(Lock.ENGINEER_STUN, Lock.CONTROL_EXPERT_STUN);
     /**
      * Moves accepted per pilot per server tick: the client sends one per tick, the slack absorbs network jitter.
      * 每名驾驶者每服务器刻接受的移动包数：客户端每刻发送一次，余量用于吸收网络抖动。
@@ -271,7 +278,7 @@ public final class DronePilotService {
         if (!holdsTablet(player)) {
             return DronePilotEndReason.NO_TABLET;
         }
-        if (isStunned(player)) {
+        if (AbilityLocks.isLocked(player, STUN_LOCKS)) {
             return DronePilotEndReason.STUNNED;
         }
         if (SparkTraitsCompat.isKillerInteractionBlocked(player)) {
@@ -322,7 +329,7 @@ public final class DronePilotService {
         if (!holdsTablet(pilot)) {
             return DronePilotEndReason.NO_TABLET;
         }
-        if (isStunned(pilot)) {
+        if (AbilityLocks.isLocked(pilot, STUN_LOCKS)) {
             return DronePilotEndReason.STUNNED;
         }
         if (SparkTraitsCompat.isKillerInteractionBlocked(pilot)) {
@@ -336,16 +343,6 @@ public final class DronePilotService {
             return DronePilotEndReason.DEPLETED;
         }
         return null;
-    }
-
-    /**
-     * Engineer stun or SparkWitch Control Expert stun. The CE stun's payload deny-list leaves drone moves and exit open,
-     * so the session itself must end here. / 工程师眩晕或 SparkWitch 控场专家眩晕。控场专家的数据包拦截放行无人机移动与退出，
-     * 因此须在此结束会话本身。
-     */
-    private static boolean isStunned(ServerPlayerEntity player) {
-        return EngineerStunnedPlayerComponent.KEY.get(player).isStunned()
-                || SparkWitchCompat.isControlExpertStunned(player);
     }
 
     private static boolean pilotAlive(ServerPlayerEntity player) {
