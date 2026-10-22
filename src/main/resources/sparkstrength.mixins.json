@@ -101,7 +101,6 @@
     "wathe.M67ShopEntriesMixin",
     "wathe.PathogenTeamWinMixin",
     "wathe.PlayerPoisonComponentAccessor",
-    "wathe.PlayerShopComponentAccessor",
     "wathe.ShadowJesterRevolverCooldownMixin",
     "wathe.ShopEntryAccessor",
     "serialkiller.SerialKillerPsychoMixin",

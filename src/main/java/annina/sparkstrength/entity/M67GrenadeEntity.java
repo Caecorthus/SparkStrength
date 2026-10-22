@@ -139,10 +139,6 @@ public final class M67GrenadeEntity extends ThrownItemEntity {
         return dataTracker.get(DETONATE_AT);
     }
 
-    public int getRemainingFuseTicks() {
-        return (int) Math.clamp(getDetonateAt() - getWorld().getTime(), 0L, M67Rules.FUSE_TICKS);
-    }
-
     @Override
     public void tick() {
         // Bypass ThrownEntity.tick: it integrates movement itself. / 绕过父投掷物 tick，避免重复位移。

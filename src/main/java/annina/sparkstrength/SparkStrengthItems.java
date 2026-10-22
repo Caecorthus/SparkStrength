@@ -298,12 +298,12 @@ public final class SparkStrengthItems {
         serialPistol = Registry.register(
                 Registries.ITEM,
                 SERIAL_PISTOL_ID,
-                new SerialPistolItem(new Item.Settings().maxCount(1), false)
+                new SerialPistolItem(new Item.Settings().maxCount(1))
         );
         serialLeftPistol = Registry.register(
                 Registries.ITEM,
                 SERIAL_LEFT_PISTOL_ID,
-                new SerialPistolItem(new Item.Settings().maxCount(1), true)
+                new SerialPistolItem(new Item.Settings().maxCount(1))
         );
         democracyShield = Registry.register(
                 Registries.ITEM,

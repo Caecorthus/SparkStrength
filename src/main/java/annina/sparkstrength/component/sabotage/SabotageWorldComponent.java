@@ -201,19 +201,9 @@ public final class SabotageWorldComponent implements Component {
         return !engineUnits.isEmpty();
     }
 
-    public boolean hasJunctionBoxes() {
-        return !junctionBoxes.isEmpty();
-    }
-
     public void addJunctionBox(BlockPos pos) {
         if (!junctionBoxes.contains(pos)) {
             junctionBoxes.add(pos.toImmutable());
-        }
-    }
-
-    public void addBreaker(BlockPos pos) {
-        if (!breakers.contains(pos)) {
-            breakers.add(pos.toImmutable());
         }
     }
 

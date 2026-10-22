@@ -21,15 +21,8 @@ import java.lang.reflect.Method;
  * 但开火包通过反射发送，保证 main 源集不硬依赖 Fabric client networking。
  */
 public final class SerialPistolItem extends RevolverItem {
-    private final boolean leftHand;
-
-    public SerialPistolItem(Settings settings, boolean leftHand) {
+    public SerialPistolItem(Settings settings) {
         super(settings);
-        this.leftHand = leftHand;
-    }
-
-    public boolean isLeftHand() {
-        return leftHand;
     }
 
     /** The main pistol fires only from the main hand, the left pistol only from the off hand. / 主手枪只在主手、左持枪只在副手开火。 */

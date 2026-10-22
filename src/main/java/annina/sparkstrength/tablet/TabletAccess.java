@@ -1,7 +1,6 @@
 package annina.sparkstrength.tablet;
 
 import annina.sparkstrength.SparkStrengthItems;
-import dev.doctor4t.wathe.cca.GameWorldComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -33,19 +32,6 @@ public final class TabletAccess {
             }
         }
         return false;
-    }
-
-    /**
-     * Has a role this round, alive or dead (unlike {@code SparkPlayers.isLivingParticipant}).
-     * 本局拥有身份即可，存活与否不论（与 SparkPlayers.isLivingParticipant 不同）。
-     */
-    public static boolean hasRoundRole(PlayerEntity player) {
-        return player != null && GameWorldComponent.KEY.get(player.getWorld()).hasAnyRole(player.getUuid());
-    }
-
-    /** {@link #hasRoundRole(PlayerEntity)} by uuid. / 按 uuid 判断的 hasRoundRole。 */
-    public static boolean hasRoundRole(ServerWorld world, java.util.UUID uuid) {
-        return GameWorldComponent.KEY.get(world).hasAnyRole(uuid);
     }
 
     public static List<ServerPlayerEntity> tabletHolders(ServerWorld world) {

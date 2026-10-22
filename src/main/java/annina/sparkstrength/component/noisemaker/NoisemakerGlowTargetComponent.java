@@ -57,10 +57,6 @@ public class NoisemakerGlowTargetComponent implements AutoSyncedComponent, Serve
         this.sync();
     }
 
-    public int getGlowTicksRemaining() {
-        return glowTicksRemaining;
-    }
-
     public void sync() {
         KEY.sync(this.player);
     }

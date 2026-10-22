@@ -85,10 +85,6 @@ public final class CoronerDisguises {
         return CoronerRules.isAttendant(activeDisguiseRole(player));
     }
 
-    public static boolean hasSurvivalMasterDisguise(PlayerEntity player) {
-        return CoronerRules.isSurvivalMaster(activeDisguiseRole(player));
-    }
-
     public static boolean hasTimekeeperDisguise(PlayerEntity player) {
         return CoronerRules.isTimekeeper(activeDisguiseRole(player));
     }
