@@ -21,6 +21,8 @@ public final class SparkFactionCompat {
     private static final Method REGISTER_POLICE_ROLE = findPoliceRoleMethod("register", void.class);
     private static final Method CONTAINS_POLICE_ROLE = findPoliceRoleMethod("contains", boolean.class);
     private static final Method RESOLVE_BASE_FACTION = findResolveBaseFaction();
+    /** {@code [resolveEffectiveFaction, capabilities, FactionCapabilities.canUseInstinct]}, or null. / 不可用时为 null。 */
+    private static final Method[] INSTINCT_CAPABILITY = findInstinctCapability();
     /** SparkWitch's witch faction id (Grand Witch, Accomplice, Curser). / SparkWitch 魔女阵营 id。 */
     public static final Identifier WITCH_FACTION_ID = Identifier.of("sparkwitch", "witch");
 
@@ -118,6 +120,44 @@ public final class SparkFactionCompat {
      *  SparkWitch 硬依赖 SparkFactionAPI，因此 API 不可用恰好意味着不存在魔女身份。 */
     public static boolean isWitchFactionRole(@Nullable Role role) {
         return WITCH_FACTION_ID.equals(baseFaction(role));
+    }
+
+    /**
+     * Whether the player's effective faction declares an instinct key ({@code FactionCapabilities.canUseInstinct}):
+     * Wathe killers, SparkWitch's witch faction and the Murderous Witch today. Per faction only, so role-specific keys
+     * (Insider, Wind Spirit, ...) are not covered; false when the API is absent or old.
+     * 玩家的有效阵营是否声明了本能键（FactionCapabilities.canUseInstinct）：目前为 Wathe 杀手、SparkWitch 魔女阵营与杀意魔女。
+     * 只按阵营判断，因此不覆盖职业专属按键（内应、风精灵……）；API 缺失或旧版时返回 false。
+     */
+    public static boolean canUseInstinct(PlayerEntity player, GameWorldComponent game) {
+        if (INSTINCT_CAPABILITY == null) {
+            return false;
+        }
+        try {
+            Object faction = INSTINCT_CAPABILITY[0].invoke(null, player, game);
+            Object capabilities = faction == null ? null : INSTINCT_CAPABILITY[1].invoke(null, faction);
+            return capabilities != null && Boolean.TRUE.equals(INSTINCT_CAPABILITY[2].invoke(capabilities));
+        } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException | LinkageError ignored) {
+            return false;
+        }
+    }
+
+    private static Method[] findInstinctCapability() {
+        if (!FabricLoader.getInstance().isModLoaded("sparkfactionapi")) {
+            return null;
+        }
+        try {
+            Class<?> api = Class.forName("dev.caecorthus.sparkfactionapi.api.SparkFactionApi");
+            Method resolve = api.getMethod("resolveEffectiveFaction", PlayerEntity.class, GameWorldComponent.class);
+            Method capabilities = api.getMethod("capabilities", Identifier.class);
+            Method canUseInstinct = capabilities.getReturnType().getMethod("canUseInstinct");
+            return Modifier.isStatic(resolve.getModifiers()) && resolve.getReturnType() == Identifier.class
+                    && Modifier.isStatic(capabilities.getModifiers()) && canUseInstinct.getReturnType() == boolean.class
+                    ? new Method[]{resolve, capabilities, canUseInstinct}
+                    : null;
+        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | LinkageError ignored) {
+            return null;
+        }
     }
 
     private static Method findResolveBaseFaction() {

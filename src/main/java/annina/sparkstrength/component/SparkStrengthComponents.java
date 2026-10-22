@@ -3,6 +3,11 @@ package annina.sparkstrength.component;
 import annina.sparkstrength.component.bodyguard.BodyguardGearComponent;
 import annina.sparkstrength.component.pathogen.PathogenStrainComponent;
 import annina.sparkstrength.component.pathogen.VirusCarrierComponent;
+import annina.sparkstrength.component.partyanimal.PartyAnimalSkillComponent;
+import annina.sparkstrength.component.partyanimal.PartyBalloonMarkComponent;
+import annina.sparkstrength.component.partyanimal.PartygoerCorpseComponent;
+import annina.sparkstrength.component.partyanimal.PartygoerOwnerComponent;
+import annina.sparkstrength.entity.PartygoerEntity;
 import annina.sparkstrength.component.collision.PlayerCollisionGraceWorldComponent;
 import annina.sparkstrength.component.corruptcop.CorruptCopAbilityComponent;
 import annina.sparkstrength.component.coroner.CoronerBodySnapshotComponent;
@@ -114,12 +119,18 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
         registry.beginRegistration(PlayerEntity.class, VultureSuperCursePlayerComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(VultureSuperCursePlayerComponent::new);
+        registry.beginRegistration(PlayerEntity.class, PartyAnimalSkillComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(PartyAnimalSkillComponent::new);
         registry.beginRegistration(PlayerEntity.class, PathogenStrainComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(PathogenStrainComponent::new);
         registry.beginRegistration(PlayerEntity.class, VirusCarrierComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(VirusCarrierComponent::new);
+        registry.beginRegistration(PlayerEntity.class, PartyBalloonMarkComponent.KEY)
+                .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
+                .end(PartyBalloonMarkComponent::new);
         registry.beginRegistration(PlayerEntity.class, ReporterCommunicationComponent.KEY)
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(ReporterCommunicationComponent::new);
@@ -139,6 +150,8 @@ public class SparkStrengthComponents implements EntityComponentInitializer, Worl
                 .respawnStrategy(RespawnCopyStrategy.NEVER_COPY)
                 .end(TaotieHeadDazeComponent::new);
         registry.registerFor(PlayerBodyEntity.class, CoronerBodySnapshotComponent.KEY, CoronerBodySnapshotComponent::new);
+        registry.registerFor(PlayerBodyEntity.class, PartygoerCorpseComponent.KEY, PartygoerCorpseComponent::new);
+        registry.registerFor(PartygoerEntity.class, PartygoerOwnerComponent.KEY, PartygoerOwnerComponent::new);
     }
 
     @Override

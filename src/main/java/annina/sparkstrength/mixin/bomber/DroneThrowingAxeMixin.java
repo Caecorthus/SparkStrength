@@ -2,6 +2,7 @@ package annina.sparkstrength.mixin.bomber;
 
 import annina.sparkstrength.role.bomber.drone.DroneHitGeometry;
 import annina.sparkstrength.role.bomber.drone.DroneWeaponHits;
+import annina.sparkstrength.role.partyanimal.PartygoerWeaponHits;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.util.math.Box;
@@ -24,6 +25,12 @@ import java.util.Optional;
  * NoellesRoles 飞斧与炸弹客无人机（服务端）。其实体碰撞为自定义（只认玩家、可贯穿），因此在贯穿循环前判定本刻路径上的无人机并将其击毁
  * （归属投掷者）；无人机之前的玩家照常命中，之后的玩家被挡下，飞斧停在无人机处。路径上没有无人机时截断距离保持无穷大，
  * NoellesRoles 行为完全不变。与 SparkWitch 搜寻者在相同调用上的钩子共存（每个包装只会缩小命中集合）。
+ *
+ * <p>Partygoers on the same segment before the drone cut (and before the first block) die too
+ * ({@code PartygoerWeaponHits#onThrowingAxeSweep}, NoellesRoles' throwing-axe death reason); the axe pierces them like
+ * players and keeps flying.
+ * 同一路径上、无人机截断点之前（且在第一个方块之前）的派对客同样被击杀（PartygoerWeaponHits#onThrowingAxeSweep，NoellesRoles
+ * 飞斧死因）；飞斧像贯穿玩家一样贯穿它们并继续飞行。</p>
  */
 @Mixin(ThrowingAxeEntity.class)
 public abstract class DroneThrowingAxeMixin {
@@ -39,6 +46,8 @@ public abstract class DroneThrowingAxeMixin {
         DroneHitGeometry.DroneHit hit = DroneWeaponHits.onThrowingAxeSweep(axe, axe.getOwner(), from,
                 from.add(axe.getVelocity()));
         sparkstrength$droneCutSquared = hit == null ? Double.POSITIVE_INFINITY : hit.distanceSquared();
+        PartygoerWeaponHits.onThrowingAxeSweep(axe, axe.getOwner(), from, from.add(axe.getVelocity()),
+                sparkstrength$droneCutSquared);
     }
 
     @WrapOperation(method = "tick", at = @At(value = "INVOKE",

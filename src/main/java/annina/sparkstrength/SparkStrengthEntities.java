@@ -6,7 +6,9 @@ import annina.sparkstrength.entity.CaptureDeviceEntity;
 import annina.sparkstrength.entity.CoolingOilEntity;
 import annina.sparkstrength.entity.DroneEntity;
 import annina.sparkstrength.entity.M67GrenadeEntity;
+import annina.sparkstrength.entity.PartygoerEntity;
 import annina.sparkstrength.entity.TaotieHeadEntity;
+import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnGroup;
 import net.minecraft.registry.Registries;
@@ -22,6 +24,7 @@ public final class SparkStrengthEntities {
     public static final Identifier GRENADE_DRONE_ID = SparkStrength.id("grenade_drone");
     public static final Identifier BOMB_DRONE_ID = SparkStrength.id("bomb_drone");
     public static final Identifier TAOTIE_HEAD_ID = SparkStrength.id("taotie_head");
+    public static final Identifier PARTYGOER_ID = SparkStrength.id("partygoer");
     private static EntityType<M67GrenadeEntity> m67;
     private static EntityType<CapsuleEntity> capsule;
     private static EntityType<CaptureDeviceEntity> captureDevice;
@@ -30,6 +33,7 @@ public final class SparkStrengthEntities {
     private static EntityType<DroneEntity> grenadeDrone;
     private static EntityType<DroneEntity> bombDrone;
     private static EntityType<TaotieHeadEntity> taotieHead;
+    private static EntityType<PartygoerEntity> partygoer;
     private static boolean registered;
 
     private SparkStrengthEntities() {
@@ -131,6 +135,22 @@ public final class SparkStrengthEntities {
                         .disableSummon()
                         .build(TAOTIE_HEAD_ID.toString())
         );
+        // The Party Animal's summoned zombie: a round-only mob moved by its own brain, tracked every tick so the carry
+        // looks smooth. / 派对狂召唤的僵尸：仅存在于本局、由自身大脑驱动的生物；每刻追踪，扛人画面才流畅。
+        partygoer = Registry.register(
+                Registries.ENTITY_TYPE,
+                PARTYGOER_ID,
+                EntityType.Builder.<PartygoerEntity>create(PartygoerEntity::new, SpawnGroup.MISC)
+                        .dimensions(0.6F, 1.95F)
+                        .eyeHeight(1.74F)
+                        .maxTrackingRange(10)
+                        .trackingTickInterval(1)
+                        .makeFireImmune()
+                        .disableSaving()
+                        .disableSummon()
+                        .build(PARTYGOER_ID.toString())
+        );
+        FabricDefaultAttributeRegistry.register(partygoer, PartygoerEntity.createAttributes());
         registered = true;
     }
 
@@ -188,5 +208,12 @@ public final class SparkStrengthEntities {
             throw new IllegalStateException("SparkStrength entities are not registered yet");
         }
         return taotieHead;
+    }
+
+    public static EntityType<PartygoerEntity> partygoer() {
+        if (partygoer == null) {
+            throw new IllegalStateException("SparkStrength entities are not registered yet");
+        }
+        return partygoer;
     }
 }

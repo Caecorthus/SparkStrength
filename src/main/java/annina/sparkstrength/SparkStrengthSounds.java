@@ -59,6 +59,22 @@ public final class SparkStrengthSounds {
     public static final SoundEvent CIRCUIT_BREAKER_RESTORE = REGISTRAR.create("block.circuit_breaker.restore");
     public static final SoundEvent SABOTAGE_READY = REGISTRAR.create("ui.sabotage.ready");
 
+    /**
+     * Party Animal's Partygoer, clips picked by the owner (2026-10-21): spawn, grab, killed, gave up (vanish) and rage.
+     * The ids double as StopSound targets so a new clip cuts the previous one.
+     * 派对狂的派对客，音频由主人指定（2026-10-21）：出生、抓到人、被打死、放弃（消失）与狂怒。ID 也用作停止音效的目标，让新音频切断上一段。
+     */
+    public static final Identifier PARTYGOER_SPAWN_ID = SparkStrength.id("entity.partygoer.spawn");
+    public static final SoundEvent PARTYGOER_SPAWN = REGISTRAR.create("entity.partygoer.spawn");
+    public static final Identifier PARTYGOER_GRAB_ID = SparkStrength.id("entity.partygoer.grab");
+    public static final SoundEvent PARTYGOER_GRAB = REGISTRAR.create("entity.partygoer.grab");
+    public static final Identifier PARTYGOER_DEATH_ID = SparkStrength.id("entity.partygoer.death");
+    public static final SoundEvent PARTYGOER_DEATH = REGISTRAR.create("entity.partygoer.death");
+    public static final Identifier PARTYGOER_VANISH_ID = SparkStrength.id("entity.partygoer.vanish");
+    public static final SoundEvent PARTYGOER_VANISH = REGISTRAR.create("entity.partygoer.vanish");
+    public static final Identifier PARTYGOER_RAGE_ID = SparkStrength.id("entity.partygoer.rage");
+    public static final SoundEvent PARTYGOER_RAGE = REGISTRAR.create("entity.partygoer.rage");
+
     private SparkStrengthSounds() {
     }
 

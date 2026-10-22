@@ -157,6 +157,21 @@ public final class DoorLogService {
         }
     }
 
+    /**
+     * The Party Animal's Partygoer pushed a closed door open with no key: a monitored room door logs the same anonymous
+     * "forced" line as a Jester or Depression-bat opening.
+     * 派对狂的派对客无钥匙推开了关着的门：受监控的房门记一条与小丑或抑郁球棒相同的匿名「强行打开」。
+     */
+    public static void recordForced(ServerWorld world, BlockPos lowerPos) {
+        if (!GameWorldComponent.KEY.get(world).isRunning()) {
+            return;
+        }
+        SmallDoorBlockEntity door = roomDoor(world, lowerPos);
+        if (door != null) {
+            record(world, DoorLogKind.FORCED, door.getKeyName(), null);
+        }
+    }
+
     private static void onBlast(World world, BlockPos pos, DoorBlockEntity entity) {
         if (!(world instanceof ServerWorld serverWorld) || !GameWorldComponent.KEY.get(serverWorld).isRunning()) {
             return;

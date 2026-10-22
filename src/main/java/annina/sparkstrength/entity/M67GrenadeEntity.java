@@ -9,6 +9,7 @@ import annina.sparkstrength.item.m67.M67RoundService;
 import annina.sparkstrength.item.m67.M67Rules;
 import annina.sparkstrength.role.bodyguard.AttackOriginScope;
 import annina.sparkstrength.role.bomber.drone.DroneCombatService;
+import annina.sparkstrength.role.partyanimal.PartygoerWeaponHits;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheParticles;
@@ -251,6 +252,8 @@ public final class M67GrenadeEntity extends ThrownItemEntity {
         if (!isRemoved() && validRound(world)) {
             // Bomber drones in the blast break too (bomb drones chain-detonate). / 爆炸范围内的炸弹客无人机同样被击毁（炸弹无人机连锁引爆）。
             DroneCombatService.breakDronesInBlast(world, this, M67Rules.BLAST_RADIUS, owner);
+            // Partygoers in the blast die like players (wathe:grenade). / 爆炸范围内的派对客与玩家一样死亡。
+            PartygoerWeaponHits.onGrenadeBlast(world, this, M67Rules.BLAST_RADIUS, owner);
         }
         discard();
     }

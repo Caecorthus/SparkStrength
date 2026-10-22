@@ -3,6 +3,7 @@ package annina.sparkstrength.item;
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.compat.SparkWitchCompat;
 import annina.sparkstrength.network.SerialPistolShootC2SPayload;
+import annina.sparkstrength.role.partyanimal.PartygoerHitGeometry;
 import annina.sparkstrength.role.serialkiller.SerialKillerConstants;
 import dev.doctor4t.wathe.item.RevolverItem;
 import net.minecraft.entity.player.PlayerEntity;
@@ -54,7 +55,11 @@ public final class SerialPistolItem extends RevolverItem {
             // 与左轮相同的选靶（Wathe 30 格 getGunTarget，包括床上睡觉的玩家），getGunTarget 上的客户端钩子同样生效（SparkWitch
             // 的激活冤魂穿透与更近的魔术师皮套）；SparkWitch 包装在 RevolverItem#use 内的搜寻者设备一步经其公开 API 补上
             // （未安装 SparkWitch 时选靶不变）。服务端会全部复核。
-            HitResult aim = SparkWitchCompat.preferNearerGunWorldTarget(user, RevolverItem.getGunTarget(user),
+            // A Partygoer strictly nearer than that pick takes the shot (the server re-validates and kills it).
+            // 严格比该选择更近的派对客改为中枪（服务端复核并将其击杀）。
+            HitResult aim = PartygoerHitGeometry.preferNearer(user,
+                    SparkWitchCompat.preferNearerGunWorldTarget(user, RevolverItem.getGunTarget(user),
+                            SerialKillerConstants.PISTOL_RANGE_BLOCKS),
                     SerialKillerConstants.PISTOL_RANGE_BLOCKS);
             int targetId = RevolverItem.resolveTargetFromHitResult(world, aim);
             sendShootPacket(new SerialPistolShootC2SPayload(targetId, hand));
@@ -67,7 +72,8 @@ public final class SerialPistolItem extends RevolverItem {
 
     /** Crosshair helper: the player Wathe's revolver ray would hit, or null. / 准心用：Wathe 左轮射线会命中的玩家，或 null。 */
     public static EntityHitResult findTarget(PlayerEntity user) {
-        HitResult result = RevolverItem.getGunTarget(user);
+        HitResult result = PartygoerHitGeometry.preferNearer(user, RevolverItem.getGunTarget(user),
+                SerialKillerConstants.PISTOL_RANGE_BLOCKS);
         return result instanceof EntityHitResult entityHitResult ? entityHitResult : null;
     }
 

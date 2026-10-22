@@ -1,6 +1,7 @@
 package annina.sparkstrength.client.mixin.morphling;
 
 import annina.sparkstrength.SparkStrengthItems;
+import annina.sparkstrength.component.partyanimal.PartygoerCorpseComponent;
 import annina.sparkstrength.role.morphling.MorphlingRules;
 import annina.sparkstrength.role.morphling.MorphlingService;
 import com.mojang.blaze3d.platform.GlStateManager;
@@ -67,8 +68,10 @@ public abstract class MorphlingReagentCrosshairMixin {
                         }
                         return !hasSample || sampleUuid.map(uuid -> !uuid.equals(targetPlayer.getUuid())).orElse(true);
                     }
+                    // A Partygoer corpse cannot be sampled. / 派对客尸体不能采样。
                     return !hasSample
                             && entity instanceof PlayerBodyEntity body
+                            && !PartygoerCorpseComponent.isPartygoerCorpse(body)
                             && CanTargetBody.EVENT.invoker().canTarget(player, body);
                 },
                 MorphlingRules.REAGENT_TARGET_RANGE

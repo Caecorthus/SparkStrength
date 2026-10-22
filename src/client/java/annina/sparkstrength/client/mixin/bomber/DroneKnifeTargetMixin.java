@@ -2,6 +2,7 @@ package annina.sparkstrength.client.mixin.bomber;
 
 import annina.sparkstrength.role.bomber.drone.DroneHitGeometry;
 import annina.sparkstrength.role.bomber.drone.DroneWeaponRules;
+import annina.sparkstrength.role.partyanimal.PartygoerHitGeometry;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import dev.doctor4t.wathe.item.KnifeItem;
 import net.minecraft.entity.player.PlayerEntity;
@@ -18,6 +19,9 @@ import org.spongepowered.asm.mixin.injection.At;
  * 客户端刀目标：Wathe 的 KnifeItem.getKnifeTarget 只看玩家，因此视线上严格更近的炸弹客无人机会替换结果。所有调用方共用：
  * 蓄力释放、瞬刺（NoellesRoles 拾荒者、SparkStrength 老兵/验尸官伪装）以及 Wathe 准星刀提示；由服务端
  * DroneKnifeStabPayloadMixin 校验并击毁。仅客户端：服务端调用原样返回。Wathe 成员且方法名唯一，选择器仅用方法名并 remap = false。
+ *
+ * <p>A Partygoer strictly nearer than that result replaces it in turn; {@code DroneKnifeStabPayloadMixin} validates and
+ * kills it. / 严格比该结果更近的派对客再次替换它；由 DroneKnifeStabPayloadMixin 校验并击杀。</p>
  */
 @Mixin(KnifeItem.class)
 public abstract class DroneKnifeTargetMixin {
@@ -26,6 +30,8 @@ public abstract class DroneKnifeTargetMixin {
         if (user == null || !user.getWorld().isClient()) {
             return original;
         }
-        return DroneHitGeometry.preferNearerDrone(user, original, DroneWeaponRules.KNIFE_RANGE);
+        return PartygoerHitGeometry.preferNearer(user,
+                DroneHitGeometry.preferNearerDrone(user, original, DroneWeaponRules.KNIFE_RANGE),
+                DroneWeaponRules.KNIFE_RANGE);
     }
 }
