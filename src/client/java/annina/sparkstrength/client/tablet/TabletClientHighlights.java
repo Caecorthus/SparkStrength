@@ -13,7 +13,11 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 
 /**
  * Tablet suspect highlights use Wathe's outline event without requiring the instinct key.
@@ -37,6 +41,11 @@ import java.util.UUID;
 public final class TabletClientHighlights {
     private static final int SUSPECT_PRIORITY = 80;
 
+    /** UUID sets of the snapshot below, rebuilt only when a new snapshot arrives. / 下方快照的 UUID 集合，只在收到新快照时重建。 */
+    private static TabletSnapshot indexedSnapshot;
+    private static Set<UUID> suspectIds = Set.of();
+    private static Set<UUID> connectionIds = Set.of();
+
     private TabletClientHighlights() {
     }
 
@@ -49,23 +58,25 @@ public final class TabletClientHighlights {
         if (viewer == null || !(target instanceof PlayerEntity targetPlayer) || targetPlayer == viewer) {
             return null;
         }
+        // Cheapest first: this runs for every rendered entity several times a frame, and only police suspects answer.
+        // 最便宜的判断在前：每帧会对每个渲染实体调用多次，而只有义警嫌疑人会作答。
+        TabletSnapshot snapshot = TabletClientState.snapshot();
+        if (!snapshot.localHasTablet() || snapshot.channel() != TabletChannel.POLICE) {
+            return null;
+        }
+        index(snapshot);
+        UUID targetUuid = targetPlayer.getUuid();
+        boolean targetSuspect = suspectIds.contains(targetUuid);
+        if (!targetSuspect) {
+            return null;
+        }
         if (!GameFunctions.isPlayerPlayingAndAlive(viewer) || !TabletAccess.hasTabletInHotbar(viewer)) {
             return null;
         }
         if (!GameFunctions.isPlayerPlayingAndAlive(targetPlayer)) {
             return null;
         }
-
-        TabletSnapshot snapshot = TabletClientState.snapshot();
-        TabletChannel channel = snapshot.channel();
-        if (!snapshot.localHasTablet() || channel == null) {
-            return null;
-        }
-
-        UUID targetUuid = targetPlayer.getUuid();
-        boolean targetConnected = snapshot.connections().stream().anyMatch(row -> row.uuid().equals(targetUuid));
-        boolean targetSuspect = channel == TabletChannel.POLICE
-                && snapshot.suspects().stream().anyMatch(row -> row.uuid().equals(targetUuid));
+        boolean targetConnected = connectionIds.contains(targetUuid);
 
         // Periodic suspect reveals are intentional through-wall tablet ESP (police network only).
         // 嫌疑人的周期透视不受墙体视线阻挡（仅义警网络）。
@@ -75,18 +86,36 @@ public final class TabletClientHighlights {
                     SUSPECT_PRIORITY
             );
         }
-        if (!viewer.canSee(targetPlayer)) {
-            return null;
-        }
         // Member rows exist only for identities this viewer may see, so a locked police viewer never matches here.
-        // 成员行只包含此观看者可见的身份，因此身份尚未解锁的义警观看者不会命中此分支。
+        // The line-of-sight raycast runs last, only for a suspect that is also a member row.
+        // 成员行只包含此观看者可见的身份，因此身份尚未解锁的义警观看者不会命中此分支。视线射线检测放在最后，
+        // 只对同时也是成员行的嫌疑人执行。
         if (targetSuspect && targetConnected) {
-            return GetInstinctHighlight.HighlightResult.always(
-                    TabletShopRules.SUSPECT_HIGHLIGHT_COLOR,
-                    SUSPECT_PRIORITY
-            );
+            return viewer.canSee(targetPlayer)
+                    ? GetInstinctHighlight.HighlightResult.always(
+                            TabletShopRules.SUSPECT_HIGHLIGHT_COLOR,
+                            SUSPECT_PRIORITY
+                    )
+                    : null;
         }
         return null;
+    }
+
+    private static void index(TabletSnapshot snapshot) {
+        if (snapshot == indexedSnapshot) {
+            return;
+        }
+        indexedSnapshot = snapshot;
+        suspectIds = uuids(snapshot.suspects(), TabletSnapshot.SuspectRow::uuid);
+        connectionIds = uuids(snapshot.connections(), TabletSnapshot.PlayerRow::uuid);
+    }
+
+    private static <T> Set<UUID> uuids(List<T> rows, Function<T, UUID> uuid) {
+        Set<UUID> ids = new HashSet<>(rows.size() * 2);
+        for (T row : rows) {
+            ids.add(uuid.apply(row));
+        }
+        return ids;
     }
 
     private static boolean isSuspectRevealWindow(PlayerEntity viewer) {
