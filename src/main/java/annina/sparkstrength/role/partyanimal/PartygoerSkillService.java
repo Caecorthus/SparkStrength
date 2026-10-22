@@ -1,9 +1,8 @@
 package annina.sparkstrength.role.partyanimal;
 
-import annina.sparkstrength.component.engineer.EngineerStunnedPlayerComponent;
 import annina.sparkstrength.component.partyanimal.PartyAnimalSkillComponent;
-import annina.sparkstrength.compat.SparkTraitsDroneCompat;
 import annina.sparkstrength.network.partyanimal.PartygoerMenuS2CPacket;
+import annina.sparkstrength.role.AbilityLocks;
 import annina.sparkstrength.role.bomber.drone.DroneService;
 import annina.sparkstrength.role.economy.KillerTeamEconomyService;
 import annina.sparkstrength.role.partyanimal.nav.TrainNavGrid;
@@ -162,7 +161,7 @@ public final class PartygoerSkillService {
      */
     private static @Nullable Text refusal(ServerPlayerEntity player) {
         PartyAnimalSkillComponent skill = PartyAnimalSkillComponent.KEY.get(player);
-        if (isSkillLocked(player)) {
+        if (AbilityLocks.isLocked(player, AbilityLocks.ROLE_SKILL)) {
             return tip("locked");
         }
         if (!skill.isUnlocked()) {
@@ -188,13 +187,6 @@ public final class PartygoerSkillService {
                 && GameFunctions.isPlayerAliveAndSurvival(player)
                 && !SwallowedPlayerComponent.isPlayerSwallowed(player)
                 && PartyAnimalRules.isPartyAnimal(GameWorldComponent.KEY.get(player.getWorld()).getRole(player));
-    }
-
-    /** Engineer stun, SparkTraits role-skill block and a pending Last Stand, like the Vulture's second skill. / 与秃鹫二技能相同的封锁。 */
-    private static boolean isSkillLocked(ServerPlayerEntity player) {
-        return EngineerStunnedPlayerComponent.KEY.get(player).isStunned()
-                || SparkTraitsDroneCompat.isRoleSkillBlocked(player)
-                || SparkTraitsDroneCompat.isLastStandPending(player);
     }
 
     private static @Nullable PartyRoomIndex.PartyRoom find(List<PartyRoomIndex.PartyRoom> rooms, String name) {

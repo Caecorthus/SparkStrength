@@ -3,13 +3,13 @@ package annina.sparkstrength.role.bomber.drone;
 import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.SparkStrengthSounds;
-import annina.sparkstrength.compat.SparkTraitsCompat;
-import annina.sparkstrength.component.engineer.EngineerStunnedPlayerComponent;
 import annina.sparkstrength.entity.DroneEntity;
 import annina.sparkstrength.item.DroneItem;
 import annina.sparkstrength.item.m67.M67RoundService;
 import annina.sparkstrength.mixin.minecraft.ItemCooldownEntryAccessor;
 import annina.sparkstrength.mixin.minecraft.ItemCooldownManagerAccessor;
+import annina.sparkstrength.role.AbilityLocks;
+import annina.sparkstrength.role.AbilityLocks.Lock;
 import annina.sparkstrength.role.coroner.CoronerRules;
 import dev.doctor4t.wathe.api.event.GameEvents;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -72,6 +72,8 @@ import java.util.UUID;
  */
 public final class DroneService {
     private static final int GRANT_RECONCILE_INTERVAL_TICKS = 20;
+    /** Locks that refuse picking a grenade drone back up. / 拒绝收回投弹无人机的锁定。 */
+    private static final Set<Lock> RECOVER_LOCKS = AbilityLocks.of(Lock.ENGINEER_STUN, Lock.KILLER_INTERACTION_BLOCK);
     /**
      * Radius 2 makes the drone's own chunk entity-ticking (level 31); refreshed every tick for live drones, so a
      * removed drone or an ended round simply lets it expire (no bookkeeping). Argument: the drone's entity id.
@@ -260,8 +262,7 @@ public final class DroneService {
         if (round == null || drone.isRemoved() || drone.getWorld() != world || drone.kind() != DroneKind.GRENADE
                 || drone.state() == DroneState.FALLING || !owner.getUuid().equals(drone.ownerUuid())
                 || !round.id.equals(drone.roundId()) || !isActiveBomber(owner)
-                || EngineerStunnedPlayerComponent.KEY.get(owner).isStunned()
-                || SparkTraitsCompat.isKillerInteractionBlocked(owner)) {
+                || AbilityLocks.isLocked(owner, RECOVER_LOCKS)) {
             return false;
         }
         int slot = freeHotbarSlot(owner);

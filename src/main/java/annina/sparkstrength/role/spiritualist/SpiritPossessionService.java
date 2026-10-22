@@ -1,13 +1,13 @@
 package annina.sparkstrength.role.spiritualist;
 
 import annina.sparkstrength.compat.SparkFactionCooldownCompat;
-import annina.sparkstrength.compat.SparkTraitsDroneCompat;
 import annina.sparkstrength.compat.SparkWitchCompat;
-import annina.sparkstrength.component.engineer.EngineerStunnedPlayerComponent;
 import annina.sparkstrength.component.spiritualist.SpiritPossessionPlayerComponent;
 import annina.sparkstrength.item.m67.M67RoundService;
 import annina.sparkstrength.network.spiritualist.SpiritPossessionStateS2CPacket;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
+import annina.sparkstrength.role.AbilityLocks;
+import annina.sparkstrength.role.AbilityLocks.Lock;
 import annina.sparkstrength.viewpoint.RemoteViewSessions;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.GameEvents;
@@ -25,11 +25,11 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.Vec3d;
 import org.agmas.noellesroles.spiritualist.SpiritPlayerComponent;
-import org.agmas.noellesroles.taotie.SwallowedPlayerComponent;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 import java.util.OptionalInt;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -52,6 +52,9 @@ import java.util.UUID;
 public final class SpiritPossessionService {
     /** A move this long in one tick is a teleport. / 单刻移动超过此距离视为传送。 */
     private static final double JUMP_DISTANCE_SQUARED = 8.0D * 8.0D;
+    /** Locks that refuse a start and end a running possession. / 拒绝开始并会结束进行中附身的各类锁定。 */
+    private static final Set<Lock> POSSESSION_LOCKS = AbilityLocks.of(Lock.SWALLOWED, Lock.ENGINEER_STUN,
+            Lock.CONTROL_EXPERT_STUN, Lock.ROLE_SKILL_BLOCK, Lock.LAST_STAND_PENDING);
 
     /**
      * Possession sessions by Spiritualist uuid; the chunk ticket is {@code sparkstrength:spirit_possession}.
@@ -287,14 +290,9 @@ public final class SpiritPossessionService {
 
     // ---- Helpers / 工具 ----
 
-    /** Locks that refuse a start and end a running possession. / 拒绝开始并会结束进行中附身的各类锁定。 */
+    /** Alive in the round and free of {@link #POSSESSION_LOCKS}. / 在局内存活且不受 POSSESSION_LOCKS 限制。 */
     private static boolean canAct(ServerPlayerEntity player) {
-        return GameFunctions.isPlayerPlayingAndAlive(player)
-                && !SwallowedPlayerComponent.isPlayerSwallowed(player)
-                && !EngineerStunnedPlayerComponent.KEY.get(player).isStunned()
-                && !SparkWitchCompat.isControlExpertStunned(player)
-                && !SparkTraitsDroneCompat.isRoleSkillBlocked(player)
-                && !SparkTraitsDroneCompat.isLastStandPending(player);
+        return GameFunctions.isPlayerPlayingAndAlive(player) && !AbilityLocks.isLocked(player, POSSESSION_LOCKS);
     }
 
     /** Any active Wraith, promoted forms included (owner 2026-10-07). / 任意活跃冤魂，含晋升形态（所有者 2026-10-07）。 */
