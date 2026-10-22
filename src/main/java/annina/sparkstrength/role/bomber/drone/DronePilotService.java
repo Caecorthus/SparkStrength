@@ -1,6 +1,5 @@
 package annina.sparkstrength.role.bomber.drone;
 
-import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.compat.SparkTraitsDroneCompat;
@@ -12,23 +11,17 @@ import annina.sparkstrength.network.drone.DronePilotCorrectionS2CPacket;
 import annina.sparkstrength.network.drone.DronePilotMoveC2SPacket;
 import annina.sparkstrength.network.drone.DronePilotStateS2CPacket;
 import annina.sparkstrength.tablet.TabletStateService;
+import annina.sparkstrength.viewpoint.RemoteViewSessions;
 import dev.doctor4t.wathe.game.GameFunctions;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.entity.Entity;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ChunkTicketType;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -62,14 +55,14 @@ import java.util.UUID;
  *   因此断线时静默结束，随后无人机失去主人（见 DroneEntity：投弹无人机坠落损毁，炸弹无人机哑火消失）。</li>
  * </ul>
  *
- * <p>Unlimited range (the whole play area): while a session lives, an expiring chunk ticket refreshed every tick keeps
- * the drone's surroundings loaded and entity-ticking (tracker position updates only run in entity-ticking chunks), and
- * the {@code mixin/bomber/DronePilot*} mixins centre the pilot's chunk view, chunk batches and entity tracking on
- * {@link #droneOf}. The motionless body sends no movement packets, so the pilot's tracking is re-evaluated every tick
- * here, and for {@link #RESETTLE_TICKS} after the session so the view settles back on the body.
- * 无限距离（整个游玩区域）：会话期间每刻刷新一张会过期的区块票据，保持无人机周围区块加载并处理实体（追踪器只在处理实体的区块中
- * 发送位置更新）；mixin/bomber/DronePilot* 以 droneOf 为中心计算驾驶者的区块视野、区块批次与实体追踪。静止的身体不会发送移动包，
- * 因此这里每刻重新评估驾驶者的追踪，并在会话结束后继续 RESETTLE_TICKS 刻，使视野回到身体。</p>
+ * <p>Unlimited range (the whole play area): the drone is this feature's remote viewpoint. While a session lives,
+ * {@link RemoteViewSessions#refreshView} keeps the drone's surroundings loaded and re-evaluates the pilot's tracking
+ * every tick (the motionless body sends no movement packets), the {@code mixin/viewpoint/RemoteViewpoint*} mixins
+ * centre the pilot's chunk view, chunk batches and entity tracking on {@link #droneOf}, and after the session the view
+ * resettles on the body.
+ * 无限距离（整个游玩区域）：无人机就是本功能的远程视点。会话期间 RemoteViewSessions#refreshView 每刻保持无人机周围区块加载并
+ * 重新评估驾驶者的追踪（静止的身体不发送移动包）；mixin/viewpoint/RemoteViewpoint* 以 droneOf 为中心计算驾驶者的区块视野、
+ * 区块批次与实体追踪；会话结束后视野回到身体。</p>
  */
 public final class DronePilotService {
     /**
@@ -77,31 +70,11 @@ public final class DronePilotService {
      * 每名驾驶者每服务器刻接受的移动包数：客户端每刻发送一次，余量用于吸收网络抖动。
      */
     public static final int MAX_MOVES_PER_TICK = 2;
-    /**
-     * Cap on the view radius used for the drone's chunk ticket: the maps are small, so a wider ring would only load
-     * (or generate) terrain far outside the play area. Ticket radius = min(view, cap) + margin, must stay <= 32.
-     * 无人机区块票据使用的视距上限：地图很小，更大的范围只会加载（甚至生成）游玩区域外的地形。票据半径 = min(视距, 上限) + 余量，须 <= 32。
-     */
-    public static final int MAX_TICKET_VIEW_DISTANCE = 8;
-    /** Extra ticket rings beyond the view so edge chunks are fully loaded before sending. / 视距外额外的票据圈，确保边缘区块发送前已完全加载。 */
-    public static final int TICKET_MARGIN = 2;
-    /** Body-view re-evaluation after a session ends. / 会话结束后以身体为准重新评估视野的时长。 */
-    public static final int RESETTLE_TICKS = 40;
     /** Minimum server ticks between two processed start requests of one player. / 同一玩家两次被处理的开始请求之间的最少服务器刻数。 */
     public static final int START_COOLDOWN_TICKS = 10;
-    /**
-     * Refreshed every tick while piloting; positions the drone left behind expire on their own (fail-safe, no
-     * bookkeeping). Argument: the drone's entity id.
-     * 驾驶期间每刻刷新；无人机离开的位置会自行过期（无需记录，失效安全）。参数为无人机实体 id。
-     */
-    private static final ChunkTicketType<Integer> DRONE_TICKET =
-            ChunkTicketType.create(SparkStrength.MOD_ID + ":drone", Integer::compare, 40);
 
-    private static final Map<UUID, Session> SESSIONS = new HashMap<>();
-    /** Pilot uuid -> remaining post-session re-evaluation ticks. / 驾驶者 uuid -> 会话结束后剩余的重新评估刻数。 */
-    private static final Map<UUID, Integer> RESETTLING = new HashMap<>();
-    /** Player uuid -> server tick of its last processed start. / 玩家 uuid -> 上次被处理的开始请求所在的服务器刻。 */
-    private static final Map<UUID, Integer> LAST_START = new HashMap<>();
+    /** Pilot sessions; the chunk ticket is {@code sparkstrength:drone}. / 驾驶会话；区块票据为 sparkstrength:drone。 */
+    private static final RemoteViewSessions<Session> VIEWS = new RemoteViewSessions<>("drone");
     private static boolean registered;
 
     private DronePilotService() {
@@ -117,57 +90,40 @@ public final class DronePilotService {
         // (DroneEntity: grenade drone falls and breaks, bomb drone fizzles); only an EXIT leaves it hovering.
         // 断线的驾驶者不发包。驾驶者即主人，因此无人机随后视为失去主人（DroneEntity：投弹无人机坠落损毁，炸弹无人机哑火）；
         // 只有主动退出才会让无人机原地悬停。
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-            drop(handler.player.getUuid());
-            RESETTLING.remove(handler.player.getUuid());
-            LAST_START.remove(handler.player.getUuid());
-        });
-        ServerWorldEvents.UNLOAD.register((server, world) -> dropWorld(world));
-        ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
-            SESSIONS.clear();
-            RESETTLING.clear();
-            LAST_START.clear();
-        });
+        VIEWS.registerCleanup();
     }
 
     public static void start(ServerPlayerEntity player, int entityId) {
         if (player == null) {
             return;
         }
-        Session current = SESSIONS.get(player.getUuid());
+        Session current = VIEWS.session(player.getUuid());
         if (current != null && current.drone.getId() == entityId) {
             // Already piloting it: nothing to restart or re-sync. / 已在驾驶该无人机：无需重启或重新同步。
             return;
         }
         // Spam guard: every processed start re-validates, may end a session and syncs the tablet.
         // 防刷：每次被处理的开始请求都会重新校验、可能结束会话并同步平板。
-        int now = player.getServer().getTicks();
-        Integer last = LAST_START.get(player.getUuid());
-        if (last != null && now - last >= 0 && now - last < START_COOLDOWN_TICKS) {
+        if (!VIEWS.acceptStart(player.getUuid(), player.getServer().getTicks(), START_COOLDOWN_TICKS)) {
             return;
         }
-        LAST_START.put(player.getUuid(), now);
-        // Silent: the start or refusal sent below supersedes the old session on the client.
-        // 静默结束：下面发送的开始或拒绝状态会在客户端取代旧会话。
-        Session previous = SESSIONS.remove(player.getUuid());
-        if (previous != null) {
-            release(previous);
-        }
+        // Silent: the start or refusal sent below supersedes the old session on the client; its resettle stops again
+        // if the new session opens.
+        // 静默结束：下面发送的开始或拒绝状态会在客户端取代旧会话；新会话开始时其视野回归随之停止。
+        Session previous = VIEWS.close(player.getUuid());
         ServerWorld world = player.getServerWorld();
         DroneEntity drone = world.getEntityById(entityId) instanceof DroneEntity found ? found : null;
         DronePilotEndReason refusal = refusal(player, world, drone);
         if (refusal != null) {
             sendState(player, new DronePilotStateS2CPacket(-1, (byte) 0, (byte) refusal.wire()));
             if (previous != null) {
-                RESETTLING.put(player.getUuid(), RESETTLE_TICKS);
                 TabletStateService.syncTo(player);
             }
             return;
         }
         drone.setPilotUuid(player.getUuid());
         Session session = new Session(player.getUuid(), world, drone);
-        SESSIONS.put(player.getUuid(), session);
-        RESETTLING.remove(player.getUuid());
+        VIEWS.open(session);
         refreshView(player, session);
         sendState(player, new DronePilotStateS2CPacket(drone.getId(), (byte) drone.kind().wire(), (byte) 0));
         TabletStateService.syncTo(player);
@@ -177,11 +133,11 @@ public final class DronePilotService {
         if (player == null || packet == null) {
             return;
         }
-        Session session = SESSIONS.get(player.getUuid());
+        Session session = VIEWS.session(player.getUuid());
         // Moves still in flight after an end, or for another drone, are dropped silently.
         // 会话结束后仍在途中的移动包或指向其他无人机的移动包直接丢弃。
         if (session == null || session.drone.getId() != packet.entityId() || session.drone.isRemoved()
-                || player.getServerWorld() != session.world || !session.acceptMove(session.world.getTime())) {
+                || player.getServerWorld() != session.world() || !session.acceptMove(session.world().getTime())) {
             return;
         }
         DroneEntity drone = session.drone;
@@ -206,7 +162,7 @@ public final class DronePilotService {
         if (player == null || action != DronePilotActionC2SPacket.FIRE) {
             return;
         }
-        Session session = SESSIONS.get(player.getUuid());
+        Session session = VIEWS.session(player.getUuid());
         if (session == null || session.drone.getId() != entityId) {
             return;
         }
@@ -225,7 +181,7 @@ public final class DronePilotService {
         if (player == null) {
             return;
         }
-        Session session = SESSIONS.get(player.getUuid());
+        Session session = VIEWS.session(player.getUuid());
         if (session != null && session.drone.getId() == entityId) {
             end(player, DronePilotEndReason.EXIT);
         }
@@ -236,12 +192,10 @@ public final class DronePilotService {
         if (player == null) {
             return;
         }
-        Session session = SESSIONS.remove(player.getUuid());
+        Session session = VIEWS.close(player.getUuid());
         if (session == null) {
             return;
         }
-        release(session);
-        RESETTLING.put(player.getUuid(), RESETTLE_TICKS);
         sendState(player, new DronePilotStateS2CPacket(-1, (byte) session.drone.kind().wire(), (byte) reason.wire()));
         TabletStateService.syncTo(player);
     }
@@ -260,71 +214,47 @@ public final class DronePilotService {
             drone.setPilotUuid(null);
             return;
         }
-        ServerPlayerEntity pilot = session.world.getServer().getPlayerManager().getPlayer(session.pilotUuid);
+        ServerPlayerEntity pilot = session.world().getServer().getPlayerManager().getPlayer(session.viewerUuid());
         if (pilot != null) {
             end(pilot, reason);
         } else {
-            drop(session.pilotUuid);
+            VIEWS.drop(session.viewerUuid());
         }
     }
 
     public static boolean isPiloting(ServerPlayerEntity player) {
-        return player != null && SESSIONS.containsKey(player.getUuid());
+        return player != null && VIEWS.has(player.getUuid());
     }
 
     /** The drone this player's session controls, unchecked; null when not piloting. / 该玩家会话所控制的无人机（不做校验）；未驾驶时为 null。 */
     public static @Nullable DroneEntity pilotedDrone(ServerPlayerEntity player) {
-        Session session = player == null ? null : SESSIONS.get(player.getUuid());
+        Session session = player == null ? null : VIEWS.session(player.getUuid());
         return session == null ? null : session.drone;
     }
 
     /**
-     * View-centre query for the {@code mixin/bomber/DronePilot*} streaming mixins: the piloted drone only while it is
-     * alive in the pilot's world, the pilot is alive and playing, not a spectator, and still its own camera (NoellesRoles
-     * Taotie swallow / Jester fake death take the server camera). Null means "use vanilla", so any failure reverts the
-     * view by itself on the next tick. Hot path: O(1) with no sessions.
-     * 供 mixin/bomber/DronePilot* 流式加载 mixin 查询视野中心：仅当无人机存活且与驾驶者同一世界、驾驶者存活且在局内、不是旁观者、
-     * 镜头仍是自身时（NoellesRoles 饕餮吞噬/小丑假死会接管服务端镜头）返回所驾驶的无人机。null 表示使用原版行为，因此任何失效都会在
-     * 下一刻自动恢复视野。热路径：无会话时 O(1)。
+     * Remote-viewpoint anchor for {@code RemoteViewpoint}: the piloted drone while {@link RemoteViewSessions#viewing}
+     * accepts it (drone alive in the pilot's world, pilot no spectator and still its own camera) and the pilot is alive
+     * and playing. Null means "use vanilla", so any failure reverts the view by itself on the next tick. Hot path: O(1)
+     * with no sessions.
+     * 供 RemoteViewpoint 查询的远程视点锚点：RemoteViewSessions#viewing 接受（无人机存活且与驾驶者同一世界、驾驶者不是旁观者且
+     * 镜头仍是自身）且驾驶者存活并在局内时返回所驾驶的无人机。null 表示使用原版行为，因此任何失效都会在下一刻自动恢复视野。
+     * 热路径：无会话时 O(1)。
      */
     public static @Nullable DroneEntity droneOf(ServerPlayerEntity pilot) {
-        if (SESSIONS.isEmpty() || pilot == null) {
-            return null;
-        }
-        Session session = SESSIONS.get(pilot.getUuid());
-        if (session == null) {
-            return null;
-        }
-        DroneEntity drone = session.drone;
-        if (drone.isRemoved() || drone.getWorld() != pilot.getWorld() || pilot.isSpectator()
-                || pilot.getCameraEntity() != pilot || !GameFunctions.isPlayerPlayingAndAlive(pilot)) {
-            return null;
-        }
-        return drone;
+        Session session = VIEWS.viewing(pilot);
+        return session != null && GameFunctions.isPlayerPlayingAndAlive(pilot) ? session.drone : null;
     }
 
     public static void tick(ServerWorld world) {
-        if (!SESSIONS.isEmpty()) {
-            for (Session session : List.copyOf(SESSIONS.values())) {
-                if (session.world != world) {
-                    continue;
-                }
-                ServerPlayerEntity pilot = world.getServer().getPlayerManager().getPlayer(session.pilotUuid);
-                if (pilot == null) {
-                    drop(session.pilotUuid);
-                    continue;
-                }
-                DronePilotEndReason reason = endReason(pilot, session);
-                if (reason != null) {
-                    end(pilot, reason);
-                } else {
-                    refreshView(pilot, session);
-                }
+        VIEWS.tick(world, (pilot, session) -> {
+            DronePilotEndReason reason = endReason(pilot, session);
+            if (reason != null) {
+                end(pilot, reason);
+            } else {
+                refreshView(pilot, session);
             }
-        }
-        if (!RESETTLING.isEmpty()) {
-            resettle(world);
-        }
+        });
     }
 
     private static @Nullable DronePilotEndReason refusal(
@@ -373,7 +303,7 @@ public final class DronePilotService {
     /** Why a live session must end now, or null to keep it. / 当前会话须结束的原因；为 null 表示继续。 */
     private static @Nullable DronePilotEndReason endReason(ServerPlayerEntity pilot, Session session) {
         DroneEntity drone = session.drone;
-        UUID roundId = DroneService.currentRoundId(session.world);
+        UUID roundId = DroneService.currentRoundId(session.world());
         if (roundId == null || !roundId.equals(drone.roundId())) {
             return DronePilotEndReason.ROUND_OVER;
         }
@@ -385,7 +315,7 @@ public final class DronePilotService {
         if (!pilotAlive(pilot)) {
             return DronePilotEndReason.PILOT_DOWN;
         }
-        if (pilot.getServerWorld() != session.world || pilot.getCameraEntity() != pilot || !DroneService.isRealBomber(pilot)
+        if (pilot.getServerWorld() != session.world() || pilot.getCameraEntity() != pilot || !DroneService.isRealBomber(pilot)
                 || !pilot.getUuid().equals(drone.ownerUuid()) || !pilot.getUuid().equals(drone.pilotUuid())) {
             return DronePilotEndReason.UNAVAILABLE;
         }
@@ -431,78 +361,20 @@ public final class DronePilotService {
 
     private static @Nullable Session sessionOf(DroneEntity drone) {
         UUID pilotUuid = drone.pilotUuid();
-        Session session = pilotUuid == null ? null : SESSIONS.get(pilotUuid);
+        Session session = pilotUuid == null ? null : VIEWS.session(pilotUuid);
         if (session != null && session.drone == drone) {
             return session;
         }
-        for (Session candidate : SESSIONS.values()) {
-            if (candidate.drone == drone) {
-                return candidate;
-            }
-        }
-        return null;
-    }
-
-    /** End without a packet (pilot offline). / 不发包地结束（驾驶者已离线）。 */
-    private static void drop(UUID pilotUuid) {
-        Session session = SESSIONS.remove(pilotUuid);
-        if (session != null) {
-            release(session);
-        }
-    }
-
-    private static void dropWorld(ServerWorld world) {
-        for (Session session : List.copyOf(SESSIONS.values())) {
-            if (session.world == world) {
-                drop(session.pilotUuid);
-            }
-        }
-    }
-
-    /** The drone ticket simply expires; only the pilot mark is cleared. / 无人机票据自行过期，这里只清除驾驶者标记。 */
-    private static void release(Session session) {
-        if (session.pilotUuid.equals(session.drone.pilotUuid())) {
-            session.drone.setPilotUuid(null);
-        }
+        return VIEWS.find(candidate -> candidate.drone == drone);
     }
 
     /**
-     * One tick of the unlimited-range view: refresh the drone's chunk ticket (radius = the pilot's effective view
-     * distance, capped, plus a margin) and re-evaluate the pilot's entity tracking around the drone.
-     * 无限距离视野的单刻处理：刷新无人机区块票据（半径 = 驾驶者有效视距（有上限）+ 余量），并以无人机为准重新评估驾驶者的实体追踪。
+     * One tick of the unlimited-range view: the drone's chunk ticket and the pilot's tracking around it.
+     * 无限距离视野的单刻处理：无人机区块票据，以及以无人机为准的驾驶者实体追踪。
      */
     private static void refreshView(ServerPlayerEntity pilot, Session session) {
-        DroneEntity drone = session.drone;
-        if (drone.isRemoved()) {
-            return;
-        }
-        int serverViewDistance = MathHelper.clamp(session.world.getServer().getPlayerManager().getViewDistance(), 2, 32);
-        int viewDistance = MathHelper.clamp(pilot.getViewDistance(), 2, serverViewDistance);
-        int radius = Math.min(viewDistance, MAX_TICKET_VIEW_DISTANCE) + TICKET_MARGIN;
-        session.world.getChunkManager().addTicket(DRONE_TICKET, drone.getChunkPos(), radius, drone.getId());
-        session.world.getChunkManager().updatePosition(pilot);
-    }
-
-    /** Lets the view and tracking settle back on the body after a session. / 会话结束后让视野与追踪回到身体。 */
-    private static void resettle(ServerWorld world) {
-        Iterator<Map.Entry<UUID, Integer>> iterator = RESETTLING.entrySet().iterator();
-        while (iterator.hasNext()) {
-            Map.Entry<UUID, Integer> entry = iterator.next();
-            ServerPlayerEntity player = world.getServer().getPlayerManager().getPlayer(entry.getKey());
-            if (player == null) {
-                iterator.remove();
-                continue;
-            }
-            if (player.getServerWorld() != world || SESSIONS.containsKey(entry.getKey())) {
-                continue;
-            }
-            world.getChunkManager().updatePosition(player);
-            int remaining = entry.getValue() - 1;
-            if (remaining <= 0) {
-                iterator.remove();
-            } else {
-                entry.setValue(remaining);
-            }
+        if (!session.drone.isRemoved()) {
+            VIEWS.refreshView(pilot, session);
         }
     }
 
@@ -519,17 +391,27 @@ public final class DronePilotService {
         }
     }
 
-    private static final class Session {
-        private final UUID pilotUuid;
-        private final ServerWorld world;
+    private static final class Session extends RemoteViewSessions.Session {
         private final DroneEntity drone;
         private long moveTick = Long.MIN_VALUE;
         private int movesThisTick;
 
         private Session(UUID pilotUuid, ServerWorld world, DroneEntity drone) {
-            this.pilotUuid = pilotUuid;
-            this.world = world;
+            super(pilotUuid, world);
             this.drone = drone;
+        }
+
+        @Override
+        public Entity anchor() {
+            return drone;
+        }
+
+        /** The drone ticket simply expires; only the pilot mark is cleared. / 无人机票据自行过期，这里只清除驾驶者标记。 */
+        @Override
+        protected void release() {
+            if (viewerUuid().equals(drone.pilotUuid())) {
+                drone.setPilotUuid(null);
+            }
         }
 
         private boolean acceptMove(long now) {
