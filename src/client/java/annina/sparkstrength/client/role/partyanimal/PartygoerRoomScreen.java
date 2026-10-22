@@ -106,6 +106,11 @@ final class PartygoerRoomScreen extends Screen {
         super.render(context, mouseX, mouseY, delta);
         int scale = Math.max(1, (int) Math.round(client.getWindow().getScaleFactor()));
         TabletCanvas canvas = new TabletCanvas(context, scale, client.getWindow().getFramebufferHeight());
+        // One draw batch for the panel (the list clips still flush). / 整个面板一个绘制批次（列表裁剪仍会提交）。
+        canvas.batch(() -> drawScreen(canvas, mouseX, mouseY));
+    }
+
+    private void drawScreen(TabletCanvas canvas, int mouseX, int mouseY) {
         int x = left();
         int y = top();
         int h = panelHeight();
@@ -129,7 +134,6 @@ final class PartygoerRoomScreen extends Screen {
         drawButton(canvas, confirmX(), buttonY(), confirmWidth(),
                 Text.translatable("screen.sparkstrength.partygoer.summon").getString(),
                 inside(mouseX, mouseY, confirmX(), buttonY(), confirmWidth(), BUTTON_H), ready(), PARTY);
-        canvas.flush();
     }
 
     private void drawColumn(TabletCanvas canvas, int column, int mouseX, int mouseY) {

@@ -11,7 +11,9 @@ import net.minecraft.text.Text;
 import net.minecraft.util.math.RotationAxis;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -157,6 +159,37 @@ final class DetectiveFolderPaint {
         return Math.max(Math.min(maxWidth, STICKY_MIN_WIDTH), Math.min(maxWidth, widest + STICKY_PADDING_X * 2));
     }
 
+    /**
+     * Memo of {@link #stickyNoteWidth}, whose search re-wraps the note about ten times, keyed by text and width. The
+     * owning screen clears it in {@code init()}, which also runs after a resource reload (font widths may change).
+     * stickyNoteWidth 的记忆（其二分查找要把便利贴重新换行约十次），按文字与宽度缓存。所属界面在 init() 中清空它；
+     * 资源重载后也会调用 init()（字体宽度可能变化）。
+     */
+    static final class StickyNoteWidths {
+        private static final int MAX_ENTRIES = 16;
+        private final Map<Key, Integer> widths = new HashMap<>();
+
+        int get(TextRenderer renderer, Text text, int maxWidth, int maxLines) {
+            Key key = new Key(text, maxWidth, maxLines);
+            Integer width = widths.get(key);
+            if (width == null) {
+                if (widths.size() >= MAX_ENTRIES) {
+                    widths.clear();
+                }
+                width = stickyNoteWidth(renderer, text, maxWidth, maxLines);
+                widths.put(key, width);
+            }
+            return width;
+        }
+
+        void clear() {
+            widths.clear();
+        }
+
+        private record Key(Text text, int maxWidth, int maxLines) {
+        }
+    }
+
     private static int stickyInnerWidth(int width) {
         return Math.max(8, width - STICKY_PADDING_X * 2);
     }
@@ -186,19 +219,25 @@ final class DetectiveFolderPaint {
         }
     }
 
+    /**
+     * Two-pixel dashes every four pixels; about 80 fills for a suspect row, so they go out as one draw batch.
+     * 每 4 像素一段 2 像素虚线；一行嫌疑人约 80 个填充，因此合为一个绘制批次。
+     */
     static void drawDashedBorder(DrawContext context, int x, int y, int width, int height, int color) {
         int right = x + width;
         int bottom = y + height;
-        for (int dashX = x; dashX < right; dashX += 4) {
-            int end = Math.min(dashX + 2, right);
-            context.fill(dashX, y, end, y + 1, color);
-            context.fill(dashX, bottom - 1, end, bottom, color);
-        }
-        for (int dashY = y; dashY < bottom; dashY += 4) {
-            int end = Math.min(dashY + 2, bottom);
-            context.fill(x, dashY, x + 1, end, color);
-            context.fill(right - 1, dashY, right, end, color);
-        }
+        context.draw(() -> {
+            for (int dashX = x; dashX < right; dashX += 4) {
+                int end = Math.min(dashX + 2, right);
+                context.fill(dashX, y, end, y + 1, color);
+                context.fill(dashX, bottom - 1, end, bottom, color);
+            }
+            for (int dashY = y; dashY < bottom; dashY += 4) {
+                int end = Math.min(dashY + 2, bottom);
+                context.fill(x, dashY, x + 1, end, color);
+                context.fill(right - 1, dashY, right, end, color);
+            }
+        });
     }
 
     /** Runs {@code draw} rotated around (centerX, centerY). / 以 (centerX, centerY) 为中心旋转绘制。 */

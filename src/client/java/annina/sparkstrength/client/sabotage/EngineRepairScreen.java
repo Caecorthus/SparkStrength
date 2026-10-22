@@ -855,6 +855,11 @@ final class EngineRepairScreen extends Screen {
         lastMouseY = mouseY;
         int scale = Math.max(1, (int) Math.round(client.getWindow().getScaleFactor()));
         TabletCanvas canvas = new TabletCanvas(context, scale, client.getWindow().getFramebufferHeight());
+        // One draw batch for the panel (its clips still flush). / 整个面板一个绘制批次（裁剪仍会提交）。
+        canvas.batch(() -> drawScreen(canvas, mouseX, mouseY, delta));
+    }
+
+    private void drawScreen(TabletCanvas canvas, int mouseX, int mouseY, float delta) {
         int x = left();
         int y = top();
         boolean scorched = scorched();
@@ -901,7 +906,6 @@ final class EngineRepairScreen extends Screen {
             canvas.roundRectOutline(bx, by, bw, 16, 8, 1.0F, bannerColor);
             canvas.textCentered(textRenderer, banner.getString(), x + PANEL_W / 2, (int) by + 4, bannerColor);
         }
-        canvas.flush();
     }
 
     private void drawPanel(TabletCanvas canvas, int x, int y, boolean scorched) {

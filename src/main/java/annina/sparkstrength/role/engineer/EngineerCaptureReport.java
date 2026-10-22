@@ -34,10 +34,12 @@ public final class EngineerCaptureReport {
     }
 
     public static boolean isCaptureReport(ItemStack stack) {
-        return !stack.isEmpty()
-                && stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT)
-                .copyNbt()
-                .contains(ROOT_KEY, NbtElement.COMPOUND_TYPE);
+        if (stack.isEmpty()) {
+            return false;
+        }
+        NbtComponent data = stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT);
+        // 掉落物渲染每帧都会调用：先用不复制的 contains 排除普通物品，只有带标记键的才复制 NBT 检查类型。
+        return data.contains(ROOT_KEY) && data.copyNbt().contains(ROOT_KEY, NbtElement.COMPOUND_TYPE);
     }
 
     public static @Nullable UUID ownerUuid(ItemStack stack) {

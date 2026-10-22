@@ -75,6 +75,11 @@ public final class DronePilotHud {
         if (!DronePilotClient.isViewingDrone()) {
             return;
         }
+        // Scanlines and static are hundreds of fills: one draw batch. / 扫描线与雪花有数百个填充：合为一个绘制批次。
+        TabletCanvas.batch(context, () -> drawLens(context));
+    }
+
+    private static void drawLens(DrawContext context) {
         DroneEntity drone = DronePilotClient.drone();
         MinecraftClient client = MinecraftClient.getInstance();
         int w = context.getScaledWindowWidth();
@@ -149,6 +154,10 @@ public final class DronePilotHud {
         if (!DronePilotClient.isPiloting()) {
             return;
         }
+        TabletCanvas.batch(context, () -> drawInstruments(context, tickCounter));
+    }
+
+    private static void drawInstruments(DrawContext context, RenderTickCounter tickCounter) {
         MinecraftClient client = MinecraftClient.getInstance();
         ClientPlayerEntity player = client.player;
         if (player == null) {

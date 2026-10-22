@@ -68,13 +68,14 @@ final class SabotageHud {
         TabletCanvas canvas = new TabletCanvas(context, scale, client.getWindow().getFramebufferHeight());
         float x = (w - BAR_WIDTH) / 2.0F;
         float y = h / 2.0F + 14.0F;
-        canvas.roundRect(x - 1, y - 1, BAR_WIDTH + 2, BAR_HEIGHT + 2, 3.5F, 0xB0000000);
-        canvas.roundRect(x, y, BAR_WIDTH, BAR_HEIGHT, 2.5F, TabletTheme.SURFACE_SUNKEN);
-        float fill = BAR_WIDTH * fraction;
-        if (fill > 0.5F) {
-            canvas.roundRect(x, y, fill, BAR_HEIGHT, 2.5F, accent);
-        }
-        canvas.textCentered(textRenderer, label.getString(), w / 2, (int) (y + BAR_HEIGHT + 4), TabletTheme.TEXT);
-        canvas.flush();
+        canvas.batch(() -> {
+            canvas.roundRect(x - 1, y - 1, BAR_WIDTH + 2, BAR_HEIGHT + 2, 3.5F, 0xB0000000);
+            canvas.roundRect(x, y, BAR_WIDTH, BAR_HEIGHT, 2.5F, TabletTheme.SURFACE_SUNKEN);
+            float fill = BAR_WIDTH * fraction;
+            if (fill > 0.5F) {
+                canvas.roundRect(x, y, fill, BAR_HEIGHT, 2.5F, accent);
+            }
+            canvas.textCentered(textRenderer, label.getString(), w / 2, (int) (y + BAR_HEIGHT + 4), TabletTheme.TEXT);
+        });
     }
 }
