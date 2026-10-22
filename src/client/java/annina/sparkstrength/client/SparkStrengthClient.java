@@ -3,6 +3,7 @@ package annina.sparkstrength.client;
 import annina.sparkstrength.client.item.CapsuleClient;
 import annina.sparkstrength.client.item.FlashlightModelClient;
 import annina.sparkstrength.client.item.M67Client;
+import annina.sparkstrength.client.instinct.InstinctViewer;
 import annina.sparkstrength.client.item.PerfumerItemsClient;
 import annina.sparkstrength.client.render.ClientFrame;
 import annina.sparkstrength.client.role.attendant.flashlight.FlashlightLights;
@@ -63,6 +64,7 @@ public final class SparkStrengthClient implements ClientModInitializer {
     public void onInitializeClient() {
         // Clock for the per-frame caches of hot render hooks (instinct outlines, skins). / 热点渲染钩子逐帧缓存的时钟。
         ClientFrame.register();
+        InstinctViewer.register();
         // Loaded drones, Partygoers and corpses, so per-frame picks can skip empty searches. / 已加载的无人机、派对客与尸体，
         // 让逐帧选取跳过必然落空的搜索。
         LoadedEntities.register();

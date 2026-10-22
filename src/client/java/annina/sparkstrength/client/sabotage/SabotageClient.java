@@ -105,14 +105,19 @@ public final class SabotageClient {
             EngineEconomy.setClientBonus(false);
             EngineTrainMotion.onJoin();
         });
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(() -> {
-            SabotageClientState.reset();
-            SabotageFixtureIndex.release(client.world);
-            SabotageSkyLight.set(client, null);
-            EngineHalt.setClientPhase(null);
-            EngineEconomy.setClientBonus(false);
-            EngineTrainMotion.reset();
-        }));
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            // Read now: the handler drops its world when Minecraft finishes the disconnect.
+            // 立即读取：Minecraft 完成断开连接时，连接会丢弃它的世界。
+            ClientWorld leaving = handler.getWorld();
+            client.execute(() -> {
+                SabotageClientState.reset();
+                SabotageFixtureIndex.release(leaving, client.world);
+                SabotageSkyLight.set(client, null);
+                EngineHalt.setClientPhase(null);
+                EngineEconomy.setClientBonus(false);
+                EngineTrainMotion.reset();
+            });
+        });
     }
 
     private static void tick(MinecraftClient client) {

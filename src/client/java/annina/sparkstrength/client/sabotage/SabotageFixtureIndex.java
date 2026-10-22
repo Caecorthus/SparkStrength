@@ -126,11 +126,12 @@ public final class SabotageFixtureIndex {
     }
 
     /**
-     * Disconnect: lets go of the old world. A world joined before this runs has rebound already and is kept.
-     * 断开连接：放开旧世界。在此之前已加入的新世界已经重新绑定，予以保留。
+     * Disconnect: forgets the disconnecting connection's world, or any world that is no longer the client's; keeps a
+     * world the client already joined since.
+     * 断开连接：忘掉正在断开的连接的世界，或任何已不再是客户端当前世界的世界；保留客户端此后已加入的世界。
      */
-    static void release(@Nullable ClientWorld current) {
-        if (current != world) {
+    static void release(@Nullable ClientWorld leaving, @Nullable ClientWorld current) {
+        if (world != null && (world == leaving || world != current)) {
             CHUNKS.clear();
             world = null;
         }

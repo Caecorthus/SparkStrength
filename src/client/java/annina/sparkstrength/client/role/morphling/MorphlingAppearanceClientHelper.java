@@ -111,7 +111,10 @@ public final class MorphlingAppearanceClientHelper {
         return known == NO_SKIN ? null : (SkinTextures) known;
     }
 
-    /** Disconnect: drop the last frame's players so no old world stays referenced. / 断开连接：丢掉上一帧的玩家，不再引用旧世界。 */
+    /**
+     * World render end and disconnect: drop the frame's players so no entity or old world stays referenced.
+     * 世界渲染结束与断开连接时：丢掉本帧的玩家，不再引用任何实体或旧世界。
+     */
     public static void forgetFrame() {
         FRAME_SKINS.clear();
     }

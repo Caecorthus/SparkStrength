@@ -8,6 +8,7 @@ import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.client.WatheClient;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -27,6 +28,8 @@ public final class MorphlingClientHooks {
         }
         registered = true;
         GetInstinctHighlight.EVENT.register(MorphlingClientHooks::markedPlayerHighlight);
+        // The skin memo lives only inside a world render. / 皮肤备忘只在世界渲染期间存在。
+        WorldRenderEvents.END.register(context -> MorphlingAppearanceClientHelper.forgetFrame());
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
                 client.execute(MorphlingAppearanceClientHelper::forgetFrame));
     }

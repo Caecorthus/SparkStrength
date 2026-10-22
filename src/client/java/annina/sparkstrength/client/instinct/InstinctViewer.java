@@ -6,6 +6,8 @@ import annina.sparkstrength.role.coroner.CoronerService;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import org.jetbrains.annotations.Nullable;
@@ -26,11 +28,23 @@ public record InstinctViewer(ClientPlayerEntity player, GameWorldComponent game,
                              boolean playingAndAlive, boolean effectiveKiller, @Nullable Role disguiseRole) {
     private static @Nullable InstinctViewer cached;
     private static int cachedEpoch;
+    private static boolean registered;
+
+    /** Drops the snapshot after every world render and on disconnect. / 每次世界渲染之后与断开连接时丢弃快照。 */
+    public static synchronized void register() {
+        if (registered) {
+            return;
+        }
+        registered = true;
+        WorldRenderEvents.END.register(context -> cached = null);
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(() -> cached = null));
+    }
 
     /** Render thread: the local viewer, or null without a player. / 渲染线程：本地观察者；没有玩家时为 null。 */
     public static @Nullable InstinctViewer current() {
         ClientPlayerEntity player = MinecraftClient.getInstance().player;
         if (player == null) {
+            cached = null;
             return null;
         }
         boolean rendering = ClientFrame.inWorldRender();

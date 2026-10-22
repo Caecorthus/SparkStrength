@@ -38,14 +38,24 @@ public final class LoadedEntities {
         registered = true;
         ClientEntityEvents.ENTITY_LOAD.register(LoadedEntities::onLoad);
         ClientEntityEvents.ENTITY_UNLOAD.register(LoadedEntities::onUnload);
-        // Fabric already unloads every entity on disconnect; this only lets go of the old world. A world joined
-        // before this runs has rebound already and is kept.
-        // Fabric 断开连接时已卸载全部实体；这里只是放开旧世界。在此之前已加入的新世界已经重新绑定，予以保留。
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(() -> {
-            if (client.world != world) {
-                reset();
-            }
-        }));
+        // Fabric already unloads every entity on disconnect; this lets go of the old world. The handler's world is read
+        // at once: DISCONNECT may run before Minecraft clears client.world (inline) or on the network thread before the
+        // handler drops its world. / Fabric 断开连接时已卸载全部实体；这里放开旧世界。立即读取连接自己的世界：DISCONNECT
+        // 可能在 Minecraft 清空 client.world 之前（同步执行）触发，也可能在网络线程上、连接丢弃其世界之前触发。
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            ClientWorld leaving = handler.getWorld();
+            client.execute(() -> release(leaving, client.world));
+        });
+    }
+
+    /**
+     * Forgets the disconnecting connection's world, or any world that is no longer the client's; keeps a world the
+     * client already joined since. / 忘掉正在断开的连接的世界，或任何已不再是客户端当前世界的世界；保留客户端此后已加入的世界。
+     */
+    static void release(@Nullable ClientWorld leaving, @Nullable ClientWorld current) {
+        if (world != null && (world == leaving || world != current)) {
+            reset();
+        }
     }
 
     /** A live drone may be loaded in {@code in}. / {@code in} 中可能加载着无人机。 */

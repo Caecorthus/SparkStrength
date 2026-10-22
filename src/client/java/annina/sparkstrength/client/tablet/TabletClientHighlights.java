@@ -8,6 +8,7 @@ import annina.sparkstrength.tablet.TabletRules;
 import annina.sparkstrength.tablet.TabletShopRules;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.game.GameFunctions;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.Entity;
@@ -51,6 +52,12 @@ public final class TabletClientHighlights {
 
     public static void register() {
         GetInstinctHighlight.EVENT.register(TabletClientHighlights::highlight);
+        // The memo holds plain rows (names, UUIDs); still drop it with the connection. / 备忘只含普通行数据，仍随连接一起丢弃。
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(() -> {
+            indexedSnapshot = null;
+            suspectIds = Set.of();
+            connectionIds = Set.of();
+        }));
     }
 
     private static GetInstinctHighlight.HighlightResult highlight(Entity target) {
