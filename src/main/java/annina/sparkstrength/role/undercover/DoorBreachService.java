@@ -87,6 +87,9 @@ public final class DoorBreachService {
         long lastResyncTick;
         final long startTick;
         int progress;
+        /** Cracks go out on a stage change or a refresh, not every tick. / 裂纹只在阶段变化或定期刷新时发送，而非每 tick。 */
+        int lastCrackStage = -1;
+        long lastCrackSentTick;
 
         Channel(RegistryKey<World> world, BlockPos lowerPos, UndercoverRules.DoorKind kind, long now) {
             this.world = world;
@@ -210,8 +213,13 @@ public final class DoorBreachService {
                         0.8F, 0.9F + world.random.nextFloat() * 0.2F);
             }
             int stage = Math.min(9, channel.progress * 10 / channel.kind.breachTicks());
-            world.setBlockBreakingInfo(crackId(channel.lowerPos), channel.lowerPos, stage);
-            world.setBlockBreakingInfo(crackId(channel.lowerPos.up()), channel.lowerPos.up(), stage);
+            if (stage != channel.lastCrackStage
+                    || now - channel.lastCrackSentTick >= SabotageRules.CRACK_REFRESH_TICKS) {
+                world.setBlockBreakingInfo(crackId(channel.lowerPos), channel.lowerPos, stage);
+                world.setBlockBreakingInfo(crackId(channel.lowerPos.up()), channel.lowerPos.up(), stage);
+                channel.lastCrackStage = stage;
+                channel.lastCrackSentTick = now;
+            }
             if (channel.progress >= channel.kind.breachTicks()) {
                 iterator.remove();
                 send(player, channel, ChannelProgressS2CPacket.STATE_FINISHED);
