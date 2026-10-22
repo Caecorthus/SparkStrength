@@ -38,8 +38,10 @@ import java.util.UUID;
  * 单只派对客的服务端行为：追锁定的猎物、扛到终点房间、吃掉；手中猎物被别人杀死时对击杀者狂怒一次；猎物彻底丢失时放弃。
  *
  * <p>Movement is kinematic along cells of its own {@link TrainNavGrid}: the path is replanned every half second (or when
- * the target changes cell) and walked at the phase's speed; closed doors two to three cells ahead are pushed open.
- * 移动是沿自有 TrainNavGrid 格子的运动学位移：每半秒（或目标换格时）重新规划，按当前阶段速度行走；前方两三格内关着的门会被推开。</p>
+ * the target changes cell; after a search that could not reach it, only every two seconds) and walked at the phase's
+ * speed; closed doors two to three cells ahead are pushed open.
+ * 移动是沿自有 TrainNavGrid 格子的运动学位移：每半秒（或目标换格时；到不了目标的搜索之后则每两秒）重新规划，按当前阶段速度行走；
+ * 前方两三格内关着的门会被推开。</p>
  */
 public final class PartygoerBrain {
     private static final int REPLAN_TICKS = 10;
@@ -81,6 +83,8 @@ public final class PartygoerBrain {
     private int pathIndex;
     private long pathGoal = Long.MIN_VALUE;
     private int replanIn;
+    /** The last search ran but could not reach its goal. / 上次搜索执行了但到不了目标。 */
+    private boolean searchFailed;
     private int carryStuckTicks;
     private long lastTickTime;
     private double footstepDistance;
@@ -443,7 +447,9 @@ public final class PartygoerBrain {
      * 沿规划路径走向 goal；走到路径终点（目标或离目标最近的可达格）时返回 true。行走途中以及完全无路（空路径：原地不动）时返回 false。
      */
     private boolean walkTo(long goal, int speedLevel) {
-        if (goal != pathGoal || --replanIn <= 0) {
+        // A failed search waits out its back-off even when the goal changes cell: it would explore the same area again.
+        // 失败的搜索即使目标换格也要等完退避：再搜一遍探索的还是同一片区域。
+        if (--replanIn <= 0 || (goal != pathGoal && !searchFailed)) {
             replan(goal);
         }
         if (path.isEmpty()) {
@@ -473,6 +479,9 @@ public final class PartygoerBrain {
         long start = grid.snap(body.getX(), body.getY(), body.getZ());
         path = TrainPathfinder.path(grid, start, goal, TrainPathfinder.DEFAULT_BUDGET);
         replanIn = !path.isEmpty() && path.getLast() == goal ? REPLAN_TICKS : REPLAN_FAILED_TICKS;
+        // An empty path means start or goal is off the grid: no search ran, so a new goal may try again at once.
+        // 空路径表示起点或终点不在网格上：并未搜索，换了目标可以立即再试。
+        searchFailed = !path.isEmpty() && path.getLast() != goal;
         // Skip the cell we stand in. / 跳过脚下所在格。
         pathIndex = path.size() > 1 ? 1 : path.size();
     }
@@ -482,6 +491,7 @@ public final class PartygoerBrain {
         pathIndex = 0;
         pathGoal = Long.MIN_VALUE;
         replanIn = 0;
+        searchFailed = false;
     }
 
     private void stepToward(Vec3d target, double speed) {
