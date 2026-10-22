@@ -84,9 +84,7 @@ public final class SabotageClient {
                 (payload, context) -> context.client().setScreen(new EngineRepairScreen(payload)));
         // One close packet for both panels; session ids never repeat between them. / 两种面板共用一个关闭包；会话 id 不会重复。
         ClientPlayNetworking.registerGlobalReceiver(CloseBreakerRepairS2CPacket.ID, (payload, context) -> {
-            if (context.client().currentScreen instanceof BreakerRepairScreen screen) {
-                screen.onServerClose(payload.sessionId(), payload.reason());
-            } else if (context.client().currentScreen instanceof EngineRepairScreen screen) {
+            if (context.client().currentScreen instanceof AbstractRepairScreen screen) {
                 screen.onServerClose(payload.sessionId(), payload.reason());
             }
         });
