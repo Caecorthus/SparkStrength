@@ -1,6 +1,7 @@
 package annina.sparkstrength.client.mixin.serialkiller;
 
 import annina.sparkstrength.SparkStrengthItems;
+import annina.sparkstrength.client.world.LoadedEntities;
 import annina.sparkstrength.item.SerialPistolItem;
 import dev.doctor4t.wathe.client.gui.CrosshairRenderer;
 import net.minecraft.client.MinecraftClient;
@@ -30,7 +31,7 @@ public abstract class SerialKillerCrosshairMixin {
                 || (!stack.isOf(SparkStrengthItems.serialPistol()) && !stack.isOf(SparkStrengthItems.serialLeftPistol()))) return;
         ci.cancel();
         boolean hit = !player.getItemCooldownManager().isCoolingDown(stack.getItem())
-                && SerialPistolItem.findTarget(player) != null;
+                && SerialPistolItem.findTarget(player, LoadedEntities.anyPartygoer(player.getWorld())) != null;
         context.getMatrices().push();
         context.getMatrices().translate(context.getScaledWindowWidth() / 2F, context.getScaledWindowHeight() / 2F, 0.0F);
         context.getMatrices().translate(-1.5F, -1.5F, 0.0F);

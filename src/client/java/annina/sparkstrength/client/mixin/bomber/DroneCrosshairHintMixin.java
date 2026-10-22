@@ -1,5 +1,6 @@
 package annina.sparkstrength.client.mixin.bomber;
 
+import annina.sparkstrength.client.world.LoadedEntities;
 import annina.sparkstrength.entity.DroneEntity;
 import annina.sparkstrength.entity.PartygoerEntity;
 import annina.sparkstrength.role.bomber.drone.DroneHitGeometry;
@@ -38,8 +39,17 @@ public abstract class DroneCrosshairHintMixin {
     private static HitResult sparkstrength$hintDroneForGuns(
             PlayerEntity user, double range, Operation<HitResult> original
     ) {
-        return PartygoerHitGeometry.preferNearer(user,
-                DroneHitGeometry.preferNearerDrone(user, original.call(user, range), range), range);
+        // Every frame while a gun is held: each step is a block clip plus an entity query, and finds nothing while no
+        // drone or Partygoer is loaded, so skip it then. / 持枪时每帧执行：每一步都是一次方块截断加一次实体查询，
+        // 没有加载无人机或派对客时什么也找不到，因此此时跳过。
+        HitResult target = original.call(user, range);
+        if (LoadedEntities.anyDrone(user.getWorld())) {
+            target = DroneHitGeometry.preferNearerDrone(user, target, range);
+        }
+        if (LoadedEntities.anyPartygoer(user.getWorld())) {
+            target = PartygoerHitGeometry.preferNearer(user, target, range);
+        }
+        return target;
     }
 
     @WrapOperation(
