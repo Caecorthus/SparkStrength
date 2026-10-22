@@ -144,7 +144,12 @@ public final class PartygoerService {
         return out;
     }
 
-    /** Alive, in the world and not inside a Taotie. / 在场且不在饕餮肚里。 */
+    /**
+     * Alive, in the world and not inside a Taotie. Frozen cross-mod seam like {@link #killByWeapon}: SparkWitch's
+     * {@code compat/SparkStrengthPartygoerCompat} reaches {@code isKillable(Entity)} by reflection to pick targets.
+     * 在场且不在饕餮肚里。与 killByWeapon 一样是冻结的跨模组接缝：SparkWitch 的 compat/SparkStrengthPartygoerCompat 通过反射调用
+     * isKillable(Entity) 来选目标。
+     */
     public static boolean isKillable(@Nullable Entity entity) {
         PartygoerBrain brain = brainOf(entity);
         return brain != null && brain.isKillable();
