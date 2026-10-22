@@ -63,12 +63,17 @@ public final class CoronerPlayerComponent implements AutoSyncedComponent {
     }
 
     public void clearAll() {
+        // Rewarded bodies and the suppression flag are server-only, so only the synced fields decide the sync.
+        // 已领奖尸体与装备收回标记仅存在于服务端，因此只由同步字段决定是否需要同步。
+        boolean changed = !unlockedBodies.isEmpty() || activeDisguiseUuid != null || activeDisguiseRoleId != null;
         unlockedBodies.clear();
         rewardedBodies.clear();
         activeDisguiseUuid = null;
         activeDisguiseRoleId = null;
         temporaryEquipmentSuppressed = false;
-        sync();
+        if (changed) {
+            sync();
+        }
     }
 
     public void clearDisguise() {

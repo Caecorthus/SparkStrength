@@ -2,7 +2,7 @@ package annina.sparkstrength.client.role.waiter;
 
 import annina.sparkstrength.client.instinct.InstinctViewer;
 import annina.sparkstrength.component.waiter.WaiterTaskRevealComponent;
-import annina.sparkstrength.role.coroner.CoronerRules;
+import annina.sparkstrength.role.waiter.WaiterTaskRevealService;
 import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.entity.Entity;
@@ -33,11 +33,12 @@ public final class WaiterTaskRevealClientHooks {
             return null;
         }
 
-        // Viewer first (resolved once per frame), then the target's reveal flag, then the alive checks.
-        // 先判观察者（每帧解析一次），再判目标的透视标记，最后才做存活判定。
-        boolean waiter = frame.game().isRole(frame.player(), Noellesroles.WAITER)
-                || CoronerRules.grantsWaiterDoublePickup(frame.disguiseRole());
-        if (!waiter || !frame.playingAndAlive() || !WaiterTaskRevealComponent.KEY.get(target).isRevealed()
+        // Viewer first (resolved once per frame; same predicate as the server's sync recipients), then the target's
+        // reveal flag, then its alive check.
+        // 先判观察者（每帧解析一次；与服务端同步对象使用同一判定），再判目标的透视标记，最后才做目标存活判定。
+        if (!WaiterTaskRevealService.canSeeReveals(frame.playingAndAlive(),
+                frame.game().isRole(frame.player(), Noellesroles.WAITER), frame.disguiseRole())
+                || !WaiterTaskRevealComponent.KEY.get(target).isRevealed()
                 || !GameFunctions.isPlayerPlayingAndAlive(target)) {
             return null;
         }

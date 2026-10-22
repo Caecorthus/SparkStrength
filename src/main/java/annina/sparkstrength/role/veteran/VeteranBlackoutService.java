@@ -5,6 +5,8 @@ import annina.sparkstrength.role.coroner.CoronerService;
 import dev.doctor4t.wathe.api.event.BlackoutEffect;
 import dev.doctor4t.wathe.cca.WorldBlackoutComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -34,6 +36,8 @@ public final class VeteranBlackoutService {
         }
         registered = true;
         BlackoutEffect.BEFORE.register(VeteranBlackoutService::beforeBlackoutEffect);
+        ServerWorldEvents.UNLOAD.register((server, world) -> BlackoutRecorder.clear(world));
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> BlackoutRecorder.clearAll());
     }
 
     public static void tick(ServerWorld world) {

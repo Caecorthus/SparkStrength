@@ -46,6 +46,9 @@ public class NoisemakerGlowUserComponent implements AutoSyncedComponent, ServerT
     }
 
     public void reset() {
+        if (this.cooldownTicks == 0) {
+            return;
+        }
         this.cooldownTicks = 0;
         this.sync();
     }

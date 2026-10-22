@@ -15,6 +15,7 @@ import dev.doctor4t.wathe.cca.GameTimeComponent;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.MapVariablesWorldComponent;
 import dev.doctor4t.wathe.cca.WorldBlackoutComponent;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
@@ -84,6 +85,7 @@ public final class SabotageService {
         // 旁观者永远到不了 Block.onUse；这是他们打开动力装置状态面板的入口。
         UseBlockCallback.EVENT.register(EngineSabotageService::onUseBlock);
         ServerWorldEvents.UNLOAD.register((server, world) -> {
+            DIRTY.remove(world.getRegistryKey());
             JunctionBoxService.clear(world);
             BreakerRepairService.closeAll(world, 2);
             EngineRepairService.closeAll(world, 2);
@@ -101,6 +103,8 @@ public final class SabotageService {
             // 在下一个世界 tick 发送，而不是等下一次 10 tick 刷新，让冻结的回合倒计时一进来就是对的。
             markStatusDirty(handler.player.getServerWorld());
         });
+        // World keys are shared by every singleplayer save. / 所有单人存档共用同一组世界键。
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> DIRTY.clear());
     }
 
     public static void markStatusDirty(ServerWorld world) {
