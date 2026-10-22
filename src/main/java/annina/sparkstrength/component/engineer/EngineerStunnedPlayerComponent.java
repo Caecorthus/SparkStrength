@@ -6,6 +6,7 @@ import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.record.GameRecordManager;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.Vec3d;
@@ -22,6 +23,11 @@ import org.ladysnake.cca.api.v3.component.tick.ServerTickingComponent;
  * 两边同时做，是为了防止单靠客户端输入拦截被网络移动包或延迟边缘情况绕过。</p>
  *
  * <p>小丑时刻的全员定身也复用这里（{@link #freeze}）：效果完全相同，只是自然到期时不记“捕捉装置释放”回放。</p>
+ *
+ * <p>Only the stunned player's own client reads this (its input mixins ask {@link #isStunned}), so it is synced to
+ * them alone and only when the lock starts, moves or ends; the client never counts down by itself.
+ * 只有被定身者本人的客户端读取它（输入 mixin 只问 {@link #isStunned}），因此只同步给本人，且只在定身开始、锁定点改变
+ * 或结束时同步；客户端从不自行倒计时。</p>
  */
 public final class EngineerStunnedPlayerComponent implements AutoSyncedComponent, ServerTickingComponent {
     public static final ComponentKey<EngineerStunnedPlayerComponent> KEY = ComponentRegistry.getOrCreate(
@@ -107,8 +113,23 @@ public final class EngineerStunnedPlayerComponent implements AutoSyncedComponent
                         null
                 );
             }
+            sync();
         }
-        sync();
+    }
+
+    @Override
+    public boolean shouldSyncWith(ServerPlayerEntity recipient) {
+        return recipient == player;
+    }
+
+    @Override
+    public void writeSyncPacket(RegistryByteBuf buf, ServerPlayerEntity recipient) {
+        buf.writeVarInt(stunTicks);
+    }
+
+    @Override
+    public void applySyncPacket(RegistryByteBuf buf) {
+        stunTicks = buf.readVarInt();
     }
 
     @Override
