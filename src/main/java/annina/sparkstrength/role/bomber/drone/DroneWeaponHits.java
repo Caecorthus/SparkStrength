@@ -5,6 +5,7 @@ import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.compat.SparkTraitsDroneCompat;
 import annina.sparkstrength.entity.DroneEntity;
 import annina.sparkstrength.role.coroner.CoronerService;
+import annina.sparkstrength.role.partyanimal.PartygoerWeaponHits;
 import annina.sparkstrength.role.taotie.TaotieHeadDazeGuards;
 import annina.sparkstrength.role.veteran.VeteranRules;
 import dev.doctor4t.wathe.api.WatheGameModes;
@@ -281,9 +282,12 @@ public final class DroneWeaponHits {
      * Server only. Kunai: its own use is a server raycast that only sees players, so a drone strictly nearer than the
      * player it would hit (or any drone in range) breaks here and the kunai's use never runs (no one behind is killed;
      * the kunai's kill cooldown applies). Ceremonial sword: the dash is server-moved, so watch the dasher for a few
-     * ticks and break drones its path sweeps through; the dash itself is untouched (PASS).
+     * ticks and break drones its path sweeps through; the dash itself is untouched (PASS). A Partygoer strictly nearer
+     * than both the kunai's player and every drone dies first ({@link PartygoerWeaponHits#onKunai}); otherwise the drone
+     * check runs as before.
      * 仅服务端。苦无：其使用是只看玩家的服务端射线，因此严格比其将命中玩家更近（或射程内任意）的无人机在此被击毁，苦无本身不再执行
      * （身后的人不会被杀，并计入苦无击杀冷却）。仪礼剑：冲刺由服务端移动，因此短时监视冲刺者，击毁其路径扫过的无人机；冲刺本身不受影响（PASS）。
+     * 严格比苦无的玩家目标和所有无人机都更近的派对客先被击杀（PartygoerWeaponHits#onKunai）；否则无人机检查照旧执行。
      */
     static TypedActionResult<ItemStack> onUseItem(PlayerEntity player, World world, Hand hand) {
         ItemStack stack = player.getStackInHand(hand);
@@ -292,7 +296,8 @@ public final class DroneWeaponHits {
         }
         String id = Registries.ITEM.getId(stack.getItem()).toString();
         if (DroneWeaponRules.NINJA_KNIFE_ID.equals(id)) {
-            return onKunai(user, hand, stack) ? TypedActionResult.consume(stack) : TypedActionResult.pass(stack);
+            return PartygoerWeaponHits.onKunai(user, hand, stack) || onKunai(user, hand, stack)
+                    ? TypedActionResult.consume(stack) : TypedActionResult.pass(stack);
         }
         if (DroneWeaponRules.CEREMONIAL_SWORD_ID.equals(id) && mayBreak(user)
                 && !user.getItemCooldownManager().isCoolingDown(stack.getItem())

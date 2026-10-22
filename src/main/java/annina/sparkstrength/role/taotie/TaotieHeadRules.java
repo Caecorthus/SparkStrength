@@ -72,10 +72,12 @@ public final class TaotieHeadRules {
      *   <li>added the SparkStrength skills that list misses: {@code reporter_communication} (Reporter link/broadcast,
      *       cooldown skill), {@code timekeeper_watch_mode} (Dying Watch mode switch), {@code drone_pilot_start}
      *       (taking control of a drone) and {@code drone_pilot_action} (drone drop/detonate),
-     *       {@code taotie_head_fire} itself, and the sabotage actions {@code trigger_sabotage} and
+     *       {@code taotie_head_fire} itself, the Party Animal's {@code partygoer_summon}, the Taotie swallowing a
+     *       Partygoer {@code partygoer_swallow}, and the sabotage actions {@code trigger_sabotage} and
      *       {@code complete_breaker_repair};</li>
      *   <li>kept allowed (movement, leaving or UI-only): {@code drone_pilot_move}, {@code drone_pilot_exit},
-     *       {@code m67_cancel}, {@code cancel_sabotage_channel}, {@code cancel_breaker_repair}, the tablet
+     *       {@code m67_cancel}, {@code cancel_sabotage_channel}, {@code cancel_breaker_repair}, {@code partygoer_menu}
+     *       (the room picker), the tablet
      *       snapshot/chat/channel ids and the detective folder ids
      *       ({@code select_detective_case}, {@code update_detective_case_notes}, {@code set_detective_killer_guess},
      *       {@code set_detective_presumed_killer});</li>
@@ -87,9 +89,11 @@ public final class TaotieHeadRules {
      * {@code ControlExpertStunRules.BLOCKED_PAYLOADS} 为基础，刻意的差异如下：
      * 移除 {@code wathe:storebuy}（眩晕时仍可使用商店）；补充该表缺少的 SparkStrength 技能包：记者通讯
      * {@code reporter_communication}（有冷却的技能）、怀表模式切换 {@code timekeeper_watch_mode}、接管无人机
-     * {@code drone_pilot_start}、无人机投弹/引爆 {@code drone_pilot_action}、本技能 {@code taotie_head_fire}，以及破坏系统的
+     * {@code drone_pilot_start}、无人机投弹/引爆 {@code drone_pilot_action}、本技能 {@code taotie_head_fire}、派对狂召唤
+     * {@code partygoer_summon}、饕餮吞派对客 {@code partygoer_swallow}，以及破坏系统的
      * {@code trigger_sabotage} 与 {@code complete_breaker_repair}；
      * 继续放行（移动、离开或仅界面用途）：{@code drone_pilot_move}、{@code drone_pilot_exit}、{@code m67_cancel}、
+     * {@code partygoer_menu}（选房界面）、
      * {@code cancel_sabotage_channel}、{@code cancel_breaker_repair}、
      * 平板快照/聊天/频道以及侦探文件夹相关 id；NoellesRoles：锁定运行时 jar（sha fcb0da）注册的 14 个 C2S id
      * 均已在表中，无需补充。新增技能包必须在此有意识地归类。
@@ -167,6 +171,12 @@ public final class TaotieHeadRules {
             Identifier.of("sparkstrength", "vulture_super_curse"),
             // Spiritualist Wraith possession start (key 2); its exit stays allowed. / 灵界行者附身冤魂（技能键 2）；退出放行。
             Identifier.of("sparkstrength", "spirit_possess"),
+            // Party Animal summoning its Partygoer (key 2); opening the room picker is UI only and stays allowed.
+            // 派对狂召唤派对客（技能键 2）；打开选房界面仅是界面操作，放行。
+            Identifier.of("sparkstrength", "partygoer_summon"),
+            // Taotie swallowing a Partygoer: the NoellesRoles ability key aimed at our entity, so it is classified like
+            // noellesroles:taotie_swallow. / 饕餮吞派对客：对准我们实体的 NoellesRoles 技能键，与 noellesroles:taotie_swallow 同类处理。
+            Identifier.of("sparkstrength", "partygoer_swallow"),
             Identifier.of("sparkstrength", "call_tablet_meeting"),
             Identifier.of("sparkstrength", "cast_tablet_vote"),
             Identifier.of("sparkstrength", "confirm_tablet_vote"),

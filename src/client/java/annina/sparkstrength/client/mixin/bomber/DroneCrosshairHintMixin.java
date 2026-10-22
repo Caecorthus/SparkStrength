@@ -1,7 +1,9 @@
 package annina.sparkstrength.client.mixin.bomber;
 
 import annina.sparkstrength.entity.DroneEntity;
+import annina.sparkstrength.entity.PartygoerEntity;
 import annina.sparkstrength.role.bomber.drone.DroneHitGeometry;
+import annina.sparkstrength.role.partyanimal.PartygoerHitGeometry;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import dev.doctor4t.wathe.client.gui.CrosshairRenderer;
@@ -21,6 +23,10 @@ import org.spongepowered.asm.mixin.injection.Constant;
  * getVisibleGunTarget 结果若有严格更近的无人机则替换，与 DroneGunTargetMixin 对射击的处理一致。球棒：“准星目标是玩家”的判断
  * 也接受存活的无人机，因为球棒击中会将其击毁。remap = false（Wathe 类，仅用方法名选择，类字面量按字节码重映射）且 require = 0：
  * Wathe 渲染器结构变化时只会失去这些提示。
+ *
+ * <p>Partygoers get the same hints (guns: a strictly nearer Partygoer after the drone step; bat: a targetable
+ * Partygoer), since those weapons kill it. / 派对客获得同样的提示（枪：无人机一步之后严格更近的派对客；球棒：可命中的派对客），
+ * 因为这些武器能打死它。</p>
  */
 @Mixin(value = CrosshairRenderer.class, remap = false)
 public abstract class DroneCrosshairHintMixin {
@@ -32,7 +38,8 @@ public abstract class DroneCrosshairHintMixin {
     private static HitResult sparkstrength$hintDroneForGuns(
             PlayerEntity user, double range, Operation<HitResult> original
     ) {
-        return DroneHitGeometry.preferNearerDrone(user, original.call(user, range), range);
+        return PartygoerHitGeometry.preferNearer(user,
+                DroneHitGeometry.preferNearerDrone(user, original.call(user, range), range), range);
     }
 
     @WrapOperation(
@@ -41,6 +48,7 @@ public abstract class DroneCrosshairHintMixin {
             require = 0
     )
     private static boolean sparkstrength$hintDroneForBat(Object target, Operation<Boolean> original) {
-        return original.call(target) || target instanceof DroneEntity drone && DroneHitGeometry.isLive(drone);
+        return original.call(target) || target instanceof DroneEntity drone && DroneHitGeometry.isLive(drone)
+                || target instanceof PartygoerEntity partygoer && PartygoerHitGeometry.isTargetable(partygoer);
     }
 }

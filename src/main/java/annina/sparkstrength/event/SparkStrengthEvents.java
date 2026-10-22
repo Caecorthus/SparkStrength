@@ -41,6 +41,12 @@ import annina.sparkstrength.role.engineer.EngineerSabotageRepairService;
 import annina.sparkstrength.role.engineer.EngineerShopService;
 import annina.sparkstrength.role.morphling.MorphlingService;
 import annina.sparkstrength.role.morphling.MorphlingShopService;
+import annina.sparkstrength.role.partyanimal.PartyBalloonService;
+import annina.sparkstrength.role.partyanimal.PartyBalloonShopService;
+import annina.sparkstrength.role.partyanimal.PartygoerService;
+import annina.sparkstrength.role.partyanimal.PartygoerSkillService;
+import annina.sparkstrength.role.partyanimal.PartygoerTaotieService;
+import annina.sparkstrength.role.partyanimal.PartygoerWeaponHits;
 import annina.sparkstrength.role.pathogen.PathogenFeatureService;
 import annina.sparkstrength.role.spiritualist.SpiritPossessionService;
 import annina.sparkstrength.role.taotie.TaotieHeadFeatureService;
@@ -110,6 +116,8 @@ public final class SparkStrengthEvents {
         EngineerShopService.register();
         MorphlingService.register();
         MorphlingShopService.register();
+        // Party Animal: the Party Balloon (25), right after Wathe's firecracker. / 派对狂：派对气球（25），紧跟在鞭炮之后。
+        PartyBalloonShopService.register();
         PathogenFeatureService.register();
         TaotieHeadFeatureService.register();
         // Spiritualist Wraith possession: opening cooldown, round cleanup and the far-view tick.
@@ -139,6 +147,16 @@ public final class SparkStrengthEvents {
         // Super Curse death scream / curse stop on KillPlayer.AFTER and round end; registered after the skateboard.
         // 超级骂的死亡惨叫与停止逻辑挂在 KillPlayer.AFTER 与回合结束上；注册在滑板之后。
         VultureSuperCurseService.register();
+        // Party Animal's Partygoer: task unlock, lifecycle, rage on KillPlayer.AFTER and round-end cleanup.
+        // 派对狂的派对客：任务解锁、生命周期、KillPlayer.AFTER 上的狂怒与对局结束清理。
+        PartygoerSkillService.register();
+        PartygoerService.register();
+        // Wathe bat on a Partygoer (left-click callback in the drone weapon phase); every other weapon hooks in place.
+        // Wathe 球棒打派对客（无人机武器阶段的左键回调）；其余武器各自就地挂钩。
+        PartygoerWeaponHits.register();
+        // Taotie swallowing a Partygoer: the 5 s kick-to-death countdown and early release on death, disconnect, round end.
+        // 饕餮吞派对客：5 秒踢死倒计时，以及死亡、掉线、对局结束时提前放出。
+        PartygoerTaotieService.register();
         // 老兵经济服务同时注册死亡前阵营快照和死亡后金币结算。
         VeteranEconomyService.register();
         ShadowJesterShowdownService.register();
@@ -180,6 +198,7 @@ public final class SparkStrengthEvents {
                 DetectiveCaseService.assignForRole(serverPlayer, role);
                 DemonHunterSniffService.assignForRole(serverPlayer, role);
                 VultureSuperCurseService.assignForRole(serverPlayer, role);
+                PartygoerSkillService.assignForRole(serverPlayer, role);
                 MorphlingService.assignForRole(serverPlayer, role);
                 PhantomBackpackService.assignForRole(serverPlayer, role);
                 ToxicologistAntidoteService.clearPlayer(serverPlayer);
@@ -221,6 +240,8 @@ public final class SparkStrengthEvents {
                 ToxicologistBluePassiveService.clearPlayer(serverPlayer);
                 VeteranKnifeService.reset(serverPlayer);
                 BodyguardShieldService.resetRound(serverPlayer);
+                PartyBalloonService.clearPlayer(serverPlayer);
+                PartygoerSkillService.reset(serverPlayer);
             }
         });
 
@@ -233,6 +254,7 @@ public final class SparkStrengthEvents {
             // The vest and shield die with the Bodyguard: nothing to loot or keep. / 防弹衣与盾随保镖死亡消失，无从拾取或保留。
             BodyguardShieldService.clearGear(victim, true);
             UndercoverService.afterDeath(victim);
+            PartyBalloonService.clearPlayer(victim);
         });
 
         GameEvents.ON_FINISH_FINALIZE.register((world, gameComponent) -> {
@@ -262,10 +284,12 @@ public final class SparkStrengthEvents {
                     WaiterTaskRevealService.reset(player);
                     DemonHunterSniffService.clearPlayer(player);
                     VultureSuperCurseService.clearPlayer(player);
+                    PartygoerSkillService.reset(player);
                     VeteranKnifeService.reset(player);
                     TimekeeperWatchComponent.KEY.get(player).reset();
                     BodyguardShieldService.resetRound(player);
                     UndercoverService.reset(player);
+                    PartyBalloonService.clearPlayer(player);
                 }
                 // Chopped-down doors come back for the next round. / 被拆掉的门在下一局前放回。
                 DoorBreachService.restoreAll(serverWorld);

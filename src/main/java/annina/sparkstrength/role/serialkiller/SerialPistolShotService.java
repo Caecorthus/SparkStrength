@@ -4,6 +4,7 @@ import annina.sparkstrength.compat.SparkFactionCompat;
 import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.compat.SparkWitchCompat;
 import annina.sparkstrength.item.SerialPistolItem;
+import annina.sparkstrength.role.partyanimal.PartygoerWeaponHits;
 import dev.doctor4t.wathe.api.event.ShouldPunishGunShooter;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerPsychoComponent;
@@ -97,6 +98,10 @@ public final class SerialPistolShotService {
             // SparkWitch 在此处（记录之前）挂接 Wathe 左轮：非玩家 id 指向魔术师皮套或搜寻者设备时将其结束或打坏，下方这一枪
             // 仍按未命中记录（D3：声音、枪口火光、冷却；无惩罚、不扣理智），与左轮完全一致。
             hitSparkWitchWorldTarget(shooter, targetId, stack);
+            // A claimed Partygoer dies like a shot player (wathe:gun); the shot below stays a recorded miss.
+            // 声明的派对客与中枪玩家一样死亡（wathe:gun）；下方这一枪仍按未命中记录。
+            PartygoerWeaponHits.onSerialPistolShot(shooter, targetId < 0 ? null : world.getEntityById(targetId),
+                    SerialKillerConstants.PISTOL_RANGE_BLOCKS + SERVER_RANGE_SLACK_BLOCKS);
         }
 
         ServerPlayerEntity target = candidate != null && isHittable(shooter, candidate) ? candidate : null;

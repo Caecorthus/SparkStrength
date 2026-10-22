@@ -58,7 +58,10 @@ public final class BodyguardProtectionRules {
             Map.entry(Identifier.of("sparkwitch", "mighty_force"), PHYSICAL),
             // SparkWitch Witch Maiden crimson wither skull: a gunshot for protections (owner 2026-10-20).
             // SparkWitch 巫女赤色凋灵之首：防护按枪击处理（所有者 2026-10-20）。
-            Map.entry(Identifier.of("sparkwitch", "crimson_wither_skull"), PHYSICAL)
+            Map.entry(Identifier.of("sparkwitch", "crimson_wither_skull"), PHYSICAL),
+            // Party Animal's Partygoer: a worn vest is one layer it chews through (one 5 s bite); a raised shield can't
+            // stop a meal. / 派对狂的派对客：穿着的防弹衣算一层，被啃掉一口（5 秒）；举盾挡不住被吃。
+            Map.entry(Identifier.of("sparkstrength", "partygoer_eaten"), new Protection(true, 0, Source.ATTACKER))
     );
     /** A Bomber drone's blast; the carried bomb has the same reason but no blast scope. / 炸弹客无人机的爆炸；随身炸弹死因相同但没有爆炸作用域。 */
     private static final Protection DRONE_BLAST = new Protection(false, BLOCK, Source.BLAST);

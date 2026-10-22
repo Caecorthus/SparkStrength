@@ -10,6 +10,7 @@ import annina.sparkstrength.item.grenade.GrenadeBlastService;
 import annina.sparkstrength.item.m67.M67RoundService;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
 import annina.sparkstrength.role.bodyguard.AttackOriginScope;
+import annina.sparkstrength.role.partyanimal.PartygoerWeaponHits;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.index.WatheParticles;
 import dev.doctor4t.wathe.item.KnifeItem;
@@ -261,6 +262,10 @@ public final class DroneCombatService {
             }
             if (roundId.equals(DroneService.currentRoundId(world))) {
                 breakDronesInBlast(world, center, DroneRules.BOMB_BLAST_RADIUS, drone, owner);
+                // Partygoers in the blast die like players (NoellesRoles bomb reason, the field itself).
+                // 爆炸范围内的派对客与玩家一样死亡（NoellesRoles 炸弹死因，直接传入该字段）。
+                PartygoerWeaponHits.onBlast(world, center, DroneRules.BOMB_BLAST_RADIUS, drone, owner,
+                        Noellesroles.DEATH_REASON_BOMB);
             }
             drone.discard();
         } finally {

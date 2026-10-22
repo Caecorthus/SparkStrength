@@ -17,6 +17,9 @@ import annina.sparkstrength.client.role.economy.KillerTeamEconomyClientHooks;
 import annina.sparkstrength.client.role.engineer.EngineerClientHooks;
 import annina.sparkstrength.client.role.jester.JesterMomentClientHooks;
 import annina.sparkstrength.client.role.morphling.MorphlingClientHooks;
+import annina.sparkstrength.client.role.partyanimal.PartyBalloonClientHooks;
+import annina.sparkstrength.client.role.partyanimal.PartygoerClientHooks;
+import annina.sparkstrength.client.role.partyanimal.PartygoerInstinctClientHooks;
 import annina.sparkstrength.client.role.pathogen.PathogenClientHooks;
 import annina.sparkstrength.client.role.perfumer.PerfumerClientHooks;
 import annina.sparkstrength.client.role.professor.ProfessorSerumClientHooks;
@@ -71,6 +74,7 @@ public final class SparkStrengthClient implements ClientModInitializer {
         FlashlightRenderer.register();
         JesterMomentClientHooks.register();
         MorphlingClientHooks.register();
+        PartyBalloonClientHooks.register();
         PathogenClientHooks.register();
         PerfumerClientHooks.register();
         ProfessorSerumClientHooks.register();
@@ -85,6 +89,8 @@ public final class SparkStrengthClient implements ClientModInitializer {
         // Binds only when SparkWitch is loaded (reflection, no compile dependency).
         // 仅在加载了 SparkWitch 时挂接按键（反射，无编译依赖）。
         VultureSuperCurseClientHooks.register();
+        PartygoerClientHooks.register();
+        PartygoerInstinctClientHooks.register();
         WaiterTaskRevealClientHooks.register();
         ClientTickEvents.END_CLIENT_TICK.register(CorruptCopMusicController::tick);
         ClientTickEvents.END_CLIENT_TICK.register(client ->
