@@ -53,7 +53,6 @@ import net.minecraft.util.math.Vec3d;
 import org.agmas.noellesroles.ModItems;
 import org.agmas.noellesroles.demonhunter.DemonHunterPistolItem;
 import org.agmas.noellesroles.demonhunter.DemonHunterPlayerComponent;
-import org.agmas.noellesroles.morphling.MorphlingPlayerComponent;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -70,6 +69,9 @@ import java.util.WeakHashMap;
  *
  * <p>客户端只负责显示头像按钮和提交 UUID；是否是验尸官、这具尸体是否解锁、变形成哪张脸、
  * 发什么临时装备、何时回收装备，都统一在这里判断。</p>
+ *
+ * <p>The disguise queries live in {@link CoronerDisguises}.
+ * 伪装查询位于 {@link CoronerDisguises}。</p>
  */
 public final class CoronerService {
     private static final String TEMP_ITEM_ROOT_KEY = "SparkStrengthCoronerTemporaryGrant";
@@ -147,7 +149,7 @@ public final class CoronerService {
             }
             rewardNearbyBodies(player, world);
             refreshTemporaryEquipmentForMorphPriority(player);
-            if (hasDemonHunterDisguise(player)) {
+            if (CoronerDisguises.hasDemonHunterDisguise(player)) {
                 refreshDemonHunterState(player);
             }
         }
@@ -212,7 +214,7 @@ public final class CoronerService {
         TimekeeperWatchComponent.KEY.get(coroner).reset();
         DemonHunterPlayerComponent.KEY.get(coroner).reset();
         component.setActiveDisguise(targetUuid, snapshot);
-        if (isHigherPriorityMorphActive(coroner)) {
+        if (CoronerDisguises.isHigherPriorityMorphActive(coroner)) {
             /*
              * SparkStrength/Noelles 的变形怪效果优先级高于验尸官长期伪装。
              * 高优先级变形存在时，验尸官先记住自己原本选中的尸体身份，但暂时不发放该身份装备。
@@ -242,120 +244,112 @@ public final class CoronerService {
         return id == null ? null : id.toString();
     }
 
+    /*
+     * Disguise queries live in CoronerDisguises. These delegates keep the names other code binds to; SparkWitch and
+     * SparkTraits look up hasKidnapperDisguise, hasKillerFactionDisguise, hasUndercoverDisguise and
+     * hasInstantSilentKnifeDisguise on this class by reflection, so their names and signatures are a cross-mod contract.
+     * 伪装查询位于 CoronerDisguises。这些委托保留其它代码绑定的方法名；SparkWitch 与 SparkTraits 会按本类反射查找
+     * hasKidnapperDisguise、hasKillerFactionDisguise、hasUndercoverDisguise 与 hasInstantSilentKnifeDisguise，
+     * 它们的名称与签名是跨模组契约。
+     */
     public static @Nullable UUID activeDisguiseUuid(PlayerEntity player) {
-        if (player == null) {
-            return null;
-        }
-        CoronerPlayerComponent component = CoronerPlayerComponent.KEY.get(player);
-        return component.hasActiveDisguise() ? component.activeDisguiseUuid() : null;
+        return CoronerDisguises.activeDisguiseUuid(player);
     }
 
     public static @Nullable Role activeDisguiseRoleForRules(PlayerEntity player) {
-        return activeDisguiseRole(player);
+        return CoronerDisguises.activeDisguiseRole(player);
     }
 
     public static boolean hasKillerFactionDisguise(PlayerEntity player) {
-        return CoronerRules.isKillerFaction(activeDisguiseRole(player));
+        return CoronerDisguises.hasKillerFactionDisguise(player);
     }
 
     public static boolean hasVeteranDisguise(PlayerEntity player) {
-        return CoronerRules.isVeteran(activeDisguiseRole(player));
+        return CoronerDisguises.hasVeteranDisguise(player);
     }
 
     public static boolean hasInstantSilentKnifeDisguise(PlayerEntity player) {
-        return CoronerRules.grantsInstantSilentKnife(activeDisguiseRole(player));
+        return CoronerDisguises.hasInstantSilentKnifeDisguise(player);
     }
 
     public static boolean hasWaiterDisguise(PlayerEntity player) {
-        return CoronerRules.grantsWaiterDoublePickup(activeDisguiseRole(player));
+        return CoronerDisguises.hasWaiterDisguise(player);
     }
 
     public static boolean hasCorruptCopDisguise(PlayerEntity player) {
-        return CoronerRules.isCorruptCop(activeDisguiseRole(player));
+        return CoronerDisguises.hasCorruptCopDisguise(player);
     }
 
     public static boolean hasPoisonerDisguise(PlayerEntity player) {
-        return CoronerRules.isPoisoner(activeDisguiseRole(player));
+        return CoronerDisguises.hasPoisonerDisguise(player);
     }
 
     public static boolean hasToxicologistDisguise(PlayerEntity player) {
-        return CoronerRules.isToxicologist(activeDisguiseRole(player));
+        return CoronerDisguises.hasToxicologistDisguise(player);
     }
 
     public static boolean hasProfessorDisguise(PlayerEntity player) {
-        return CoronerRules.isProfessor(activeDisguiseRole(player));
+        return CoronerDisguises.hasProfessorDisguise(player);
     }
 
     public static boolean hasAttendantDisguise(PlayerEntity player) {
-        return CoronerRules.isAttendant(activeDisguiseRole(player));
-    }
-
-    public static boolean hasSurvivalMasterDisguise(PlayerEntity player) {
-        return CoronerRules.isSurvivalMaster(activeDisguiseRole(player));
+        return CoronerDisguises.hasAttendantDisguise(player);
     }
 
     public static boolean hasTimekeeperDisguise(PlayerEntity player) {
-        return CoronerRules.isTimekeeper(activeDisguiseRole(player));
+        return CoronerDisguises.hasTimekeeperDisguise(player);
     }
 
     public static boolean hasUndercoverDisguise(PlayerEntity player) {
-        return CoronerRules.isUndercover(activeDisguiseRole(player));
+        return CoronerDisguises.hasUndercoverDisguise(player);
     }
 
     public static boolean hasNoisemakerDisguise(PlayerEntity player) {
-        return CoronerRules.isNoisemaker(activeDisguiseRole(player));
+        return CoronerDisguises.hasNoisemakerDisguise(player);
     }
 
     public static boolean hasSilencerDisguise(PlayerEntity player) {
-        return CoronerRules.isSilencer(activeDisguiseRole(player));
+        return CoronerDisguises.hasSilencerDisguise(player);
     }
 
     public static boolean hasBartenderDisguise(PlayerEntity player) {
-        return CoronerRules.isBartender(activeDisguiseRole(player));
-    }
-
-    public static boolean hasDemonHunterDisguise(PlayerEntity player) {
-        return CoronerRules.isDemonHunter(activeDisguiseRole(player));
+        return CoronerDisguises.hasBartenderDisguise(player);
     }
 
     public static boolean hasEngineerDisguise(PlayerEntity player) {
-        return CoronerRules.isEngineer(activeDisguiseRole(player));
+        return CoronerDisguises.hasEngineerDisguise(player);
     }
 
     public static boolean hasBomberDisguise(PlayerEntity player) {
-        return CoronerRules.isBomber(activeDisguiseRole(player));
+        return CoronerDisguises.hasBomberDisguise(player);
     }
 
     public static boolean hasKidnapperDisguise(PlayerEntity player) {
-        return CoronerRules.isSparkWitchKidnapper(activeDisguiseRole(player));
+        return CoronerDisguises.hasKidnapperDisguise(player);
     }
 
     public static boolean isActualCoroner(PlayerEntity player) {
-        if (player == null) {
-            return false;
-        }
-        return CoronerRules.isCoroner(GameWorldComponent.KEY.get(player.getWorld()).getRole(player));
+        return CoronerDisguises.isActualCoroner(player);
     }
 
     public static boolean canUseToxicologistDisguiseItem(PlayerEntity player) {
-        return !isActualCoroner(player) || hasToxicologistDisguise(player);
+        return CoronerDisguises.canUseToxicologistDisguiseItem(player);
     }
 
     public static boolean canUseProfessorDisguiseItem(PlayerEntity player) {
-        return !isActualCoroner(player) || hasProfessorDisguise(player);
+        return CoronerDisguises.canUseProfessorDisguiseItem(player);
     }
 
     public static boolean canUseBartenderDisguiseItem(PlayerEntity player) {
-        return !isActualCoroner(player) || hasBartenderDisguise(player);
+        return CoronerDisguises.canUseBartenderDisguiseItem(player);
     }
 
     public static boolean canUseEngineerDisguiseItem(PlayerEntity player) {
-        return !isActualCoroner(player) || hasEngineerDisguise(player);
+        return CoronerDisguises.canUseEngineerDisguiseItem(player);
     }
 
     public static boolean hasNeutralDisguise(PlayerEntity player) {
-        Role role = activeDisguiseRole(player);
-        return role != null && role.isNeutral();
+        return CoronerDisguises.hasNeutralDisguise(player);
     }
 
     private static void refreshTemporaryEquipmentForMorphPriority(ServerPlayerEntity player) {
@@ -366,7 +360,7 @@ public final class CoronerService {
             return;
         }
 
-        if (isHigherPriorityMorphActive(player)) {
+        if (CoronerDisguises.isHigherPriorityMorphActive(player)) {
             if (!component.isTemporaryEquipmentSuppressed()) {
                 /*
                  * 被变形怪效果覆盖时，验尸官自己的伪装能力临时失效：
@@ -392,17 +386,6 @@ public final class CoronerService {
              */
             grantTemporaryEquipment(player, disguiseUuid, snapshot);
         }
-    }
-
-    private static boolean isHigherPriorityMorphActive(PlayerEntity player) {
-        if (player == null) {
-            return false;
-        }
-        MorphlingPlayerComponent originalMorph = MorphlingPlayerComponent.KEY.get(player);
-        if (originalMorph.getMorphTicks() > 0) {
-            return true;
-        }
-        return MorphMarkPlayerComponent.KEY.get(player).isActive();
     }
 
     private static void rewardNearbyBodies(ServerPlayerEntity coroner, ServerWorld world) {
@@ -480,22 +463,6 @@ public final class CoronerService {
             }
         }
         return new CoronerPlayerComponent.BodySnapshot(roleId);
-    }
-
-    private static @Nullable Role activeDisguiseRole(PlayerEntity player) {
-        if (player == null) {
-            return null;
-        }
-        if (isHigherPriorityMorphActive(player)) {
-            return null;
-        }
-        CoronerPlayerComponent component = CoronerPlayerComponent.KEY.get(player);
-        Identifier roleId = component.activeDisguiseRoleId();
-        if (roleId == null && component.activeDisguiseUuid() != null) {
-            CoronerPlayerComponent.BodySnapshot snapshot = component.snapshot(component.activeDisguiseUuid());
-            roleId = snapshot == null ? null : snapshot.roleId();
-        }
-        return CoronerRules.resolveRole(roleId);
     }
 
     private static void grantTemporaryEquipment(
@@ -669,7 +636,7 @@ public final class CoronerService {
         }
         CoronerPlayerComponent component = CoronerPlayerComponent.KEY.get(victim);
         UUID disguiseUuid = component.activeDisguiseUuid();
-        Role disguiseRole = activeDisguiseRole(victim);
+        Role disguiseRole = CoronerDisguises.activeDisguiseRole(victim);
         if (disguiseUuid == null || disguiseRole == null) {
             return;
         }
@@ -683,7 +650,7 @@ public final class CoronerService {
     }
 
     public static void applyNoisemakerBodyDeathEffects(ServerPlayerEntity victim, PlayerBodyEntity body) {
-        if (!hasNoisemakerDisguise(victim)) {
+        if (!CoronerDisguises.hasNoisemakerDisguise(victim)) {
             return;
         }
         /*
@@ -705,7 +672,7 @@ public final class CoronerService {
     }
 
     public static void refreshDemonHunterState(ServerPlayerEntity hunter) {
-        if (!hasDemonHunterDisguise(hunter) || !GameFunctions.isPlayerPlayingAndAlive(hunter)) {
+        if (!CoronerDisguises.hasDemonHunterDisguise(hunter) || !GameFunctions.isPlayerPlayingAndAlive(hunter)) {
             DemonHunterPlayerComponent.KEY.get(hunter).reset();
             removeTemporaryDemonHunterPistols(hunter);
             return;
@@ -741,7 +708,8 @@ public final class CoronerService {
 
     private static void onPsychoStart(ServerPlayerEntity frenziedPlayer, dev.doctor4t.wathe.api.event.PsychoType type) {
         for (ServerPlayerEntity hunter : frenziedPlayer.getServerWorld().getPlayers()) {
-            if (hunter == frenziedPlayer || !hasDemonHunterDisguise(hunter) || !GameFunctions.isPlayerPlayingAndAlive(hunter)) {
+            if (hunter == frenziedPlayer || !CoronerDisguises.hasDemonHunterDisguise(hunter)
+                    || !GameFunctions.isPlayerPlayingAndAlive(hunter)) {
                 continue;
             }
             DemonHunterPlayerComponent.KEY.get(hunter).addFrenzyPlayer(frenziedPlayer.getUuid());
@@ -751,7 +719,7 @@ public final class CoronerService {
 
     private static void onPsychoEnd(ServerPlayerEntity frenziedPlayer, dev.doctor4t.wathe.api.event.PsychoType type) {
         for (ServerPlayerEntity hunter : frenziedPlayer.getServerWorld().getPlayers()) {
-            if (!hasDemonHunterDisguise(hunter)) {
+            if (!CoronerDisguises.hasDemonHunterDisguise(hunter)) {
                 continue;
             }
             DemonHunterPlayerComponent.KEY.get(hunter).removeFrenzyPlayer(frenziedPlayer.getUuid());
@@ -863,7 +831,7 @@ public final class CoronerService {
          * 用户确认：黑警尸体是中立阵营；验尸官顶着黑警尸体开枪误伤无辜者时，
          * 按黑警处理，不触发“误杀好人导致自己死亡”的惩罚。
          */
-        return hasCorruptCopDisguise(shooter)
+        return CoronerDisguises.hasCorruptCopDisguise(shooter)
                 ? ShouldPunishGunShooter.PunishResult.cancel()
                 : null;
     }
