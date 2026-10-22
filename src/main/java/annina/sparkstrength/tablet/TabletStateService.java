@@ -1,21 +1,12 @@
 package annina.sparkstrength.tablet;
 
 import annina.sparkstrength.component.tablet.TabletWorldComponent;
-import annina.sparkstrength.entity.DroneEntity;
-import annina.sparkstrength.item.DroneItem;
-import annina.sparkstrength.mixin.minecraft.ItemCooldownEntryAccessor;
-import annina.sparkstrength.mixin.minecraft.ItemCooldownManagerAccessor;
 import annina.sparkstrength.network.tablet.OpenTabletScreenS2CPacket;
 import annina.sparkstrength.network.tablet.SyncTabletSnapshotS2CPacket;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
 import annina.sparkstrength.record.AchievementRecords;
-import annina.sparkstrength.role.attendant.AttendantRules;
-import annina.sparkstrength.role.attendant.DoorLog;
-import annina.sparkstrength.role.bomber.drone.DroneKind;
-import annina.sparkstrength.role.bomber.drone.DroneRules;
-import annina.sparkstrength.role.bomber.drone.DroneService;
-import annina.sparkstrength.role.bomber.drone.DroneState;
-import annina.sparkstrength.role.detective.DetectiveIdentityResolver;
+import annina.sparkstrength.role.attendant.DoorLogTabletSnapshots;
+import annina.sparkstrength.role.bomber.drone.DroneTabletSnapshots;
 import annina.sparkstrength.sabotage.SabotageAccess;
 import annina.sparkstrength.sabotage.SabotageTabletSnapshots;
 import com.mojang.authlib.GameProfile;
@@ -25,18 +16,12 @@ import net.fabricmc.fabric.api.entity.event.v1.ServerEntityWorldChangeEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.entity.player.ItemCooldownManager;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
-import net.minecraft.util.math.MathHelper;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -479,118 +464,13 @@ public final class TabletStateService {
                 meetingFeatures ? meetingSnapshot(world, tablet, viewer, electorate) : TabletSnapshot.Meeting.inactive(),
                 meetingFeatures ? suspectRows(world, tablet, viewerUuid, electorate) : List.of(),
                 access.featureMask(),
-                access.hasFeature(TabletFeature.DOOR_LOG) ? doorLogRows(viewer, tablet) : List.of(),
+                access.hasFeature(TabletFeature.DOOR_LOG) ? DoorLogTabletSnapshots.rows(viewer, tablet) : List.of(),
                 TabletIdentityRules.tasksRemaining(channel, tasksDone),
-                access.hasFeature(TabletFeature.DRONE) ? droneRows(viewer) : List.of(),
+                access.hasFeature(TabletFeature.DRONE) ? DroneTabletSnapshots.rows(viewer) : List.of(),
                 access.hasFeature(TabletFeature.SABOTAGE)
                         ? SabotageTabletSnapshots.rows(world, SabotageAccess.trackOf(viewer)) : List.of(),
                 access.hasFeature(TabletFeature.SABOTAGE) ? SabotageTabletSnapshots.log(world, viewerUuid, links) : List.of()
         );
-    }
-
-    /**
-     * The viewer's own drones: carried drone items first (inventory order), then grenade drones queued to come back
-     * (hotbar full or viewer out of survival; item rows with their cooldown), then its placed drones in this world
-     * (entity id order). Rows never describe another player's drones, and owner identity never leaves the server.
-     * 查看者自己的无人机：先列随身携带的无人机物品（按物品栏顺序），再列排队等待归还的投弹无人机（快捷栏已满或查看者暂不在生存模式；
-     * 以物品行显示并带冷却），最后列其在本世界已放置的无人机（按实体 id）。绝不包含他人的无人机，主人身份也不会离开服务器。
-     */
-    private static List<TabletSnapshot.DroneRow> droneRows(ServerPlayerEntity viewer) {
-        List<TabletSnapshot.DroneRow> rows = new ArrayList<>();
-        PlayerInventory inventory = viewer.getInventory();
-        ItemCooldownManager cooldowns = viewer.getItemCooldownManager();
-        for (int slot = 0; slot < inventory.size(); slot++) {
-            ItemStack stack = inventory.getStack(slot);
-            if (!(stack.getItem() instanceof DroneItem item)) {
-                continue;
-            }
-            rows.add(new TabletSnapshot.DroneRow(
-                    -1,
-                    item.kind().wire(),
-                    TabletSnapshot.DroneRow.STATUS_ITEM,
-                    DroneRules.percent(DroneItem.charge(stack)),
-                    item.kind() == DroneKind.GRENADE && DroneItem.hasPayload(stack),
-                    TabletRules.secondsCeil(remainingCooldownTicks(cooldowns, item)),
-                    -1
-            ));
-        }
-        UUID viewerUuid = viewer.getUuid();
-        for (DroneService.PendingReturnStatus pending : DroneService.pendingReturns(viewer.getServerWorld(), viewerUuid)) {
-            rows.add(new TabletSnapshot.DroneRow(
-                    -1,
-                    DroneKind.GRENADE.wire(),
-                    TabletSnapshot.DroneRow.STATUS_ITEM,
-                    DroneRules.percent(pending.charge()),
-                    false,
-                    TabletRules.secondsCeil(pending.cooldownTicks()),
-                    -1
-            ));
-        }
-        DroneService.dronesOf(viewer.getServerWorld(), viewerUuid).stream()
-                // Defensive owner re-check: the registry contract already scopes to this owner.
-                // 防御性复核主人：登记表契约本已限定为该主人。
-                .filter(drone -> !drone.isRemoved() && viewerUuid.equals(drone.ownerUuid()))
-                .sorted(Comparator.comparingInt(DroneEntity::getId))
-                .forEach(drone -> rows.add(new TabletSnapshot.DroneRow(
-                        drone.getId(),
-                        drone.kind().wire(),
-                        viewerUuid.equals(drone.pilotUuid()) ? TabletSnapshot.DroneRow.STATUS_PILOTING : statusWire(drone.state()),
-                        DroneRules.percent(drone.charge()),
-                        drone.hasPayload(),
-                        0,
-                        MathHelper.floor(viewer.distanceTo(drone))
-                )));
-        return rows;
-    }
-
-    private static int statusWire(DroneState state) {
-        return switch (state) {
-            case GROUNDED -> TabletSnapshot.DroneRow.STATUS_GROUNDED;
-            case HOVERING -> TabletSnapshot.DroneRow.STATUS_HOVERING;
-            case FLYING -> TabletSnapshot.DroneRow.STATUS_FLYING;
-            case FALLING -> TabletSnapshot.DroneRow.STATUS_FALLING;
-        };
-    }
-
-    /**
-     * Exact remaining item cooldown (opening lock or loss cooldown); vanilla exposes only a progress fraction.
-     * 精确的物品剩余冷却（开局锁或损毁冷却）；原版只公开进度比例。
-     */
-    private static int remainingCooldownTicks(ItemCooldownManager cooldowns, Item item) {
-        Object entry = ((ItemCooldownManagerAccessor) cooldowns).sparkstrength$getEntries().get(item);
-        if (entry == null) {
-            return 0;
-        }
-        return Math.max(0, ((ItemCooldownEntryAccessor) entry).sparkstrength$getEndTick()
-                - ((ItemCooldownManagerAccessor) cooldowns).sparkstrength$getTick());
-    }
-
-    /**
-     * Door log for one viewer, newest first. Entries already store the apparent (disguise-aware) identity, never a
-     * disguised player's real uuid; a viewer whose names are hidden sees every actor as anonymous.
-     * 单个观看者的房门记录，最新在前。条目只存表面身份（考虑伪装），绝不存伪装者的真实 UUID；名字被隐藏的观看者看到的操作者全部匿名。
-     */
-    private static List<TabletSnapshot.DoorLogRow> doorLogRows(ServerPlayerEntity viewer, TabletWorldComponent tablet) {
-        List<DoorLog.Entry> entries = tablet.doorLog().newestFirst();
-        if (entries.isEmpty()) {
-            return List.of();
-        }
-        boolean hideNames = DetectiveIdentityResolver.viewerSeesNoNames(viewer);
-        return entries.stream()
-                .map(entry -> {
-                    DoorLog.Actor actor = AttendantRules.actorShownTo(entry.actor(), hideNames);
-                    return new TabletSnapshot.DoorLogRow(
-                            entry.id(),
-                            entry.kind().wire(),
-                            entry.doorName(),
-                            actor != null,
-                            actor == null ? null : actor.displayUuid(),
-                            actor == null ? "" : actor.displayName(),
-                            entry.lastTick(),
-                            entry.count()
-                    );
-                })
-                .toList();
     }
 
     private static List<TabletSnapshot.PlayerRow> connectionRows(
