@@ -69,8 +69,4 @@ public enum ProfessorSerumType {
         }
         return null;
     }
-
-    public static boolean isSerum(ItemStack stack) {
-        return byItem(stack) != null;
-    }
 }
