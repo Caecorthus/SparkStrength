@@ -44,6 +44,9 @@ public class PhantomBackpackTargetComponent implements AutoSyncedComponent, Serv
     }
 
     public void reset() {
+        if (invisibilityTicksRemaining == 0) {
+            return;
+        }
         invisibilityTicksRemaining = 0;
         sync();
     }

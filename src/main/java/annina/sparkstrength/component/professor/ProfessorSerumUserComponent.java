@@ -45,6 +45,9 @@ public class ProfessorSerumUserComponent implements AutoSyncedComponent, ServerT
     }
 
     public void reset() {
+        if (this.cooldownTicks == 0) {
+            return;
+        }
         this.cooldownTicks = 0;
         sync();
     }

@@ -1,8 +1,13 @@
 package annina.sparkstrength.role.waiter;
 
 import annina.sparkstrength.component.waiter.WaiterTaskRevealComponent;
+import annina.sparkstrength.role.coroner.CoronerService;
 import dev.doctor4t.wathe.api.event.TaskComplete;
+import dev.doctor4t.wathe.cca.GameWorldComponent;
+import dev.doctor4t.wathe.game.GameFunctions;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
+import org.agmas.noellesroles.Noellesroles;
 
 /** 服务员“任务完成后透视目标”能力的服务端事件注册。 */
 public final class WaiterTaskRevealService {
@@ -26,5 +31,19 @@ public final class WaiterTaskRevealService {
 
     public static void reset(ServerPlayerEntity player) {
         WaiterTaskRevealComponent.KEY.get(player).reset();
+    }
+
+    /**
+     * Whether {@code viewer} is shown task reveals: a living Waiter or a Coroner in a Waiter disguise. The client
+     * highlight and the server's sync recipients both use it, so nobody else learns who just did a task.
+     * 观察者是否能看到任务透视：存活的服务员，或伪装成服务员的验尸官。客户端高亮与服务端同步对象共用此判定，
+     * 其他人不会得知谁刚完成了任务。
+     */
+    public static boolean canSeeReveals(PlayerEntity viewer) {
+        if (viewer == null || !GameFunctions.isPlayerPlayingAndAlive(viewer)) {
+            return false;
+        }
+        return GameWorldComponent.KEY.get(viewer.getWorld()).isRole(viewer, Noellesroles.WAITER)
+                || CoronerService.hasWaiterDisguise(viewer);
     }
 }

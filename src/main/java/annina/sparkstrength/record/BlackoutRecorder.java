@@ -112,6 +112,15 @@ public final class BlackoutRecorder {
         STATE.forget(world.getRegistryKey());
     }
 
+    /**
+     * Server stop: forget every world. World keys are shared by every singleplayer save, so a save quit mid-blackout
+     * would otherwise record a stray "lights back" in the next one.
+     * 服务器停止：忘掉所有世界。所有单人存档共用同一组世界键，否则停电中途退出的存档会在下一个存档里记下一条多余的“来电”。
+     */
+    public static void clearAll() {
+        STATE.forgetAll();
+    }
+
     private static void edge(ServerWorld world, boolean blackoutActive, @Nullable ServerPlayerEntity actor, String cause) {
         if (STATE.observe(world.getRegistryKey(), blackoutActive)) {
             AchievementRecords.blackoutState(world, blackoutActive, actor, cause);

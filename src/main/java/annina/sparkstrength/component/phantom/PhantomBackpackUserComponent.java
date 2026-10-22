@@ -45,6 +45,9 @@ public class PhantomBackpackUserComponent implements AutoSyncedComponent, Server
     }
 
     public void reset() {
+        if (cooldownTicks == 0) {
+            return;
+        }
         cooldownTicks = 0;
         sync();
     }
