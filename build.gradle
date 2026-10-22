@@ -163,7 +163,7 @@ tasks.register("verifyArchitecture") {
             "src/main/java/annina/sparkstrength/compat/SparkTraitsCompat.java",
             "src/main/java/annina/sparkstrength/SparkStrengthItems.java",
             "src/main/java/annina/sparkstrength/SparkStrengthEntities.java",
-            "src/main/java/annina/sparkstrength/replay/SparkStrengthReplayFormatters.java"
+            "src/main/java/annina/sparkstrength/replay/CaptureDeviceReplayEvents.java"
     )
     inputs.files(fileTree("libs") { include "*.jar" })
     inputs.files(tasks.named("processResources").map { it.destinationDir })
@@ -224,7 +224,7 @@ tasks.register("verifyArchitecture") {
                 "capture_device_expired"
         ].each { replayId ->
             requireText(
-                    "src/main/java/annina/sparkstrength/replay/SparkStrengthReplayFormatters.java",
+                    "src/main/java/annina/sparkstrength/replay/CaptureDeviceReplayEvents.java",
                     "SparkStrength.id(\"${replayId}\")"
             )
         }
