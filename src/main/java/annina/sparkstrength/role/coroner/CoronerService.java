@@ -286,10 +286,6 @@ public final class CoronerService {
         return CoronerRules.isProfessor(activeDisguiseRole(player));
     }
 
-    public static boolean hasReporterDisguise(PlayerEntity player) {
-        return CoronerRules.isReporter(activeDisguiseRole(player));
-    }
-
     public static boolean hasAttendantDisguise(PlayerEntity player) {
         return CoronerRules.isAttendant(activeDisguiseRole(player));
     }
@@ -314,10 +310,6 @@ public final class CoronerService {
         return CoronerRules.isSilencer(activeDisguiseRole(player));
     }
 
-    public static boolean hasRecallerDisguise(PlayerEntity player) {
-        return CoronerRules.isRecaller(activeDisguiseRole(player));
-    }
-
     public static boolean hasBartenderDisguise(PlayerEntity player) {
         return CoronerRules.isBartender(activeDisguiseRole(player));
     }
@@ -338,11 +330,6 @@ public final class CoronerService {
         return CoronerRules.isSparkWitchKidnapper(activeDisguiseRole(player));
     }
 
-    public static boolean hasRoleDisguise(PlayerEntity player, Identifier roleId) {
-        Role role = activeDisguiseRole(player);
-        return role != null && roleId != null && roleId.equals(role.identifier());
-    }
-
     public static boolean isActualCoroner(PlayerEntity player) {
         if (player == null) {
             return false;
@@ -360,10 +347,6 @@ public final class CoronerService {
 
     public static boolean canUseBartenderDisguiseItem(PlayerEntity player) {
         return !isActualCoroner(player) || hasBartenderDisguise(player);
-    }
-
-    public static boolean canUseBomberDisguiseItem(PlayerEntity player) {
-        return !isActualCoroner(player) || hasBomberDisguise(player);
     }
 
     public static boolean canUseEngineerDisguiseItem(PlayerEntity player) {
