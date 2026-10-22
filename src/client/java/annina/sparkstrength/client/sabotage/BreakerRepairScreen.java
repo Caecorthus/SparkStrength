@@ -224,6 +224,11 @@ final class BreakerRepairScreen extends Screen {
         super.render(context, mouseX, mouseY, delta);
         int scale = Math.max(1, (int) Math.round(client.getWindow().getScaleFactor()));
         TabletCanvas canvas = new TabletCanvas(context, scale, client.getWindow().getFramebufferHeight());
+        // One draw batch for the panel (its clip still flushes). / 整个面板一个绘制批次（裁剪仍会提交）。
+        canvas.batch(() -> drawScreen(canvas, mouseX, mouseY, delta));
+    }
+
+    private void drawScreen(TabletCanvas canvas, int mouseX, int mouseY, float delta) {
         int x = left();
         int y = top();
         canvas.shadow(x, y, PANEL_W, PANEL_H, 10, 14, 0x90000000);
@@ -257,7 +262,6 @@ final class BreakerRepairScreen extends Screen {
             canvas.roundRectOutline(bx, by, bw, 16, 8, 1.0F, bannerColor);
             canvas.textCentered(textRenderer, banner.getString(), x + PANEL_W / 2, (int) by + 4, bannerColor);
         }
-        canvas.flush();
     }
 
     private void drawSwitch(TabletCanvas canvas, int index, int mouseX, int mouseY) {
