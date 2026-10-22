@@ -105,7 +105,9 @@ public final class VirusService {
             return;
         }
         boolean resync = world.getTime() % PathogenRules.CARRIER_RESYNC_INTERVAL_TICKS == 0;
-        for (ServerPlayerEntity player : List.copyOf(world.getPlayers())) {
+        // Nothing below adds or removes players (syncs, infection, a sneeze, a replay record), so no copy is needed.
+        // 下面不会增删玩家（同步、感染、喷嚏、回放记录），无需复制列表。
+        for (ServerPlayerEntity player : world.getPlayers()) {
             VirusCarrierComponent carrier = VirusCarrierComponent.KEY.get(player);
             if (!carrier.isCarrier()) {
                 continue;
