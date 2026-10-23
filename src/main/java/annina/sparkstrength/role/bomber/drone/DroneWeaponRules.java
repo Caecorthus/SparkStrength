@@ -3,9 +3,9 @@ package annina.sparkstrength.role.bomber.drone;
 import java.util.Set;
 
 /**
- * Pure weapon rules for breaking Bomber drones (no Minecraft state): melee id whitelist, reaches, aim tolerance and
- * the knife cooldown formula. Ids are plain strings so optional mods (SparkWitch) need no compile dependency.
- * 击毁炸弹客无人机的纯武器规则（不依赖 Minecraft 状态）：近战 id 白名单、距离、瞄准容差与刀冷却公式。
+ * Pure weapon rules for breaking Bomber drones (no Minecraft state): melee id whitelist, reaches and aim tolerance.
+ * Ids are plain strings so optional mods (SparkWitch) need no compile dependency.
+ * 击毁炸弹客无人机的纯武器规则（不依赖 Minecraft 状态）：近战 id 白名单、距离与瞄准容差。
  * id 使用纯字符串，可选模组（SparkWitch）无需编译期依赖。
  */
 public final class DroneWeaponRules {
@@ -64,16 +64,6 @@ public final class DroneWeaponRules {
 
     public static boolean withinReach(double squaredDistance, double reach) {
         return Double.isFinite(squaredDistance) && squaredDistance >= 0.0 && squaredDistance <= reach * reach;
-    }
-
-    /**
-     * Wathe's dynamic knife cooldown (5 s less per excess player, never below 10 s), as applied after a real stab.
-     * Wathe 的动态刀冷却（每多一名多余玩家减 5 秒，最低 10 秒），与真实刺杀后一致。
-     */
-    public static int knifeCooldownTicks(int baseTicks, int totalPlayers, int killerCount, int killerDividend,
-                                         int minimumTicks, int reductionPerExcess) {
-        int excessPlayers = Math.max(0, totalPlayers - killerCount * killerDividend);
-        return Math.max(minimumTicks, baseTicks - excessPlayers * reductionPerExcess);
     }
 
     /**

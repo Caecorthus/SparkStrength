@@ -1,12 +1,9 @@
 package annina.sparkstrength.role;
 
-import annina.sparkstrength.role.bomber.drone.DroneWeaponRules;
 import annina.sparkstrength.role.coroner.CoronerService;
 import annina.sparkstrength.role.veteran.VeteranRules;
 import dev.doctor4t.wathe.api.WatheGameModes;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
-import dev.doctor4t.wathe.game.GameConstants;
-import dev.doctor4t.wathe.index.WatheItems;
 import dev.doctor4t.wathe.item.KnifeItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -47,9 +44,9 @@ public final class NonPlayerTargetWeapons {
     }
 
     /**
-     * The knife cooldown of a real stab; none in creative or Loose Ends, for the Veteran, or for an instant-knife
-     * Coroner disguise (whose stabs never set one). / 真实刺杀的刀冷却；创造模式、Loose Ends、老兵与验尸官瞬刀伪装没有冷却
-     * （它们的刺杀本就不设冷却）。
+     * The knife cooldown of a real stab ({@link KnifeStabCooldown#TICKS}); none in creative or Loose Ends, for the
+     * Veteran, or for an instant-knife Coroner disguise (whose stabs never set one). / 真实刺杀的刀冷却
+     * （{@link KnifeStabCooldown#TICKS}）；创造模式、Loose Ends、老兵与验尸官瞬刀伪装没有冷却（它们的刺杀本就不设冷却）。
      */
     public static void applyKnifeStabCooldown(ServerPlayerEntity attacker, ItemStack knife) {
         GameWorldComponent game = GameWorldComponent.KEY.get(attacker.getWorld());
@@ -58,13 +55,6 @@ public final class NonPlayerTargetWeapons {
                 || CoronerService.hasInstantSilentKnifeDisguise(attacker)) {
             return;
         }
-        int cooldown = DroneWeaponRules.knifeCooldownTicks(
-                GameConstants.ITEM_COOLDOWNS.getOrDefault(WatheItems.KNIFE, GameConstants.getInTicks(1, 0)),
-                attacker.getServerWorld().getPlayers().size(),
-                game.getAllKillerTeamPlayers().size(),
-                game.getKillerDividend(),
-                GameConstants.getInTicks(0, 10),
-                GameConstants.getInTicks(0, 5));
-        attacker.getItemCooldownManager().set(knife.getItem(), cooldown);
+        attacker.getItemCooldownManager().set(knife.getItem(), KnifeStabCooldown.TICKS);
     }
 }

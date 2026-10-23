@@ -99,6 +99,7 @@
     "wathe.KillerPassiveMoneyCapMixin",
     "wathe.KillerTeamPassiveIncomeMixin",
     "wathe.KillerTeamShopMixin",
+    "wathe.KnifeStabCooldownMixin",
     "wathe.M67ShopEntriesMixin",
     "wathe.PathogenTeamWinMixin",
     "wathe.PlayerPoisonComponentAccessor",

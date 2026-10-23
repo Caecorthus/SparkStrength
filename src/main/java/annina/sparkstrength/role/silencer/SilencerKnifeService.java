@@ -2,6 +2,7 @@ package annina.sparkstrength.role.silencer;
 
 import annina.sparkstrength.compat.SparkFactionCompat;
 import annina.sparkstrength.compat.SparkTraitsCompat;
+import annina.sparkstrength.role.KnifeStabCooldown;
 import annina.sparkstrength.role.veteran.KnifeStabTargets;
 import dev.doctor4t.wathe.api.WatheGameModes;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -76,18 +77,8 @@ public final class SilencerKnifeService {
             return;
         }
 
-        // 完整保留 Wathe 原版“人数过多时动态降低刀 CD”的计算，只移除刺杀音效。
-        int totalPlayers = player.getServerWorld().getPlayers().size();
-        int killerCount = gameComponent.getAllKillerTeamPlayers().size();
-        int killerRatio = gameComponent.getKillerDividend();
-        int excessPlayers = Math.max(0, totalPlayers - (killerCount * killerRatio));
-        int baseCooldown = GameConstants.ITEM_COOLDOWNS.get(WatheItems.KNIFE);
-        int cooldownReductionPerExcess = GameConstants.getInTicks(0, 5);
-        int adjustedCooldown = Math.max(
-                GameConstants.getInTicks(0, 10),
-                baseCooldown - (excessPlayers * cooldownReductionPerExcess)
-        );
-        player.getItemCooldownManager().set(WatheItems.KNIFE, adjustedCooldown);
+        // 与普通刀刺相同的固定刀 CD，只移除刺杀音效。
+        player.getItemCooldownManager().set(WatheItems.KNIFE, KnifeStabCooldown.TICKS);
     }
 
     private static Hand heldKnifeHand(ServerPlayerEntity player) {
