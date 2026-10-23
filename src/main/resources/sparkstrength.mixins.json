@@ -20,6 +20,7 @@
     "bartender.BartenderIngredientTooltipMixin",
     "bartender.BartenderStimulationCrashMixin",
     "bartender.BartenderVodkaMixin",
+    "bodyguard.BodyguardGearKillGuardMixin",
     "bodyguard.BodyguardKillGuardMixin",
     "bodyguard.BodyguardSacrificeMixin",
     "bodyguard.TaotieSwallowBodyguardMixin",

@@ -1,6 +1,5 @@
 package annina.sparkstrength.mixin.bodyguard;
 
-import annina.sparkstrength.role.bodyguard.BodyguardProtectionService;
 import annina.sparkstrength.role.bodyguard.SacrificeSuppressionScope;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
@@ -11,42 +10,18 @@ import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Bodyguard hooks on the one killPlayer overload every Wathe kill funnels into:
- * - HEAD: the Democracy Shield and vest. Here the force flag is known, and the gear is spent before any KillPlayer.BEFORE
- *   listener (NoellesRoles' Iron Man / whiskey) or Wathe's psycho armour. SparkWitch's AXMC may pierce the vest; the
- *   kill then goes on past HEAD instead of being cancelled (BodyguardProtectionService).
- * - BEFORE / AFTER dispatch: NoellesRoles' Bodyguard sacrifice is decided inside its BEFORE listener, so that dispatch
- *   runs with the sacrifice suppressed and AFTER runs unsuppressed (see SacrificeSuppressionScope).
- * 保镖在 killPlayer 唯一汇总重载上的钩子：
- * - HEAD：民主盾牌与防弹衣。此处能看到 force 标记，并且装备先于任何 KillPlayer.BEFORE 监听（NoellesRoles 铁人/威士忌）
- *   与 Wathe 疯魔护甲消耗。SparkWitch 的 AXMC 可以击穿防弹衣，此时击杀不在 HEAD 取消而是继续（BodyguardProtectionService）。
- * - BEFORE / AFTER 分发：NoellesRoles 在其 BEFORE 监听中判定保镖替死，所以该分发在抑制替死的状态下执行，
- *   AFTER 则不抑制（见 SacrificeSuppressionScope）。
+ * Bodyguard hooks on the BEFORE / AFTER dispatch of the one killPlayer overload every Wathe kill funnels into:
+ * NoellesRoles' Bodyguard sacrifice is decided inside its BEFORE listener, so that dispatch runs with the sacrifice
+ * suppressed and AFTER runs unsuppressed (see SacrificeSuppressionScope). The gear check at HEAD lives in
+ * {@link BodyguardGearKillGuardMixin}, at a later priority so immunity guards run first.
+ * 保镖在 killPlayer 唯一汇总重载的 BEFORE / AFTER 分发上的钩子：NoellesRoles 在其 BEFORE 监听中判定保镖替死，所以该分发在
+ * 抑制替死的状态下执行，AFTER 则不抑制（见 SacrificeSuppressionScope）。HEAD 的装备判定在 BodyguardGearKillGuardMixin，
+ * 优先级更晚，让免死判断先执行。
  */
 @Mixin(GameFunctions.class)
 public abstract class BodyguardKillGuardMixin {
-    @Inject(
-            method = "killPlayer(Lnet/minecraft/server/network/ServerPlayerEntity;ZLnet/minecraft/server/network/ServerPlayerEntity;Lnet/minecraft/util/Identifier;Z)V",
-            at = @At("HEAD"),
-            cancellable = true
-    )
-    private static void sparkstrength$bodyguardGearBlocksKill(
-            ServerPlayerEntity victim,
-            boolean spawnBody,
-            @Nullable ServerPlayerEntity killer,
-            Identifier deathReason,
-            boolean force,
-            CallbackInfo ci
-    ) {
-        if (BodyguardProtectionService.tryBlockKill(victim, killer, deathReason, force)) {
-            ci.cancel();
-        }
-    }
-
     @WrapOperation(
             method = "killPlayer(Lnet/minecraft/server/network/ServerPlayerEntity;ZLnet/minecraft/server/network/ServerPlayerEntity;Lnet/minecraft/util/Identifier;Z)V",
             at = @At(value = "INVOKE",
