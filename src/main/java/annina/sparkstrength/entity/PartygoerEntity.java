@@ -3,6 +3,7 @@ package annina.sparkstrength.entity;
 import annina.sparkstrength.role.partyanimal.PartygoerBrain;
 import annina.sparkstrength.role.partyanimal.PartygoerService;
 import annina.sparkstrength.role.partyanimal.PartygoerState;
+import net.minecraft.block.LadderBlock;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityDimensions;
 import net.minecraft.entity.EntityType;
@@ -18,6 +19,7 @@ import net.minecraft.entity.mob.PathAwareEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundEvent;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
@@ -48,6 +50,11 @@ public class PartygoerEntity extends PathAwareEntity {
      * 被抱玩家的位置：站在胸前、伸出的双臂之间，双脚着地（玩家的骑乘点在脚上方 0.6 格，即 VEHICLE_ATTACHMENT_POS）。
      */
     private static final Vec3d CARRY_ATTACHMENT = new Vec3d(0.0, 0.6, 0.5);
+    /**
+     * On a ladder it holds them closer, so their head stays in the ladder's shaft (a floor hole is one block wide).
+     * 在梯子上抱得更紧，让被抱者的头留在梯子井里（地板洞口只有一格宽）。
+     */
+    private static final Vec3d LADDER_CARRY_ATTACHMENT = new Vec3d(0.0, 0.6, 0.25);
 
     private @Nullable PartygoerBrain brain;
 
@@ -180,7 +187,18 @@ public class PartygoerEntity extends PathAwareEntity {
      */
     @Override
     protected Vec3d getPassengerAttachmentPos(Entity passenger, EntityDimensions dimensions, float scaleFactor) {
-        return CARRY_ATTACHMENT.rotateY(-bodyYaw * MathHelper.RADIANS_PER_DEGREE);
+        Vec3d attachment = onLadder() ? LADDER_CARRY_ATTACHMENT : CARRY_ATTACHMENT;
+        return attachment.rotateY(-bodyYaw * MathHelper.RADIANS_PER_DEGREE);
+    }
+
+    /**
+     * Feet in a ladder block or on top of one; read from the world, so client and server agree.
+     * 脚在梯子方块里或梯子顶端；从世界读取，客户端与服务端一致。
+     */
+    private boolean onLadder() {
+        BlockPos feet = getBlockPos();
+        return getWorld().getBlockState(feet).getBlock() instanceof LadderBlock
+                || getWorld().getBlockState(feet.down()).getBlock() instanceof LadderBlock;
     }
 
     @Override

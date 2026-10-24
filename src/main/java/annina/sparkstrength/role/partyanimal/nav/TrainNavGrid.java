@@ -14,10 +14,16 @@ import java.util.Arrays;
  * no higher than a slab inside the block, or a full-height top just below it, and 1.8 blocks of clear headroom above
  * that floor. A move between neighbouring cells sweeps the same 0.6-wide column from centre to centre, so thin panels on
  * a shared face and diagonal corner cuts are caught. Room doors never collide (the Partygoer opens them); train doors are
- * walls. Rises above a step (0.6) are only allowed on stairs.
+ * walls until someone opens them. Rises above a step (0.6) are only allowed on stairs.
  * 单元格是脚所在的方块。中心柱（与玩家同宽 0.6）在本格内有不高于台阶板的地面，或下方方块顶面接近整格，且地面以上 1.8 格无遮挡时可站立。
- * 相邻格之间的移动从中心到中心扫掠同样宽 0.6 的柱体，因此能识别公共面上的薄墙板与斜向切角。房门不产生碰撞（派对客会推开）；列车外门视为墙。
- * 超过一级台阶（0.6）的上升只允许在楼梯上。</p>
+ * 相邻格之间的移动从中心到中心扫掠同样宽 0.6 的柱体，因此能识别公共面上的薄墙板与斜向切角。房门不产生碰撞（派对客会推开）；列车外门在有人
+ * 打开之前视为墙。超过一级台阶（0.6）的上升只允许在楼梯上。</p>
+ *
+ * <p>Ladders, the way a player uses them: a ladder block with headroom is a cell even in mid-air (feet on its bottom,
+ * holding the rung), and so is the block just above the top rung (feet level with the top of the ladder). It climbs
+ * straight up or down between those; on and off the ladder it walks by the usual step and stairs rules.
+ * 梯子按玩家的用法处理：有净空的梯子方块即使悬空也是一个格子（脚在方块底部，抓着横档），最上一档正上方的方块也是（脚与梯子顶端齐平）。
+ * 在这些格子之间直上直下；上下梯子时按普通台阶与楼梯规则行走。</p>
  */
 public final class TrainNavGrid {
     public static final double HALF_WIDTH = 0.3;
@@ -25,6 +31,11 @@ public final class TrainNavGrid {
     public static final double STEP = 0.6;
     public static final double MAX_RISE = 1.05;
     public static final double MAX_DROP = 1.05;
+    /**
+     * Path cost of one block climbed, about its hunting speed over the ladder speed, so a walk round is preferred.
+     * 每爬一格的路径代价，约为追人速度与爬梯速度之比，能绕着走就不爬。
+     */
+    public static final double CLIMB_COST = 2.5;
     private static final double SLAB_MAX = 0.5625;
     private static final double FULL_MIN = 0.9375;
     private static final double CLEARANCE = 0.05;
@@ -126,10 +137,14 @@ public final class TrainNavGrid {
             floor = y + here;
         } else {
             double below = centreTop(x, y - 1, z);
-            if (below < FULL_MIN) {
+            if (below >= FULL_MIN) {
+                floor = y - 1 + below;
+            } else if (isLadder(x, y, z) || isLadder(x, y - 1, z)) {
+                // Holding a rung, or at the top of the ladder. / 抓着横档，或爬到了梯子顶端。
+                floor = y;
+            } else {
                 return Double.NaN;
             }
-            floor = y - 1 + below;
         }
         if (floor < minY) {
             return Double.NaN;
@@ -162,14 +177,20 @@ public final class TrainNavGrid {
     // ---- Moving / 移动 ----
 
     /**
-     * Whether the Partygoer can walk from cell a to the neighbouring cell b (at most one block apart on each axis).
-     * 派对客能否从 a 走到相邻的 b（每个轴最多相差一格）。
+     * Whether the Partygoer can walk (or climb) from cell a to the neighbouring cell b (at most one block apart on each
+     * axis).
+     * 派对客能否从 a 走（或爬）到相邻的 b（每个轴最多相差一格）。
      */
     public boolean canMove(int ax, int ay, int az, int bx, int by, int bz) {
         double fa = floor(ax, ay, az);
         double fb = floor(bx, by, bz);
         if (Double.isNaN(fa) || Double.isNaN(fb)) {
             return false;
+        }
+        if (ax == bx && az == bz) {
+            // Up or down the ladder from a rung: both cells already have their headroom.
+            // 从横档沿梯子上下：两格各自的净空都已检查过。
+            return Math.abs(by - ay) == 1 && isLadder(ax, Math.min(ay, by), az);
         }
         double rise = fb - fa;
         if (rise > MAX_RISE || -rise > MAX_DROP) {
@@ -187,10 +208,19 @@ public final class TrainNavGrid {
         return (blocks.flags(x, (int) Math.floor(floor - 0.01), z) & NavBlocks.FLAG_STAIRS) != 0;
     }
 
+    /** Whether the cell's feet block is a ladder. / 该格脚部方块是否为梯子。 */
+    public boolean isLadder(int x, int y, int z) {
+        return (blocks.flags(x, y, z) & NavBlocks.FLAG_LADDER) != 0;
+    }
+
+    public boolean isLadder(long cell) {
+        return isLadder(x(cell), y(cell), z(cell));
+    }
+
     /**
      * Calls {@code sink} for every reachable neighbour of {@code cell} with its step cost (distance, plus a little for
-     * height changes so flat routes win).
-     * 对 cell 的每个可达邻格调用 sink，并给出步进代价（水平距离，高度变化略加代价，让平路优先）。
+     * height changes so flat routes win; {@link #CLIMB_COST} per block up or down a ladder).
+     * 对 cell 的每个可达邻格调用 sink，并给出步进代价（水平距离，高度变化略加代价，让平路优先；沿梯子每上下一格为 CLIMB_COST）。
      */
     public void neighbors(long cell, NeighborSink sink) {
         long[] edges = edgeCache.get(cell);
@@ -213,7 +243,7 @@ public final class TrainNavGrid {
         if (Double.isNaN(from)) {
             return NO_EDGES;
         }
-        long[] edges = new long[DIRECTIONS.length * 2];
+        long[] edges = new long[(DIRECTIONS.length + 2) * 2];
         int size = 0;
         for (int[] direction : DIRECTIONS) {
             int nx = x + direction[0];
@@ -230,6 +260,12 @@ public final class TrainNavGrid {
                             horizontal + 0.5 * Math.abs(floor(nx, ny, nz) - from));
                 }
                 break;
+            }
+        }
+        for (int dy = 1; dy >= -1; dy -= 2) {
+            if (isLadder(x, Math.min(y, y + dy), z) && canMove(x, y, z, x, y + dy, z)) {
+                edges[size++] = key(x, y + dy, z);
+                edges[size++] = Double.doubleToRawLongBits(CLIMB_COST);
             }
         }
         return size == edges.length ? edges : Arrays.copyOf(edges, size);

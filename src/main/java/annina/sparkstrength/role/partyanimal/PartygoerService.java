@@ -17,12 +17,14 @@ import dev.doctor4t.wathe.cca.PlayerShopComponent;
 import dev.doctor4t.wathe.game.GameConstants;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.record.GameRecordManager;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.damage.DamageTypes;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.packet.s2c.play.PlaySoundS2CPacket;
 import net.minecraft.network.packet.s2c.play.StopSoundS2CPacket;
@@ -106,6 +108,10 @@ public final class PartygoerService {
             }
         });
         ServerTickEvents.END_SERVER_TICK.register(PartygoerService::sweep);
+        // The held player is half a block ahead of it and can graze a wall at a corner, a door or a floor hole: no
+        // suffocation hurt for them. / 被抱者在它前方半格，转角、门口或地板洞口处会蹭进墙里：不让被抱者受窒息伤害。
+        ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) ->
+                !(source.isOf(DamageTypes.IN_WALL) && PartygoerCarry.isCarried(entity)));
         // Below FULL a chunk reads as unloaded to the grid (and stays that way until it is unloaded for good).
         // 低于 FULL 时区块对网格而言已是未加载（直到真正卸载前一直如此）。
         ServerChunkEvents.CHUNK_LEVEL_TYPE_CHANGE.register((world, chunk, oldType, newType) -> {
@@ -168,9 +174,10 @@ public final class PartygoerService {
     }
 
     /**
-     * Blocks were removed or put back at runtime (a door chopped down or restored): every Partygoer in that world
-     * forgets what its grid cached there, so a chopped train door stops being a wall.
-     * 运行时有方块被移除或放回（门被拆或复原）：该世界的每只派对客都忘掉其网格在那里的缓存，被拆的列车门不再算墙。
+     * Blocks were removed or put back at runtime (a door chopped down or restored, a train door opened or closed): every
+     * Partygoer in that world forgets what its grid cached there, so a chopped or open train door stops being a wall.
+     * 运行时有方块被移除或放回（门被拆或复原、列车外门被打开或关上）：该世界的每只派对客都忘掉其网格在那里的缓存，被拆或开着的列车门
+     * 不再算墙。
      */
     public static void onBlocksChanged(ServerWorld world, Collection<BlockPos> changed) {
         for (PartygoerBrain brain : LIVE.values()) {
