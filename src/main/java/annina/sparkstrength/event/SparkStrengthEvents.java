@@ -87,6 +87,9 @@ public final class SparkStrengthEvents {
     }
 
     public static void register() {
+        // A non-op joining a dedicated server in creative is switched to adventure.
+        // 非管理员以创造模式进入专用服务器时改为冒险模式。
+        CreativeJoinGuard.register();
         M67RoundService.initialize();
         DroneService.register();
         BomberTrapService.register();
