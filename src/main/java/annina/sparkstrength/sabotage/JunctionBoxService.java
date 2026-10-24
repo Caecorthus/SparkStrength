@@ -55,6 +55,11 @@ public final class JunctionBoxService {
     private JunctionBoxService() {
     }
 
+    /** Wathe's lockpick, or the Impostor's pry tool, which pries boxes the same way. / Wathe 开锁器，或撬箱效果相同的内鬼撬锁工具。 */
+    public static boolean isPryTool(ItemStack stack) {
+        return stack.isOf(WatheItems.LOCKPICK) || stack.isOf(SparkStrengthItems.impostorLockpick());
+    }
+
     private static final class Channel {
         final int id = nextChannelId++;
         final int kind;
@@ -376,7 +381,7 @@ public final class JunctionBoxService {
         }
         ItemStack held = player.getMainHandStack();
         boolean rightItem = channel.kind == ChannelProgressS2CPacket.KIND_PRY
-                ? held.isOf(WatheItems.LOCKPICK) : held.isOf(SparkStrengthItems.tablet());
+                ? isPryTool(held) : held.isOf(SparkStrengthItems.tablet());
         if (!rightItem) {
             return false;
         }

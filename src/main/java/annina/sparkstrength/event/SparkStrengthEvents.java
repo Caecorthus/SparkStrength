@@ -66,6 +66,7 @@ import annina.sparkstrength.role.waiter.WaiterTaskRevealService;
 import annina.sparkstrength.role.timekeeper.TimekeeperWatchService;
 import annina.sparkstrength.component.timekeeper.TimekeeperWatchComponent;
 import annina.sparkstrength.sabotage.BlackoutSightService;
+import annina.sparkstrength.sabotage.ImpostorLockpickService;
 import annina.sparkstrength.sabotage.SabotageService;
 import annina.sparkstrength.tablet.TabletShopService;
 import annina.sparkstrength.tablet.TabletStateService;
@@ -256,6 +257,8 @@ public final class SparkStrengthEvents {
                 // After the clear (it resets the per-round grant set): every tablet-eligible player gets one free tablet.
                 // 必须在清理之后（清理会重置本局发放记录）：每名符合条件的玩家免费获得一台平板。
                 TabletShopService.grantStarterTablets(serverWorld, gameComponent);
+                // Every Impostor also gets one free pry tool for junction boxes. / 每名内鬼还免费获得一把撬接线箱的撬锁工具。
+                ImpostorLockpickService.grantStarterLockpicks(serverWorld, gameComponent);
                 // Crime-scene snapshots are round state; clear before granting kits so a new round starts empty.
                 // 案发快照属于单局状态；先清空再发放侦探道具，保证新一局从空白开始。
                 DetectiveCaseService.clearRoundState(serverWorld);

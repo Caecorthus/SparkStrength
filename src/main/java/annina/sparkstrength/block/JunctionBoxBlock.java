@@ -7,7 +7,6 @@ import annina.sparkstrength.sabotage.JunctionBoxState;
 import annina.sparkstrength.sabotage.SabotageAccess;
 import annina.sparkstrength.sabotage.SabotageType;
 import com.mojang.serialization.MapCodec;
-import dev.doctor4t.wathe.index.WatheItems;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.HorizontalFacingBlock;
@@ -120,7 +119,7 @@ public final class JunctionBoxBlock extends HorizontalFacingBlock {
     private enum Interaction { NONE, PRY, HACK, REPAIR }
 
     private static Interaction interactionFor(ItemStack stack, BlockState state, PlayerEntity player) {
-        if (stack.isOf(WatheItems.LOCKPICK)) {
+        if (JunctionBoxService.isPryTool(stack)) {
             // Always consumed so a lockpick never falls through; the server explains a refusal. / 总是消耗，开锁器不会落到别处；拒绝原因由服务端说明。
             return Interaction.PRY;
         }
