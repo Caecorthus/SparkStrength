@@ -3,6 +3,9 @@ package annina.sparkstrength.client.role.undercover;
 import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.client.render.ClientFrame;
 import annina.sparkstrength.client.render.ManagedPostEffect;
+import annina.sparkstrength.client.world.LoadedEntities;
+import annina.sparkstrength.entity.PartygoerEntity;
+import annina.sparkstrength.role.partyanimal.PartygoerState;
 import annina.sparkstrength.role.undercover.UndercoverRules;
 import com.mojang.blaze3d.platform.GlConst;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -30,6 +33,7 @@ import net.minecraft.client.render.entity.EntityRenderDispatcher;
 import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.entity.Entity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
@@ -42,12 +46,12 @@ import java.lang.reflect.Method;
 
 /**
  * The stage-2 Undercover's thermal vision, after Tarkov's T-7 goggles (owner 2026-10-19): a clean, full-resolution
- * white-hot monochrome image, living players (and the Undercover's own first-person arm) as white bodies with a soft
- * bloom, the world in readable greys, inside a rounded eyepiece. Line of sight is real: bodies are re-rendered flat
+ * white-hot monochrome image, living players and Partygoers (and the Undercover's own first-person arm) as white bodies
+ * with a soft bloom, the world in readable greys, inside a rounded eyepiece. Line of sight is real: bodies are re-rendered flat
  * white into the private {@code heat} target over a copy of the world depth, so walls and furniture hide them exactly
  * like they hide anything else, and invisible players still show (their body heat is there).
- * 二阶段卧底的热成像，参照塔科夫 T-7 夜视仪（负责人 2026-10-19）：干净的全分辨率白热单色画面，活人（以及卧底自己的第一人称
- * 手臂）是带柔光的白色人形，世界是看得清的灰色，外加圆角目镜。视线遮挡是真实的：人体以纯白重新渲染到私有 {@code heat}
+ * 二阶段卧底的热成像，参照塔科夫 T-7 夜视仪（负责人 2026-10-19）：干净的全分辨率白热单色画面，活人与派对客（以及卧底自己的
+ * 第一人称手臂）是带柔光的白色人形，世界是看得清的灰色，外加圆角目镜。视线遮挡是真实的：人体以纯白重新渲染到私有 {@code heat}
  * 目标，并以世界深度做深度测试，所以墙和家具会像遮挡其他东西一样遮住人；隐身的人照样显示（体温还在）。
  *
  * <p>Two steps per frame on the render thread: {@link #captureHeat} at {@code WorldRenderEvents.BEFORE_DEBUG_RENDER}
@@ -186,6 +190,17 @@ public final class UndercoverThermalRenderer {
                 }
                 emitBody(dispatcher, body, camera, frustum, tickDelta, provider);
             }
+            // A Partygoer is warm too; without it only the player in its arms would glow (2026-10-24).
+            // 派对客也有体温；否则只有它怀里的人在发热（2026-10-24）。
+            if (LoadedEntities.anyPartygoer(client.world)) {
+                double side = 2.0 * UndercoverRules.SIGHT_RANGE;
+                for (PartygoerEntity partygoer : client.world.getEntitiesByClass(PartygoerEntity.class,
+                        Box.of(camera, side, side, side), UndercoverThermalRenderer::isHot)) {
+                    if (partygoer.squaredDistanceTo(camera) <= range) {
+                        emitBody(dispatcher, partygoer, camera, frustum, tickDelta, provider);
+                    }
+                }
+            }
         } finally {
             rendering = false;
             white.close();
@@ -282,7 +297,7 @@ public final class UndercoverThermalRenderer {
      * 按渲染偏移拉伸，并按比原版 0.5 更宽的 CULL_MARGIN 扩大：热图以世界深度做深度测试，所以伸出原版余量的手臂、手持物品、
      * 披风或滑板仍会发热。没有视锥或包围盒不可用时照常绘制。
      */
-    private static boolean inView(@Nullable Frustum frustum, AbstractClientPlayerEntity body, Vec3d offset) {
+    private static boolean inView(@Nullable Frustum frustum, Entity body, Vec3d offset) {
         if (frustum == null || body.ignoreCameraFrustum) {
             return true;
         }
@@ -295,8 +310,17 @@ public final class UndercoverThermalRenderer {
         return frustum.isVisible(now.union(last).stretch(offset).expand(CULL_MARGIN));
     }
 
-    private static void emitBody(EntityRenderDispatcher dispatcher, AbstractClientPlayerEntity body, Vec3d camera,
-                                 @Nullable Frustum frustum, float tickDelta, VertexConsumerProvider provider) {
+    /**
+     * In the world and not hidden inside a Taotie (where the heat pass would draw it anyway: it shows invisible bodies).
+     * 在场且没有藏在饕餮肚里（热图 pass 会画出隐身的身体，所以必须排除）。
+     */
+    private static boolean isHot(PartygoerEntity partygoer) {
+        return partygoer.isAlive() && partygoer.partyState() != PartygoerState.SWALLOWED;
+    }
+
+    private static <T extends Entity> void emitBody(EntityRenderDispatcher dispatcher, T body, Vec3d camera,
+                                                    @Nullable Frustum frustum, float tickDelta,
+                                                    VertexConsumerProvider provider) {
         // Same placement as WorldRenderer#renderEntity + EntityRenderDispatcher#render, minus shadow, fire, hitbox.
         // 与 WorldRenderer#renderEntity + EntityRenderDispatcher#render 摆放一致，但不画阴影、火焰与碰撞箱。
         double x = MathHelper.lerp(tickDelta, body.lastRenderX, body.getX()) - camera.x;
@@ -305,7 +329,7 @@ public final class UndercoverThermalRenderer {
         float yaw = MathHelper.lerp(tickDelta, body.prevYaw, body.getYaw());
         MatrixStack matrices = new MatrixStack();
         try {
-            EntityRenderer<? super AbstractClientPlayerEntity> renderer = dispatcher.getRenderer(body);
+            EntityRenderer<? super T> renderer = dispatcher.getRenderer(body);
             Vec3d offset = renderer.getPositionOffset(body, tickDelta);
             if (!inView(frustum, body, offset)) {
                 return;
