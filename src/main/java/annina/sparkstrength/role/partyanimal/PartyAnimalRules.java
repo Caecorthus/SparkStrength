@@ -33,6 +33,11 @@ public final class PartyAnimalRules {
     public static final int HUNT_SPEED_LEVEL = 2;
     public static final int CARRY_SPEED_LEVEL = 4;
     public static final int RAGE_SPEED_LEVEL = 5;
+    /**
+     * Ladder speed in every phase, a player's climb (2.35 b/s): Speed doesn't make a player climb faster either.
+     * 各阶段的爬梯速度，与玩家爬梯相同（2.35 格/秒）：速度效果也不会让玩家爬得更快。
+     */
+    public static final double CLIMB_BLOCKS_PER_TICK = 2.35 / 20.0;
 
     public static final int EAT_TICKS_PER_LAYER = 5 * 20;
     /** Eating sound and particles every this many ticks, like a player eating. / 进食声与粒子间隔，与玩家进食相同。 */
