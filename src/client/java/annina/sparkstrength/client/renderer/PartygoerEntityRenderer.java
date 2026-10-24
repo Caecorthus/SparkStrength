@@ -4,7 +4,6 @@ import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.entity.PartygoerEntity;
 import net.minecraft.client.render.entity.EntityRendererFactory;
 import net.minecraft.client.render.entity.MobEntityRenderer;
-import net.minecraft.client.render.entity.model.EntityModelLayers;
 import net.minecraft.util.Identifier;
 
 /**
@@ -15,7 +14,7 @@ public final class PartygoerEntityRenderer extends MobEntityRenderer<PartygoerEn
     public static final Identifier TEXTURE = SparkStrength.id("textures/entity/partygoer.png");
 
     public PartygoerEntityRenderer(EntityRendererFactory.Context context) {
-        super(context, new PartygoerModel(context.getPart(EntityModelLayers.PLAYER)), 0.5F);
+        super(context, new PartygoerModel(context.getPart(PartygoerModel.LAYER)), 0.5F);
     }
 
     @Override
