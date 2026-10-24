@@ -819,5 +819,9 @@
   "hud.sparkstrength.partygoer.carry": "Partygoer carrying %s",
   "hud.sparkstrength.partygoer.eat": "Partygoer eating %s (%ss)",
   "hud.sparkstrength.partygoer.rage": "Partygoer berserk! Charging %s (%ss)",
-  "hud.sparkstrength.partygoer.swallowed": "Partygoer got swallowed"
+  "hud.sparkstrength.partygoer.swallowed": "Partygoer got swallowed",
+  "item.sparkstrength.impostor_lockpick": "Pry Tool",
+  "item.sparkstrength.impostor_lockpick.tooltip.line1": "Hold right-click on a junction box to pry it open, then hack it with your tablet",
+  "item.sparkstrength.impostor_lockpick.tooltip.line2": "Only works on junction boxes, not doors; nobody sees it in your hand",
+  "message.sparkstrength.sabotage.impostor_lockpick_granted": "You carry a pry tool: hold right-click on a junction box to pry it open, then hack it with your tablet. It can't open doors, and nobody sees it in your hand."
 }

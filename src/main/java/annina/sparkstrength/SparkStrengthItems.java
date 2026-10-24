@@ -17,6 +17,7 @@ import annina.sparkstrength.item.DroneItem;
 import annina.sparkstrength.item.EmberSugarItem;
 import annina.sparkstrength.item.FlashlightItem;
 import annina.sparkstrength.item.GhostflameBittersItem;
+import annina.sparkstrength.item.ImpostorLockpickItem;
 import annina.sparkstrength.item.M67Item;
 import annina.sparkstrength.item.MagnifierItem;
 import annina.sparkstrength.item.MorphDeviceItem;
@@ -93,6 +94,7 @@ public final class SparkStrengthItems {
     public static final Identifier CQCM_MASK_ID = SparkStrength.id("cqcm_mask");
     public static final Identifier TACTICAL_TOMAHAWK_ID = SparkStrength.id("tactical_tomahawk");
     public static final Identifier PARTY_BALLOON_ID = SparkStrength.id("party_balloon");
+    public static final Identifier IMPOSTOR_LOCKPICK_ID = SparkStrength.id("impostor_lockpick");
 
     /** 怀表模式数据组件：0=刷新物品冷却，1=刷新技能冷却。 */
     public static final ComponentType<Integer> TIMEKEEPER_WATCH_MODE = Registry.register(
@@ -138,6 +140,7 @@ public final class SparkStrengthItems {
     private static Item cqcmMask;
     private static Item tacticalTomahawk;
     private static Item partyBalloon;
+    private static Item impostorLockpick;
     private static boolean registered;
 
     private SparkStrengthItems() {
@@ -360,6 +363,11 @@ public final class SparkStrengthItems {
                 PARTY_BALLOON_ID,
                 new PartyBalloonItem(new Item.Settings().maxCount(PartyBalloonRules.MAX_STACK))
         );
+        impostorLockpick = Registry.register(
+                Registries.ITEM,
+                IMPOSTOR_LOCKPICK_ID,
+                new ImpostorLockpickItem(new Item.Settings().maxCount(1))
+        );
         registered = true;
     }
 
@@ -550,6 +558,13 @@ public final class SparkStrengthItems {
             throw new IllegalStateException("SparkStrength items are not registered yet");
         }
         return partyBalloon;
+    }
+
+    public static Item impostorLockpick() {
+        if (impostorLockpick == null) {
+            throw new IllegalStateException("SparkStrength items are not registered yet");
+        }
+        return impostorLockpick;
     }
 
     public static Item bodyguardVest() {

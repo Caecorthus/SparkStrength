@@ -819,5 +819,9 @@
   "hud.sparkstrength.partygoer.carry": "派对客扛着 %s",
   "hud.sparkstrength.partygoer.eat": "派对客正在吃 %s（%s 秒）",
   "hud.sparkstrength.partygoer.rage": "派对客狂怒！冲向 %s（%s 秒）",
-  "hud.sparkstrength.partygoer.swallowed": "派对客被吞进了肚子"
+  "hud.sparkstrength.partygoer.swallowed": "派对客被吞进了肚子",
+  "item.sparkstrength.impostor_lockpick": "撬锁工具",
+  "item.sparkstrength.impostor_lockpick.tooltip.line1": "对着接线箱按住右键撬开它，撬开后用平板入侵",
+  "item.sparkstrength.impostor_lockpick.tooltip.line2": "只能撬接线箱，开不了门；拿在手里别人看不见",
+  "message.sparkstrength.sabotage.impostor_lockpick_granted": "你携带了一把撬锁工具：对着接线箱按住右键就能撬开，撬开后用平板入侵。它开不了门，拿在手里别人也看不见。"
 }
