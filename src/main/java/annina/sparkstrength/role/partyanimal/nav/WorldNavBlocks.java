@@ -4,6 +4,7 @@ import dev.doctor4t.wathe.block.DoorPartBlock;
 import dev.doctor4t.wathe.block.TrainDoorBlock;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.DoorBlock;
+import net.minecraft.block.LadderBlock;
 import net.minecraft.block.StairsBlock;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
@@ -15,8 +16,10 @@ import java.util.List;
 
 /**
  * {@link NavBlocks} over a live server world. Room doors (every Wathe small door that is not a train door, and vanilla
- * doors) report no collision; train doors are solid; unloaded chunks are solid so the grid never forces a chunk load.
- * 基于服务器世界的 NavBlocks。房门（所有非列车外门的 Wathe 小门，以及原版门）不报告碰撞；列车外门为实心；未加载区块视为实心，网格绝不强制加载区块。
+ * doors) report no collision; train doors are solid while closed and open once someone opened or blasted them (the
+ * Partygoer never opens one itself); unloaded chunks are solid so the grid never forces a chunk load.
+ * 基于服务器世界的 NavBlocks。房门（所有非列车外门的 Wathe 小门，以及原版门）不报告碰撞；列车外门关着时为实心，有人打开或炸开后可通过
+ * （派对客自己从不开外门）；未加载区块视为实心，网格绝不强制加载区块。
  */
 public final class WorldNavBlocks implements NavBlocks {
     private static final double[][] NONE = new double[0][];
@@ -39,7 +42,8 @@ public final class WorldNavBlocks implements NavBlocks {
             return NONE;
         }
         if (state.getBlock() instanceof TrainDoorBlock) {
-            return FULL;
+            // A blasted door stays open. / 被炸开的门一直开着。
+            return state.get(DoorPartBlock.OPEN) ? NONE : FULL;
         }
         VoxelShape shape = state.getCollisionShape(world, cursor);
         if (shape.isEmpty()) {
@@ -66,6 +70,12 @@ public final class WorldNavBlocks implements NavBlocks {
         }
         if (state.getBlock() instanceof StairsBlock) {
             flags |= FLAG_STAIRS;
+        }
+        if (state.getBlock() instanceof LadderBlock) {
+            flags |= FLAG_LADDER;
+        }
+        if (state.getBlock() instanceof TrainDoorBlock) {
+            flags |= FLAG_TRAIN_DOOR;
         }
         return flags;
     }

@@ -1,9 +1,13 @@
 package annina.sparkstrength.client.renderer;
 
+import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.entity.PartygoerEntity;
 import annina.sparkstrength.role.partyanimal.PartygoerState;
+import net.minecraft.client.model.Dilation;
 import net.minecraft.client.model.ModelPart;
+import net.minecraft.client.model.TexturedModelData;
 import net.minecraft.client.render.entity.model.CrossbowPosing;
+import net.minecraft.client.render.entity.model.EntityModelLayer;
 import net.minecraft.client.render.entity.model.PlayerEntityModel;
 import net.minecraft.util.math.MathHelper;
 
@@ -13,6 +17,14 @@ import net.minecraft.util.math.MathHelper;
  * 派对客：宽手臂玩家模型（这样皮肤的外套与袖子外层能显示，原版僵尸模型没有外层），摆成僵尸姿势、双臂前伸。进食时点头，狂怒愣住时摇头。
  */
 public final class PartygoerModel extends PlayerEntityModel<PartygoerEntity> {
+    /**
+     * Its own copy of the wide player layer. Entity Model Features picks a model by layer name, so on
+     * {@code minecraft:player} a resource pack's player.jem (Fresh Animations' player extension...) restyled it too and
+     * hid parts of it.
+     * 宽手臂玩家模型层的独立副本。Entity Model Features 按模型层名挑模型，用 minecraft:player 时资源包的 player.jem
+     * （Fresh Animations 的玩家扩展等）也会套到它身上，把部分肢体藏掉。
+     */
+    public static final EntityModelLayer LAYER = new EntityModelLayer(SparkStrength.id("partygoer"), "main");
     /** Arm pitch while holding a player: hands at their chest. / 抱人时的手臂俯仰：两手在被抱者胸口高度。 */
     private static final float HOLD_PITCH = -1.15F;
     /**
@@ -23,6 +35,11 @@ public final class PartygoerModel extends PlayerEntityModel<PartygoerEntity> {
 
     public PartygoerModel(ModelPart root) {
         super(root, false);
+    }
+
+    /** The vanilla wide player geometry. / 原版宽手臂玩家几何。 */
+    public static TexturedModelData getTexturedModelData() {
+        return TexturedModelData.of(PlayerEntityModel.getTexturedModelData(Dilation.NONE, false), 64, 64);
     }
 
     @Override

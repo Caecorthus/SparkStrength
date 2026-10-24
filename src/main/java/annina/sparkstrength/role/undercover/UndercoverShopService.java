@@ -17,10 +17,10 @@ import net.minecraft.text.Text;
 import java.util.List;
 
 /**
- * The Undercover's shop: the CQCM mask (250), once per round. Wathe opens a shop for any role that gets entries and
+ * The Undercover's shop: the CQCM mask (150), once per round. Wathe opens a shop for any role that gets entries and
  * buys by index, so the list depends only on the synced role. Not gated on being alive: Wathe caches stock(1) from
  * this list before the round turns ACTIVE.
- * 卧底商店：CQCM 面具（250），每局限购一次。Wathe 只要有条目就开放商店并按下标购买，所以列表只取决于已同步的身份。
+ * 卧底商店：CQCM 面具（150），每局限购一次。Wathe 只要有条目就开放商店并按下标购买，所以列表只取决于已同步的身份。
  * 不检查存活：Wathe 在对局变为 ACTIVE 前就从此列表缓存 stock(1)。
  */
 public final class UndercoverShopService {

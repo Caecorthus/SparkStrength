@@ -4,10 +4,12 @@ import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.SparkStrengthEntities;
 import annina.sparkstrength.client.compat.SparkWitchSecondaryKeyCompat;
 import annina.sparkstrength.client.renderer.PartygoerEntityRenderer;
+import annina.sparkstrength.client.renderer.PartygoerModel;
 import annina.sparkstrength.network.partyanimal.PartygoerMenuC2SPacket;
 import annina.sparkstrength.network.partyanimal.PartygoerMenuS2CPacket;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.client.rendering.v1.EntityModelLayerRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.loader.api.FabricLoader;
 import org.agmas.noellesroles.Noellesroles;
@@ -32,6 +34,7 @@ public final class PartygoerClientHooks {
             return;
         }
         registered = true;
+        EntityModelLayerRegistry.registerModelLayer(PartygoerModel.LAYER, PartygoerModel::getTexturedModelData);
         EntityRendererRegistry.register(SparkStrengthEntities.partygoer(), PartygoerEntityRenderer::new);
         ClientPlayNetworking.registerGlobalReceiver(PartygoerMenuS2CPacket.ID,
                 (payload, context) -> context.client().setScreen(new PartygoerRoomScreen(payload.rooms())));

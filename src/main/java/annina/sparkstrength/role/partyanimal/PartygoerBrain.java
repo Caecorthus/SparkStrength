@@ -14,6 +14,7 @@ import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.DoorBlock;
+import net.minecraft.block.LadderBlock;
 import net.minecraft.block.enums.DoubleBlockHalf;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -23,8 +24,10 @@ import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvent;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -39,9 +42,9 @@ import java.util.UUID;
  *
  * <p>Movement is kinematic along cells of its own {@link TrainNavGrid}: the path is replanned every half second (or when
  * the target changes cell; after a search that could not reach it, only every two seconds) and walked at the phase's
- * speed; closed doors two to three cells ahead are pushed open.
+ * speed; closed doors two to three cells ahead are pushed open. Ladders are climbed at a player's ladder speed.
  * 移动是沿自有 TrainNavGrid 格子的运动学位移：每半秒（或目标换格时；到不了目标的搜索之后则每两秒）重新规划，按当前阶段速度行走；
- * 前方两三格内关着的门会被推开。</p>
+ * 前方两三格内关着的门会被推开。梯子按玩家的爬梯速度爬。</p>
  */
 public final class PartygoerBrain {
     private static final int REPLAN_TICKS = 10;
@@ -395,6 +398,11 @@ public final class PartygoerBrain {
             if (!target.startRiding(body, true)) {
                 return false;
             }
+            long here = grid.snap(body.getX(), body.getY(), body.getZ());
+            long ladder = here == Long.MIN_VALUE ? Long.MIN_VALUE : ladderAt(here);
+            if (ladder != Long.MIN_VALUE) {
+                faceLadder(ladder);
+            }
         }
         PartygoerService.playClip(this, SparkStrengthSounds.PARTYGOER_GRAB);
         PartygoerService.recordGrab(this, target);
@@ -443,8 +451,10 @@ public final class PartygoerBrain {
 
     /**
      * Walks the planned path towards {@code goal}; true once at its end (the goal, or the reachable cell nearest it).
-     * False while walking, and while there is no route at all (empty path: it stands still).
+     * False while walking, and while there is no route at all (empty path: it stands still). Ladder stretches go at
+     * {@link PartyAnimalRules#CLIMB_BLOCKS_PER_TICK}.
      * 沿规划路径走向 goal；走到路径终点（目标或离目标最近的可达格）时返回 true。行走途中以及完全无路（空路径：原地不动）时返回 false。
+     * 梯子路段按 CLIMB_BLOCKS_PER_TICK 的速度。
      */
     private boolean walkTo(long goal, int speedLevel) {
         // A failed search waits out its back-off even when the goal changes cell: it would explore the same area again.
@@ -456,19 +466,40 @@ public final class PartygoerBrain {
             return false;
         }
         openDoorsAhead();
-        double remaining = PartyAnimalRules.blocksPerTick(speedLevel);
-        while (remaining > 1.0E-6 && pathIndex < path.size()) {
-            Vec3d target = PartyRoomIndex.cellCentre(grid, path.get(pathIndex));
+        double walkSpeed = PartyAnimalRules.blocksPerTick(speedLevel);
+        // Share of this tick still to spend. / 本刻剩余可用的时间比例。
+        double time = 1.0;
+        while (time > 1.0E-6 && pathIndex < path.size()) {
+            long from = path.get(pathIndex - 1);
+            long to = path.get(pathIndex);
+            // Straight up or down is climbing, with the rung the lower of the two cells. / 直上直下即为爬梯，横档是两格中较低者。
+            boolean climb = TrainNavGrid.x(from) == TrainNavGrid.x(to) && TrainNavGrid.z(from) == TrainNavGrid.z(to);
+            long rung = !climb ? Long.MIN_VALUE : TrainNavGrid.y(from) < TrainNavGrid.y(to) ? from : to;
+            double speed = climb ? PartyAnimalRules.CLIMB_BLOCKS_PER_TICK : walkSpeed;
+            Vec3d target = PartyRoomIndex.cellCentre(grid, to);
             Vec3d delta = target.subtract(body.getPos());
             double distance = delta.length();
-            if (distance <= remaining) {
-                moveTo(target, delta);
-                remaining -= distance;
+            double reach = time * speed;
+            if (distance <= reach) {
+                moveTo(target, delta, rung);
+                time -= distance / speed;
                 pathIndex++;
             } else {
-                Vec3d step = delta.multiply(remaining / distance);
-                moveTo(body.getPos().add(step), step);
-                remaining = 0.0;
+                Vec3d step = delta.multiply(reach / distance);
+                moveTo(body.getPos().add(step), step, rung);
+                time = 0.0;
+            }
+            // Holding someone, it also keeps its back to the ladder while stepping on or off it.
+            // 抱着人时，踏上或离开梯子的这一步也背对梯子。
+            long ladder = rung;
+            if (!climb && body.hasPassengers()) {
+                ladder = ladderAt(to);
+                if (ladder == Long.MIN_VALUE) {
+                    ladder = ladderAt(from);
+                }
+            }
+            if (ladder != Long.MIN_VALUE) {
+                faceLadder(ladder);
             }
         }
         return pathIndex >= path.size();
@@ -506,14 +537,20 @@ public final class PartygoerBrain {
     }
 
     private void moveTo(Vec3d pos, Vec3d heading) {
+        moveTo(pos, heading, Long.MIN_VALUE);
+    }
+
+    /** {@code rung}: the ladder cell it is climbing on, for the ladder's own step sound. / 正在爬的梯子格，用梯子自己的脚步声。 */
+    private void moveTo(Vec3d pos, Vec3d heading, long rung) {
         double moved = pos.distanceTo(body.getPos());
         body.setPosition(pos.x, pos.y, pos.z);
         face(heading);
         footstepDistance += moved;
         if (footstepDistance >= FOOTSTEP_EVERY) {
             footstepDistance = 0.0;
-            world.playSound(null, body.getX(), body.getY(), body.getZ(), SoundEvents.ENTITY_ZOMBIE_STEP,
-                    SoundCategory.HOSTILE, 0.5F, 1.0F);
+            SoundEvent step = rung == Long.MIN_VALUE ? SoundEvents.ENTITY_ZOMBIE_STEP
+                    : world.getBlockState(cellPos(rung)).getSoundGroup().getStepSound();
+            world.playSound(null, body.getX(), body.getY(), body.getZ(), step, SoundCategory.HOSTILE, 0.5F, 1.0F);
         }
     }
 
@@ -521,17 +558,54 @@ public final class PartygoerBrain {
         if (heading.x * heading.x + heading.z * heading.z < 1.0E-6) {
             return;
         }
-        float target = (float) (MathHelper.atan2(heading.z, heading.x) * (180.0 / Math.PI)) - 90.0F;
-        float yaw = MathHelper.stepUnwrappedAngleTowards(body.getYaw(), target, TURN_DEGREES_PER_TICK);
+        turn((float) (MathHelper.atan2(heading.z, heading.x) * (180.0 / Math.PI)) - 90.0F, TURN_DEGREES_PER_TICK);
+    }
+
+    private void turn(float target, float maxDegrees) {
+        float yaw = MathHelper.stepUnwrappedAngleTowards(body.getYaw(), target, maxDegrees);
         body.setYaw(yaw);
         body.setBodyYaw(yaw);
         body.setHeadYaw(yaw);
     }
 
     /**
+     * On a ladder it faces the rungs like a player. Holding someone it turns its back to them at once instead, or the
+     * held player (in front of its chest) would be pressed into the wall the ladder hangs on.
+     * 在梯子上像玩家一样面朝横档。抱着人时则立刻背对梯子，否则被抱的人（在它胸前）会被挤进挂梯子的墙里。
+     */
+    private void faceLadder(long cell) {
+        BlockState state = world.getBlockState(cellPos(cell));
+        if (!(state.getBlock() instanceof LadderBlock)) {
+            return;
+        }
+        // A ladder faces away from its wall. / 梯子朝向背离所挂的墙。
+        Direction out = state.get(LadderBlock.FACING);
+        if (body.hasPassengers()) {
+            turn(out.asRotation(), 180.0F);
+        } else {
+            turn(out.getOpposite().asRotation(), TURN_DEGREES_PER_TICK);
+        }
+    }
+
+    /** The cell if it is a rung, or the rung under it (the top of the ladder). / 该格本身是横档，或其下方的横档（梯子顶端）。 */
+    private long ladderAt(long cell) {
+        if (grid.isLadder(cell)) {
+            return cell;
+        }
+        long below = TrainNavGrid.key(TrainNavGrid.x(cell), TrainNavGrid.y(cell) - 1, TrainNavGrid.z(cell));
+        return grid.isLadder(below) ? below : Long.MIN_VALUE;
+    }
+
+    private static BlockPos cellPos(long cell) {
+        return new BlockPos(TrainNavGrid.x(cell), TrainNavGrid.y(cell), TrainNavGrid.z(cell));
+    }
+
+    /**
      * Opens closed room doors in the next few cells (key, lock and jam ignored), keeps open ones from closing on it, and
-     * logs a forced opening on the door monitor.
-     * 推开前方几格内关着的房门（无视钥匙、上锁与卡门），让开着的门别在身上关上，并在门禁记录里记一条强行打开。
+     * logs a forced opening on the door monitor. Train doors are never opened, only kept open while it passes one that
+     * someone else opened.
+     * 推开前方几格内关着的房门（无视钥匙、上锁与卡门），让开着的门别在身上关上，并在门禁记录里记一条强行打开。列车外门从不推开，
+     * 只在穿过别人打开的外门时让它别关上。
      */
     private void openDoorsAhead() {
         int end = Math.min(path.size(), pathIndex + DOOR_LOOKAHEAD);
@@ -541,7 +615,7 @@ public final class PartygoerBrain {
             int y = TrainNavGrid.y(cell);
             int z = TrainNavGrid.z(cell);
             for (int dy = 0; dy <= 1; dy++) {
-                if ((grid.flags(x, y + dy, z) & NavBlocks.FLAG_ROOM_DOOR) != 0) {
+                if ((grid.flags(x, y + dy, z) & (NavBlocks.FLAG_ROOM_DOOR | NavBlocks.FLAG_TRAIN_DOOR)) != 0) {
                     openDoor(new BlockPos(x, y + dy, z));
                 }
             }
@@ -550,13 +624,13 @@ public final class PartygoerBrain {
 
     private void openDoor(BlockPos pos) {
         BlockState state = world.getBlockState(pos);
-        if (state.getBlock() instanceof SmallDoorBlock && !(state.getBlock() instanceof TrainDoorBlock)) {
+        if (state.getBlock() instanceof SmallDoorBlock) {
             BlockPos lower = state.get(SmallDoorBlock.HALF) == DoubleBlockHalf.LOWER ? pos : pos.down();
             BlockState lowerState = world.getBlockState(lower);
             if (!(world.getBlockEntity(lower) instanceof SmallDoorBlockEntity door)) {
                 return;
             }
-            if (!door.isOpen() && !door.isBlasted()) {
+            if (!door.isOpen() && !door.isBlasted() && !(state.getBlock() instanceof TrainDoorBlock)) {
                 SmallDoorBlock.toggleDoor(lowerState, world, door, lower);
                 DoorLogService.recordForced(world, lower);
             }
