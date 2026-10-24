@@ -11,7 +11,7 @@ package annina.sparkstrength.role.undercover;
  */
 public final class UndercoverRules {
     /** CQCM mask in the Undercover's shop. / 卧底商店里的 CQCM 面具。 */
-    public static final int MASK_PRICE = 250;
+    public static final int MASK_PRICE = 150;
     /** Paid when an Undercover completes a junction box hack (task money is RoleEconomyRules'). / 卧底完成接线箱入侵的奖励。 */
     public static final int HACK_REWARD = 100;
 
