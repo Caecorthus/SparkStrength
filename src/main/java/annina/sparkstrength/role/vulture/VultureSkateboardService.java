@@ -3,11 +3,10 @@ package annina.sparkstrength.role.vulture;
 import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.component.vulture.SkateboardRideComponent;
-import annina.sparkstrength.mixin.minecraft.ItemCooldownEntryAccessor;
-import annina.sparkstrength.mixin.minecraft.ItemCooldownManagerAccessor;
 import annina.sparkstrength.record.AchievementRecords;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
 import annina.sparkstrength.role.AbilityLocks;
+import annina.sparkstrength.util.ItemCooldownSync;
 import annina.sparkstrength.util.SparkPlayers;
 import dev.doctor4t.wathe.api.event.GameEvents;
 import dev.doctor4t.wathe.api.event.KillPlayer;
@@ -20,7 +19,6 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.minecraft.entity.attribute.EntityAttributeInstance;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.entity.player.ItemCooldownManager;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.Item;
@@ -53,7 +51,6 @@ public final class VultureSkateboardService {
      * 稳定的修饰符 ID；它是临时修饰符（不会存档），只由本服务添加和移除。
      */
     public static final Identifier SPEED_MODIFIER_ID = SparkStrength.id("skateboard_speed");
-    private static final int COOLDOWN_SYNC_TOLERANCE_TICKS = 5;
     private static final Map<ServerWorld, Round> ROUNDS = new IdentityHashMap<>();
     private static boolean registered;
 
@@ -145,7 +142,9 @@ public final class VultureSkateboardService {
                 EntityAttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
         ));
         SkateboardRideComponent.KEY.get(player).start(now + VultureSkateboardRules.RIDE_TICKS);
-        player.getItemCooldownManager().set(skateboard, VultureSkateboardRules.USE_COOLDOWN_TICKS);
+        // Exact: readyAt below is the real gate, and Fast Hands / Stimulation must not shorten the shown cooldown.
+        // 精确写入：下方的 readyAt 才是真正的判定，快手/亢奋不得缩短显示的冷却。
+        ItemCooldownSync.writeExact(player, skateboard, VultureSkateboardRules.USE_COOLDOWN_TICKS);
         if (round != null) {
             round.readyAt.put(player.getUuid(), now + VultureSkateboardRules.USE_COOLDOWN_TICKS);
         }
@@ -314,19 +313,11 @@ public final class VultureSkateboardService {
     }
 
     /**
-     * Raise (never shorten) the vanilla cooldown of {@code item}. The item-cooldown clock and world time may sit a tick
-     * apart, so a small shortfall is tolerated instead of re-sending (and restarting the sweep of) the cooldown each tick.
-     * 提高（绝不缩短）该物品的原版冷却。物品冷却计时与世界时间可能相差一刻，因此容忍少量差额，避免每刻重发冷却（并重置冷却动画）。
+     * Shows a server-clock lock on the board's slot: raise-only and exact, see {@link ItemCooldownSync}.
+     * 在滑板栏位显示服务端时钟锁：只提高且精确，见 {@link ItemCooldownSync}。
      */
     private static void preserveCooldown(ServerPlayerEntity player, Item item, int minimumTicks) {
-        ItemCooldownManager manager = player.getItemCooldownManager();
-        Object entry = ((ItemCooldownManagerAccessor) manager).sparkstrength$getEntries().get(item);
-        int remaining = entry == null ? 0 : Math.max(0,
-                ((ItemCooldownEntryAccessor) entry).sparkstrength$getEndTick()
-                        - ((ItemCooldownManagerAccessor) manager).sparkstrength$getTick());
-        if (remaining + COOLDOWN_SYNC_TOLERANCE_TICKS < minimumTicks) {
-            manager.set(item, minimumTicks);
-        }
+        ItemCooldownSync.raiseExact(player, item, minimumTicks);
     }
 
     private static final class Round {

@@ -5,6 +5,7 @@ import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.component.bodyguard.BodyguardGearComponent;
 import annina.sparkstrength.mixin.minecraft.ItemCooldownEntryAccessor;
 import annina.sparkstrength.mixin.minecraft.ItemCooldownManagerAccessor;
+import annina.sparkstrength.util.ItemCooldownSync;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerStaminaComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
@@ -231,7 +232,10 @@ public final class BodyguardShieldService {
         }
         int left = (int) Math.min(Integer.MAX_VALUE, gear.shieldCooldownUntil() - now);
         if (left > 0) {
-            manager.set(shield, left);
+            // Exact: shieldCooldownUntil already holds the real (possibly Fast Hands shortened) end; set would shorten
+            // it again and the slot would end before the shield is ready. / 精确写入：shieldCooldownUntil 已是真实（可能
+            // 已被快手缩短的）结束时间；用 set 会再次缩短，栏位冷却会早于盾实际可用时结束。
+            ItemCooldownSync.writeExact(player, shield, left);
         }
     }
 
