@@ -6,6 +6,7 @@ import io.netty.handler.codec.DecoderException;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtHelper;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.registry.RegistryWrapper;
@@ -20,14 +21,16 @@ import org.ladysnake.cca.api.v3.component.sync.AutoSyncedComponent;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /**
- * The detective's case folder: filed murders, notes, killer-role guess, presumed killer and the suspect clues of each
- * case.
- * 侦探的文件夹：已记录的命案、笔记、凶手身份推测、假定凶手以及每起命案的嫌疑人线索。
+ * The detective's case folder: filed murders, notes, killer-role guess, presumed killer, and per case the suspect clues
+ * and the players who answered "not present".
+ * 侦探的文件夹：已记录的命案、笔记、凶手身份推测、假定凶手，以及每起命案的嫌疑人线索与回答“不在场”的玩家。
  *
  * <p>Authority: the server owns this state; clients only edit it through the detective C2S packets, which the
  * service validates. Mutators do not sync on their own (callers batch changes, then call {@link #sync()}, or
@@ -54,8 +57,8 @@ public final class DetectiveCasePlayerComponent implements AutoSyncedComponent {
     // Server-only, never persisted: coalesced client-driven edits and the pre-open sync throttle.
     // 仅服务端、不持久化：合并客户端触发的修改，以及打开文件夹前同步的节流。
     private boolean dirty;
-    // Server-only, transient: an open request deferred until the pending sync is flushed. 仅服务端临时状态：等待同步后再打开。
-    private boolean openAfterFlush;
+    // Server-only, transient: the screen whose open request waits for the pending sync. 仅服务端临时状态：等待同步后再打开的界面。
+    private @Nullable DetectiveCaseRules.DetectiveScreen openAfterFlush;
     private long nextOpenSyncTick;
 
     public DetectiveCasePlayerComponent(PlayerEntity player) {
@@ -185,6 +188,25 @@ public final class DetectiveCasePlayerComponent implements AutoSyncedComponent {
     }
 
     /**
+     * Records a "not present" answer for the uuid the detective asked about; false if the case is missing, the uuid is
+     * already there or the case holds MAX_ABSENT_PER_CASE answers.
+     * 记录侦探所问 UUID 的“不在场”回应；案件不存在、已记录或已达 MAX_ABSENT_PER_CASE 条时返回 false。
+     */
+    public boolean markAbsent(UUID caseId, UUID playerUuid) {
+        DetectiveCase detectiveCase = findCase(caseId);
+        if (detectiveCase == null || playerUuid == null
+                || detectiveCase.absent.size() >= DetectiveCaseRules.MAX_ABSENT_PER_CASE) {
+            return false;
+        }
+        return detectiveCase.absent.add(playerUuid);
+    }
+
+    public boolean isAbsent(UUID caseId, @Nullable UUID playerUuid) {
+        DetectiveCase detectiveCase = findCase(caseId);
+        return detectiveCase != null && playerUuid != null && detectiveCase.absent.contains(playerUuid);
+    }
+
+    /**
      * Server: the live world setting. Client: the value carried by the last sync.
      * 服务端返回世界组件中的实时设置；客户端返回最近一次同步的值。
      */
@@ -230,15 +252,18 @@ public final class DetectiveCasePlayerComponent implements AutoSyncedComponent {
         return dirty;
     }
 
-    /** Server: asks the end-of-tick flush to open the folder after syncing. 服务端：请求 tick 末尾同步后再打开文件夹。 */
-    public void requestOpenAfterFlush() {
-        openAfterFlush = true;
+    /**
+     * Server: asks the end-of-tick flush to open {@code screen} after syncing; a later request replaces an earlier one.
+     * 服务端：请求 tick 末尾同步后再打开该界面；后来的请求覆盖先前的请求。
+     */
+    public void requestOpenAfterFlush(DetectiveCaseRules.DetectiveScreen screen) {
+        openAfterFlush = screen;
     }
 
-    /** Server: true once per deferred open request. 服务端：每个延迟打开请求只返回一次 true。 */
-    public boolean consumeOpenAfterFlush() {
-        boolean requested = openAfterFlush;
-        openAfterFlush = false;
+    /** Server: the deferred screen, returned once per request, else null. 服务端：每个延迟打开请求只返回一次界面，否则为 null。 */
+    public @Nullable DetectiveCaseRules.DetectiveScreen consumeOpenAfterFlush() {
+        DetectiveCaseRules.DetectiveScreen requested = openAfterFlush;
+        openAfterFlush = null;
         return requested;
     }
 
@@ -298,6 +323,17 @@ public final class DetectiveCasePlayerComponent implements AutoSyncedComponent {
                 buf.writeBoolean(clue.anonymous());
                 buf.writeVarInt(clue.distanceBlocks());
             }
+            // Uuids the detective picked on the roster themself (real players by choice, like the presumed killer).
+            // 侦探在名单中亲自选择的 UUID（与假定凶手一样，是主动选择的真实玩家）。
+            int absentCount = Math.min(detectiveCase.absent.size(), DetectiveCaseRules.MAX_ABSENT_PER_CASE);
+            buf.writeVarInt(absentCount);
+            int written = 0;
+            for (UUID absent : detectiveCase.absent) {
+                if (written++ >= absentCount) {
+                    break;
+                }
+                buf.writeUuid(absent);
+            }
         }
     }
 
@@ -326,6 +362,10 @@ public final class DetectiveCasePlayerComponent implements AutoSyncedComponent {
                     boolean anonymous = buf.readBoolean();
                     int distance = buf.readVarInt();
                     detectiveCase.suspects.add(new SuspectClue(null, displayUuid, displayName, anonymous, distance));
+                }
+                int absentCount = readBoundedCount(buf, DetectiveCaseRules.MAX_ABSENT_PER_CASE);
+                for (int j = 0; j < absentCount; j++) {
+                    detectiveCase.absent.add(buf.readUuid());
                 }
                 if (decoded.stream().noneMatch(existing -> existing.caseId.equals(caseId))) {
                     decoded.add(detectiveCase);
@@ -374,6 +414,13 @@ public final class DetectiveCasePlayerComponent implements AutoSyncedComponent {
                     suspectList.add(suspectTag);
                 }
                 caseTag.put("Suspects", suspectList);
+                if (!detectiveCase.absent.isEmpty()) {
+                    NbtList absentList = new NbtList();
+                    for (UUID absent : detectiveCase.absent) {
+                        absentList.add(NbtHelper.fromUuid(absent));
+                    }
+                    caseTag.put("Absent", absentList);
+                }
                 caseList.add(caseTag);
             }
             tag.put("DetectiveCases", caseList);
@@ -413,6 +460,13 @@ public final class DetectiveCasePlayerComponent implements AutoSyncedComponent {
                         suspectTag.getBoolean("Anonymous"),
                         suspectTag.getInt("Distance")
                 ));
+            }
+            NbtList absentList = caseTag.getList("Absent", NbtElement.INT_ARRAY_TYPE);
+            for (int j = 0; j < absentList.size()
+                    && detectiveCase.absent.size() < DetectiveCaseRules.MAX_ABSENT_PER_CASE; j++) {
+                if (absentList.get(j) instanceof net.minecraft.nbt.NbtIntArray uuid && uuid.size() == 4) {
+                    detectiveCase.absent.add(NbtHelper.toUuid(uuid));
+                }
             }
             cases.add(detectiveCase);
         }
@@ -483,6 +537,8 @@ public final class DetectiveCasePlayerComponent implements AutoSyncedComponent {
         private @Nullable UUID presumedKillerUuid;
         private final List<SuspectClue> suspects = new ArrayList<>();
         private final List<SuspectClue> suspectsView = Collections.unmodifiableList(suspects);
+        private final Set<UUID> absent = new LinkedHashSet<>();
+        private final Set<UUID> absentView = Collections.unmodifiableSet(absent);
 
         private DetectiveCase(UUID caseId, @Nullable UUID victimDisplayUuid, @Nullable String victimName,
                               @Nullable String notes, @Nullable Identifier killerGuess,
@@ -522,6 +578,11 @@ public final class DetectiveCasePlayerComponent implements AutoSyncedComponent {
         /** Unmodifiable, in record order. 不可修改，按记录顺序。 */
         public List<SuspectClue> getSuspects() {
             return suspectsView;
+        }
+
+        /** Players who answered "not present"; unmodifiable, in answer order. 回答“不在场”的玩家；不可修改，按回应顺序。 */
+        public Set<UUID> getAbsent() {
+            return absentView;
         }
     }
 }
