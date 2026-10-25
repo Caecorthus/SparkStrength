@@ -9,6 +9,7 @@ import annina.sparkstrength.compat.SparkTraitsDeathReasonCompat;
 import annina.sparkstrength.entity.PartygoerEntity;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
 import annina.sparkstrength.role.partyanimal.nav.TrainNavGrid;
+import annina.sparkstrength.role.undercover.UndercoverRoles;
 import dev.doctor4t.wathe.api.event.GameEvents;
 import dev.doctor4t.wathe.api.event.KillPlayer;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -366,12 +367,17 @@ public final class PartygoerService {
 
     /**
      * Whom an eaten player's death is credited to: the summoner when online, unless the victim is the summoner or on
-     * the killer side (a rage meal of a teammate is not a team kill).
-     * 被吃者的死亡记在谁头上：召唤者在线时记给召唤者，除非死者就是召唤者或属于杀手阵营（狂怒时吃掉队友不算队友击杀）。
+     * the killer side (eating a balloon-marked teammate is not a team kill). A stage-1 Undercover reads as a teammate,
+     * so it is credited like one: otherwise the kill coins would out it.
+     * 被吃者的死亡记在谁头上：召唤者在线时记给召唤者，除非死者就是召唤者或属于杀手阵营（吃掉被塞气球的队友不算队友击杀）。
+     * 一阶段卧底看起来是队友，因此按队友处理：否则击杀金币会暴露其身份。
      */
     static @Nullable ServerPlayerEntity killCredit(PartygoerBrain brain, ServerPlayerEntity victim) {
         ServerPlayerEntity owner = player(brain.world(), brain.ownerUuid());
         if (owner == null || owner == victim) {
+            return null;
+        }
+        if (UndercoverRoles.isUndercover(victim) && !UndercoverRoles.isStage2(victim)) {
             return null;
         }
         GameWorldComponent game = GameWorldComponent.KEY.get(victim.getWorld());

@@ -14,8 +14,9 @@ import org.jetbrains.annotations.Nullable;
  *   time. / 50 金币；当派对狂期间做完 2 个任务解锁；派对客离场后冷却 60 秒；同时只能有一只。</li>
  *   <li>Hunts at Speed II, carries at Speed IV, rages at Speed V (no particles). / 追人速度 II，扛人速度 IV，狂怒速度 V（无粒子）。</li>
  *   <li>Eats for 5 s plus 5 s per shield layer. / 吃人 5 秒，每层盾加 5 秒。</li>
- *   <li>Prey: alive, playing, helium- or balloon-affected, not the summoner, not the killer faction, and an Undercover
- *   only from stage 2. / 猎物：存活、在局内、受氦气或气球影响，不是召唤者，不是杀手阵营；卧底从二阶段开始才算。</li>
+ *   <li>Prey: alive, playing, not the summoner, and either balloon-marked (any faction, owner 2026-10-25) or under
+ *   helium while not the killer faction, an Undercover only from stage 2. / 猎物：存活、在局内、不是召唤者，且被塞了
+ *   气球（任何阵营，主人 2026-10-25），或受氦气影响且不是杀手阵营（卧底从二阶段开始才算）。</li>
  *   <li>Rage triggers at most once per Partygoer. / 每只派对客最多狂怒一次。</li>
  *   <li>Killed by anything that can kill a player, in one hit: the killer gets 25 coins and 20% sanity.
  *   / 任何能杀死玩家的东西一击即可打死它：击杀者获得 25 金币与 20% 理智。</li>
@@ -90,14 +91,22 @@ public final class PartyAnimalRules {
     }
 
     /**
-     * Whether a player may be hunted. {@code affected} = helium buzz active or balloon-marked. The Undercover reads as a
-     * killer until stage 2, so before that it is left alone like a real killer (hunting it would out it).
-     * 玩家能否被猎捕。affected = 氦气生效或被气球标记。卧底在二阶段前看起来是杀手，因此像真杀手一样不抓（否则会暴露身份）。
+     * Whether a player may be hunted. A balloon makes anyone prey, killer teammates included (owner 2026-10-25), so
+     * hunting a balloon-marked Undercover outs nothing. Helium alone spares the killer faction, and the Undercover reads
+     * as a killer until stage 2, so before that it is left alone like a real killer (hunting it would out it).
+     * 玩家能否被猎捕。被塞气球的人一律是猎物，包括杀手队友（主人 2026-10-25），所以抓被塞气球的卧底不会暴露身份。只受氦气
+     * 影响时不抓杀手阵营；卧底在二阶段前看起来是杀手，因此像真杀手一样不抓（否则会暴露身份）。
      */
     public static boolean isValidPrey(boolean aliveAndPlaying, boolean swallowed, boolean isSummoner,
                                       boolean effectiveKiller, boolean undercover, boolean undercoverStage2,
-                                      boolean affected, boolean alreadyCarried) {
-        if (!aliveAndPlaying || swallowed || isSummoner || alreadyCarried || !affected) {
+                                      boolean helium, boolean balloonMarked, boolean alreadyCarried) {
+        if (!aliveAndPlaying || swallowed || isSummoner || alreadyCarried) {
+            return false;
+        }
+        if (balloonMarked) {
+            return true;
+        }
+        if (!helium) {
             return false;
         }
         if (undercover) {

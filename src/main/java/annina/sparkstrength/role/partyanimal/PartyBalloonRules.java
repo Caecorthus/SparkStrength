@@ -11,10 +11,9 @@ import java.util.List;
  *   <li>Right-click a player within 3 blocks (eye to hitbox) in sight: the balloon is consumed and the target is
  *   marked for the rest of the round, without being told. / 右键 3 格内（眼睛到碰撞箱）且在视线中的玩家：消耗一个气球，
  *   目标本局被标记，本人不会得知。</li>
- *   <li>Never the killer faction (SparkTraits Impostor civilians included). An Undercover reads as a killer teammate
- *   until stage 2, so it is refused exactly like a killer before that and accepted from stage 2.
- *   / 不能给杀手阵营（含 SparkTraits 内鬼平民）。卧底在二阶段前看起来是杀手队友，因此在那之前与杀手一样被拒绝，
- *   二阶段起可以给。</li>
+ *   <li>Any faction, killer teammates and Undercovers at any stage included (owner 2026-10-25), and a balloon makes
+ *   anyone Partygoer prey ({@link PartyAnimalRules#isValidPrey}). / 任何阵营都能给，包括杀手队友与任何阶段的卧底
+ *   （主人 2026-10-25）；被塞气球的人一律是派对客的猎物（见 PartyAnimalRules#isValidPrey）。</li>
  *   <li>A refusal keeps the balloon. / 被拒绝时不消耗气球。</li>
  *   <li>The Party Animal sees marked players in an always-on yellow outline. / 派对狂常驻看到被标记玩家的黄色描边。</li>
  * </ul>
@@ -41,7 +40,6 @@ public final class PartyBalloonRules {
     public enum Verdict {
         OK,
         UNAVAILABLE,
-        KILLER_TARGET,
         ALREADY_MARKED,
         OUT_OF_RANGE
     }
@@ -50,35 +48,18 @@ public final class PartyBalloonRules {
     }
 
     /**
-     * Whether the target counts as the killer side for the balloon: an Undercover before stage 2 always does (it reads
-     * as a killer teammate), from stage 2 never; everyone else by the effective (SparkTraits-aware) faction. Same split
-     * as {@link PartyAnimalRules#isValidPrey}.
-     * 目标在气球规则中是否算杀手一方：卧底二阶段前一律算（看起来是杀手队友），二阶段起不算；其他人按有效阵营（考虑
-     * SparkTraits）判断。与 {@link PartyAnimalRules#isValidPrey} 的划分一致。
-     */
-    public static boolean readsAsKiller(boolean effectiveKiller, boolean undercover, boolean undercoverStage2) {
-        if (undercover) {
-            return !undercoverStage2;
-        }
-        return effectiveKiller;
-    }
-
-    /**
      * Giving a balloon. The user must be the living Party Animal in an active round, not swallowed; the target a living
-     * participant, not swallowed, allowed by SparkFactionAPI. Then: killer side, already marked, reach and sight.
+     * participant, not swallowed, allowed by SparkFactionAPI. Then: already marked, reach and sight. The target's
+     * faction never matters.
      * 塞气球。使用者须为进行中对局里存活且未被吞下的派对狂；目标须为存活参与者、未被吞下且 SparkFactionAPI 允许。
-     * 之后依次检查：杀手一方、已被标记、距离与视线。
+     * 之后依次检查：已被标记、距离与视线。目标阵营不影响结果。
      */
     public static Verdict verdict(boolean userIsLivingPartyAnimal, boolean userSwallowed,
                                   boolean targetIsLivingParticipant, boolean targetSwallowed, boolean factionAllows,
-                                  boolean targetEffectiveKiller, boolean targetUndercover, boolean targetUndercoverStage2,
                                   boolean targetMarked, double eyeToHitboxSquared, boolean lineOfSight) {
         if (!userIsLivingPartyAnimal || userSwallowed || !targetIsLivingParticipant || targetSwallowed
                 || !factionAllows) {
             return Verdict.UNAVAILABLE;
-        }
-        if (readsAsKiller(targetEffectiveKiller, targetUndercover, targetUndercoverStage2)) {
-            return Verdict.KILLER_TARGET;
         }
         if (targetMarked) {
             return Verdict.ALREADY_MARKED;

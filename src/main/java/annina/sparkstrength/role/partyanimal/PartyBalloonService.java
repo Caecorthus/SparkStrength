@@ -2,10 +2,8 @@ package annina.sparkstrength.role.partyanimal;
 
 import annina.sparkstrength.SparkStrength;
 import annina.sparkstrength.compat.SparkFactionCompat;
-import annina.sparkstrength.compat.SparkTraitsCompat;
 import annina.sparkstrength.component.partyanimal.PartyBalloonMarkComponent;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
-import annina.sparkstrength.role.undercover.UndercoverRoles;
 import annina.sparkstrength.util.SparkPlayers;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.record.GameRecordManager;
@@ -49,9 +47,6 @@ public final class PartyBalloonService {
                 target != user && SparkPlayers.isLivingParticipant(target),
                 SwallowedPlayerComponent.isPlayerSwallowed(target),
                 SparkFactionCompat.canAffectPlayer(user, target, BALLOON_ACTION_ID),
-                SparkTraitsCompat.isEffectiveKiller(game.getRole(target), target),
-                UndercoverRoles.isUndercover(target),
-                UndercoverRoles.isStage2(target),
                 PartyBalloonMarkComponent.isMarked(target),
                 target.getBoundingBox().squaredMagnitude(user.getEyePos()),
                 user.canSee(target)
@@ -59,10 +54,6 @@ public final class PartyBalloonService {
         switch (verdict) {
             case UNAVAILABLE -> {
                 user.sendMessage(Text.translatable("message.sparkstrength.party_balloon.unavailable"), true);
-                return false;
-            }
-            case KILLER_TARGET -> {
-                user.sendMessage(Text.translatable("message.sparkstrength.party_balloon.killer_target"), true);
                 return false;
             }
             case ALREADY_MARKED -> {
