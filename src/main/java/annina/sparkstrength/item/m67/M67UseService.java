@@ -29,7 +29,13 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.UUID;
 
-/** Server-owned sessions; packets never supply charge duration. / 服务端管理蓄力，数据包不能指定蓄力时间。 */
+/**
+ * Server-owned sessions; packets never supply charge duration. Stable cross-mod contract (SparkWitch's Magician replay
+ * reflects it, SparkStrengthM67ReplayCompat): this class name and the public static {@link #refreshEquipment} and
+ * {@link #withReleaseAuthorization} signatures.
+ * 服务端管理蓄力，数据包不能指定蓄力时间。稳定的跨模组契约（SparkWitch 魔术师回放通过 SparkStrengthM67ReplayCompat 反射调用）：
+ * 本类名，以及 public static {@link #refreshEquipment} 与 {@link #withReleaseAuthorization} 的签名。
+ */
 public final class M67UseService {
     private static final Map<ServerPlayerEntity, Equipment> EQUIPMENT = new IdentityHashMap<>();
     private static final Map<ServerPlayerEntity, M67UseState> SESSIONS = new IdentityHashMap<>();
@@ -175,7 +181,10 @@ public final class M67UseService {
         preserveCooldown(player, M67Rules.CANCEL_COOLDOWN_TICKS);
     }
 
-    /** Scope only the vanilla RELEASE_USE_ITEM invocation, never arbitrary stopUsingItem calls. / 仅授权原版松开数据包调用。 */
+    /**
+     * Scope only the vanilla RELEASE_USE_ITEM invocation, never arbitrary stopUsingItem calls. Cross-mod contract: a
+     * Magician puppet's replayed release runs inside it. / 仅授权原版松开数据包调用。跨模组契约：魔术师皮套回放的松手在此作用域内执行。
+     */
     public static void withReleaseAuthorization(ServerPlayerEntity player, Runnable stopUsingItem) {
         refreshEquipment(player);
         M67UseState state = SESSIONS.get(player);
@@ -207,8 +216,8 @@ public final class M67UseService {
                 ? M67Rules.BOMBER_COOLDOWN_TICKS : M67Rules.THROW_COOLDOWN_TICKS;
     }
 
-    /** Compare references, not counts: successful consumption is not another equip.
-     *  比较引用而非数量：成功投掷扣除数量不视为重新装备。 */
+    /** Compare references, not counts: successful consumption is not another equip. Cross-mod contract: a Magician
+     *  puppet's replayed use calls it first. / 比较引用而非数量：成功投掷扣除数量不视为重新装备。跨模组契约：魔术师皮套回放使用前先调用它。 */
     public static void refreshEquipment(ServerPlayerEntity player) {
         UUID round = M67RoundService.throwRoundId(player.getServerWorld());
         if (round == null || throwMode(player) == ThrowMode.REFUSED) {
