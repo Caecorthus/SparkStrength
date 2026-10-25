@@ -63,6 +63,7 @@
     "m67.M67HotbarMixin",
     "m67.M67EquipmentSyncMixin",
     "m67.M67InteractionMixin",
+    "m67.M67UseTargetMixin",
     "morphling.MorphlingCapeRendererMixin",
     "morphling.MorphlingElytraRendererMixin",
     "morphling.MorphlingPlayerAppearanceMixin",

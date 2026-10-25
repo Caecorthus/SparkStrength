@@ -70,6 +70,27 @@ public final class M67Client {
         return waitForUseRelease && stack.isOf(SparkStrengthItems.m67());
     }
 
+    /**
+     * Whether right-click on this hand goes straight to the M67, skipping the door, seat or player under the crosshair.
+     * Equip and cancel cooldowns belong to the throw gesture, so a held click stays with the grenade and pulls once they
+     * end; longer locks (opening, throw) hand right-click back to the world.
+     * 该手右键是否直接交给 M67，跳过准星下的门、座椅或玩家。装备与取消冷却属于投掷动作本身，按住右键会留给手雷并在冷却结束时拉环；
+     * 更长的锁定（开局锁、投掷冷却）期间右键仍正常与世界交互。
+     */
+    public static boolean claimsUse(Hand hand) {
+        refreshEquipment();
+        ClientPlayerEntity player = MinecraftClient.getInstance().player;
+        return player != null && player.getStackInHand(hand).isOf(SparkStrengthItems.m67())
+                && remainingCooldown(player) <= M67Rules.CANCEL_COOLDOWN_TICKS;
+    }
+
+    private static int remainingCooldown(ClientPlayerEntity player) {
+        var accessor = (ItemCooldownManagerAccessor) player.getItemCooldownManager();
+        Object entry = accessor.sparkstrength$getEntries().get(SparkStrengthItems.m67());
+        return entry instanceof ItemCooldownEntryAccessor value
+                ? value.sparkstrength$getEndTick() - accessor.sparkstrength$getTick() : 0;
+    }
+
     /** Predict before vanilla's interactItem cooldown check; the server remains authoritative.
      * 在原版 interactItem 冷却检查前预测；服务端始终拥有最终判定权。 */
     public static void refreshEquipment() {
@@ -106,13 +127,8 @@ public final class M67Client {
         if (nowEquipped) {
             // Count is deliberately absent: consuming one grenade isn't a new equip.
             // 特意不比较数量：投掷消耗一枚不属于重新装备。
-            var cooldown = player.getItemCooldownManager();
-            var accessor = (ItemCooldownManagerAccessor) cooldown;
-            Object entry = accessor.sparkstrength$getEntries().get(SparkStrengthItems.m67());
-            int remaining = entry instanceof ItemCooldownEntryAccessor value
-                    ? value.sparkstrength$getEndTick() - accessor.sparkstrength$getTick() : 0;
-            if (remaining < M67Rules.EQUIP_COOLDOWN_TICKS) {
-                cooldown.set(SparkStrengthItems.m67(), M67Rules.EQUIP_COOLDOWN_TICKS);
+            if (remainingCooldown(player) < M67Rules.EQUIP_COOLDOWN_TICKS) {
+                player.getItemCooldownManager().set(SparkStrengthItems.m67(), M67Rules.EQUIP_COOLDOWN_TICKS);
             }
             M67SoundClient.playLocal(M67SoundPayload.START_EQUIP);
         }
