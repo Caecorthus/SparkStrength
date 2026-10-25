@@ -10,6 +10,7 @@ import annina.sparkstrength.mixin.minecraft.ItemCooldownManagerAccessor;
 import annina.sparkstrength.network.m67.M67SoundPayload;
 import annina.sparkstrength.role.coroner.CoronerRules;
 import annina.sparkstrength.role.coroner.CoronerService;
+import annina.sparkstrength.util.ItemCooldownSync;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.game.GameFunctions;
 import dev.doctor4t.wathe.record.GameRecordManager;
@@ -89,7 +90,7 @@ public final class M67UseService {
         UUID roundId = M67RoundService.throwRoundId(world);
         int opening = throwMode(player) == ThrowMode.PRESENTATION ? 0 : M67RoundService.openingRemaining(player);
         if (opening > 0) {
-            preserveCooldown(player, opening);
+            preserveOpening(player, opening);
             player.sendMessage(Text.translatable("tip.sparkstrength.m67.opening_cooldown", (opening + 19) / 20), true);
             return false;
         }
@@ -290,6 +291,17 @@ public final class M67UseService {
         }
     }
 
+    /**
+     * Shows the server-clock opening lock on the M67 slot: raise-only and exact (Fast Hands / Stimulation must not
+     * shorten it, or the per-tick sync re-sends and the slot sweep restarts every tick), see {@link ItemCooldownSync}.
+     * 在 M67 栏位显示服务端时钟的开局锁：只提高且精确（快手/亢奋不得缩短，否则逐刻同步会每刻重发、冷却动画每刻重来），
+     * 见 {@link ItemCooldownSync}。
+     */
+    static void preserveOpening(ServerPlayerEntity player, int lockTicks) {
+        ItemCooldownSync.raiseExact(player, SparkStrengthItems.m67(), lockTicks);
+    }
+
+    /** Throw, cancel and equip cooldowns: the vanilla entry is the gate, so cooldown modifiers apply. / 投掷、取消与装备冷却：原版条目即判定，冷却倍率照常生效。 */
     static void preserveCooldown(ServerPlayerEntity player, int minimumTicks) {
         ItemCooldownManager manager = player.getItemCooldownManager();
         Object entry = ((ItemCooldownManagerAccessor) manager).sparkstrength$getEntries().get(SparkStrengthItems.m67());

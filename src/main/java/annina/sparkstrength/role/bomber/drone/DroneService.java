@@ -11,6 +11,7 @@ import annina.sparkstrength.mixin.minecraft.ItemCooldownManagerAccessor;
 import annina.sparkstrength.role.AbilityLocks;
 import annina.sparkstrength.role.AbilityLocks.Lock;
 import annina.sparkstrength.role.coroner.CoronerRules;
+import annina.sparkstrength.util.ItemCooldownSync;
 import annina.sparkstrength.util.SparkPlayers;
 import dev.doctor4t.wathe.api.event.GameEvents;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -372,8 +373,8 @@ public final class DroneService {
         Round round = new Round();
         ROUNDS.put(world, round);
         for (ServerPlayerEntity player : world.getPlayers()) {
-            preserveCooldown(player, SparkStrengthItems.grenadeDrone(), DroneRules.OPENING_TICKS);
-            preserveCooldown(player, SparkStrengthItems.bombDrone(), DroneRules.OPENING_TICKS);
+            preserveOpening(player, SparkStrengthItems.grenadeDrone(), DroneRules.OPENING_TICKS);
+            preserveOpening(player, SparkStrengthItems.bombDrone(), DroneRules.OPENING_TICKS);
             if (game.hasAnyRole(player) && !player.isSpectator() && isRealBomber(player)) {
                 settleStarter(round, player);
             }
@@ -551,11 +552,11 @@ public final class DroneService {
         // 即使未持有也发送原版冷却，购买的炸弹无人机会立即显示；管理员已解除的型号跳过，清除的冷却不会被重新写回。
         int grenade = openingRemaining(player, DroneKind.GRENADE);
         if (grenade > 0) {
-            preserveCooldown(player, SparkStrengthItems.grenadeDrone(), grenade);
+            preserveOpening(player, SparkStrengthItems.grenadeDrone(), grenade);
         }
         int bomb = openingRemaining(player, DroneKind.BOMB);
         if (bomb > 0) {
-            preserveCooldown(player, SparkStrengthItems.bombDrone(), bomb);
+            preserveOpening(player, SparkStrengthItems.bombDrone(), bomb);
         }
     }
 
@@ -567,7 +568,20 @@ public final class DroneService {
         }
     }
 
-    /** Raise (never shorten) the vanilla cooldown of {@code item}. / 提高（绝不缩短）该物品的原版冷却。 */
+    /**
+     * Shows the server-clock opening lock on a drone slot: raise-only and exact (Fast Hands / Stimulation must not
+     * shorten it, or the per-tick sync re-sends and the slot sweep restarts every tick), see {@link ItemCooldownSync}.
+     * 在无人机栏位显示服务端时钟的开局锁：只提高且精确（快手/亢奋不得缩短，否则逐刻同步会每刻重发、冷却动画每刻重来），
+     * 见 {@link ItemCooldownSync}。
+     */
+    private static void preserveOpening(ServerPlayerEntity player, Item item, int lockTicks) {
+        ItemCooldownSync.raiseExact(player, item, lockTicks);
+    }
+
+    /**
+     * Raise (never shorten) the vanilla cooldown of {@code item}; the vanilla entry is the gate here, so cooldown
+     * modifiers apply. / 提高（绝不缩短）该物品的原版冷却；此处原版条目即判定，冷却倍率照常生效。
+     */
     private static void preserveCooldown(ServerPlayerEntity player, Item item, int minimumTicks) {
         ItemCooldownManager manager = player.getItemCooldownManager();
         Object entry = ((ItemCooldownManagerAccessor) manager).sparkstrength$getEntries().get(item);

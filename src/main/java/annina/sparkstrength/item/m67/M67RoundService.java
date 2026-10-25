@@ -166,7 +166,7 @@ public final class M67RoundService {
     private static void lockOpening(ServerWorld world, Round round, ServerPlayerEntity player, int ticks) {
         if (GameWorldComponent.KEY.get(world).hasAnyRole(player)) {
             round.openingLocked.add(player.getUuid());
-            M67UseService.preserveCooldown(player, ticks);
+            M67UseService.preserveOpening(player, ticks);
         }
     }
 
