@@ -36,11 +36,14 @@ import annina.sparkstrength.client.role.shadowjester.ShadowJesterShowdownMusicCo
 import annina.sparkstrength.client.sabotage.BlackoutSightClient;
 import annina.sparkstrength.client.sabotage.SabotageClient;
 import annina.sparkstrength.client.screen.detective.DetectiveFolderScreen;
+import annina.sparkstrength.client.screen.detective.DetectiveInterrogationScreen;
 import annina.sparkstrength.client.screen.tablet.TabletClientState;
 import annina.sparkstrength.client.screen.tablet.TabletScreen;
 import annina.sparkstrength.client.tablet.TabletClientHighlights;
 import annina.sparkstrength.client.world.LoadedEntities;
+import annina.sparkstrength.network.detective.DetectiveInterrogationResultS2CPacket;
 import annina.sparkstrength.network.detective.OpenDetectiveFolderS2CPacket;
+import annina.sparkstrength.network.detective.OpenDetectiveInterrogationS2CPacket;
 import annina.sparkstrength.network.economy.SyncKillerTeamEconomyS2CPacket;
 import annina.sparkstrength.network.sabotage.SyncBlackoutSightS2CPacket;
 import annina.sparkstrength.network.tablet.OpenTabletScreenS2CPacket;
@@ -144,6 +147,11 @@ public final class SparkStrengthClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(OpenDetectiveFolderS2CPacket.ID,
                 (payload, context) -> context.client().execute(() ->
                         context.client().setScreen(new DetectiveFolderScreen())));
+        ClientPlayNetworking.registerGlobalReceiver(OpenDetectiveInterrogationS2CPacket.ID,
+                (payload, context) -> context.client().execute(() ->
+                        context.client().setScreen(new DetectiveInterrogationScreen())));
+        ClientPlayNetworking.registerGlobalReceiver(DetectiveInterrogationResultS2CPacket.ID,
+                (payload, context) -> context.client().execute(() -> DetectiveInterrogationScreen.acceptResult(payload)));
         ClientPlayNetworking.registerGlobalReceiver(OpenTabletScreenS2CPacket.ID,
                 (payload, context) -> context.client().execute(() ->
                         context.client().setScreen(new TabletScreen())));

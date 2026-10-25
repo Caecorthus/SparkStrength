@@ -20,6 +20,9 @@ public final class DetectiveCaseRules {
     // 15 秒（快手特质生效前）；只在服务端作为原版物品冷却设置。
     public static final int MAGNIFIER_COOLDOWN_TICKS = 300;
     public static final int MAX_CASES = 32;
+    // "Not present" answers kept per case; only round participants can be asked, so this is never reached in play.
+    // 每起命案保存的“不在场”回应；只能询问本局参与者，正常游戏中不会达到此上限。
+    public static final int MAX_ABSENT_PER_CASE = 64;
     public static final int MAX_SNAPSHOTS = 256;
     public static final int NOTES_MAX_LENGTH = 256;
     public static final int NOTES_MAX_LINES = 12;
@@ -33,6 +36,12 @@ public final class DetectiveCaseRules {
         ALREADY_RECORDED,
         NOT_PRESENT,
         RECORDED
+    }
+
+    /** Which detective screen an open request shows. / 打开请求要显示的侦探界面。 */
+    public enum DetectiveScreen {
+        FOLDER,
+        INTERROGATION
     }
 
     private DetectiveCaseRules() {
@@ -89,11 +98,28 @@ public final class DetectiveCaseRules {
     }
 
     /**
-     * Only a recorded clue spends the magnifier; every rejection (and corpse filing) is free.
-     * 只有成功记录线索才会进入放大镜冷却；所有拒绝结果（以及记录尸体）都不消耗冷却。
+     * A remote interrogation spends the magnifier whenever it reads the crime scene: a recorded clue and a "not
+     * present" answer alike (owner 2026-10-25), so nobody can probe the roster for free to learn who died before the
+     * case. Folder-only answers (no case, enough clues, already recorded) and corpse filing stay free.
+     * 远程审问只要读取了案发现场就会进入冷却：记录线索与“不在场”都一样（所有者 2026-10-25），因此无法免费逐个试探名单、
+     * 得知谁在命案前就已死亡。只取决于文件夹的回应（无命案、线索足够、已记录）以及记录尸体仍然免费。
      */
-    public static boolean startsCooldown(InvestigationOutcome outcome) {
-        return outcome == InvestigationOutcome.RECORDED;
+    public static boolean startsCooldown(@Nullable InvestigationOutcome outcome) {
+        return outcome == InvestigationOutcome.RECORDED || outcome == InvestigationOutcome.NOT_PRESENT;
+    }
+
+    /**
+     * Whether a remote target answers with a distance. They need a kill-time position, must not be the case's victim,
+     * real or displayed (a real victim stands at the origin; the living owner of a fake body, or the living player a
+     * disguised body shows, must answer the same way or the fake would show), and must not be shielded by a
+     * SparkFactionAPI player-affect policy: a shielded target answers like an absent one, so the protection itself
+     * stays hidden.
+     * 远程目标能否给出距离：须有案发时位置；不能是本案受害人（真实或显示的均算：真实受害人就在原点；假尸体的存活主人、
+     * 伪装尸体所显示的存活玩家都必须给出相同回应，否则会暴露伪装）；也不能受 SparkFactionAPI 玩家影响策略保护：
+     * 受保护的目标按不在场回应，保护本身不外露。
+     */
+    public static boolean answersWithDistance(boolean hadKillTimePosition, boolean isCaseVictim, boolean shielded) {
+        return hadKillTimePosition && !isCaseVictim && !shielded;
     }
 
     /**

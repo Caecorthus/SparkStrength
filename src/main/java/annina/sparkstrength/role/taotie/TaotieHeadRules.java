@@ -73,14 +73,15 @@ public final class TaotieHeadRules {
      *       cooldown skill), {@code timekeeper_watch_mode} (Dying Watch mode switch), {@code drone_pilot_start}
      *       (taking control of a drone) and {@code drone_pilot_action} (drone drop/detonate),
      *       {@code taotie_head_fire} itself, the Party Animal's {@code partygoer_summon}, the Taotie swallowing a
-     *       Partygoer {@code partygoer_swallow}, and the sabotage actions {@code trigger_sabotage} and
-     *       {@code complete_breaker_repair};</li>
+     *       Partygoer {@code partygoer_swallow}, the sabotage actions {@code trigger_sabotage} and
+     *       {@code complete_breaker_repair}, and the Detective's remote interrogation
+     *       {@code interrogate_detective_suspect} (cooldown skill);</li>
      *   <li>kept allowed (movement, leaving or UI-only): {@code drone_pilot_move}, {@code drone_pilot_exit},
      *       {@code m67_cancel}, {@code cancel_sabotage_channel}, {@code cancel_breaker_repair}, {@code partygoer_menu}
      *       (the room picker), the tablet
      *       snapshot/chat/channel ids and the detective folder ids
      *       ({@code select_detective_case}, {@code update_detective_case_notes}, {@code set_detective_killer_guess},
-     *       {@code set_detective_presumed_killer});</li>
+     *       {@code set_detective_presumed_killer}; opening the magnifier roster is a vanilla item use);</li>
      *   <li>NoellesRoles: all 14 C2S ids registered by the pinned runtime jar (sha fcb0da) are already in the list,
      *       so none are added.</li>
      * </ul>
@@ -90,12 +91,13 @@ public final class TaotieHeadRules {
      * 移除 {@code wathe:storebuy}（眩晕时仍可使用商店）；补充该表缺少的 SparkStrength 技能包：记者通讯
      * {@code reporter_communication}（有冷却的技能）、怀表模式切换 {@code timekeeper_watch_mode}、接管无人机
      * {@code drone_pilot_start}、无人机投弹/引爆 {@code drone_pilot_action}、本技能 {@code taotie_head_fire}、派对狂召唤
-     * {@code partygoer_summon}、饕餮吞派对客 {@code partygoer_swallow}，以及破坏系统的
-     * {@code trigger_sabotage} 与 {@code complete_breaker_repair}；
+     * {@code partygoer_summon}、饕餮吞派对客 {@code partygoer_swallow}、破坏系统的
+     * {@code trigger_sabotage} 与 {@code complete_breaker_repair}，以及侦探远程审问
+     * {@code interrogate_detective_suspect}（有冷却的技能）；
      * 继续放行（移动、离开或仅界面用途）：{@code drone_pilot_move}、{@code drone_pilot_exit}、{@code m67_cancel}、
      * {@code partygoer_menu}（选房界面）、
      * {@code cancel_sabotage_channel}、{@code cancel_breaker_repair}、
-     * 平板快照/聊天/频道以及侦探文件夹相关 id；NoellesRoles：锁定运行时 jar（sha fcb0da）注册的 14 个 C2S id
+     * 平板快照/聊天/频道以及侦探文件夹相关 id（打开放大镜名单是原版物品使用）；NoellesRoles：锁定运行时 jar（sha fcb0da）注册的 14 个 C2S id
      * 均已在表中，无需补充。新增技能包必须在此有意识地归类。
      */
     public static final Set<Identifier> DAZE_BLOCKED_PAYLOADS = Set.copyOf(List.of(
@@ -181,6 +183,9 @@ public final class TaotieHeadRules {
             Identifier.of("sparkstrength", "cast_tablet_vote"),
             Identifier.of("sparkstrength", "confirm_tablet_vote"),
             Identifier.of("sparkstrength", "approve_suspect_removal"),
+            // Detective remote interrogation from the magnifier roster (cooldown skill); the folder edits stay allowed.
+            // 侦探在放大镜名单中远程审问（有冷却的技能）；文件夹编辑放行。
+            Identifier.of("sparkstrength", "interrogate_detective_suspect"),
             // Legacy Criminologist skill, kept like the Control Expert list; an unregistered id never matches.
             // 旧版犯罪学家技能，与控场专家列表一致保留；未注册时该 id 永远不会命中。
             Identifier.of("sparkstrength", "select_criminologist_target"),

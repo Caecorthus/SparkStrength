@@ -3,7 +3,10 @@ package annina.sparkstrength.network;
 import annina.sparkstrength.network.coroner.CoronerMorphC2SPacket;
 import annina.sparkstrength.network.demonhunter.DemonHunterSniffC2SPacket;
 import annina.sparkstrength.network.undercover.UndercoverMaskOffC2SPacket;
+import annina.sparkstrength.network.detective.DetectiveInterrogationResultS2CPacket;
+import annina.sparkstrength.network.detective.InterrogateDetectiveSuspectC2SPacket;
 import annina.sparkstrength.network.detective.OpenDetectiveFolderS2CPacket;
+import annina.sparkstrength.network.detective.OpenDetectiveInterrogationS2CPacket;
 import annina.sparkstrength.network.drone.DronePackets;
 import annina.sparkstrength.network.spiritualist.SpiritPossessionPackets;
 import annina.sparkstrength.network.detective.SelectDetectiveCaseC2SPacket;
@@ -85,6 +88,7 @@ public final class SparkStrengthPackets {
         PayloadTypeRegistry.playC2S().register(UpdateDetectiveCaseNotesC2SPacket.ID, UpdateDetectiveCaseNotesC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(SetDetectiveKillerGuessC2SPacket.ID, SetDetectiveKillerGuessC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(SetDetectivePresumedKillerC2SPacket.ID, SetDetectivePresumedKillerC2SPacket.CODEC);
+        PayloadTypeRegistry.playC2S().register(InterrogateDetectiveSuspectC2SPacket.ID, InterrogateDetectiveSuspectC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(DemonHunterSniffC2SPacket.ID, DemonHunterSniffC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(UndercoverMaskOffC2SPacket.ID, UndercoverMaskOffC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(VultureSuperCurseC2SPacket.ID, VultureSuperCurseC2SPacket.CODEC);
@@ -102,6 +106,11 @@ public final class SparkStrengthPackets {
         PayloadTypeRegistry.playC2S().register(TimekeeperWatchModeC2SPacket.ID, TimekeeperWatchModeC2SPacket.CODEC);
         PayloadTypeRegistry.playC2S().register(TaotieHeadFireC2SPacket.ID, TaotieHeadFireC2SPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(OpenDetectiveFolderS2CPacket.ID, OpenDetectiveFolderS2CPacket.CODEC);
+        PayloadTypeRegistry.playS2C().register(OpenDetectiveInterrogationS2CPacket.ID, OpenDetectiveInterrogationS2CPacket.CODEC);
+        PayloadTypeRegistry.playS2C().register(
+                DetectiveInterrogationResultS2CPacket.ID,
+                DetectiveInterrogationResultS2CPacket.CODEC
+        );
         PayloadTypeRegistry.playC2S().register(SerialPistolShootC2SPayload.ID, SerialPistolShootC2SPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(OpenTabletScreenS2CPacket.ID, OpenTabletScreenS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncTabletSnapshotS2CPacket.ID, SyncTabletSnapshotS2CPacket.CODEC);
@@ -148,6 +157,8 @@ public final class SparkStrengthPackets {
                         payload.caseId(),
                         payload.playerUuid()
                 ));
+        ServerPlayNetworking.registerGlobalReceiver(InterrogateDetectiveSuspectC2SPacket.ID,
+                (payload, context) -> DetectiveCaseService.handleInterrogate(context.player(), payload.playerUuid()));
         ServerPlayNetworking.registerGlobalReceiver(DemonHunterSniffC2SPacket.ID,
                 (payload, context) -> DemonHunterSniffService.trySniff(context.player()));
         ServerPlayNetworking.registerGlobalReceiver(UndercoverMaskOffC2SPacket.ID,

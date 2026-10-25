@@ -6,7 +6,9 @@ import annina.sparkstrength.compat.SparkFactionCompat;
 import annina.sparkstrength.component.detective.DetectiveCasePlayerComponent;
 import annina.sparkstrength.component.detective.DetectiveCaseWorldComponent;
 import annina.sparkstrength.component.partyanimal.PartygoerCorpseComponent;
+import annina.sparkstrength.network.detective.DetectiveInterrogationResultS2CPacket;
 import annina.sparkstrength.network.detective.OpenDetectiveFolderS2CPacket;
+import annina.sparkstrength.network.detective.OpenDetectiveInterrogationS2CPacket;
 import annina.sparkstrength.record.AchievementRecords;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
@@ -18,14 +20,15 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
@@ -107,10 +110,11 @@ public final class DetectiveCaseService {
     }
 
     /**
-     * Server half of {@code MagnifierItem.useOnEntity}. Vanilla does not check item cooldowns before useOnEntity, so the
-     * living-player path checks it here; filing a corpse is free and never looks at the cooldown.
-     * MagnifierItem.useOnEntity 的服务端部分。原版在 useOnEntity 前不检查物品冷却，因此活体调查在这里自行检查；
-     * 记录尸体免费，从不读取冷却。
+     * Server half of {@code MagnifierItem.useOnEntity}: right-clicking a corpse, or a NoellesRoles Morphling lying in
+     * corpse mode, files the case. Filing is free and never looks at the cooldown. Living players are interrogated
+     * remotely from the roster instead ({@link #handleInterrogate}); clicking one falls through to {@code use()}.
+     * MagnifierItem.useOnEntity 的服务端部分：右键尸体，或处于尸体模式的 NoellesRoles 变形者，记录命案；记录免费，从不读取
+     * 冷却。活人改为在名单中远程审问（handleInterrogate）；右键活人会落到 use()。
      */
     public static void useMagnifier(ServerPlayerEntity user, ItemStack stack, LivingEntity target, Hand hand) {
         if (user == null || target == null || !canUseDetectiveItems(user)) {
@@ -124,9 +128,35 @@ public final class DetectiveCaseService {
                 return;
             }
             fileCase(user, body);
-        } else if (target instanceof ServerPlayerEntity suspect) {
-            investigate(user, suspect);
+        } else if (target instanceof ServerPlayerEntity morphling
+                && morphling != user
+                && GameFunctions.isPlayerPlayingAndAlive(morphling)
+                && !morphling.isSpectator()
+                && !morphling.isInvisible()
+                && MorphlingPlayerComponent.KEY.get(morphling).corpseMode) {
+            fileMorphlingCorpse(user, morphling);
         }
+    }
+
+    /**
+     * Whether a magnifier right-click on {@code entity} files a case: a corpse, or a Morphling in corpse mode (synced
+     * to every client, so both sides agree). Anything else falls through to {@code use()}, which opens the roster.
+     * 放大镜右键该实体是否记录命案：尸体，或处于尸体模式的变形者（该状态同步给所有客户端，两端判断一致）。
+     * 其余情况落到 use()，打开名单。
+     */
+    public static boolean filesAsCorpse(Entity entity) {
+        return entity instanceof PlayerBodyEntity
+                || entity instanceof PlayerEntity player && MorphlingPlayerComponent.KEY.get(player).corpseMode;
+    }
+
+    /** Case folder item. / 文件夹道具。 */
+    public static void openFolder(ServerPlayerEntity player) {
+        open(player, DetectiveCaseRules.DetectiveScreen.FOLDER);
+    }
+
+    /** Magnifier {@code use()}: the remote interrogation roster. / 放大镜 use()：远程审问名单。 */
+    public static void openInterrogation(ServerPlayerEntity player) {
+        open(player, DetectiveCaseRules.DetectiveScreen.INTERROGATION);
     }
 
     /**
@@ -136,7 +166,7 @@ public final class DetectiveCaseService {
      * 先同步文件夹，保证界面不会以过期数据打开，再通知客户端打开。服务端的每次修改本身都会同步（直接或经每 tick 合并），
      * 这里只是保险，因此做节流：大量使用包无法每次都强制完整同步。打开包始终发送。
      */
-    public static void openFolder(ServerPlayerEntity player) {
+    private static void open(ServerPlayerEntity player, DetectiveCaseRules.DetectiveScreen screen) {
         if (player == null || !canUseDetectiveItems(player)) {
             return;
         }
@@ -147,18 +177,21 @@ public final class DetectiveCaseService {
             // sync while edits stay coalesced to one sync per tick.
             // 待发送的修改（如本 tick 关闭时保存的笔记）必须先于重新打开送达客户端，否则会载入并回存旧文本。
             // 把打开推迟到 tick 末尾的合并同步之后，既保证顺序，又保持每 tick 最多一次同步。
-            folder.requestOpenAfterFlush();
+            folder.requestOpenAfterFlush(screen);
             return;
         }
         if (folder.claimOpenSync(player.getServer().getTicks(), OPEN_SYNC_MIN_INTERVAL_TICKS)) {
             folder.sync();
         }
-        sendOpenFolder(player);
+        sendOpen(player, screen);
     }
 
-    private static void sendOpenFolder(ServerPlayerEntity player) {
-        if (ServerPlayNetworking.canSend(player, OpenDetectiveFolderS2CPacket.ID)) {
-            ServerPlayNetworking.send(player, new OpenDetectiveFolderS2CPacket());
+    private static void sendOpen(ServerPlayerEntity player, DetectiveCaseRules.DetectiveScreen screen) {
+        CustomPayload payload = screen == DetectiveCaseRules.DetectiveScreen.INTERROGATION
+                ? new OpenDetectiveInterrogationS2CPacket()
+                : new OpenDetectiveFolderS2CPacket();
+        if (ServerPlayNetworking.canSend(player, payload.getId())) {
+            ServerPlayNetworking.send(player, payload);
         }
     }
 
@@ -232,8 +265,9 @@ public final class DetectiveCaseService {
             folder.flushIfDirty();
             // A deferred open goes out right after the flush, and only if the player may still use the folder.
             // 延迟的打开请求紧随合并同步发送，且仅在玩家仍可使用文件夹时发送。
-            if (folder.consumeOpenAfterFlush() && canUseDetectiveItems(player)) {
-                sendOpenFolder(player);
+            DetectiveCaseRules.DetectiveScreen deferred = folder.consumeOpenAfterFlush();
+            if (deferred != null && canUseDetectiveItems(player)) {
+                sendOpen(player, deferred);
             }
         }
     }
@@ -305,11 +339,18 @@ public final class DetectiveCaseService {
         scenes.captureIfAbsent(body.getUuid(), new DetectiveCaseWorldComponent.CrimeSceneSnapshot(ownerUuid, origin, positions));
     }
 
+    /**
+     * Living, non-spectating participants. Spectators who are not dead (a Taotie-swallowed player, a fake death's few
+     * seconds) are left out and answer "not present" like the dead: a swallowed player's position would point at the
+     * Taotie, and a distance would tell the detective they are alive.
+     * 存活且非旁观的参与者。未死亡的旁观者（被饕餮吞下的玩家、假死的几秒）不计入，与死者一样回答“不在场”：被吞玩家的位置
+     * 会指向饕餮，给出距离也会让侦探得知其仍然存活。
+     */
     private static LinkedHashMap<UUID, Vec3d> alivePositions(ServerWorld world, GameWorldComponent game) {
         LinkedHashMap<UUID, Vec3d> positions = new LinkedHashMap<>();
         for (UUID uuid : game.getAllAlivePlayers()) {
             ServerPlayerEntity player = onlineIn(world, uuid);
-            if (player != null && GameFunctions.isPlayerPlayingAndAlive(player)) {
+            if (player != null && GameFunctions.isPlayerPlayingAndAlive(player) && !player.isSpectator()) {
                 positions.put(uuid, player.getPos());
             }
         }
@@ -383,100 +424,130 @@ public final class DetectiveCaseService {
         sendActionBar(user, "case_recorded", Text.literal(victim.displayName()));
     }
 
-    private static void investigate(ServerPlayerEntity user, ServerPlayerEntity suspect) {
-        // Hidden or protected targets behave like clicking air: no message, no cooldown.
-        // 隐藏或受保护的目标等同于对空气右键：无提示、无冷却。
-        if (suspect == user
-                || !GameFunctions.isPlayerPlayingAndAlive(suspect)
-                || suspect.isSpectator()
-                || suspect.isInvisible()) {
+    /**
+     * Remote interrogation from the magnifier roster ({@code InterrogateDetectiveSuspectC2SPacket}). The client names a
+     * participant by real uuid and the answer comes from the selected case's crime-scene snapshot, so it never depends
+     * on where the target is now or what they look like: a living player's disguise cannot fool it, and the dead
+     * answer like the living (owner 2026-10-25: the roster lists every participant and never shows who died). No
+     * kill-time position, being the case's victim (real or displayed, so a disguised or fake body holds up), or a
+     * player-affect policy shielding the target all answer "not present", which spends the cooldown like a clue does,
+     * so the roster cannot be probed for free. The folder keeps that answer per case, so asking again repeats it for
+     * free.
+     * 放大镜名单中的远程审问。客户端以真实 UUID 指定参与者，回应只取自当前命案的现场快照，与目标此刻的位置、外观都无关：
+     * 活人的伪装骗不到它，死者与活人一样回应（所有者 2026-10-25：名单列出所有参与者，从不显示谁已死亡）。没有案发时位置、
+     * 本案受害人（真实或显示的均算，伪装尸体与假尸体因此不会露馅）、或受玩家影响策略保护的目标都回答“不在场”，与记录线索
+     * 一样消耗冷却，因此名单无法被免费试探。文件夹按命案保存该回应，再次询问时免费重复。
+     */
+    public static void handleInterrogate(ServerPlayerEntity user, UUID targetUuid) {
+        if (user == null || targetUuid == null || !canUseDetectiveItems(user) || !isHoldingMagnifier(user)) {
             return;
         }
-        if (MorphlingPlayerComponent.KEY.get(suspect).corpseMode) {
-            // A Morphling lying in corpse mode is filed like a real body, never investigated (and never cooled down).
-            // It is checked before the faction gate because real bodies always answer.
-            // 处于尸体模式的变形者按真实尸体归档，而不是被调查（也不进入冷却）；真实尸体总会回应，因此先于阵营校验判断。
-            fileMorphlingCorpse(user, suspect);
-            return;
-        }
-        if (!SparkFactionCompat.canAffectPlayer(user, suspect, MAGNIFIER_ACTION_ID)) {
+        ServerWorld world = user.getServerWorld();
+        // Only a current-round participant other than the detective (Wathe game profiles, as for the presumed killer);
+        // anything else is a forged request. 只接受本局参与者且不是侦探本人（与假定凶手相同取 Wathe 玩家档案），其余视为伪造请求。
+        if (targetUuid.equals(user.getUuid())
+                || !GameWorldComponent.KEY.get(world).getGameProfiles().containsKey(targetUuid)) {
             return;
         }
 
-        ServerWorld world = user.getServerWorld();
         DetectiveCasePlayerComponent folder = DetectiveCasePlayerComponent.KEY.get(user);
         DetectiveCasePlayerComponent.DetectiveCase selected = folder.getSelectedCase();
+        int limit = getSuspectLimit(world);
         // NO_CASE and LIMIT_REACHED depend only on the detective's own folder, so they answer even while the magnifier
         // cools down (the clue that fills a case always starts it); target-dependent outcomes stay behind the cooldown.
         // “无命案”与“已达上限”只取决于侦探自己的文件夹，冷却中也会提示（填满命案的那条线索必然触发冷却）；
         // 与目标相关的结果仍需等待冷却结束。
         DetectiveCaseRules.InvestigationOutcome folderOutcome = DetectiveCaseRules.decideInvestigation(
-                selected != null, selected == null ? 0 : selected.getSuspects().size(), getSuspectLimit(world),
-                false, true);
-        if (folderOutcome == DetectiveCaseRules.InvestigationOutcome.NO_CASE) {
-            sendActionBar(user, "no_case");
-            return;
-        }
-        if (folderOutcome == DetectiveCaseRules.InvestigationOutcome.LIMIT_REACHED) {
-            sendActionBar(user, "enough_clues");
+                selected != null, selected == null ? 0 : selected.getSuspects().size(), limit, false, true);
+        if (selected == null || folderOutcome != DetectiveCaseRules.InvestigationOutcome.RECORDED) {
+            answer(user, selected == null ? null : selected.getCaseId(), targetUuid, folderOutcome, 0);
             return;
         }
         Item magnifier = SparkStrengthItems.magnifier();
         if (user.getItemCooldownManager().isCoolingDown(magnifier)) {
+            // The roster greys out while cooling down; a request racing the cooldown is dropped.
+            // 冷却期间名单不可点击；与冷却赛跑的请求直接丢弃。
             return;
         }
 
-        UUID realUuid = suspect.getUuid();
-        DetectiveIdentityResolver.DisplayedIdentity identity = null;
-        DetectiveCaseWorldComponent.CrimeSceneSnapshot snapshot = null;
-        Vec3d killTimePosition = null;
-        boolean alreadyRecorded = false;
-        if (selected != null) {
-            identity = DetectiveIdentityResolver.resolve(user, suspect);
-            // Duplicates are keyed on the displayed identity only, never realUuid. 去重只看显示身份，不看真实 UUID。
-            alreadyRecorded = folder.hasSuspectPair(selected.getCaseId(), identity.displayUuid(), identity.anonymous());
-            // A vanished snapshot reads as NOT_PRESENT. 快照缺失时按“不在场”处理。
-            snapshot = DetectiveCaseWorldComponent.KEY.get(world).get(selected.getCaseId());
-            killTimePosition = snapshot == null ? null : snapshot.positions().get(realUuid);
+        UUID caseId = selected.getCaseId();
+        if (folder.isAbsent(caseId, targetUuid)) {
+            // The folder already holds this answer: repeating it is free and never re-evaluated, so a target that was
+            // shielded at the first ask cannot later reveal the shield. 文件夹已有此回应：重复回答免费且不重新判定，
+            // 首次询问时受保护的目标之后也不会暴露保护。
+            answer(user, caseId, targetUuid, DetectiveCaseRules.InvestigationOutcome.NOT_PRESENT, 0);
+            return;
         }
+        // The clue is keyed on the uuid the detective picked, which is also its display uuid.
+        // 线索以侦探所选的 UUID 为键，它同时也是显示 UUID。
+        boolean alreadyRecorded = folder.hasSuspectPair(caseId, targetUuid, false);
+        // A vanished snapshot reads as NOT_PRESENT. 快照缺失时按“不在场”处理。
+        DetectiveCaseWorldComponent.CrimeSceneSnapshot snapshot = DetectiveCaseWorldComponent.KEY.get(world).get(caseId);
+        Vec3d killTimePosition = snapshot == null ? null : snapshot.positions().get(targetUuid);
+        // Player-affect policies (a Rift Gate occupant, an active Wraith) judge online players only.
+        // 玩家影响策略（裂隙门内、冤魂状态）只能判断在线玩家。
+        ServerPlayerEntity suspect = onlineIn(world, targetUuid);
+        boolean shielded = suspect != null && !SparkFactionCompat.canAffectPlayer(user, suspect, MAGNIFIER_ACTION_ID);
+        boolean caseVictim = snapshot != null
+                && (targetUuid.equals(snapshot.victimUuid()) || targetUuid.equals(selected.getVictimDisplayUuid()));
+        boolean present = snapshot != null && DetectiveCaseRules.answersWithDistance(
+                killTimePosition != null, caseVictim, shielded);
 
         DetectiveCaseRules.InvestigationOutcome outcome = DetectiveCaseRules.decideInvestigation(
-                selected != null,
-                selected == null ? 0 : selected.getSuspects().size(),
-                getSuspectLimit(world),
-                alreadyRecorded,
-                killTimePosition != null
-        );
-        if (outcome != DetectiveCaseRules.InvestigationOutcome.RECORDED
-                || selected == null || identity == null || snapshot == null || killTimePosition == null) {
-            // Rejections never start the cooldown. 所有拒绝结果都不进入冷却。
-            sendActionBar(user, switch (outcome) {
-                case NO_CASE -> "no_case";
-                case LIMIT_REACHED -> "enough_clues";
-                case ALREADY_RECORDED -> "already_recorded";
-                default -> "not_present";
-            });
+                true, selected.getSuspects().size(), limit, alreadyRecorded, present);
+        if (outcome != DetectiveCaseRules.InvestigationOutcome.RECORDED || snapshot == null || killTimePosition == null) {
+            if (DetectiveCaseRules.startsCooldown(outcome)) {
+                user.getItemCooldownManager().set(magnifier, DetectiveCaseRules.MAGNIFIER_COOLDOWN_TICKS);
+            }
+            boolean absentRecorded = outcome == DetectiveCaseRules.InvestigationOutcome.NOT_PRESENT
+                    && folder.markAbsent(caseId, targetUuid);
+            answer(user, caseId, targetUuid, outcome, 0);
+            if (absentRecorded) {
+                folder.sync();
+            }
             return;
         }
 
-        // 3D distance from the victim's death point to the REAL suspect's kill-time position.
-        // 从受害者死亡点到嫌疑人（真实身份）案发时位置的三维距离。
+        // 3D distance from the victim's death point to the suspect's kill-time position.
+        // 从受害者死亡点到嫌疑人案发时位置的三维距离。
         int distanceBlocks = DetectiveCaseRules.roundDistanceBlocks(snapshot.origin().distanceTo(killTimePosition));
-        // realUuid stays server-side (NBT only, not used for duplicate checks); the sync never writes it.
-        // realUuid 仅留在服务端（只写入 NBT，不参与去重），同步时绝不写出。
+        // realUuid stays server-side (NBT only); the sync never writes it.
+        // realUuid 仅留在服务端（只写入 NBT），同步时绝不写出。
         DetectiveCasePlayerComponent.SuspectClue clue = new DetectiveCasePlayerComponent.SuspectClue(
-                realUuid, identity.displayUuid(), identity.displayName(), identity.anonymous(), distanceBlocks);
-        if (!folder.addSuspect(selected.getCaseId(), clue)) {
+                targetUuid, targetUuid, DetectiveIdentityResolver.nameOf(world.getServer(), world, targetUuid, null),
+                false, distanceBlocks);
+        if (!folder.addSuspect(caseId, clue)) {
             return;
         }
-        if (DetectiveCaseRules.startsCooldown(outcome)) {
-            user.getItemCooldownManager().set(magnifier, DetectiveCaseRules.MAGNIFIER_COOLDOWN_TICKS);
-        }
-        sendActionBar(user, "clue", displayText(identity), distanceBlocks);
+        user.getItemCooldownManager().set(magnifier, DetectiveCaseRules.MAGNIFIER_COOLDOWN_TICKS);
+        answer(user, caseId, targetUuid, outcome, distanceBlocks);
         folder.sync();
-        // Achievement record: the real suspect and the snapshot's real victim, never the displayed identities.
-        // 成就记录：使用真实嫌疑人与快照中的真实死者，而不是显示身份。
-        AchievementRecords.detectiveInterrogate(user, suspect, snapshot.victimUuid());
+        // Achievement record: the real suspect and the snapshot's real victim. Wathe records online players only.
+        // 成就记录：真实嫌疑人与快照中的真实死者；Wathe 只能记录在线玩家。
+        if (suspect != null) {
+            AchievementRecords.detectiveInterrogate(user, suspect, snapshot.victimUuid());
+        }
+    }
+
+    /**
+     * Action bar line (still readable once the roster closes) plus the result packet for the open roster.
+     * 动作栏提示（关闭名单后仍可看到）以及发给打开中名单的结果包。
+     */
+    private static void answer(ServerPlayerEntity user, @Nullable UUID caseId, UUID targetUuid,
+                               DetectiveCaseRules.InvestigationOutcome outcome, int distanceBlocks) {
+        ServerWorld world = user.getServerWorld();
+        Text name = Text.literal(DetectiveIdentityResolver.nameOf(world.getServer(), world, targetUuid, null));
+        switch (outcome) {
+            case NO_CASE -> sendActionBar(user, "no_case");
+            case LIMIT_REACHED -> sendActionBar(user, "enough_clues");
+            case ALREADY_RECORDED -> sendActionBar(user, "already_recorded");
+            case NOT_PRESENT -> sendActionBar(user, "not_present", name);
+            case RECORDED -> sendActionBar(user, "clue", name, distanceBlocks);
+        }
+        if (ServerPlayNetworking.canSend(user, DetectiveInterrogationResultS2CPacket.ID)) {
+            ServerPlayNetworking.send(user,
+                    new DetectiveInterrogationResultS2CPacket(caseId, targetUuid, outcome, distanceBlocks));
+        }
     }
 
     private static @Nullable DetectiveCasePlayerComponent editableFolder(ServerPlayerEntity player, UUID caseId) {
@@ -491,6 +562,12 @@ public final class DetectiveCaseService {
         return DetectiveRules.isDetective(GameWorldComponent.KEY.get(player.getWorld()).getRole(player))
                 && GameFunctions.isPlayerPlayingAndAlive(player)
                 && !player.isSpectator();
+    }
+
+    /** The roster is opened from the magnifier, so asking still needs it in hand. / 名单由放大镜打开，审问时仍须手持放大镜。 */
+    private static boolean isHoldingMagnifier(ServerPlayerEntity player) {
+        Item magnifier = SparkStrengthItems.magnifier();
+        return player.getMainHandStack().isOf(magnifier) || player.getOffHandStack().isOf(magnifier);
     }
 
     private static @Nullable Role findGuessableRole(Identifier roleId) {
@@ -540,12 +617,6 @@ public final class DetectiveCaseService {
     private static @Nullable ServerPlayerEntity onlineIn(ServerWorld world, UUID uuid) {
         ServerPlayerEntity player = world.getServer().getPlayerManager().getPlayer(uuid);
         return player != null && player.getWorld() == world ? player : null;
-    }
-
-    private static Text displayText(DetectiveIdentityResolver.DisplayedIdentity identity) {
-        return identity.anonymous()
-                ? Text.literal("???").formatted(Formatting.OBFUSCATED)
-                : Text.literal(identity.displayName());
     }
 
     private static void sendActionBar(ServerPlayerEntity player, String key, Object... args) {

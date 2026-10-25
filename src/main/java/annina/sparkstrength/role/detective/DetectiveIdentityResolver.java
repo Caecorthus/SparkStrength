@@ -22,8 +22,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Server-side "who does the detective see" resolver for magnifier clues and filed victims.
- * 服务端解析侦探“看到的是谁”，用于放大镜线索与命案受害人。
+ * Server-side "who does the viewer see" resolver for filed victims and other appearance readers (the Attendant door
+ * log). Remote interrogation names its target by real uuid and never goes through here.
+ * 服务端解析观察者“看到的是谁”，用于命案受害人及其他读取外观的功能（乘务员门禁记录）。远程审问以真实 UUID 指定目标，
+ * 不经过这里。
  *
  * <p>Mirrors the client appearance precedence ({@code MorphlingAppearanceClientHelper} and the NoellesRoles name
  * renderer) from server-synced state only: Jester moment / Wathe psycho / insane viewer (anonymous) > NoellesRoles
@@ -38,20 +40,7 @@ import java.util.UUID;
  * SparkWitch 怨灵/黑鸦/诅咒幻觉不在复刻范围内。调用方绝不能把目标的真实 UUID 发给客户端。</p>
  */
 public final class DetectiveIdentityResolver {
-    private static final DisplayedIdentity ANONYMOUS = new DisplayedIdentity(null, "", true);
-
     private DetectiveIdentityResolver() {
-    }
-
-    /**
-     * Identity a living suspect shows to {@code viewer} right now (resolved at investigation time, never cached).
-     * 活体嫌疑人此刻在 viewer 眼中展示的身份（调查时解析，不缓存）。
-     */
-    public static DisplayedIdentity resolve(ServerPlayerEntity viewer, ServerPlayerEntity target) {
-        if (isAnonymised(viewer, target)) {
-            return ANONYMOUS;
-        }
-        return resolveAppearance(target);
     }
 
     /**
@@ -142,21 +131,11 @@ public final class DetectiveIdentityResolver {
     }
 
     /**
-     * Wathe psycho mode obfuscates the target's own name; a NoellesRoles Jester moment (any Jester in psycho mode in
-     * the world) obfuscates every name for living viewers, which always includes the detective. With the NoellesRoles
-     * {@code insaneSeesMorphs} setting on, a viewer whose Wathe mood is below depressed sees every name as "??!?!"
-     * ({@code MorphlingRoleNameRendererMixin}).
-     * Wathe 疯魔模式会让目标名字乱码；NoellesRoles 小丑时刻（世界内任一小丑处于疯魔）会让存活观察者看到的所有名字乱码，
-     * 侦探作为存活者必然受影响。NoellesRoles 开启 insaneSeesMorphs 时，情绪低于抑郁的观察者看到的所有名字都是“??!?!”。
-     */
-    private static boolean isAnonymised(ServerPlayerEntity viewer, ServerPlayerEntity target) {
-        return isSubjectAnonymised(target) || viewerSeesNoNames(viewer);
-    }
-
-    /**
-     * Viewer-independent half of {@link #isAnonymised}: the target is in Wathe psycho mode, or a Jester moment is on
-     * (from the Jester's transformation, as SparkStrength starts the moment view there).
-     * isAnonymised 中与观察者无关的部分：目标处于 Wathe 疯魔，或正处于小丑时刻（SparkStrength 让时刻视角从小丑转变时开始）。
+     * Viewer-independent name obfuscation: the target is in Wathe psycho mode (its own name), or a NoellesRoles Jester
+     * moment is on, which obfuscates every name for living viewers (from the Jester's transformation, as SparkStrength
+     * starts the moment view there).
+     * 与观察者无关的名字乱码：目标处于 Wathe 疯魔（只影响其本人名字），或正处于 NoellesRoles 小丑时刻（对存活观察者隐藏
+     * 所有名字；SparkStrength 让时刻视角从小丑转变时开始）。
      */
     public static boolean isSubjectAnonymised(ServerPlayerEntity target) {
         if (PlayerPsychoComponent.KEY.get(target).getPsychoTicks() > 0) {
@@ -175,9 +154,9 @@ public final class DetectiveIdentityResolver {
     }
 
     /**
-     * Viewer-dependent half of {@link #isAnonymised}: NoellesRoles {@code insaneSeesMorphs} with the viewer's mood below
-     * depressed hides every name from that viewer.
-     * isAnonymised 中与观察者相关的部分：NoellesRoles 开启 insaneSeesMorphs 且观察者情绪低于抑郁时，所有名字对其隐藏。
+     * Viewer-dependent name obfuscation: with NoellesRoles {@code insaneSeesMorphs} on, a viewer whose Wathe mood is
+     * below depressed sees every name as "??!?!" ({@code MorphlingRoleNameRendererMixin}).
+     * 与观察者相关的名字乱码：NoellesRoles 开启 insaneSeesMorphs 时，情绪低于抑郁的观察者看到的所有名字都是“??!?!”。
      */
     public static boolean viewerSeesNoNames(ServerPlayerEntity viewer) {
         return ConfigWorldComponent.KEY.get(viewer.getServerWorld()).insaneSeesMorphs
@@ -185,8 +164,8 @@ public final class DetectiveIdentityResolver {
     }
 
     /**
-     * What the detective saw. Anonymous identities carry no uuid and an empty name (clients draw "???" obfuscated).
-     * 侦探看到的身份；匿名身份不带 UUID、名字为空（客户端绘制乱码“???”）。
+     * What the viewer saw. Anonymous identities carry no uuid and an empty name (clients draw "???" obfuscated).
+     * 观察者看到的身份；匿名身份不带 UUID、名字为空（客户端绘制乱码“???”）。
      */
     public record DisplayedIdentity(@Nullable UUID displayUuid, String displayName, boolean anonymous) {
         public DisplayedIdentity {
