@@ -24,6 +24,13 @@ import java.util.UUID;
 public final class UndercoverSight {
     private static final int MAX_GLASS_DOORS = 4;
     private static final double STEP_PAST_GLASS = 0.05;
+    /**
+     * Client thread only. MinecraftClient#hasOutline, and so this check, is also asked from other threads (Entity
+     * Culling's CullThread asks it for every rendered entity), and a plain HashMap shared with them threw
+     * ConcurrentModificationException in computeIfAbsent (T-0017).
+     * 仅限客户端线程。MinecraftClient#hasOutline（因而本判定）也会在其他线程被询问（Entity Culling 的 CullThread 会对每个
+     * 渲染实体询问），与它们共用普通 HashMap 会在 computeIfAbsent 中抛出 ConcurrentModificationException（T-0017）。
+     */
     private static final Map<UUID, Boolean> CACHE = new HashMap<>();
     private static long cacheTick = Long.MIN_VALUE;
 
@@ -31,13 +38,29 @@ public final class UndercoverSight {
     }
 
     public static boolean canSee(PlayerEntity viewer, PlayerEntity target) {
+        if (!MinecraftClient.getInstance().isOnThread()) {
+            // Another thread only asks (a culler deciding whether to skip its occlusion test); the client thread still
+            // decides every outline it draws. Fail closed without rays or the cache: not in sight, so no outline.
+            // 其他线程只是询问（剔除线程决定是否跳过遮挡测试）；实际绘制的描边仍由客户端线程决定。不发射线、不碰缓存，
+            // 失败即关闭：视为不在视线内，因此不描边。
+            return false;
+        }
         World world = viewer.getWorld();
         long tick = world.getTime();
         if (tick != cacheTick) {
             CACHE.clear();
             cacheTick = tick;
         }
-        return CACHE.computeIfAbsent(target.getUuid(), uuid -> compute(viewer, target));
+        // get, compute, put: unlike computeIfAbsent, a nested canSee reached from inside the rays can't throw here.
+        // 先查、再算、后存：与 computeIfAbsent 不同，射线内部嵌套到达的 canSee 不会在这里抛异常。
+        UUID key = target.getUuid();
+        Boolean cached = CACHE.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        boolean visible = compute(viewer, target);
+        CACHE.put(key, visible);
+        return visible;
     }
 
     private static boolean compute(PlayerEntity viewer, PlayerEntity target) {
