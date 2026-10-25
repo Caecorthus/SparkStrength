@@ -27,8 +27,8 @@ public final class JesterMomentRules {
     public static final int FREEZE_MARGIN_TICKS = 40;
     /**
      * How far a shuffled spot's feet may be raised out of the blocks around them. Wathe's couches sink a seated
-     * player's feet at most 0.15 into the floor.
-     * 打乱后的位置最多把脚从方块里抬高多少。Wathe 沙发让坐着的玩家脚最多陷入地板 0.15。
+     * player's feet at most 0.15 into the floor, and the seat on that floor is 0.5 high.
+     * 打乱后的位置最多把脚从方块里抬高多少。Wathe 沙发让坐着的玩家脚最多陷入地板 0.15，地板上的座位高 0.5。
      */
     public static final double MAX_FEET_LIFT = 1.0D;
     private static final double FEET_EPSILON = 1.0E-4D;
@@ -107,11 +107,13 @@ public final class JesterMomentRules {
     /**
      * Feet height at which a player can stand on a spot. A block the feet are already inside does not hold a player up
      * (Minecraft only collides with blocks it is about to enter), so a player put there falls through it, and under a
-     * train floor that means out of the train. The feet rise to the top of every box they are inside, as long as that
-     * stays within {@link #MAX_FEET_LIFT}; a box that only touches the feet, ending or starting there, is left alone.
+     * train floor that means out of the train. A box that starts at the feet fills the body above them (a couch on the
+     * floor the feet were just raised to), so a player put there stands stuck inside it. The feet rise to the top of
+     * every box they are inside or that starts at them, as long as that stays within {@link #MAX_FEET_LIFT}; a box
+     * that ends at the feet holds them up and is left alone.
      * 玩家能站住的脚高。脚已经陷入的方块托不住玩家（Minecraft 只与即将进入的方块碰撞），玩家会穿过它坠落，
-     * 列车地板下面就是车外。脚抬到所陷入的每个碰撞箱顶部，总抬高不超过 {@link #MAX_FEET_LIFT}；
-     * 只与脚接触（在脚处结束或开始）的碰撞箱不算陷入。
+     * 列车地板下面就是车外。从脚处开始的碰撞箱占据脚上方的身体（例如脚刚抬到的地板上的沙发），玩家会卡在里面。
+     * 脚抬到所陷入或从脚处开始的每个碰撞箱顶部，总抬高不超过 {@link #MAX_FEET_LIFT}；在脚处结束的碰撞箱托住脚，不动。
      */
     public static double standingFeetY(double feetY, List<Span> spans) {
         double y = feetY;
@@ -119,7 +121,7 @@ public final class JesterMomentRules {
         while (lifted) {
             lifted = false;
             for (Span span : spans) {
-                if (span.minY() < y - FEET_EPSILON && span.maxY() > y + FEET_EPSILON
+                if (span.minY() < y + FEET_EPSILON && span.maxY() > y + FEET_EPSILON
                         && span.maxY() - feetY <= MAX_FEET_LIFT + FEET_EPSILON) {
                     y = span.maxY();
                     lifted = true;

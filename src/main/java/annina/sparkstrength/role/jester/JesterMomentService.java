@@ -109,10 +109,13 @@ public final class JesterMomentService {
      * the Jester included, moves to someone else's frozen spot and is released, so the others can run before the moment
      * starts. Runs before NoellesRoles records the stasis point, so the Jester's stasis lock holds its new spot.
      * Everyone gets up first and every spot is one a player can stand on: Wathe couches and ottomans sink a seated
-     * player's feet into the floor, and whoever was sent there fell through it and out of the train.
+     * player's feet into the floor, and whoever was sent there fell through it and out of the train. Someone who left
+     * their seat while frozen is pulled back to the riding spot the freeze locked at the shot, so there is no seat to
+     * get up from and their spot is still at seat height, inside the couch; it is raised onto the seat.
      * 服务端：小丑已在死亡处复活，即将进入禁锢（转变）。所有人（含小丑）移到别人被定住的位置并解除定身，
      * 其他人可以在时刻开始前逃跑。在 NoellesRoles 记录禁锢点之前执行，因此小丑的禁锢会锁在新位置。
      * 所有人先起身，每个位置都能站住：Wathe 的沙发和脚凳让坐着的玩家脚陷进地板，被换过去的人会穿过地板掉出列车。
+     * 定身期间离座的人会被拉回中枪时锁定的乘坐位置，已无座可起，其位置仍在坐姿高度、沙发里面；该位置会被抬到座位上。
      */
     public static void onTransformationStarted(ServerPlayerEntity jester) {
         ServerWorld world = jester.getServerWorld();
@@ -162,10 +165,10 @@ public final class JesterMomentService {
     }
 
     /**
-     * The player's position with the feet raised out of any block they are inside (see
+     * The player's position with the feet raised out of any block they are inside or standing in (see
      * {@link JesterMomentRules#standingFeetY}). The footprint is pulled in a hair so a wall the player is pressed
      * against does not count.
-     * 玩家位置，脚从陷入的方块中抬出（见 {@link JesterMomentRules#standingFeetY}）。站立范围略微内缩，
+     * 玩家位置，脚从陷入或站在其中的方块中抬出（见 {@link JesterMomentRules#standingFeetY}）。站立范围略微内缩，
      * 贴着的墙不算在内。
      */
     private static Vec3d standingSpot(ServerWorld world, ServerPlayerEntity player) {
