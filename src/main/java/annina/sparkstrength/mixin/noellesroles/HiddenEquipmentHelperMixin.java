@@ -23,9 +23,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /**
  * Adds SparkStrength's tablet, Engineer capture items, Professor serums, Morphling items, Detective tools,
  * Perfumer kit, every Bartender ingredient, the Recaller's ender pearl / chorus fruit, the Toxicologist's
- * Blue Vitriol / Blue Belladonna, the Bomber's drones, the Vulture's skateboard, the Pathogen's Virus / T-Virus and the
- * Party Animal's Party Balloon to NoellesRoles' hidden-equipment filter.
- * 将 SparkStrength 平板、工程师捕捉装置、教授试剂、变形怪道具、侦探道具、调香师道具、全部酒保调剂、回溯者的末影珍珠/紫颂果、毒理学家的蓝矾/蓝颠茄、炸弹客无人机、秃鹫滑板、病原体的病毒/T病毒以及派对狂的派对气球加入 NoellesRoles 的隐藏装备过滤器。
+ * Blue Vitriol / Blue Belladonna, the Bomber's drones, the Vulture's skateboard, the Impostor's pry tool, the Pathogen's
+ * Virus / T-Virus and the Party Animal's Party Balloon to NoellesRoles' hidden-equipment filter.
+ * 将 SparkStrength 平板、工程师捕捉装置、教授试剂、变形怪道具、侦探道具、调香师道具、全部酒保调剂、回溯者的末影珍珠/紫颂果、毒理学家的蓝矾/蓝颠茄、炸弹客无人机、秃鹫滑板、内鬼的撬锁工具、病原体的病毒/T病毒以及派对狂的派对气球加入 NoellesRoles 的隐藏装备过滤器。
  */
 @Mixin(value = HiddenEquipmentHelper.class, remap = false)
 public abstract class HiddenEquipmentHelperMixin {
@@ -125,6 +125,13 @@ public abstract class HiddenEquipmentHelperMixin {
         if (stack.isOf(SparkStrengthItems.grenadeDrone()) || stack.isOf(SparkStrengthItems.bombDrone())) {
             // Only the real Bomber ever holds drones; a held drone would expose the role, like the timed bomb.
             // 只有真实炸弹客会持有无人机；手持无人机会像定时炸弹一样暴露身份。
+            cir.setReturnValue(true);
+            return;
+        }
+
+        if (stack.isOf(SparkStrengthItems.impostorLockpick())) {
+            // Only an Impostor is ever given the pry tool; holding one would expose the trait.
+            // 只有内鬼会获得撬锁工具；手持会暴露内鬼身份。
             cir.setReturnValue(true);
             return;
         }
