@@ -30,8 +30,6 @@ public final class PartygoerTargeting {
     /** See {@link PartyAnimalRules#isValidPrey}. / 见 PartyAnimalRules#isValidPrey。 */
     public static boolean isValidPrey(ServerPlayerEntity player, @Nullable UUID summoner) {
         GameWorldComponent game = GameWorldComponent.KEY.get(player.getWorld());
-        boolean affected = HeliumBuzzPlayerComponent.KEY.get(player).isActive()
-                || PartyBalloonMarkComponent.isMarked(player);
         return PartyAnimalRules.isValidPrey(
                 GameFunctions.isPlayerPlayingAndAlive(player) && GameFunctions.isPlayerAliveAndSurvival(player),
                 SwallowedPlayerComponent.isPlayerSwallowed(player),
@@ -39,7 +37,8 @@ public final class PartygoerTargeting {
                 SparkTraitsCompat.isEffectiveKiller(game.getRole(player), player),
                 UndercoverRoles.isUndercover(player),
                 UndercoverRoles.isStage2(player),
-                affected,
+                HeliumBuzzPlayerComponent.KEY.get(player).isActive(),
+                PartyBalloonMarkComponent.isMarked(player),
                 player.getVehicle() instanceof PartygoerEntity
         );
     }

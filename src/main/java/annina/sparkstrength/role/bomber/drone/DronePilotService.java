@@ -10,6 +10,7 @@ import annina.sparkstrength.network.drone.DronePilotMoveC2SPacket;
 import annina.sparkstrength.network.drone.DronePilotStateS2CPacket;
 import annina.sparkstrength.role.AbilityLocks;
 import annina.sparkstrength.role.AbilityLocks.Lock;
+import annina.sparkstrength.role.partyanimal.PartygoerCarry;
 import annina.sparkstrength.tablet.TabletStateService;
 import annina.sparkstrength.viewpoint.RemoteViewSessions;
 import dev.doctor4t.wathe.game.GameFunctions;
@@ -320,6 +321,12 @@ public final class DronePilotService {
             return DronePilotEndReason.DESTROYED;
         }
         if (!pilotAlive(pilot)) {
+            return DronePilotEndReason.PILOT_DOWN;
+        }
+        // A Partygoer grabbed the body (a balloon-marked Bomber is prey): the payload lock only stops new sessions and
+        // shots, so the live one ends here. / 派对客抓走了身体（被塞气球的炸弹客也是猎物）：数据包锁只拦新会话与开火，
+        // 进行中的会话在此结束。
+        if (PartygoerCarry.isCarried(pilot)) {
             return DronePilotEndReason.PILOT_DOWN;
         }
         if (pilot.getServerWorld() != session.world() || pilot.getCameraEntity() != pilot || !DroneService.isRealBomber(pilot)
