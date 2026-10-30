@@ -84,7 +84,6 @@
     "partyanimal.PartygoerNoellesItemsMixin",
     "partyanimal.PartygoerPoisonGasMixin",
     "partyanimal.PartygoerSeekerHitsMixin",
-    "partyanimal.PartygoerTrainDoorGridMixin",
     "veteran.VeteranKnifeStabPayloadMixin",
     "veteran.VeteranServerKnifeUseMixin",
     "vulture.SkateboardStepSoundMixin",
