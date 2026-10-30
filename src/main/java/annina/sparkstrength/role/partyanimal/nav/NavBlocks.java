@@ -12,10 +12,9 @@ public interface NavBlocks {
 
     /**
      * Collision boxes of the block at (x, y, z) in block-local coordinates [0, 1], each {minX, minY, minZ, maxX, maxY,
-     * maxZ}. Room doors report none (the Partygoer opens them); closed train doors report a full cube, open (or blasted)
-     * ones none.
-     * (x, y, z) 处方块的碰撞箱，方块局部坐标 [0, 1]，每个为 {minX, minY, minZ, maxX, maxY, maxZ}。房门不报告碰撞（派对客会推开）；
-     * 关着的列车外门报告为整格，开着（或被炸开）的不报告。
+     * maxZ}. Doors report none, train doors included (the Partygoer opens them all).
+     * (x, y, z) 处方块的碰撞箱，方块局部坐标 [0, 1]，每个为 {minX, minY, minZ, maxX, maxY, maxZ}。门不报告碰撞，列车外门也一样
+     * （派对客全都推得开）。
      */
     double[][] boxes(int x, int y, int z);
 

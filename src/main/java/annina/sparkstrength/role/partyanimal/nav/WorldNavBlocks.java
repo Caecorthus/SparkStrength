@@ -15,11 +15,10 @@ import net.minecraft.util.shape.VoxelShape;
 import java.util.List;
 
 /**
- * {@link NavBlocks} over a live server world. Room doors (every Wathe small door that is not a train door, and vanilla
- * doors) report no collision; train doors are solid while closed and open once someone opened or blasted them (the
- * Partygoer never opens one itself); unloaded chunks are solid so the grid never forces a chunk load.
- * 基于服务器世界的 NavBlocks。房门（所有非列车外门的 Wathe 小门，以及原版门）不报告碰撞；列车外门关着时为实心，有人打开或炸开后可通过
- * （派对客自己从不开外门）；未加载区块视为实心，网格绝不强制加载区块。
+ * {@link NavBlocks} over a live server world. Doors (every Wathe door, train doors included, and vanilla doors) report no
+ * collision because the Partygoer opens them all; unloaded chunks are solid so the grid never forces a chunk load.
+ * 基于服务器世界的 NavBlocks。门（所有 Wathe 门，含列车外门，以及原版门）不报告碰撞，因为派对客全都推得开；未加载区块视为实心，
+ * 网格绝不强制加载区块。
  */
 public final class WorldNavBlocks implements NavBlocks {
     private static final double[][] NONE = new double[0][];
@@ -38,12 +37,8 @@ public final class WorldNavBlocks implements NavBlocks {
             return FULL;
         }
         BlockState state = world.getBlockState(cursor.set(x, y, z));
-        if (isRoomDoor(state)) {
+        if (isDoor(state)) {
             return NONE;
-        }
-        if (state.getBlock() instanceof TrainDoorBlock) {
-            // A blasted door stays open. / 被炸开的门一直开着。
-            return state.get(DoorPartBlock.OPEN) ? NONE : FULL;
         }
         VoxelShape shape = state.getCollisionShape(world, cursor);
         if (shape.isEmpty()) {
@@ -80,10 +75,14 @@ public final class WorldNavBlocks implements NavBlocks {
         return flags;
     }
 
-    /** A door the Partygoer walks through: Wathe small doors except train doors, and vanilla doors. / 派对客可穿过的门。 */
+    /** Any door: Wathe doors (train doors included) and vanilla doors. / 任何门：Wathe 门（含列车外门）与原版门。 */
+    public static boolean isDoor(BlockState state) {
+        return state.getBlock() instanceof DoorPartBlock || state.getBlock() instanceof DoorBlock;
+    }
+
+    /** A door inside the train: any door but a train door. / 车内的门：列车外门以外的任何门。 */
     public static boolean isRoomDoor(BlockState state) {
-        return state.getBlock() instanceof DoorPartBlock && !(state.getBlock() instanceof TrainDoorBlock)
-                || state.getBlock() instanceof DoorBlock;
+        return isDoor(state) && !(state.getBlock() instanceof TrainDoorBlock);
     }
 
     @Override

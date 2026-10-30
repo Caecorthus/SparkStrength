@@ -8,7 +8,6 @@ import annina.sparkstrength.role.partyanimal.nav.NavBlocks;
 import annina.sparkstrength.role.partyanimal.nav.TrainNavGrid;
 import annina.sparkstrength.role.partyanimal.nav.TrainPathfinder;
 import dev.doctor4t.wathe.block.SmallDoorBlock;
-import dev.doctor4t.wathe.block.TrainDoorBlock;
 import dev.doctor4t.wathe.block_entity.SmallDoorBlockEntity;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.block.BlockState;
@@ -601,11 +600,9 @@ public final class PartygoerBrain {
     }
 
     /**
-     * Opens closed room doors in the next few cells (key, lock and jam ignored), keeps open ones from closing on it, and
-     * logs a forced opening on the door monitor. Train doors are never opened, only kept open while it passes one that
-     * someone else opened.
-     * 推开前方几格内关着的房门（无视钥匙、上锁与卡门），让开着的门别在身上关上，并在门禁记录里记一条强行打开。列车外门从不推开，
-     * 只在穿过别人打开的外门时让它别关上。
+     * Opens every closed door in the next few cells, train doors included (key, lock and jam ignored), keeps open ones
+     * from closing on it, and logs a forced opening of a room door on the door monitor.
+     * 推开前方几格内所有关着的门，列车外门也一样（无视钥匙、上锁与卡门），让开着的门别在身上关上，并在门禁记录里给房门记一条强行打开。
      */
     private void openDoorsAhead() {
         int end = Math.min(path.size(), pathIndex + DOOR_LOOKAHEAD);
@@ -630,7 +627,7 @@ public final class PartygoerBrain {
             if (!(world.getBlockEntity(lower) instanceof SmallDoorBlockEntity door)) {
                 return;
             }
-            if (!door.isOpen() && !door.isBlasted() && !(state.getBlock() instanceof TrainDoorBlock)) {
+            if (!door.isOpen() && !door.isBlasted()) {
                 SmallDoorBlock.toggleDoor(lowerState, world, door, lower);
                 DoorLogService.recordForced(world, lower);
             }
