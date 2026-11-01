@@ -13,11 +13,11 @@ import java.util.Arrays;
  * <p>A cell is the block holding the feet. It is standable when the centre column (0.6 wide, like a player) has a floor
  * no higher than a slab inside the block, or a full-height top just below it, and 1.8 blocks of clear headroom above
  * that floor. A move between neighbouring cells sweeps the same 0.6-wide column from centre to centre, so thin panels on
- * a shared face and diagonal corner cuts are caught. Room doors never collide (the Partygoer opens them); train doors are
- * walls until someone opens them. Rises above a step (0.6) are only allowed on stairs.
+ * a shared face and diagonal corner cuts are caught. Doors never collide, train doors included (the Partygoer opens them
+ * all). Rises above a step (0.6) are only allowed on stairs.
  * 单元格是脚所在的方块。中心柱（与玩家同宽 0.6）在本格内有不高于台阶板的地面，或下方方块顶面接近整格，且地面以上 1.8 格无遮挡时可站立。
- * 相邻格之间的移动从中心到中心扫掠同样宽 0.6 的柱体，因此能识别公共面上的薄墙板与斜向切角。房门不产生碰撞（派对客会推开）；列车外门在有人
- * 打开之前视为墙。超过一级台阶（0.6）的上升只允许在楼梯上。</p>
+ * 相邻格之间的移动从中心到中心扫掠同样宽 0.6 的柱体，因此能识别公共面上的薄墙板与斜向切角。门不产生碰撞，列车外门也一样（派对客全都推得
+ * 开）。超过一级台阶（0.6）的上升只允许在楼梯上。</p>
  *
  * <p>Ladders, the way a player uses them: a ladder block with headroom is a cell even in mid-air (feet on its bottom,
  * holding the rung), and so is the block just above the top rung (feet level with the top of the ladder). It climbs

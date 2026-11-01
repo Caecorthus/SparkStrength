@@ -175,10 +175,9 @@ public final class PartygoerService {
     }
 
     /**
-     * Blocks were removed or put back at runtime (a door chopped down or restored, a train door opened or closed): every
-     * Partygoer in that world forgets what its grid cached there, so a chopped or open train door stops being a wall.
-     * 运行时有方块被移除或放回（门被拆或复原、列车外门被打开或关上）：该世界的每只派对客都忘掉其网格在那里的缓存，被拆或开着的列车门
-     * 不再算墙。
+     * Blocks were removed or put back at runtime (a door chopped down or restored): every Partygoer in that world forgets
+     * what its grid cached there.
+     * 运行时有方块被移除或放回（门被拆或复原）：该世界的每只派对客都忘掉其网格在那里的缓存。
      */
     public static void onBlocksChanged(ServerWorld world, Collection<BlockPos> changed) {
         for (PartygoerBrain brain : LIVE.values()) {

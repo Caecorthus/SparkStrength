@@ -149,13 +149,16 @@ public final class PartyRoomIndex {
         return new PartyRoom(name, anchor, cellCentre(grid, anchor));
     }
 
-    /** Feet or head inside a room door. / 脚或头在房门方块里。 */
+    /**
+     * Feet or head inside a door. Train doors count too: they never collide, so a flood must not leak out through one.
+     * 脚或头在门方块里。列车外门也算：外门没有碰撞，泛洪不能从外门漏到车外。
+     */
     static boolean isDoorCell(TrainNavGrid grid, long cell) {
         int x = TrainNavGrid.x(cell);
         int y = TrainNavGrid.y(cell);
         int z = TrainNavGrid.z(cell);
-        return (grid.flags(x, y, z) & NavBlocks.FLAG_ROOM_DOOR) != 0
-                || (grid.flags(x, y + 1, z) & NavBlocks.FLAG_ROOM_DOOR) != 0;
+        int doors = NavBlocks.FLAG_ROOM_DOOR | NavBlocks.FLAG_TRAIN_DOOR;
+        return (grid.flags(x, y, z) & doors) != 0 || (grid.flags(x, y + 1, z) & doors) != 0;
     }
 
     public static Vec3d cellCentre(TrainNavGrid grid, long cell) {
