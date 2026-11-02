@@ -90,6 +90,7 @@
     "serialkiller.SerialKillerBipedEntityModelMixin",
     "serialkiller.SerialKillerPlayerInventoryClientMixin",
     "sabotage.BlackoutInstinctSightMixin",
+    "sabotage.BlackoutLightUpdatesMixin",
     "sabotage.EngineCameraShakeMixin",
     "sabotage.EngineChimneySmokeMixin",
     "sabotage.EngineHaltTimerMixin",
