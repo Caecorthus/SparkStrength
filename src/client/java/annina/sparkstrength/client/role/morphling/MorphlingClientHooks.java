@@ -7,6 +7,7 @@ import dev.doctor4t.wathe.api.event.GetInstinctHighlight;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.client.WatheClient;
 import dev.doctor4t.wathe.game.GameFunctions;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
@@ -32,6 +33,10 @@ public final class MorphlingClientHooks {
         WorldRenderEvents.END.register(context -> MorphlingAppearanceClientHelper.forgetFrame());
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
                 client.execute(MorphlingAppearanceClientHelper::forgetFrame));
+        // Corpse mode draws a Wathe corpse stand-in. / 尸体模式改画 Wathe 尸体替身。
+        ClientTickEvents.END_CLIENT_TICK.register(MorphlingCorpseStandIn::tick);
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
+                client.execute(MorphlingCorpseStandIn::forget));
     }
 
     private static GetInstinctHighlight.HighlightResult markedPlayerHighlight(Entity entity) {
