@@ -65,6 +65,8 @@
     "m67.M67InteractionMixin",
     "m67.M67UseTargetMixin",
     "morphling.MorphlingCapeRendererMixin",
+    "morphling.MorphlingCorpseInstinctMixin",
+    "morphling.MorphlingCorpseStandInMixin",
     "morphling.MorphlingElytraRendererMixin",
     "morphling.MorphlingPlayerAppearanceMixin",
     "morphling.MorphlingPlayerBodyRendererMixin",
