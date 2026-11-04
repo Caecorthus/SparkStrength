@@ -131,6 +131,9 @@ public final class TaotieHeadRules {
             Identifier.of("sparkwitch", "vendetta_knife_stab"),
             Identifier.of("sparkwitch", "open_judge_selection"),
             Identifier.of("sparkwitch", "confirm_judge_selection"),
+            // SparkWitch Knight duel target pick (KnightDuelTargetC2SPayload, SparkWitch #169), mirrored from the Control
+            // Expert list. / SparkWitch 骑士决斗目标选择（SparkWitch #169），与控场专家名单一致。
+            Identifier.of("sparkwitch", "knight_duel_target"),
             Identifier.of("sparkwitch", "request_prophecy"),
             Identifier.of("sparkwitch", "confirm_prophecy"),
             Identifier.of("sparkwitch", "submit_tarot_divination_selection"),
