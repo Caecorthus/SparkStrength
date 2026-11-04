@@ -1,5 +1,7 @@
 package annina.sparkstrength.client.screen.detective;
 
+import annina.sparkstrength.compat.SparkFactionCompat;
+import annina.sparkstrength.role.detective.DetectiveCaseRules;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
 import net.minecraft.client.font.TextRenderer;
@@ -15,8 +17,9 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Modal killer-role picker drawn over the folder: killers, then neutrals, then innocents, in a scrollable grid.
- * 覆盖在文件夹上的凶手身份选择浮层：按杀手、中立、平民分组，网格可滚动。
+ * Modal killer-role picker drawn over the folder: killers, neutrals, witch faction, Team Jiahao, then innocents, in a
+ * scrollable grid.
+ * 覆盖在文件夹上的凶手身份选择浮层：按杀手、中立、魔女阵营、嘉豪阵营、平民分组，网格可滚动。
  *
  * <p>The list is presentation only and offers every registered non-special role, including ones disabled for this
  * game ("any role"). The server re-validates every guess against the same set (WatheRoles.ROLES minus special roles).
@@ -255,8 +258,8 @@ final class DetectiveRolePicker {
 
     /**
      * Every registered, non-special role (whether or not it is enabled for this game), grouped killers, neutrals,
-     * innocents in registration order.
-     * 所有已注册的非特殊角色（无论本局是否启用），按杀手、中立、平民分组并保持注册顺序。
+     * witch faction, Team Jiahao, innocents in registration order.
+     * 所有已注册的非特殊角色（无论本局是否启用），按杀手、中立、魔女阵营、嘉豪阵营、平民分组并保持注册顺序。
      */
     private static List<Option> buildOptions() {
         Set<Identifier> special = new HashSet<>();
@@ -276,11 +279,26 @@ final class DetectiveRolePicker {
         return List.copyOf(result);
     }
 
+    /**
+     * Witch faction and Team Jiahao come from SparkFactionAPI's role-only base faction: as native Wathe factions they
+     * no longer read {@code isNeutral()} and would otherwise fall into the innocent band. Without SparkFactionAPI the
+     * old split stays (neutral-aligned falls back to {@code isNeutral()}).
+     * 魔女阵营与嘉豪阵营取自 SparkFactionAPI 仅由身份决定的基础阵营：作为原生 Wathe 阵营它们的 isNeutral() 已为 false，
+     * 否则会落入平民组。没有 SparkFactionAPI 时沿用原划分（与中立对齐回退为 isNeutral()）。
+     */
     private static Group groupOf(Role role) {
-        if (role.canUseKiller()) {
-            return Group.KILLERS;
-        }
-        return role.isNeutral() ? Group.NEUTRALS : Group.INNOCENTS;
+        Identifier faction = SparkFactionCompat.baseFaction(role);
+        return switch (DetectiveCaseRules.rolePickerBand(
+                role.canUseKiller(),
+                SparkFactionCompat.WITCH_FACTION_ID.equals(faction),
+                SparkFactionCompat.JIAHAO_FACTION_ID.equals(faction),
+                SparkFactionCompat.isNeutralAligned(role))) {
+            case KILLERS -> Group.KILLERS;
+            case NEUTRALS -> Group.NEUTRALS;
+            case WITCHES -> Group.WITCHES;
+            case JIAHAO -> Group.JIAHAO;
+            case INNOCENTS -> Group.INNOCENTS;
+        };
     }
 
     /** Role display name; mods without the lang key fall back to the id path. / 角色显示名，缺少语言键时回退为 ID 路径。 */
@@ -293,9 +311,14 @@ final class DetectiveRolePicker {
     record Choice(@Nullable Identifier roleId) {
     }
 
+    /** Drawn in {@link DetectiveCaseRules.RolePickerBand} order. / 按 RolePickerBand 的顺序绘制。 */
     private enum Group {
         KILLERS(0xFFC8372D),
         NEUTRALS(0xFFB08A2E),
+        // SparkWitch's witch faction colour. / SparkWitch 魔女阵营颜色。
+        WITCHES(0xFFE9D5F0),
+        // SparkWitch's Team Jiahao colour. / SparkWitch 嘉豪阵营颜色。
+        JIAHAO(0xFFFFC125),
         INNOCENTS(0xFF3E8E4E);
 
         private final int accent;

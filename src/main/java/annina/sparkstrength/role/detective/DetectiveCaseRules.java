@@ -44,7 +44,42 @@ public final class DetectiveCaseRules {
         INTERROGATION
     }
 
+    /**
+     * Role picker bands, in display order. Witch faction and Team Jiahao have their own bands since SparkFactionAPI
+     * made them native Wathe factions (they no longer read as {@code isNeutral()}).
+     * 身份选择浮层的分组，按显示顺序。SparkFactionAPI 将魔女阵营与嘉豪阵营设为原生 Wathe 阵营后（不再是 isNeutral()），
+     * 两者各自成组。
+     */
+    public enum RolePickerBand {
+        KILLERS,
+        NEUTRALS,
+        WITCHES,
+        JIAHAO,
+        INNOCENTS
+    }
+
     private DetectiveCaseRules() {
+    }
+
+    /**
+     * The picker band of a role: killers first, then the role-only SparkFactionAPI base faction (witch faction, Team
+     * Jiahao), then neutral-aligned, else innocents. Without a faction answer both faction flags are false, so the
+     * old neutral/innocent split applies.
+     * 身份所属分组：先看杀手，再看 SparkFactionAPI 仅由身份决定的基础阵营（魔女阵营、嘉豪阵营），再看是否与中立对齐，
+     * 否则为平民。拿不到阵营时两个阵营标记都为 false，沿用原来的中立/平民划分。
+     */
+    public static RolePickerBand rolePickerBand(boolean canUseKiller, boolean witchFaction, boolean jiahaoFaction,
+                                                boolean neutralAligned) {
+        if (canUseKiller) {
+            return RolePickerBand.KILLERS;
+        }
+        if (witchFaction) {
+            return RolePickerBand.WITCHES;
+        }
+        if (jiahaoFaction) {
+            return RolePickerBand.JIAHAO;
+        }
+        return neutralAligned ? RolePickerBand.NEUTRALS : RolePickerBand.INNOCENTS;
     }
 
     public static int clampSuspectLimit(int requested) {

@@ -1,5 +1,7 @@
 package annina.sparkstrength.role.coroner;
 
+import annina.sparkstrength.compat.SparkFactionCompat;
+import annina.sparkstrength.role.corruptcop.CorruptCopRules;
 import annina.sparkstrength.role.undercover.UndercoverRoleRules;
 import dev.doctor4t.wathe.api.Faction;
 import dev.doctor4t.wathe.api.Role;
@@ -198,8 +200,9 @@ public final class CoronerRules {
     }
 
     public static boolean grantsNeutralMasterKey(@Nullable Role role) {
-        // 用户确认：中立万能钥匙给所有 role.isNeutral() 的尸体身份。
-        return role != null && role.isNeutral();
+        // 用户确认：中立万能钥匙给所有中立身份的尸体。原生 Wathe 阵营后按“与中立对齐”判断，魔女阵营与嘉豪阵营仍给（D3）。
+        // Neutral-aligned corpses (native witch faction and Team Jiahao included, D3) and the Corrupt Cop lend the key.
+        return CorruptCopRules.isNeutralKeyRole(role, SparkFactionCompat::isNeutralAligned);
     }
 
     public static boolean grantsWaiterDoublePickup(@Nullable Role role) {

@@ -144,9 +144,13 @@ public final class CoronerDisguises {
         return !isActualCoroner(player) || hasEngineerDisguise(player);
     }
 
+    /**
+     * Wearing a corpse that lends the neutral master key, by the same rule as the loan, so a lent key always opens
+     * train doors (neutral-aligned roles, native witch faction and Team Jiahao included).
+     * 伪装的尸体是否借出中立万能钥匙，与借出规则相同，因此借到的钥匙总能开列车门（含与中立对齐的原生魔女阵营与嘉豪阵营）。
+     */
     public static boolean hasNeutralDisguise(PlayerEntity player) {
-        Role role = activeDisguiseRole(player);
-        return role != null && role.isNeutral();
+        return CoronerRules.grantsNeutralMasterKey(activeDisguiseRole(player));
     }
 
     static boolean isHigherPriorityMorphActive(PlayerEntity player) {

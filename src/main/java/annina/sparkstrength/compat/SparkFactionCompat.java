@@ -23,10 +23,14 @@ public final class SparkFactionCompat {
     private static final Method CONTAINS_POLICE_ROLE = findPoliceRoleMethod("contains", boolean.class);
     private static final Method RESOLVE_BASE_FACTION = findResolveBaseFaction();
     private static final Method IS_SETTLEMENT_EXCLUDED = findSettlementExcluded();
+    /** {@code SparkFactionApi.isNeutralAligned(Role)} (native Wathe factions), or null. / 不可用时为 null。 */
+    private static final Method IS_NEUTRAL_ALIGNED = findIsNeutralAligned();
     /** {@code [resolveEffectiveFaction, capabilities, FactionCapabilities.canUseInstinct]}, or null. / 不可用时为 null。 */
     private static final Method[] INSTINCT_CAPABILITY = findInstinctCapability();
     /** SparkWitch's witch faction id (Grand Witch, Accomplice, Curser). / SparkWitch 魔女阵营 id。 */
     public static final Identifier WITCH_FACTION_ID = Identifier.of("sparkwitch", "witch");
+    /** SparkWitch's Team Jiahao (Insider, NoellesRoles Corrupt Cop). / SparkWitch 嘉豪阵营 id（内应、黑警）。 */
+    public static final Identifier JIAHAO_FACTION_ID = Identifier.of("sparkwitch", "jiahao");
 
     private SparkFactionCompat() {
     }
@@ -125,6 +129,33 @@ public final class SparkFactionCompat {
     }
 
     /**
+     * Whether the role keeps SparkStrength's "neutral" perks (neutral master key train doors, the Coroner's borrowed
+     * neutral key). SparkFactionAPI's native Wathe factions move the witch faction and Team Jiahao off Wathe NEUTRAL,
+     * so {@code isNeutral()} turns false for them; {@code SparkFactionApi.isNeutralAligned(Role)} still says true
+     * (owner D3). An absent or old API, or a failed call, falls back to {@code role.isNeutral()}, the old rule; a
+     * failure affects only that call. Role-only, so client and server agree.
+     * 该身份是否保留 SparkStrength 的“中立”待遇（中立万能钥匙开列车门、验尸官借用中立钥匙）。SparkFactionAPI 的原生
+     * Wathe 阵营让魔女阵营与嘉豪阵营离开 Wathe NEUTRAL，其 isNeutral() 变为 false；SparkFactionApi.isNeutralAligned(Role)
+     * 仍返回 true（所有者 D3）。API 缺失、旧版或调用失败时回退为 role.isNeutral()（原规则），失败只影响本次调用。
+     * 只看身份，客户端与服务端结果一致。
+     */
+    public static boolean isNeutralAligned(@Nullable Role role) {
+        if (role == null) {
+            return false;
+        }
+        if (IS_NEUTRAL_ALIGNED != null) {
+            try {
+                if (IS_NEUTRAL_ALIGNED.invoke(null, role) instanceof Boolean aligned) {
+                    return aligned;
+                }
+            } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException | LinkageError ignored) {
+                // Fall through to the old rule for this call only. / 仅本次调用回退为原规则。
+            }
+        }
+        return role.isNeutral();
+    }
+
+    /**
      * Whether the player's effective faction declares an instinct key ({@code FactionCapabilities.canUseInstinct}):
      * Wathe killers, SparkWitch's witch faction and the Murderous Witch today. Per faction only, so role-specific keys
      * (Insider, Wind Spirit, ...) are not covered; false when the API is absent or old.
@@ -203,6 +234,19 @@ public final class SparkFactionCompat {
             Method method = Class.forName("dev.caecorthus.sparkfactionapi.api.SparkFactionApi")
                     .getMethod("resolveBaseFaction", Role.class);
             return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == Identifier.class ? method : null;
+        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | LinkageError ignored) {
+            return null;
+        }
+    }
+
+    private static Method findIsNeutralAligned() {
+        if (!FabricLoader.getInstance().isModLoaded("sparkfactionapi")) {
+            return null;
+        }
+        try {
+            Method method = Class.forName("dev.caecorthus.sparkfactionapi.api.SparkFactionApi")
+                    .getMethod("isNeutralAligned", Role.class);
+            return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == boolean.class ? method : null;
         } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | LinkageError ignored) {
             return null;
         }
