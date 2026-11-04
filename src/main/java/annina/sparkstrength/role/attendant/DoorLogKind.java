@@ -10,7 +10,7 @@ import org.jetbrains.annotations.Nullable;
  * 只有 KEY_OPENED 会显示操作者（开门者的表面身份）；其余类型刻意不显示是谁。</p>
  */
 public enum DoorLogKind {
-    /** Room key, master key, neutral master key or Key Fish. / 房间钥匙、万能钥匙、中立万能钥匙或钥匙鱼。 */
+    /** Room key, master key, neutral master key, Key Fish or Spare Key. / 房间钥匙、万能钥匙、中立万能钥匙、钥匙鱼或备用钥匙。 */
     KEY_OPENED("key_opened", 1, true),
     /** Lockpick open. / 撬锁器开门。 */
     PICKED("picked", 2, false),
