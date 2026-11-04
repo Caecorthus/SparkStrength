@@ -92,9 +92,13 @@ public final class DoorLogService {
             return null;
         }
         String doorName = door.getKeyName();
-        // Read the hand before the call: a Key Fish is consumed by its own listener inside onUse.
-        // 必须在调用前读取手持物：钥匙鱼会在 onUse 内被其监听器消耗。
+        // Read the hands before the call: a Key Fish or a spent Spare Key is removed by its own listener inside onUse.
+        // 必须在调用前读取手持物：钥匙鱼与用尽的备用钥匙会在 onUse 内被各自的监听器移除。
         ItemStack held = actor.getMainHandStack();
+        ItemStack offHand = actor.getOffHandStack();
+        if (DoorLogRules.usesOffHand(held.isEmpty(), Registries.ITEM.getId(offHand.getItem()).toString())) {
+            held = offHand;
+        }
         String itemId = Registries.ITEM.getId(held.getItem()).toString();
         DoorLogRules.HeldItem category = DoorLogRules.heldItem(itemId,
                 DoorLogRules.WATHE_KEY.equals(itemId) && loreNamesDoor(held, doorName));

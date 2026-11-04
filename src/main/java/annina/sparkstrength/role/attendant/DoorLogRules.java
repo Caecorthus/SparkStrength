@@ -26,13 +26,33 @@ public final class DoorLogRules {
     public static final Set<String> UNIVERSAL_KEYS = Set.of(
             "noellesroles:master_key",
             "noellesroles:neutral_master_key",
-            "sparkwitch:key_fish"
+            "sparkwitch:key_fish",
+            "sparkwitch:spare_key"
     );
+    /**
+     * Universal keys that also open from the off-hand, and only while the main hand is empty: SparkWitch's Spare Key
+     * (the Attendant's round-start key) reads exactly that hand. Every other key works from the main hand only.
+     * 主手为空时也能在副手开门的万能钥匙：SparkWitch 的备用钥匙（乘务员开局钥匙）恰好按此规则读取副手。其他钥匙只认主手。
+     */
+    public static final Set<String> OFF_HAND_KEYS = Set.of("sparkwitch:spare_key");
 
     private DoorLogRules() {
     }
 
-    /** What the opener held in the main hand when the interaction began. / 交互开始时开门者主手所持之物。 */
+    /**
+     * Whether the off-hand item, not the main hand, decides the classification: an off-hand key with an empty main
+     * hand. Any main-hand item (lockpick, crowbar, another key) always wins, as it does for the Spare Key itself.
+     * 是否由副手（而非主手）决定归类：主手为空且副手是可副手使用的钥匙。主手有任何物品（撬锁器、撬棍、其他钥匙）时一律以主手为准，
+     * 与备用钥匙自身的规则一致。
+     */
+    public static boolean usesOffHand(boolean mainHandEmpty, String offHandItemId) {
+        return mainHandEmpty && OFF_HAND_KEYS.contains(offHandItemId);
+    }
+
+    /**
+     * What the opener held when the interaction began: the main hand, or an off-hand key per {@link #usesOffHand}.
+     * 交互开始时开门者所持之物：主手，或按 usesOffHand 规则取副手钥匙。
+     */
     public enum HeldItem {
         KEY,
         LOCKPICK,
@@ -44,9 +64,9 @@ public final class DoorLogRules {
     }
 
     /**
-     * Categorises the held main-hand item. A Wathe room key for another room is {@link HeldItem#OTHER}: Wathe would
+     * Categorises the held item. A Wathe room key for another room is {@link HeldItem#OTHER}: Wathe would
      * refuse it, so a door that still opens was forced (e.g. a Jester in psycho mode holding the wrong key).
-     * 归类主手物品。别的房间的 Wathe 钥匙算 OTHER：Wathe 本会拒绝它，门仍被打开即为强行打开（例如疯魔小丑拿着错误钥匙）。
+     * 归类手持物品。别的房间的 Wathe 钥匙算 OTHER：Wathe 本会拒绝它，门仍被打开即为强行打开（例如疯魔小丑拿着错误钥匙）。
      */
     public static HeldItem heldItem(String itemId, boolean roomKeyMatchesDoor) {
         if (WATHE_KEY.equals(itemId)) {
