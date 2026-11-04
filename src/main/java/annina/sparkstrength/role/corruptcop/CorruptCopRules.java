@@ -8,6 +8,8 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.function.Predicate;
+
 /**
  * Pure Corrupt Cop rules keyed by stable role/item ids.
  * 黑警的纯规则：项目本身依赖 NoellesRoles，这里使用稳定 id 是为了让规则和测试保持轻量。
@@ -64,9 +66,23 @@ public final class CorruptCopRules {
                 : GetInstinctHighlight.HighlightResult.withKeybind(viewerRole.color(), INSTINCT_PRIORITY);
     }
 
+    /**
+     * Whose real role may use the neutral master key on train doors, and whose corpse lends one to the Coroner: a
+     * neutral-aligned role, plus always the Corrupt Cop itself. Callers pass {@code SparkFactionCompat::isNeutralAligned}
+     * because SparkFactionAPI's native Wathe factions (witch faction, Team Jiahao) are no longer {@code isNeutral()} yet
+     * keep this perk (owner D3); the cop never depends on that lookup. The predicate never sees null.
+     * 哪些真实身份可用中立万能钥匙开列车门、其尸体会借给验尸官中立钥匙：与中立对齐的身份，以及黑警本身。调用方传入
+     * SparkFactionCompat::isNeutralAligned，因为 SparkFactionAPI 的原生 Wathe 阵营（魔女阵营、嘉豪阵营）的 isNeutral()
+     * 已为 false，但保留该待遇（所有者 D3）；黑警从不依赖该查询。判定函数不会收到 null。
+     */
+    public static boolean isNeutralKeyRole(@Nullable Role role, Predicate<? super Role> neutralAligned) {
+        return role != null && (isCorruptCop(role) || neutralAligned.test(role));
+    }
+
     public static DoorInteraction.DoorInteractionResult neutralMasterKeyDoorResult(
             Identifier handItemId,
             Role playerRole,
+            Predicate<? super Role> neutralAligned,
             DoorInteraction.DoorType doorType,
             boolean blasted,
             boolean jammed,
@@ -76,7 +92,7 @@ public final class CorruptCopRules {
     ) {
         return neutralMasterKeyDoorResult(
                 handItemId,
-                playerRole != null && playerRole.isNeutral(),
+                isNeutralKeyRole(playerRole, neutralAligned),
                 isCorruptCop(playerRole),
                 doorType,
                 blasted,
