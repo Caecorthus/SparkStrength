@@ -145,6 +145,7 @@ public final class TaotieHeadRules {
             Identifier.of("sparkwitch", "use_fiend_dash"),
             Identifier.of("sparkwitch", "use_apprentice_purify"),
             Identifier.of("sparkwitch", "magician_ability"),
+            Identifier.of("sparkwitch", "ragpicker_search"),
             // USEC sniper rifle shot and attachment actions, mirrored from the Control Expert list; the scope toggle
             // (sparkwitch:usec_scope) stays allowed there and here. An unregistered id never matches.
             // USEC 狙击步枪开火与配件操作，同步自控场专家列表；开镜（sparkwitch:usec_scope）在两处均放行。未注册时该 id 永远不会命中。
