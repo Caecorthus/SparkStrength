@@ -76,8 +76,7 @@ public final class TaotieHeadRules {
      *       Partygoer {@code partygoer_swallow}, the sabotage actions {@code trigger_sabotage} and
      *       {@code complete_breaker_repair}, the Detective's remote interrogation
      *       {@code interrogate_detective_suspect} (cooldown skill), and SparkWitch's Athlete dash
-     *       {@code sparkwitch:use_athlete_dash} (classified like {@code use_fiend_dash}, whether or not that list
-     *       carries it yet);</li>
+     *       {@code sparkwitch:use_athlete_dash} (a role skill like {@code use_fiend_dash});</li>
      *   <li>kept allowed (movement, leaving or UI-only): {@code drone_pilot_move}, {@code drone_pilot_exit},
      *       {@code m67_cancel}, {@code cancel_sabotage_channel}, {@code cancel_breaker_repair}, {@code partygoer_menu}
      *       (the room picker), the tablet
@@ -96,7 +95,7 @@ public final class TaotieHeadRules {
      * {@code partygoer_summon}、饕餮吞派对客 {@code partygoer_swallow}、破坏系统的
      * {@code trigger_sabotage} 与 {@code complete_breaker_repair}，侦探远程审问
      * {@code interrogate_detective_suspect}（有冷却的技能），以及 SparkWitch 运动员冲刺
-     * {@code sparkwitch:use_athlete_dash}（与 {@code use_fiend_dash} 同类，无论该表是否已收录）；
+     * {@code sparkwitch:use_athlete_dash}（与 {@code use_fiend_dash} 同类的职业技能）；
      * 继续放行（移动、离开或仅界面用途）：{@code drone_pilot_move}、{@code drone_pilot_exit}、{@code m67_cancel}、
      * {@code partygoer_menu}（选房界面）、
      * {@code cancel_sabotage_channel}、{@code cancel_breaker_repair}、
@@ -146,8 +145,8 @@ public final class TaotieHeadRules {
             Identifier.of("sparkwitch", "rift_hop"),
             Identifier.of("sparkwitch", "rift_gate_close"),
             Identifier.of("sparkwitch", "use_fiend_dash"),
-            // SparkWitch Athlete dash (UseAthleteDashC2SPayload), a role skill classified like use_fiend_dash; an
-            // unregistered id never matches. / SparkWitch 运动员冲刺，与 use_fiend_dash 同类的职业技能；未注册时该 id 永远不会命中。
+            // SparkWitch Athlete dash (UseAthleteDashC2SPayload, SparkWitch #191), a role skill like use_fiend_dash.
+            // SparkWitch 运动员冲刺（SparkWitch #191），与 use_fiend_dash 同类的职业技能。
             Identifier.of("sparkwitch", "use_athlete_dash"),
             Identifier.of("sparkwitch", "use_apprentice_purify"),
             Identifier.of("sparkwitch", "magician_ability"),
