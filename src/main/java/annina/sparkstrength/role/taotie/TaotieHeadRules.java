@@ -144,6 +144,9 @@ public final class TaotieHeadRules {
             Identifier.of("sparkwitch", "rift_gate_close"),
             Identifier.of("sparkwitch", "use_fiend_dash"),
             Identifier.of("sparkwitch", "use_apprentice_purify"),
+            // SparkWitch Noa painting (UseNoaPaintC2SPayload, SparkWitch #186), mirrored from the Control Expert list.
+            // SparkWitch 城崎诺亚作画（SparkWitch #186），与控场专家名单一致。
+            Identifier.of("sparkwitch", "use_noa_paint"),
             Identifier.of("sparkwitch", "magician_ability"),
             // USEC sniper rifle shot and attachment actions, mirrored from the Control Expert list; the scope toggle
             // (sparkwitch:usec_scope) stays allowed there and here. An unregistered id never matches.
