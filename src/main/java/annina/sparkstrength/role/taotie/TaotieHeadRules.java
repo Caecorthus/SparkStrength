@@ -159,6 +159,12 @@ public final class TaotieHeadRules {
             // #195), mirrored from the Control Expert list. / SparkWitch 会计存折取款（左键物品使用，SparkWitch #195），
             // 与控场专家名单一致。
             Identifier.of("sparkwitch", "accountant_withdraw"),
+            // SparkWitch 夏目安安 hypnosis menu request and target confirm (RequestNatsumeMenuC2SPacket /
+            // ConfirmNatsumeTargetC2SPacket, SparkWitch #194), mirrored from the Control Expert list; both halves are
+            // dropped, like the Judge pair. / SparkWitch 夏目安安催眠菜单请求与目标确认（SparkWitch #194），与控场专家名单
+            // 一致；与法官的两个包一样两半都拦截。
+            Identifier.of("sparkwitch", "request_natsume_menu"),
+            Identifier.of("sparkwitch", "confirm_natsume_target"),
             // USEC sniper rifle shot and attachment actions, mirrored from the Control Expert list; the scope toggle
             // (sparkwitch:usec_scope) stays allowed there and here. An unregistered id never matches.
             // USEC 狙击步枪开火与配件操作，同步自控场专家列表；开镜（sparkwitch:usec_scope）在两处均放行。未注册时该 id 永远不会命中。
