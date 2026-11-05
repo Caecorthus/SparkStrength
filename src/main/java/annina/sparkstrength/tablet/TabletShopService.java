@@ -63,11 +63,13 @@ public final class TabletShopService {
      * rewrites every inventory slot from a snapshot (wiping anything given inside the event), and Wraith promotion uses
      * addRole without firing RoleAssigned at all. Each alive, eligible, not-yet-settled player gets a tablet only if
      * they hold none, and is settled either way; a missing tablet never re-triggers a grant, because the Black Raven
-     * disguise stashes inventory items and a re-grant would duplicate when the stash returns.
+     * disguise stashes inventory items and a re-grant would duplicate when the stash returns. Since every round role is
+     * settled at the start, an already-settled player who gains a network or feature mid-round gets only the new lines.
      * 局中对账（ACTIVE 期间于 END_WORLD_TICK 每隔固定 tick 执行），取代 RoleAssigned 时发放：SparkWitch 大魔女招募会先触发
      * RoleAssigned、再按快照重写所有物品栏槽位（事件内发放的物品会被抹掉）；冤魂晋升使用 addRole，根本不触发 RoleAssigned。
      * 每名存活、有资格且尚未结算的玩家只在身上没有平板时获得一台，无论是否发放都记为已结算；平板缺失绝不会再次触发发放，
-     * 因为黑羽鸦伪装会暂存物品，重复发放会在暂存归还时产生第二台。
+     * 因为黑羽鸦伪装会暂存物品，重复发放会在暂存归还时产生第二台。由于每个局内身份开局即已结算，局中获得新网络或功能的已结算玩家
+     * 只会收到新增的提示。
      */
     public static void tick(ServerWorld world) {
         if (world.getTime() % TabletShopRules.GRANT_RECONCILE_INTERVAL_TICKS != 0) {
@@ -85,9 +87,6 @@ public final class TabletShopService {
     }
 
     private static void settle(ServerPlayerEntity player, TabletWorldComponent state, boolean syncAfterGrant) {
-        if (state.isTabletGrantSettled(player.getUuid())) {
-            return;
-        }
         // Same identity facts as channel membership (TabletChannelResolver.identityChannels), plus the real Attendant
         // and the real Bomber. / 与频道成员资格相同的身份事实（identityChannels），再加真实乘务员与真实炸弹客身份。
         TabletChannelRules.Facts facts = TabletChannelResolver.facts(player);
@@ -101,13 +100,22 @@ public final class TabletShopService {
             // 不记为已结算：本局之后的身份/天赋/阵营变化仍可能让该玩家获得资格。
             return;
         }
+        List<String> keys = TabletShopRules.grantMessageKeys(channels, facts.undercover(), realAttendant, realBomber);
+        if (state.isTabletGrantSettled(player.getUuid())) {
+            // Every round role holds a tablet from the start, so a mid-round change (a Wraith promoted to killer, a
+            // recruited Accomplice, a new real Bomber) only explains the networks/features it just gained.
+            // 每个局内身份开局就持有平板，因此局中变化（冤魂晋升为杀手、被招募的共犯、新的真实炸弹客）只解释新获得的网络或功能。
+            for (String key : state.markGrantLinesShown(player.getUuid(), keys)) {
+                player.sendMessage(Text.translatable(key), false);
+            }
+            return;
+        }
         if (!hasTabletAnywhere(player)) {
             if (!player.giveItemStack(new ItemStack(SparkStrengthItems.tablet()))) {
                 // Full inventory: stay unsettled so the next reconciliation pass retries.
                 // 物品栏已满：保持未结算，由下一轮对账重试。
                 return;
             }
-            List<String> keys = TabletShopRules.grantMessageKeys(channels, facts.undercover(), realAttendant, realBomber);
             for (String key : keys) {
                 player.sendMessage(Text.translatable(key), false);
             }
@@ -115,6 +123,9 @@ public final class TabletShopService {
                 TabletStateService.syncTo(player);
             }
         }
+        // A player who already held one got no lines; later changes still explain only what is new.
+        // 本就持有平板的玩家不发提示；之后的变化仍只解释新增部分。
+        state.markGrantLinesShown(player.getUuid(), keys);
         state.markTabletGrantSettled(player.getUuid());
     }
 

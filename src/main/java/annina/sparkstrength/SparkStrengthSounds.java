@@ -58,6 +58,8 @@ public final class SparkStrengthSounds {
     public static final SoundEvent CIRCUIT_BREAKER_SWITCH = REGISTRAR.create("block.circuit_breaker.switch");
     public static final SoundEvent CIRCUIT_BREAKER_RESTORE = REGISTRAR.create("block.circuit_breaker.restore");
     public static final SoundEvent SABOTAGE_READY = REGISTRAR.create("ui.sabotage.ready");
+    /** Tablet buzz for a new chat message; played locally only, as a UI sound. / 平板收到新消息的振动；仅作为界面音效在本地播放。 */
+    public static final SoundEvent TABLET_BUZZ = REGISTRAR.create("item.tablet.buzz");
 
     /**
      * Party Animal's Partygoer, clips picked by the owner (2026-10-21): spawn, grab, killed, gave up (vanish) and rage.

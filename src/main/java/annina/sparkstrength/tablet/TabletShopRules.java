@@ -29,6 +29,7 @@ public final class TabletShopRules {
     public static final String UNDERCOVER_GRANTED_KEY = "message.sparkstrength.tablet.undercover_granted";
     public static final String ATTENDANT_GRANTED_KEY = "message.sparkstrength.tablet.attendant_granted";
     public static final String BOMBER_GRANTED_KEY = "message.sparkstrength.tablet.bomber_granted";
+    public static final String PUBLIC_GRANTED_KEY = "message.sparkstrength.tablet.public_granted";
     /** Police-network suspect highlight; tablets never outline channel members. / 义警网络嫌疑人高亮色；平板从不描边频道成员。 */
     public static final int SUSPECT_HIGHLIGHT_COLOR = 0xFF8C00;
 
@@ -56,11 +57,12 @@ public final class TabletShopRules {
 
     /**
      * Tablet eligibility: a real round role that belongs to at least one tablet network
-     * ({@code TabletChannelResolver.identityChannels} non-empty), or a real role whose tablet feature needs no channel:
+     * ({@code TabletChannelResolver.identityChannels} non-empty, which since the public channel is every round role),
+     * or a real role whose tablet feature needs no channel:
      * the Attendant (door monitor) or the Bomber (drone directory; a SparkTraits Conscience Bomber has no channel).
      * Disguises never count: a Coroner's Attendant disguise is lent a temporary tablet instead, and a Coroner's Bomber
      * disguise gets no drones at all.
-     * 平板资格：拥有有效局内身份，且属于至少一个平板网络（identityChannels 非空），或真实身份的平板功能无需频道：
+     * 平板资格：拥有有效局内身份，且属于至少一个平板网络（identityChannels 非空；有了公共频道后即所有局内身份），或真实身份的平板功能无需频道：
      * 乘务员（房门监控）或炸弹客（无人机目录；SparkTraits 善良炸弹客没有频道）。伪装不计入：验尸官的乘务员伪装改为借出临时平板，
      * 验尸官的炸弹客伪装没有无人机。
      *
@@ -76,10 +78,11 @@ public final class TabletShopRules {
     }
 
     /**
-     * Private chat lines sent with a granted tablet: one for the channel set (Undercover keeps its own killer line),
-     * then the Attendant's door-monitor line, then the Bomber's drone line. Empty for an ineligible player.
-     * 发放平板时发送的私聊提示：先发频道提示（卧底保留其专属的杀手频道提示），再发乘务员房门监控提示，最后发炸弹客无人机提示；
-     * 无资格者为空。
+     * Private chat lines sent with a granted tablet: the public-channel line, one for the faction networks (Undercover
+     * keeps its own killer line), then the Attendant's door-monitor line, then the Bomber's drone line. Empty for an
+     * ineligible player.
+     * 发放平板时发送的私聊提示：先发公共频道提示，再发阵营频道提示（卧底保留其专属的杀手频道提示），然后是乘务员房门监控提示，
+     * 最后是炸弹客无人机提示；无资格者为空。
      */
     public static List<String> grantMessageKeys(
             @Nullable Set<TabletChannel> channels,
@@ -87,7 +90,10 @@ public final class TabletShopRules {
             boolean realAttendant,
             boolean realBomber
     ) {
-        List<String> keys = new ArrayList<>(3);
+        List<String> keys = new ArrayList<>(4);
+        if (channels != null && channels.contains(TabletChannel.PUBLIC)) {
+            keys.add(PUBLIC_GRANTED_KEY);
+        }
         String channelKey = channelGrantMessageKey(channels, undercover);
         if (channelKey != null) {
             keys.add(channelKey);

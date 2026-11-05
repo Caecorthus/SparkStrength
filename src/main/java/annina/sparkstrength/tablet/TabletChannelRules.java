@@ -48,10 +48,21 @@ public final class TabletChannelRules {
     ) {
     }
 
+    /**
+     * Every holder with a round role joins the public proximity channel, plus the faction networks of
+     * {@link #factionNetworks}.
+     * 每名拥有局内身份的持有者都会加入公共近距离频道，再加上 factionNetworks 给出的阵营网络。
+     */
     public static EnumSet<TabletChannel> allowed(Facts facts) {
         if (facts == null || !facts.hasRole()) {
             return EnumSet.noneOf(TabletChannel.class);
         }
+        EnumSet<TabletChannel> channels = factionNetworks(facts);
+        channels.add(TabletChannel.PUBLIC);
+        return channels;
+    }
+
+    private static EnumSet<TabletChannel> factionNetworks(Facts facts) {
         if (facts.witchFaction()) {
             // SparkFactionAPI's base faction wins, e.g. a recruited Accomplice that kept an Impostor trait.
             // 以 SparkFactionAPI 基础阵营为准，例如保留内鬼天赋的被招募共犯。
@@ -71,8 +82,9 @@ public final class TabletChannelRules {
             return EnumSet.of(TabletChannel.POLICE);
         }
         if (facts.conscience()) {
-            // Conscience killers secretly side with civilians; the killer network would expose teammates.
-            // 善良杀手暗中站在好人一边；杀手网络会暴露队友。
+            // Conscience killers secretly side with civilians; the killer network would expose teammates. They keep the
+            // public channel like everyone else.
+            // 善良杀手暗中站在好人一边；杀手网络会暴露队友。公共频道与其他人一样保留。
             return EnumSet.noneOf(TabletChannel.class);
         }
         if (facts.killerRole()) {
@@ -105,12 +117,29 @@ public final class TabletChannelRules {
         return channel != null && alive;
     }
 
+    /** {@link #canSwitch(Set, TabletChannel, TabletChannel, boolean, int, TabletChannel)} with no remembered faction. */
     public static SwitchResult canSwitch(
             Set<TabletChannel> allowed,
             @Nullable TabletChannel current,
             @Nullable TabletChannel target,
             boolean meetingActive,
             int cooldownTicksRemaining
+    ) {
+        return canSwitch(allowed, current, target, meetingActive, cooldownTicksRemaining, null);
+    }
+
+    /**
+     * @param lastFaction faction network the holder last viewed ({@code null}: use {@code current} if it is one), so a
+     *                    detour through the public channel never resets or dodges the faction cooldown / 持有者最后查看的阵营网络
+     *                    （null 时若当前为阵营网络则用当前），经公共频道绕行既不会重置也不能躲开阵营切换冷却
+     */
+    public static SwitchResult canSwitch(
+            Set<TabletChannel> allowed,
+            @Nullable TabletChannel current,
+            @Nullable TabletChannel target,
+            boolean meetingActive,
+            int cooldownTicksRemaining,
+            @Nullable TabletChannel lastFaction
     ) {
         if (target == null || allowed == null || !allowed.contains(target)) {
             return SwitchResult.DENIED;
@@ -123,10 +152,49 @@ public final class TabletChannelRules {
         if (meetingActive && current == TabletChannel.POLICE) {
             return SwitchResult.MEETING_LOCKED;
         }
-        if (cooldownTicksRemaining > 0) {
+        if (cooldownTicksRemaining > 0 && isFactionHop(current, target, lastFaction)) {
             return SwitchResult.COOLDOWN;
         }
         return SwitchResult.OK;
+    }
+
+    /**
+     * Whether switching to {@code target} moves the holder to a different faction network than the one it last viewed:
+     * only those switches start or wait out the cooldown; stepping into or out of the public channel never does.
+     * 切换到 target 是否让持有者换到与上次查看的不同的阵营网络：只有这类切换会开始或受制于冷却；进出公共频道从不计入。
+     */
+    public static boolean isFactionHop(
+            @Nullable TabletChannel current,
+            @Nullable TabletChannel target,
+            @Nullable TabletChannel lastFaction
+    ) {
+        if (target == null || !target.isFaction()) {
+            return false;
+        }
+        TabletChannel anchor = lastFaction != null ? lastFaction
+                : current != null && current.isFaction() ? current : null;
+        return anchor != null && anchor != target;
+    }
+
+    /**
+     * Channels a running cooldown currently blocks, for the client's switcher. / 正在进行的冷却当前阻止的频道，供客户端切换器展示。
+     */
+    public static EnumSet<TabletChannel> cooldownBlocked(
+            @Nullable Set<TabletChannel> allowed,
+            @Nullable TabletChannel current,
+            @Nullable TabletChannel lastFaction,
+            int cooldownTicksRemaining
+    ) {
+        EnumSet<TabletChannel> blocked = EnumSet.noneOf(TabletChannel.class);
+        if (allowed == null || cooldownTicksRemaining <= 0) {
+            return blocked;
+        }
+        for (TabletChannel channel : allowed) {
+            if (channel != current && isFactionHop(current, channel, lastFaction)) {
+                blocked.add(channel);
+            }
+        }
+        return blocked;
     }
 
     public enum SwitchResult {

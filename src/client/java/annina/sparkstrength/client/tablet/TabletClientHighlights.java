@@ -31,13 +31,14 @@ import java.util.function.Function;
  * Only police suspects are highlighted: through walls during the periodic reveal window, and in sight when the
  * suspect is also a member row the server sent this viewer (so a viewer whose police identities are still locked
  * never gets that in-sight marker). The snapshot is already redacted server-side, so non-police viewers never receive
- * suspects; the POLICE check here is a second guard. Dead viewers get nothing so Wathe's spectator role colours stay
+ * suspects (a public-channel viewer gets them only while its faction view underneath is police); the channel check here
+ * is a second guard. Dead viewers get nothing so Wathe's spectator role colours stay
  * intact.
  * 平板从不描边频道成员：义警成员只能通过按任务解锁的成员列表互相识别（见 TabletIdentityRules），杀手与魔女观看者回到各自的
  * 本能与同伙标记。杀手描边若要压过 NoellesRoles 的卧底伪装（PRIORITY_HIGH）就必然同时压过所有 skip()（同为
  * PRIORITY_HIGH），于是会恰好标出已互认同伴中的真杀手。只高亮义警嫌疑人：周期透视窗口内可穿墙；在视线内时，仅当该嫌疑人
  * 也是服务端下发给此观看者的成员行（因此义警身份尚未解锁的观看者不会得到这种视线内标记）。快照已在服务端裁剪，
- * 非义警观看者收不到嫌疑人；这里的 POLICE 判断是第二道防线。死亡观看者不返回结果，以保留 Wathe 旁观者身份颜色。</p>
+ * 非义警观看者收不到嫌疑人（公共频道查看者只有在其下保留的阵营视图为义警时才会收到）；这里的频道判断是第二道防线。死亡观看者不返回结果，以保留 Wathe 旁观者身份颜色。</p>
  */
 public final class TabletClientHighlights {
     private static final int SUSPECT_PRIORITY = 80;
@@ -68,7 +69,10 @@ public final class TabletClientHighlights {
         // Cheapest first: this runs for every rendered entity several times a frame, and only police suspects answer.
         // 最便宜的判断在前：每帧会对每个渲染实体调用多次，而只有义警嫌疑人会作答。
         TabletSnapshot snapshot = TabletClientState.snapshot();
-        if (!snapshot.localHasTablet() || snapshot.channel() != TabletChannel.POLICE) {
+        // The public channel keeps the police view underneath (the server sends suspects only then), so chatting nearby
+        // never switches the outlines off. 公共频道之下仍保留义警视图（只有这时服务端才下发嫌疑人），在附近聊天不会关闭描边。
+        if (!snapshot.localHasTablet()
+                || snapshot.channel() != TabletChannel.POLICE && snapshot.channel() != TabletChannel.PUBLIC) {
             return null;
         }
         index(snapshot);

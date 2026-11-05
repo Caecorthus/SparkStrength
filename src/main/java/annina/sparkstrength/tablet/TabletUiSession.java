@@ -273,7 +273,11 @@ public final class TabletUiSession {
             if (requiredFeature != null) {
                 return features != null && features.contains(requiredFeature);
             }
-            return channel != null && (!requiresMeetingFeatures || channel.hasMeetingFeatures());
+            if (channel == null || requiresMeetingFeatures && !channel.hasMeetingFeatures()) {
+                return false;
+            }
+            // The public channel has no member list (it would be a radar through walls). 公共频道没有成员列表（否则等同穿墙雷达）。
+            return this != CONNECTIONS || !channel.isProximity();
         }
     }
 }

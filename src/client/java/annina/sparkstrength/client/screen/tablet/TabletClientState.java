@@ -8,6 +8,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.world.ClientWorld;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 
@@ -22,6 +23,12 @@ import java.util.Objects;
  * <p>Door-log unread state is the highest entry id the player has seen in the tablet screen; it drives only the red
  * dot on the Door Monitor tab (no HUD).
  * 房门记录的未读状态是玩家在平板界面中看过的最大条目 id；只用于房门监控标签上的红点（无 HUD 提示）。</p>
+ *
+ * <p>Unread channels come from the server's per-message notifications ({@code TabletChatNotifyS2CPacket}), so they cover
+ * every network the holder belongs to, not just the viewed one. They light the switcher rows, the channel chip and the
+ * held tablet's unread screen, and clear when that channel's chat is on screen.
+ * 未读频道来自服务端的逐条消息通知，因此覆盖持有者所属的每个网络，而不只是当前查看的频道。它们点亮切换浮层的行、频道胶囊
+ * 与手中平板的未读屏幕，并在该频道的聊天显示在屏幕上时清除。</p>
  */
 public final class TabletClientState {
     private static TabletSnapshot snapshot = TabletSnapshot.empty();
@@ -32,6 +39,7 @@ public final class TabletClientState {
     private static int doorLogSeenId;
     private static long snapshotAppliedAtTick;
     private static @Nullable TabletUiSession.Section resumeSection;
+    private static final EnumSet<TabletChannel> unreadChannels = EnumSet.noneOf(TabletChannel.class);
 
     private TabletClientState() {
     }
@@ -50,6 +58,12 @@ public final class TabletClientState {
         // 其条目均视为未读。空快照或撤销快照不重置。
         if (newestDoorLogId > 0 && newestDoorLogId < doorLogSeenId) {
             doorLogSeenId = 0;
+        }
+        // Unread marks only survive for networks the holder still belongs to. 未读标记只保留在持有者仍所属的网络上。
+        if (!snapshot.localHasTablet()) {
+            unreadChannels.clear();
+        } else {
+            unreadChannels.retainAll(snapshot.allowedChannels());
         }
         int channelWire = snapshot.channelWire();
         // A different channel's backlog is history, not unread: re-baseline only when a new live channel appears.
@@ -111,6 +125,42 @@ public final class TabletClientState {
             return false;
         }
         return chatSignature(current.chat()) != chatSeenSignature;
+    }
+
+    /** A message from someone else arrived on {@code channel} while its chat was not on screen. 收到未显示频道的新消息。 */
+    public static void markChannelUnread(@Nullable TabletChannel channel) {
+        if (channel != null) {
+            unreadChannels.add(channel);
+        }
+    }
+
+    /** That channel's chat is on screen now. 该频道的聊天正显示在屏幕上。 */
+    public static void markChannelRead(@Nullable TabletChannel channel) {
+        if (channel != null) {
+            unreadChannels.remove(channel);
+        }
+    }
+
+    public static boolean hasUnreadChannel(@Nullable TabletChannel channel) {
+        return channel != null && unreadChannels.contains(channel);
+    }
+
+    /** Drives the held tablet's unread screen. 决定手中平板是否显示未读屏幕。 */
+    public static boolean hasAnyUnreadChannel() {
+        return !unreadChannels.isEmpty();
+    }
+
+    /** First unread network other than {@code viewed}, in switcher order (public first). 除当前频道外第一个有未读的网络。 */
+    public static @Nullable TabletChannel firstUnreadOtherThan(@Nullable TabletChannel viewed) {
+        if (unreadChannels.contains(TabletChannel.PUBLIC) && viewed != TabletChannel.PUBLIC) {
+            return TabletChannel.PUBLIC;
+        }
+        for (TabletChannel channel : unreadChannels) {
+            if (channel != viewed) {
+                return channel;
+            }
+        }
+        return null;
     }
 
     /**
@@ -179,5 +229,6 @@ public final class TabletClientState {
         lastLiveChannelWire = TabletChannel.NO_CHANNEL_WIRE;
         doorLogSeenId = 0;
         resumeSection = null;
+        unreadChannels.clear();
     }
 }

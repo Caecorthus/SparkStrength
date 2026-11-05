@@ -16,7 +16,14 @@ import java.util.Locale;
 public enum TabletChannel {
     POLICE("police", 1),
     KILLER("killer", 2),
-    WITCH("witch", 3);
+    WITCH("witch", 3),
+    /**
+     * Proximity channel every tablet holder joins: no shared history, each message reaches only holders in range of
+     * the sender ({@link TabletPublicRules}). Declared last so a faction network stays the default selection.
+     * 每名平板持有者都会加入的近距离频道：没有共享记录，每条消息只送达发送者附近的持有者（见 TabletPublicRules）。
+     * 声明在最后，使阵营网络仍为默认选择。
+     */
+    PUBLIC("public", 4);
 
     public static final int NO_CHANNEL_WIRE = 0;
 
@@ -65,6 +72,24 @@ public enum TabletChannel {
      */
     public boolean anonymousSenders() {
         return this == KILLER;
+    }
+
+    /**
+     * Faction networks (police, killer, witch) as opposed to the public proximity channel. Only switches between two
+     * different faction networks cost the switch cooldown ({@link TabletChannelRules#canSwitch}).
+     * 阵营网络（义警、杀手、魔女），区别于公共近距离频道。只有在两个不同阵营网络之间切换才计入切换冷却。
+     */
+    public boolean isFaction() {
+        return this != PUBLIC;
+    }
+
+    /**
+     * Range-limited delivery with a per-receiver inbox instead of a shared channel history; no member list is shown,
+     * since listing nearby holders would act as a radar through walls.
+     * 按距离送达、每名接收者单独收件，而不是共享频道记录；不显示成员列表，因为列出附近持有者等同于穿墙雷达。
+     */
+    public boolean isProximity() {
+        return this == PUBLIC;
     }
 
     public String translationKey() {

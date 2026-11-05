@@ -3,10 +3,13 @@ package annina.sparkstrength.tablet;
 import annina.sparkstrength.component.tablet.TabletWorldComponent;
 import annina.sparkstrength.network.tablet.OpenTabletScreenS2CPacket;
 import annina.sparkstrength.network.tablet.SyncTabletSnapshotS2CPacket;
+import annina.sparkstrength.network.tablet.TabletChatNotifyS2CPacket;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
 import annina.sparkstrength.record.AchievementRecords;
 import annina.sparkstrength.role.attendant.DoorLogTabletSnapshots;
 import annina.sparkstrength.role.bomber.drone.DroneTabletSnapshots;
+import annina.sparkstrength.role.jester.JesterMomentService;
+import annina.sparkstrength.role.pathogen.PathogenVisibility;
 import annina.sparkstrength.sabotage.SabotageAccess;
 import annina.sparkstrength.sabotage.SabotageTabletSnapshots;
 import com.mojang.authlib.GameProfile;
@@ -22,6 +25,7 @@ import net.minecraft.text.Text;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -31,6 +35,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Authoritative server actions for the tablet network.
@@ -220,6 +225,10 @@ public final class TabletStateService {
             return;
         }
         ServerWorld world = sender.getServerWorld();
+        if (channel.isProximity()) {
+            sendPublicChat(sender, world, message);
+            return;
+        }
         TabletWorldComponent.KEY.get(world).addChatMessage(
                 channel,
                 sender.getUuid(),
@@ -227,7 +236,63 @@ public final class TabletStateService {
                 message,
                 Instant.now().toEpochMilli()
         );
-        syncChannelMembers(prepare(world), channel);
+        SyncPass pass = prepare(world);
+        syncChannelMembers(pass, channel);
+        for (ServerPlayerEntity member : TabletAccess.channelMembers(pass.holders(), pass.roster(), channel)) {
+            if (member != sender) {
+                notifyMessage(member, channel);
+            }
+        }
+    }
+
+    /**
+     * Public proximity chat: speaking out loud, so voice mutes apply (a T-Virus Pathogen, a Jester in its moment). Each
+     * holder in range of the sender ({@link TabletPublicRules}) gets its own copy in its own inbox, with the sender
+     * and the static decided by its distance right now; holders out of range never get it, not even later.
+     * 公共近距离聊天：等同于开口说话，因此语音禁言同样适用（T病毒病原体、小丑时刻中的小丑）。发送者范围内的每名持有者
+     * 各自收到一份副本存入自己的收件箱，发送者是否可见与噪声都由此刻的距离决定；范围外的持有者永远收不到。
+     */
+    private static void sendPublicChat(ServerPlayerEntity sender, ServerWorld world, String message) {
+        if (PathogenVisibility.isMuted(sender) || JesterMomentService.isVoiceBlocked(sender)) {
+            sender.sendMessage(Text.translatable("message.sparkstrength.tablet.public_muted"), true);
+            return;
+        }
+        TabletWorldComponent tablet = TabletWorldComponent.KEY.get(world);
+        SyncPass pass = prepare(world);
+        long now = Instant.now().toEpochMilli();
+        String senderName = sender.getName().getString();
+        List<ServerPlayerEntity> receivers = new ArrayList<>();
+        for (ServerPlayerEntity holder : pass.holders()) {
+            TabletChannelResolver.Access access = pass.roster().get(holder.getUuid());
+            if (access == null || !access.isMember(TabletChannel.PUBLIC)) {
+                continue;
+            }
+            double distance = holder == sender ? 0.0 : sender.getPos().distanceTo(holder.getPos());
+            if (!TabletPublicRules.receives(distance)) {
+                continue;
+            }
+            tablet.deliverPublicMessage(holder.getUuid(), new TabletWorldComponent.PublicMessage(
+                    sender.getUuid(),
+                    senderName,
+                    TabletPublicRules.garble(message, distance, ThreadLocalRandom.current()),
+                    TabletPublicRules.signal(distance),
+                    now
+            ));
+            receivers.add(holder);
+        }
+        for (ServerPlayerEntity receiver : receivers) {
+            pushSnapshot(receiver, buildSnapshot(receiver, pass.roster()));
+            if (receiver != sender) {
+                notifyMessage(receiver, TabletChannel.PUBLIC);
+            }
+        }
+    }
+
+    /** Local buzz + unread screen for one receiver; old clients without the payload are skipped. / 单个接收者的本地振动与未读提示。 */
+    private static void notifyMessage(ServerPlayerEntity receiver, TabletChannel channel) {
+        if (ServerPlayNetworking.canSend(receiver, TabletChatNotifyS2CPacket.ID)) {
+            ServerPlayNetworking.send(receiver, new TabletChatNotifyS2CPacket(channel.wire()));
+        }
     }
 
     public static void selectChannel(ServerPlayerEntity player, int channelWire) {
@@ -240,18 +305,27 @@ public final class TabletStateService {
         TabletChannelResolver.Access access = TabletChannelResolver.access(player);
         TabletChannel target = TabletChannel.fromWire(channelWire);
         int cooldownTicks = tablet.channelSwitchCooldownTicks(player.getUuid(), world.getTime());
+        TabletChannel lastFaction = tablet.lastFactionChannel(player.getUuid());
         TabletChannelRules.SwitchResult result = TabletChannelRules.canSwitch(
                 access.allowed(),
                 access.selected(),
                 target,
                 tablet.hasActiveMeeting(),
-                cooldownTicks
+                cooldownTicks,
+                lastFaction
         );
         switch (result) {
             case OK -> {
                 TabletChannel selected = Objects.requireNonNull(target);
+                // Only a hop to another faction network starts the cooldown; the public channel is free to enter/leave.
+                // 只有换到另一个阵营网络才开始冷却；进出公共频道不受限制。
+                boolean factionHop = TabletChannelRules.isFactionHop(access.selected(), selected, lastFaction);
+                tablet.setLastFactionChannel(player.getUuid(), access.selected());
+                tablet.setLastFactionChannel(player.getUuid(), selected);
                 tablet.setSelectedChannel(player.getUuid(), selected);
-                tablet.recordChannelSwitch(player.getUuid(), world.getTime());
+                if (factionHop) {
+                    tablet.recordChannelSwitch(player.getUuid(), world.getTime());
+                }
                 player.sendMessage(Text.translatable(
                         "message.sparkstrength.tablet.channel_switched",
                         Text.translatable(selected.translationKey())
@@ -307,6 +381,17 @@ public final class TabletStateService {
 
         tablet.recordMeetingCall(caller.getUuid());
         tablet.startMeeting(caller.getUuid());
+        // Police members chatting on the public channel (with police underneath) are pulled back for the meeting, as
+        // before the public channel existed; an Impostor tuned to the killer network stays where it is.
+        // 正在公共频道聊天（其下为义警视图）的义警成员会被拉回义警频道参加会议，与公共频道出现前一致；接入杀手网络的内鬼保持不动。
+        for (Map.Entry<UUID, TabletChannelResolver.Access> entry : prepare(world).roster().entrySet()) {
+            TabletChannelResolver.Access holder = entry.getValue();
+            if (holder.isPoliceElector()
+                    && holder.selected() == TabletChannel.PUBLIC
+                    && factionViewUnderPublic(holder, tablet.lastFactionChannel(entry.getKey())) == TabletChannel.POLICE) {
+                tablet.setSelectedChannel(entry.getKey(), TabletChannel.POLICE);
+            }
+        }
         SyncPass pass = prepare(world);
         broadcastToChannelMembers(pass, TabletChannel.POLICE, Text.translatable("message.sparkstrength.tablet.meeting_started"));
         syncChannelMembers(pass, TabletChannel.POLICE);
@@ -436,7 +521,15 @@ public final class TabletStateService {
         UUID viewerUuid = viewer.getUuid();
         long now = world.getTime();
         TabletChannel channel = access.selected();
-        boolean meetingFeatures = access.viewsMeetingFeatures();
+        // Underneath the public channel the holder stays tuned to its faction network: member rows and police
+        // meeting/suspect data keep coming (the client shows none of those pages there), so suspect outlines do not
+        // switch off while chatting nearby. Meeting and suspect ACTIONS still need the police view itself.
+        // 在公共频道之下，持有者仍保持接入其阵营网络：成员行与义警会议/嫌疑人数据照常下发（客户端在公共频道不显示这些页面），
+        // 因此在附近聊天时嫌疑人描边不会关闭。会议与嫌疑人操作仍需真正处于义警视图。
+        TabletChannel factionView = channel != null && channel.isProximity()
+                ? factionViewUnderPublic(access, tablet.lastFactionChannel(viewerUuid))
+                : channel;
+        boolean meetingFeatures = factionView != null && factionView.hasMeetingFeatures();
         Set<UUID> electorate = meetingFeatures ? TabletAccess.policeElectorate(roster) : Set.of();
         Set<UUID> links = tablet.identityLinks(viewerUuid);
         // Dead viewers keep the count they reached while alive. / 死亡查看者沿用存活时达到的任务数。
@@ -452,15 +545,8 @@ public final class TabletStateService {
                 meetingFeatures && electorate.contains(viewerUuid),
                 meetingFeatures ? TabletRules.secondsCeil(tablet.meetingCooldownTicks(now)) : 0,
                 meetingFeatures ? tablet.remainingMeetingCalls(viewerUuid) : 0,
-                connectionRows(world, roster, channel, viewerUuid, links, tasksDone),
-                // Stored history keeps real senders, so earlier messages reveal once a link forms or tasks unlock.
-                // 存储的历史保留真实发送者，因此互认或任务解锁后之前的消息也会显示名字。
-                tablet.chatHistory(channel).stream()
-                        .map(message -> TabletIdentityRules.revealsIdentity(
-                                channel, viewerUuid, message.senderUuid(), links, tasksDone)
-                                ? new TabletSnapshot.ChatRow(message.senderUuid(), message.senderName(), message.message())
-                                : TabletSnapshot.ChatRow.hidden(message.message()))
-                        .toList(),
+                connectionRows(world, roster, factionView, viewerUuid, links, tasksDone),
+                chatRows(tablet, channel, viewerUuid, links, tasksDone),
                 meetingFeatures ? meetingSnapshot(world, tablet, viewer, electorate) : TabletSnapshot.Meeting.inactive(),
                 meetingFeatures ? suspectRows(world, tablet, viewerUuid, electorate) : List.of(),
                 access.featureMask(),
@@ -469,8 +555,64 @@ public final class TabletStateService {
                 access.hasFeature(TabletFeature.DRONE) ? DroneTabletSnapshots.rows(viewer) : List.of(),
                 access.hasFeature(TabletFeature.SABOTAGE)
                         ? SabotageTabletSnapshots.rows(world, SabotageAccess.trackOf(viewer)) : List.of(),
-                access.hasFeature(TabletFeature.SABOTAGE) ? SabotageTabletSnapshots.log(world, viewerUuid, links) : List.of()
+                access.hasFeature(TabletFeature.SABOTAGE) ? SabotageTabletSnapshots.log(world, viewerUuid, links) : List.of(),
+                TabletChannel.mask(TabletChannelRules.cooldownBlocked(
+                        access.allowed(),
+                        channel,
+                        tablet.lastFactionChannel(viewerUuid),
+                        tablet.channelSwitchCooldownTicks(viewerUuid, now)
+                ))
         );
+    }
+
+    /**
+     * The faction network a public-channel viewer stays tuned to: the one it last viewed, else its first faction
+     * network; null for a holder with none (a civilian).
+     * 公共频道查看者保持接入的阵营网络：上次查看的那个，否则为其第一个阵营网络；没有阵营网络的持有者（平民）为 null。
+     */
+    private static @Nullable TabletChannel factionViewUnderPublic(
+            TabletChannelResolver.Access access,
+            @Nullable TabletChannel lastFaction
+    ) {
+        if (lastFaction != null && access.isMember(lastFaction)) {
+            return lastFaction;
+        }
+        for (TabletChannel candidate : TabletChannel.values()) {
+            if (candidate.isFaction() && access.isMember(candidate)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    private static List<TabletSnapshot.ChatRow> chatRows(
+            TabletWorldComponent tablet,
+            @Nullable TabletChannel channel,
+            UUID viewerUuid,
+            Set<UUID> links,
+            int tasksDone
+    ) {
+        if (channel == null) {
+            return List.of();
+        }
+        if (channel.isProximity()) {
+            // The viewer's own inbox: each copy already carries its sender visibility and static.
+            // 查看者自己的收件箱：每份副本已带有发送者可见性与噪声。
+            return tablet.publicInbox(viewerUuid).stream()
+                    .map(message -> message.revealsSender()
+                            ? new TabletSnapshot.ChatRow(message.senderUuid(), message.senderName(), message.message(),
+                                    message.signal())
+                            : TabletSnapshot.ChatRow.hidden(message.message(), message.signal()))
+                    .toList();
+        }
+        // Stored history keeps real senders, so earlier messages reveal once a link forms or tasks unlock.
+        // 存储的历史保留真实发送者，因此互认或任务解锁后之前的消息也会显示名字。
+        return tablet.chatHistory(channel).stream()
+                .map(message -> TabletIdentityRules.revealsIdentity(
+                        channel, viewerUuid, message.senderUuid(), links, tasksDone)
+                        ? new TabletSnapshot.ChatRow(message.senderUuid(), message.senderName(), message.message())
+                        : TabletSnapshot.ChatRow.hidden(message.message()))
+                .toList();
     }
 
     private static List<TabletSnapshot.PlayerRow> connectionRows(
@@ -481,7 +623,9 @@ public final class TabletStateService {
             Set<UUID> links,
             int tasksDone
     ) {
-        if (channel == null) {
+        if (channel == null || channel.isProximity()) {
+            // No member list on the public channel: listing nearby holders would be a radar through walls.
+            // 公共频道没有成员列表：列出附近的持有者等同于穿墙雷达。
             return List.of();
         }
         GameWorldComponent game = GameWorldComponent.KEY.get(world);
@@ -716,9 +860,9 @@ public final class TabletStateService {
     }
 
     /**
-     * Clients without the current (v8) payload are skipped instead of being disconnected by unknown bytes. Every
+     * Clients without the current (v9) payload are skipped instead of being disconnected by unknown bytes. Every
      * snapshot that goes out, empty ones included, becomes what that client holds.
-     * 未注册当前（v8）负载的客户端直接跳过，避免因未知字节断线。每份发出的快照（包括空快照）都记为该客户端当前持有的快照。
+     * 未注册当前（v9）负载的客户端直接跳过，避免因未知字节断线。每份发出的快照（包括空快照）都记为该客户端当前持有的快照。
      */
     private static boolean sendPacket(ServerPlayerEntity player, TabletSnapshot snapshot) {
         if (!ServerPlayNetworking.canSend(player, SyncTabletSnapshotS2CPacket.ID)) {

@@ -6,6 +6,7 @@ import annina.sparkstrength.network.tablet.TabletSnapshot;
 import annina.sparkstrength.tablet.TabletChannel;
 import annina.sparkstrength.tablet.TabletLayout;
 import annina.sparkstrength.tablet.TabletLayout.Rect;
+import annina.sparkstrength.tablet.TabletPublicRules;
 import annina.sparkstrength.tablet.TabletRules;
 import annina.sparkstrength.tablet.TabletUiSession;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -81,8 +82,9 @@ final class TabletChatPage implements TabletPage {
             Rect pill = composer.pill();
             chatInput.setDimensionsAndPosition(Math.max(1, pill.width() - 2 * INPUT_INSET_X), INPUT_H,
                     pill.x() + INPUT_INSET_X, pill.centerY() - 4);
-            chatInput.setPlaceholder(Text.translatable(KEY + "chat.placeholder_channel",
-                    Text.translatable(channel.translationKey())));
+            chatInput.setPlaceholder(channel.isProximity()
+                    ? Text.translatable(KEY + "chat.placeholder_public")
+                    : Text.translatable(KEY + "chat.placeholder_channel", Text.translatable(channel.translationKey())));
             chatInput.setCaretColor(screen.frameAccentFor(snapshot).pale());
             chatInput.setSelectionColor(TabletTheme.withAlpha(screen.frameAccentFor(snapshot).base(), 0x66));
             screen.addChild(chatInput);
@@ -145,8 +147,15 @@ final class TabletChatPage implements TabletPage {
         List<TabletSnapshot.ChatRow> rows = snapshot.chat();
         layoutChat(rows, list);
         TabletClientState.markChatSeen(TabletClientState.chatSignature(rows));
+        TabletClientState.markChannelRead(snapshot.channel());
         if (rows.isEmpty()) {
-            TabletSectionPainter.emptyState(c, textRenderer, list, EmptyIcon.CHAT, Text.translatable(KEY + "chat.empty"));
+            TabletChannel channel = snapshot.channel();
+            // The public channel explains its range on the empty page. 公共频道在空页面上说明接收范围。
+            TabletSectionPainter.emptyState(c, textRenderer, list, EmptyIcon.CHAT, Text.translatable(KEY + "chat.empty"),
+                    channel != null && channel.isProximity()
+                            ? Text.translatable(KEY + "chat.empty_public",
+                            (int) TabletPublicRules.CLEAR_RANGE, (int) TabletPublicRules.MAX_RANGE)
+                            : null);
         } else {
             c.pushClip(list.x(), list.y(), list.width(), list.height());
             chatView.render(c, textRenderer, list.x(), list.y(), list.width(), list.height(), screen.session().chatScroll(),

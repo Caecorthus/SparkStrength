@@ -21,25 +21,22 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Adds SparkStrength's tablet, Engineer capture items, Professor serums, Morphling items, Detective tools,
+ * Adds SparkStrength's dying watch, Engineer capture items, Professor serums, Morphling items, Detective tools,
  * Perfumer kit, every Bartender ingredient, the Recaller's ender pearl / chorus fruit, the Toxicologist's
  * Blue Vitriol / Blue Belladonna, the Bomber's drones, the Vulture's skateboard, the Impostor's pry tool, the Pathogen's
- * Virus / T-Virus and the Party Animal's Party Balloon to NoellesRoles' hidden-equipment filter.
- * 将 SparkStrength 平板、工程师捕捉装置、教授试剂、变形怪道具、侦探道具、调香师道具、全部酒保调剂、回溯者的末影珍珠/紫颂果、毒理学家的蓝矾/蓝颠茄、炸弹客无人机、秃鹫滑板、内鬼的撬锁工具、病原体的病毒/T病毒以及派对狂的派对气球加入 NoellesRoles 的隐藏装备过滤器。
+ * Virus / T-Virus and the Party Animal's Party Balloon to NoellesRoles' hidden-equipment filter. The tablet is not
+ * hidden: every player is given one, so holding it reveals nothing.
+ * 将 SparkStrength 濒毁怀表、工程师捕捉装置、教授试剂、变形怪道具、侦探道具、调香师道具、全部酒保调剂、回溯者的末影珍珠/紫颂果、毒理学家的蓝矾/蓝颠茄、炸弹客无人机、秃鹫滑板、内鬼的撬锁工具、病原体的病毒/T病毒以及派对狂的派对气球加入 NoellesRoles 的隐藏装备过滤器。平板不隐藏：
+ * 每名玩家都会获得一台，手持平板不会暴露任何信息。
  */
 @Mixin(value = HiddenEquipmentHelper.class, remap = false)
 public abstract class HiddenEquipmentHelperMixin {
     @Inject(method = "shouldHideItem", at = @At("HEAD"), cancellable = true, remap = false)
-    private static void sparkstrength$hideTablet(
+    private static void sparkstrength$hideRoleItems(
             ItemStack stack,
             PlayerEntity holder,
             CallbackInfoReturnable<Boolean> cir
     ) {
-        if (stack.isOf(SparkStrengthItems.tablet())) {
-            cir.setReturnValue(true);
-            return;
-        }
-
         if (stack.isOf(SparkStrengthItems.dyingWatch())) {
             // 濒毁怀表属于计时员私有能力道具，手持时对其他存活玩家隐藏。
             cir.setReturnValue(true);
