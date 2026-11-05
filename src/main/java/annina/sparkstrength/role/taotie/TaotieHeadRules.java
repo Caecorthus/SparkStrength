@@ -155,6 +155,10 @@ public final class TaotieHeadRules {
             Identifier.of("sparkwitch", "use_noa_paint"),
             Identifier.of("sparkwitch", "magician_ability"),
             Identifier.of("sparkwitch", "ragpicker_search"),
+            // SparkWitch Accountant passbook withdrawal (left-click item use, AccountantWithdrawC2SPacket, SparkWitch
+            // #195), mirrored from the Control Expert list. / SparkWitch 会计存折取款（左键物品使用，SparkWitch #195），
+            // 与控场专家名单一致。
+            Identifier.of("sparkwitch", "accountant_withdraw"),
             // SparkWitch 夏目安安 hypnosis menu request and target confirm (RequestNatsumeMenuC2SPacket /
             // ConfirmNatsumeTargetC2SPacket, SparkWitch #194), mirrored from the Control Expert list; both halves are
             // dropped, like the Judge pair. / SparkWitch 夏目安安催眠菜单请求与目标确认（SparkWitch #194），与控场专家名单
