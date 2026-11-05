@@ -47,6 +47,7 @@ final class TabletChannelSwitcher {
     private static final int SWITCHER_Z = 200;
     private static final long SWITCHER_FADE_MS = 120L;
     private static final int SWITCHER_SLIDE = 6;
+    private static final int UNREAD_DOT_ROOM = 10;
 
     private final TabletScreen screen;
     private boolean open;
@@ -140,7 +141,9 @@ final class TabletChannelSwitcher {
         if (snapshot.channelLocked()) {
             return SwitchState.MEETING_LOCKED;
         }
-        if (snapshot.channelSwitchCooldownSeconds() > 0) {
+        // Only hops between faction networks wait; the public channel is always free to join or leave.
+        // 只有在阵营网络之间切换需要等待；公共频道随时可以进出。
+        if (snapshot.channelSwitchCooldownSeconds() > 0 && snapshot.cooldownBlockedChannels().contains(channel)) {
             return SwitchState.COOLDOWN;
         }
         return SwitchState.JOIN;
@@ -150,7 +153,12 @@ final class TabletChannelSwitcher {
         EnumSet<TabletChannel> allowed = snapshot.allowedChannels();
         TabletChannel current = snapshot.channel();
         ArrayList<TabletChannel> channels = new ArrayList<>();
+        // Everyone's public channel first, then the faction networks. 所有人共有的公共频道在前，其后为阵营网络。
+        channels.add(TabletChannel.PUBLIC);
         for (TabletChannel channel : TabletChannel.values()) {
+            if (channel == TabletChannel.PUBLIC) {
+                continue;
+            }
             // The witch network only exists with SparkWitch installed. 只有安装 SparkWitch 时才存在魔女网络。
             if (channel == TabletChannel.WITCH
                     && !SparkWitchCompat.isLoaded()
@@ -168,7 +176,8 @@ final class TabletChannelSwitcher {
         if (snapshot.channelLocked()) {
             return new SwitcherHint(Text.translatable(KEY + "channel.hint.meeting"), true);
         }
-        if (allowed.size() > 1 && snapshot.channelSwitchCooldownSeconds() > 0) {
+        if (allowed.size() > 1 && snapshot.channelSwitchCooldownSeconds() > 0
+                && !snapshot.cooldownBlockedChannels().isEmpty()) {
             return new SwitcherHint(Text.translatable(KEY + "channel.hint.cooldown",
                     snapshot.channelSwitchCooldownSeconds()), false);
         }
@@ -350,8 +359,14 @@ final class TabletChannelSwitcher {
         };
         int nameX = badgeX + SWITCHER_BADGE + 8;
         String name = Text.translatable(channel.translationKey()).getString();
-        c.text(textRenderer, TabletCanvas.trim(textRenderer, name, Math.max(0, chipX - 6 - nameX)), nameX,
-                row.centerY() - 4, nameColor);
+        boolean unread = state != SwitchState.CURRENT && TabletClientState.hasUnreadChannel(channel);
+        int nameRoom = Math.max(0, chipX - 6 - nameX - (unread ? UNREAD_DOT_ROOM : 0));
+        String visibleName = TabletCanvas.trim(textRenderer, name, nameRoom);
+        int nameWidth = c.text(textRenderer, visibleName, nameX, row.centerY() - 4, nameColor);
+        if (unread) {
+            // Unread messages wait on this network. 该网络有未读消息。
+            c.circle(nameX + nameWidth + 5f, row.centerY() - 0.5f, 2.5f, TabletTheme.multiplyAlpha(accent.base(), fade));
+        }
     }
 
     // ============================================================================================ types

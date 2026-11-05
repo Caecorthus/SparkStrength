@@ -34,6 +34,8 @@ import java.util.UUID;
  *   <li>v6: list drones ({@link DroneRow})</li>
  *   <li>v7: list sabotage ({@link SabotageRow}), list sabotageLog ({@link SabotageLogRow})</li>
  *   <li>v8: a door-log row carries its absolute world tick (varlong) instead of an age</li>
+ *   <li>v9: a chat row carries its public-channel signal (varint, 0 outside the public channel); varint
+ *   cooldownChannelMask appended</li>
  * </ol>
  * Lists are a varint count followed by the rows.
  * 列表为 varint 数量后接各行。</p>
@@ -67,13 +69,41 @@ public record TabletSnapshot(
         int identityTasksRemaining,
         List<DroneRow> drones,
         List<SabotageRow> sabotage,
-        List<SabotageLogRow> sabotageLog
+        List<SabotageLogRow> sabotageLog,
+        int cooldownChannelMask
 ) {
     public TabletSnapshot {
         identityTasksRemaining = Math.max(0, identityTasksRemaining);
         drones = drones == null ? List.of() : List.copyOf(drones);
         sabotage = sabotage == null ? List.of() : List.copyOf(sabotage);
         sabotageLog = sabotageLog == null ? List.of() : List.copyOf(sabotageLog);
+    }
+
+    /** Pre-v9 shape: no channel is blocked by the switch cooldown. / v9 之前的形状：没有频道被切换冷却阻止。 */
+    public TabletSnapshot(
+            boolean localHasTablet,
+            int channelWire,
+            int allowedChannelMask,
+            boolean canSend,
+            int channelSwitchCooldownSeconds,
+            boolean channelLocked,
+            boolean localMeetingParticipant,
+            int cooldownSeconds,
+            int localMeetingCallsRemaining,
+            List<PlayerRow> connections,
+            List<ChatRow> chat,
+            Meeting meeting,
+            List<SuspectRow> suspects,
+            int featureMask,
+            List<DoorLogRow> doorLog,
+            int identityTasksRemaining,
+            List<DroneRow> drones,
+            List<SabotageRow> sabotage,
+            List<SabotageLogRow> sabotageLog
+    ) {
+        this(localHasTablet, channelWire, allowedChannelMask, canSend, channelSwitchCooldownSeconds, channelLocked,
+                localMeetingParticipant, cooldownSeconds, localMeetingCallsRemaining, connections, chat, meeting, suspects,
+                featureMask, doorLog, identityTasksRemaining, drones, sabotage, sabotageLog, 0);
     }
 
     public static TabletSnapshot empty() {
@@ -108,6 +138,11 @@ public record TabletSnapshot(
         return TabletChannel.fromMask(allowedChannelMask);
     }
 
+    /** Channels the faction switch cooldown currently blocks. / 阵营切换冷却当前阻止的频道。 */
+    public EnumSet<TabletChannel> cooldownBlockedChannels() {
+        return TabletChannel.fromMask(cooldownChannelMask);
+    }
+
     public EnumSet<TabletFeature> features() {
         return TabletFeature.fromMask(featureMask);
     }
@@ -136,6 +171,7 @@ public record TabletSnapshot(
         writeList(buf, drones, (targetBuf, row) -> row.write(targetBuf));
         writeList(buf, sabotage, (targetBuf, row) -> row.write(targetBuf));
         writeList(buf, sabotageLog, (targetBuf, row) -> row.write(targetBuf));
+        buf.writeVarInt(cooldownChannelMask);
     }
 
     public static TabletSnapshot read(PacketByteBuf buf) {
@@ -158,7 +194,8 @@ public record TabletSnapshot(
                 buf.readVarInt(),
                 readList(buf, DroneRow::read),
                 readList(buf, SabotageRow::read),
-                readList(buf, SabotageLogRow::read)
+                readList(buf, SabotageLogRow::read),
+                buf.readVarInt()
         );
     }
 
@@ -211,15 +248,26 @@ public record TabletSnapshot(
 
     /**
      * A null {@code senderUuid} marks an anonymous row; it never carries a name, so the client shows "???".
-     * senderUuid 为 null 表示匿名行；匿名行绝不携带名字，客户端显示“???”。
+     * {@code signal} is the public channel's reception ({@code TabletPublicRules#signal}), 0 in faction channels.
+     * senderUuid 为 null 表示匿名行；匿名行绝不携带名字，客户端显示“???”。signal 为公共频道的接收信号，阵营频道为 0。
      */
-    public record ChatRow(@Nullable UUID senderUuid, String senderName, String message) {
+    public record ChatRow(@Nullable UUID senderUuid, String senderName, String message, int signal) {
         public ChatRow {
             senderName = senderUuid == null || senderName == null ? "" : senderName;
+            message = message == null ? "" : message;
+            signal = Math.max(0, signal);
+        }
+
+        public ChatRow(@Nullable UUID senderUuid, String senderName, String message) {
+            this(senderUuid, senderName, message, 0);
         }
 
         public static ChatRow hidden(String message) {
-            return new ChatRow(null, "", message);
+            return new ChatRow(null, "", message, 0);
+        }
+
+        public static ChatRow hidden(String message, int signal) {
+            return new ChatRow(null, "", message, signal);
         }
 
         public boolean isAnonymous() {
@@ -230,10 +278,11 @@ public record TabletSnapshot(
             writeOptionalUuid(buf, senderUuid);
             buf.writeString(senderName);
             buf.writeString(message);
+            buf.writeVarInt(signal);
         }
 
         private static ChatRow read(PacketByteBuf buf) {
-            return new ChatRow(readOptionalUuid(buf), buf.readString(32767), buf.readString(32767));
+            return new ChatRow(readOptionalUuid(buf), buf.readString(32767), buf.readString(32767), buf.readVarInt());
         }
     }
 

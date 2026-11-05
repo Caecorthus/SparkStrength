@@ -303,5 +303,13 @@
       }
     ],
     "subtitle": "subtitle.sparkstrength.entity.partygoer.rage"
+  },
+  "item.tablet.buzz": {
+    "sounds": [
+      {
+        "name": "sparkstrength:item/tablet_buzz"
+      }
+    ],
+    "subtitle": "subtitle.sparkstrength.item.tablet.buzz"
   }
 }

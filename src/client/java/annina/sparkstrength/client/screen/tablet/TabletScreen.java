@@ -799,7 +799,26 @@ public final class TabletScreen extends Screen {
         if (chip.clickable()) {
             TabletIcons.caret(c, rect.right() - PILL_PAD - CHIP_CARET, centerY - CHIP_CARET / 2f, CHIP_CARET,
                     switcher.isOpen(), hot ? TabletTheme.TEXT : TabletTheme.TEXT_2);
+            // Another network has unread messages: a dot in that network's colour. 其他网络有未读消息：以该网络颜色显示圆点。
+            TabletChannel waiting = TabletClientState.firstUnreadOtherThan(snapshot.channel());
+            if (waiting != null) {
+                paintBadgeDot(new Rect(rect.x(), rect.y(), rect.width() - 3, rect.height()),
+                        TabletTheme.accentFor(waiting).base());
+            }
         }
+    }
+
+    /**
+     * Whether {@code channel}'s chat is on screen right now, so a new message there needs no buzz or unread mark.
+     * 该频道的聊天此刻是否显示在屏幕上；若是，新消息无需振动或未读标记。
+     */
+    public boolean showsChatOf(@Nullable TabletChannel channel) {
+        TabletSnapshot snapshot = TabletClientState.snapshot();
+        return channel != null
+                && snapshot.localHasTablet()
+                && snapshot.channel() == channel
+                && session.section() == Section.CHAT
+                && !visibleSections.isEmpty();
     }
 
     private static int sweepBars(long now) {

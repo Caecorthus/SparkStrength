@@ -28,6 +28,7 @@ import annina.sparkstrength.network.tablet.RequestTabletSnapshotC2SPacket;
 import annina.sparkstrength.network.tablet.SelectTabletChannelC2SPacket;
 import annina.sparkstrength.network.tablet.SendTabletChatC2SPacket;
 import annina.sparkstrength.network.tablet.SyncTabletSnapshotS2CPacket;
+import annina.sparkstrength.network.tablet.TabletChatNotifyS2CPacket;
 import annina.sparkstrength.network.shadowjester.SyncShadowJesterShowdownMusicS2CPacket;
 import annina.sparkstrength.network.timekeeper.TimekeeperWatchModeC2SPacket;
 import annina.sparkstrength.network.vulture.VultureSuperCurseC2SPacket;
@@ -113,6 +114,7 @@ public final class SparkStrengthPackets {
         );
         PayloadTypeRegistry.playC2S().register(SerialPistolShootC2SPayload.ID, SerialPistolShootC2SPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(OpenTabletScreenS2CPacket.ID, OpenTabletScreenS2CPacket.CODEC);
+        PayloadTypeRegistry.playS2C().register(TabletChatNotifyS2CPacket.ID, TabletChatNotifyS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncTabletSnapshotS2CPacket.ID, SyncTabletSnapshotS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncBlackoutSightS2CPacket.ID, SyncBlackoutSightS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncKillerTeamEconomyS2CPacket.ID, SyncKillerTeamEconomyS2CPacket.CODEC);

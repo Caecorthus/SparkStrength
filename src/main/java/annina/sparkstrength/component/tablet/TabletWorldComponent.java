@@ -5,6 +5,7 @@ import annina.sparkstrength.role.attendant.DoorLog;
 import annina.sparkstrength.tablet.TabletChannel;
 import annina.sparkstrength.tablet.TabletChannelRules;
 import annina.sparkstrength.tablet.TabletLinkRules;
+import annina.sparkstrength.tablet.TabletPublicRules;
 import annina.sparkstrength.tablet.TabletRules;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
@@ -20,6 +21,7 @@ import org.ladysnake.cca.api.v3.component.ComponentRegistry;
 import org.ladysnake.cca.api.v3.component.sync.AutoSyncedComponent;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -62,6 +64,14 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
     private final HashMap<UUID, TabletChannel> selectedChannels = new HashMap<>();
     private final HashMap<UUID, Long> channelSwitchTicks = new HashMap<>();
     private final HashMap<UUID, EnumSet<TabletChannel>> frozenAllowedChannels = new HashMap<>();
+    // Faction network each holder last viewed, so a detour through the public channel never dodges the switch cooldown.
+    // 每名持有者最后查看的阵营网络，使经公共频道绕行无法躲开切换冷却。
+    private final HashMap<UUID, TabletChannel> lastFactionChannels = new HashMap<>();
+    // Public proximity channel: one inbox per receiver (each got its own copy, garbled by its own distance). Round-scoped
+    // and in-memory only (never NBT): a restart simply starts the public channel empty.
+    // 公共近距离频道：每名接收者一个收件箱（各自按自己的距离收到一份可能带噪声的副本）。仅本局内存状态（绝不写入 NBT），
+    // 重启后公共频道直接清空。
+    private final HashMap<UUID, ArrayDeque<PublicMessage>> publicInboxes = new HashMap<>();
     private final HashMap<UUID, Long> snapshotRequestTicks = new HashMap<>();
     private final LinkedHashSet<UUID> syncedViewers = new LinkedHashSet<>();
     // Identity links and pending requests are round-scoped and never persisted: a restart fails closed to "???".
@@ -77,6 +87,10 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
     // 本局已结算免费平板发放的玩家（已发放或本就持有）：仅本局内存状态（绝不写入 NBT）；重启后只会重新检查存活且有资格的玩家，
     // 身上没有平板者才补发。
     private final HashSet<UUID> tabletGrantSettled = new HashSet<>();
+    // Grant chat lines each player has already been shown this round, so a mid-round faction or feature change
+    // explains only what is new. Round-scoped and in-memory only (never NBT).
+    // 本局每名玩家已看过的平板发放提示，局中阵营或功能变化时只解释新增的部分。仅本局内存状态（绝不写入 NBT）。
+    private final HashMap<UUID, HashSet<String>> tabletGrantLinesShown = new HashMap<>();
     // Attendant door log: round-scoped and in-memory only (never NBT), shared by every door-log viewer of this world.
     // 乘务员房门记录：仅本局内存状态（绝不写入 NBT），由本世界所有房门监控查看者共享。
     private final DoorLog doorLog = new DoorLog();
@@ -95,6 +109,30 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
                 chatHistories.computeIfAbsent(channel, ignored -> new ArrayDeque<>()),
                 new ChatMessage(senderUuid, senderName, message, timeMillis)
         );
+    }
+
+    public List<PublicMessage> publicInbox(UUID receiverUuid) {
+        ArrayDeque<PublicMessage> inbox = publicInboxes.get(receiverUuid);
+        return inbox == null ? List.of() : List.copyOf(inbox);
+    }
+
+    public void deliverPublicMessage(UUID receiverUuid, PublicMessage message) {
+        ArrayDeque<PublicMessage> inbox = publicInboxes.computeIfAbsent(receiverUuid, ignored -> new ArrayDeque<>());
+        inbox.addLast(message);
+        while (inbox.size() > TabletChannelRules.CHAT_HISTORY_LIMIT) {
+            inbox.removeFirst();
+        }
+    }
+
+    public @Nullable TabletChannel lastFactionChannel(UUID playerUuid) {
+        return lastFactionChannels.get(playerUuid);
+    }
+
+    public void setLastFactionChannel(UUID playerUuid, @Nullable TabletChannel channel) {
+        if (channel == null || !channel.isFaction()) {
+            return;
+        }
+        lastFactionChannels.put(playerUuid, channel);
     }
 
     public @Nullable TabletChannel selectedChannel(UUID playerUuid) {
@@ -334,6 +372,21 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
         }
     }
 
+    /**
+     * Records {@code keys} as shown and returns those that were not, in order.
+     * 把 keys 记为已显示，并按顺序返回其中此前未显示过的条目。
+     */
+    public List<String> markGrantLinesShown(UUID playerUuid, List<String> keys) {
+        HashSet<String> shown = tabletGrantLinesShown.computeIfAbsent(playerUuid, ignored -> new HashSet<>());
+        List<String> fresh = new ArrayList<>(keys.size());
+        for (String key : keys) {
+            if (shown.add(key)) {
+                fresh.add(key);
+            }
+        }
+        return fresh;
+    }
+
     public DoorLog doorLog() {
         return doorLog;
     }
@@ -348,12 +401,15 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
         selectedChannels.clear();
         channelSwitchTicks.clear();
         frozenAllowedChannels.clear();
+        lastFactionChannels.clear();
+        publicInboxes.clear();
         snapshotRequestTicks.clear();
         identityLinks.clear();
         linkRequests.clear();
         lastLinkGestures.clear();
         completedTasks.clear();
         tabletGrantSettled.clear();
+        tabletGrantLinesShown.clear();
         doorLog.clear();
         // syncedViewers is kept on purpose: the sync pass after a round clear must still revoke stale snapshots.
         // 有意保留 syncedViewers：清局后的同步轮次仍需向其撤销过期快照。
@@ -545,6 +601,19 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
     }
 
     public record ChatMessage(UUID senderUuid, String senderName, String message, long timeMillis) {
+    }
+
+    /**
+     * One receiver's copy of a public-channel message.
+     * 公共频道消息在某名接收者处的副本。
+     *
+     * @param message already garbled for this receiver ({@code TabletPublicRules#garble}) / 已按该接收者的距离加噪
+     * @param signal  {@code TabletPublicRules#signal} at send time; the sender shows only at full signal / 发送时的信号格数；只有满格才显示发送者
+     */
+    public record PublicMessage(UUID senderUuid, String senderName, String message, int signal, long timeMillis) {
+        public boolean revealsSender() {
+            return signal >= TabletPublicRules.SIGNAL_FULL;
+        }
     }
 
     /**

@@ -6,7 +6,7 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.client.gui.screen.narration.NarrationPart;
-import net.minecraft.client.gui.widget.ClickableWidget;
+import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.client.sound.SoundManager;
 import net.minecraft.client.util.SelectionManager;
 import net.minecraft.text.MutableText;
@@ -24,8 +24,18 @@ import java.util.function.Consumer;
  * consumed so the screen keeps sending, closing and focus traversal.
  * 基于 {@link SelectionManager} 的单行平板输入框，只绘制选区、文字、占位符与光标（无背景、边框与文字阴影），外围胶囊由界面绘制；
  * 从不消费 ESC/回车/TAB，由界面负责发送、关闭与焦点切换。
+ *
+ * <p>It extends the vanilla {@link TextFieldWidget} only so that other mods recognise it as a text field: input-method
+ * managers (IMBlocker, IngameIME) switch the IME on only while a vanilla text field is focused, so a plain widget left
+ * Chinese/Japanese/Korean input impossible; InvMove stops walking only for a focused text field, so a plain widget let
+ * WASD move the player while typing. The vanilla text state is never used: every public read/write of
+ * TextFieldWidget is redirected to this widget's own model, and {@code setFocused} still runs the vanilla method those
+ * mods hook.
+ * 继承原版 TextFieldWidget 只为让其他模组把它识别为输入框：输入法管理模组（IMBlocker、IngameIME）只在原版输入框获得焦点时
+ * 才打开输入法，普通控件会导致无法输入中文/日文/韩文；InvMove 只在输入框获得焦点时停止移动，普通控件会让打字时按 WASD 走动。
+ * 原版文本状态从不使用：TextFieldWidget 的所有公开读写都转到本控件自己的模型，而 setFocused 仍会执行这些模组挂钩的原版方法。</p>
  */
-public final class TabletTextInput extends ClickableWidget {
+public final class TabletTextInput extends TextFieldWidget {
     private static final int CARET_BLINK_MS = 530;
     private static final int DOUBLE_CLICK_MS = 250;
     private static final int LINE_HEIGHT = 9;
@@ -55,7 +65,7 @@ public final class TabletTextInput extends ClickableWidget {
     private char pendingHighSurrogate;
 
     public TabletTextInput(TextRenderer textRenderer, int x, int y, int width, int height, Text narration) {
-        super(x, y, width, height, narration);
+        super(textRenderer, x, y, width, height, narration);
         this.textRenderer = textRenderer;
         MinecraftClient client = MinecraftClient.getInstance();
         // Every insertion goes through insertText() (and setText/setMaxLength truncate themselves), which pre-truncates
@@ -71,6 +81,7 @@ public final class TabletTextInput extends ClickableWidget {
         );
     }
 
+    @Override
     public String getText() {
         return text;
     }
@@ -80,12 +91,14 @@ public final class TabletTextInput extends ClickableWidget {
      * The changed listener fires only when the text actually changes.
      * 替换文本（去除非法字符并截断到最大长度），光标移到末尾；仅在文本实际改变时触发变更监听。
      */
+    @Override
     public void setText(String value) {
         applyText(truncate(StringHelper.stripInvalidChars(value == null ? "" : value), maxLength));
         selection.putCursorAtEnd();
         touchCaret();
     }
 
+    @Override
     public void setMaxLength(int maxLength) {
         this.maxLength = Math.max(0, maxLength);
         if (text.length() > this.maxLength) {
@@ -97,10 +110,12 @@ public final class TabletTextInput extends ClickableWidget {
         }
     }
 
+    @Override
     public void setChangedListener(@Nullable Consumer<String> changedListener) {
         this.changedListener = changedListener;
     }
 
+    @Override
     public void setPlaceholder(@Nullable Text placeholder) {
         this.placeholder = placeholder;
     }
@@ -119,6 +134,8 @@ public final class TabletTextInput extends ClickableWidget {
 
     @Override
     public void setFocused(boolean focused) {
+        // TextFieldWidget.setFocused is the hook IME managers listen to; it must always run.
+        // TextFieldWidget.setFocused 是输入法管理模组监听的挂钩，必须始终执行。
         super.setFocused(focused);
         pendingHighSurrogate = 0;
         if (focused) {
@@ -269,12 +286,12 @@ public final class TabletTextInput extends ClickableWidget {
     }
 
     @Override
-    protected void appendClickableNarrations(NarrationMessageBuilder builder) {
+    public void appendClickableNarrations(NarrationMessageBuilder builder) {
         builder.put(NarrationPart.TITLE, getNarrationMessage());
     }
 
     @Override
-    protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
+    public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
         updateScroll();
         int x = getX();
         int y = textY();
@@ -308,6 +325,97 @@ public final class TabletTextInput extends ClickableWidget {
             int caretX = x + widthBetween(firstVisible, clamp(cursor, firstVisible, text.length())) - 1;
             context.fill(caretX, y - 1, caretX + 1, y - 1 + LINE_HEIGHT, caretColor);
         }
+    }
+
+    // ============================================================================ vanilla TextFieldWidget API
+    // Other mods (IME managers, accessibility) drive a text field through these; they all act on this widget's model.
+    // 其他模组（输入法管理、无障碍）通过这些方法操作输入框；它们都作用于本控件自己的模型。
+
+    @Override
+    public void write(String value) {
+        insertText(value == null ? "" : value);
+        touchCaret();
+    }
+
+    @Override
+    public String getSelectedText() {
+        int from = clamp(Math.min(selection.getSelectionStart(), selection.getSelectionEnd()), 0, text.length());
+        int to = clamp(Math.max(selection.getSelectionStart(), selection.getSelectionEnd()), 0, text.length());
+        return text.substring(from, to);
+    }
+
+    @Override
+    public int getCursor() {
+        return clamp(selection.getSelectionStart(), 0, text.length());
+    }
+
+    @Override
+    public void setCursor(int cursor, boolean shiftKeyPressed) {
+        selection.moveCursorTo(boundary(clamp(cursor, 0, text.length())), shiftKeyPressed);
+        touchCaret();
+    }
+
+    @Override
+    public void moveCursor(int offset, boolean shiftKeyPressed) {
+        setCursor(Util.moveCursor(text, getCursor(), offset), shiftKeyPressed);
+    }
+
+    @Override
+    public void setCursorToStart(boolean shiftKeyPressed) {
+        selection.moveCursorToStart(shiftKeyPressed);
+        touchCaret();
+    }
+
+    @Override
+    public void setCursorToEnd(boolean shiftKeyPressed) {
+        selection.moveCursorToEnd(shiftKeyPressed);
+        touchCaret();
+    }
+
+    @Override
+    public void setSelectionStart(int cursor) {
+        selection.setSelection(boundary(clamp(cursor, 0, text.length())), selection.getSelectionEnd());
+    }
+
+    @Override
+    public void setSelectionEnd(int anchor) {
+        selection.setSelection(selection.getSelectionStart(), boundary(clamp(anchor, 0, text.length())));
+    }
+
+    @Override
+    public void eraseCharacters(int characterOffset) {
+        selection.delete(characterOffset);
+        touchCaret();
+    }
+
+    @Override
+    public void eraseWords(int wordOffset) {
+        if (selection.isSelecting()) {
+            selection.delete(wordOffset);
+        } else {
+            selection.deleteWord(wordOffset);
+        }
+        touchCaret();
+    }
+
+    @Override
+    public void eraseCharactersTo(int position) {
+        selection.setSelection(getCursor(), boundary(clamp(position, 0, text.length())));
+        selection.delete(-1);
+        touchCaret();
+    }
+
+    /** Screen x of a char index, e.g. where an IME draws its composition. 某字符下标的屏幕 x，例如输入法绘制候选串的位置。 */
+    @Override
+    public int getCharacterX(int index) {
+        updateScroll();
+        int clamped = clamp(index, firstVisible, text.length());
+        return getX() + widthBetween(firstVisible, clamped);
+    }
+
+    @Override
+    public int getInnerWidth() {
+        return getWidth();
     }
 
     private void applyText(String value) {

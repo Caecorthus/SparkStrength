@@ -47,6 +47,11 @@ public final class TabletTheme {
     public static final Accent POLICE = new Accent(0xFF4C9BFF, 0xFFB6D6FF, 0xFF2E6BD6);
     public static final Accent KILLER = new Accent(0xFFF2555A, 0xFFFFB9BB, 0xFFBF363C);
     public static final Accent WITCH = new Accent(0xFFB07CFF, 0xFFDDC9FF, 0xFF8550E0);
+    /**
+     * Public proximity channel: open-air green, a touch cooler and deeper than SUCCESS so status ticks stay readable.
+     * 公共近距离频道：户外绿，比 SUCCESS 略冷略深，使状态勾选仍可区分。
+     */
+    public static final Accent PUBLIC = new Accent(0xFF2FBF71, 0xFFAEEBC8, 0xFF1C8A4F);
     public static final Accent NONE = new Accent(0xFF7A8394, 0xFFBCC3CF, 0xFF4F5766);
     /**
      * Door monitor (Attendant door log): surveillance cyan, kept apart from the channel hues and from the
@@ -79,6 +84,7 @@ public final class TabletTheme {
             case POLICE -> POLICE;
             case KILLER -> KILLER;
             case WITCH -> WITCH;
+            case PUBLIC -> PUBLIC;
         };
     }
 

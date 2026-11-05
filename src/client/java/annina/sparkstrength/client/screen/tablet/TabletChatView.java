@@ -1,10 +1,14 @@
 package annina.sparkstrength.client.screen.tablet;
 
+import annina.sparkstrength.client.ui.common.PlayerNameResolver;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
+import annina.sparkstrength.tablet.TabletPublicRules;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.StringVisitable;
+import net.minecraft.text.Style;
 import net.minecraft.text.Text;
+import net.minecraft.text.TextColor;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -21,6 +25,12 @@ import java.util.function.IntBinaryOperator;
  * uuid-derived data: two "???" rows may be different people, and grouping would imply a single sender.
  * 匿名行（发送者 uuid 为空，已由服务端脱敏）从不合并为连续组，也从不绘制皮肤或任何由 uuid 推导的数据：
  * 两条“???”可能来自不同的人，合并会暗示同一发送者。</p>
+ *
+ * <p>Public-channel rows carry a signal level: their header shows signal bars, and every character the server replaced
+ * with {@link TabletPublicRules#STATIC_CHAR} is drawn obfuscated, i.e. as flickering static. A revealed sender whose
+ * player-list name differs from the account name shows both: the name, then the account ID in grey.
+ * 公共频道的行带有信号格数：行首显示信号格，服务端替换成 STATIC_CHAR 的每个字符都以混淆样式绘制，即闪烁的噪点。
+ * 已显示的发送者若玩家列表名与账号名不同，则两者都显示：先名字，再用灰色显示账号 ID。</p>
  */
 public final class TabletChatView {
     private static final int PAD_X = 8;
@@ -39,6 +49,11 @@ public final class TabletChatView {
     private static final int GAP_BETWEEN_RUNS = 9;
     private static final int TOP_PAD = 6;
     private static final int BOTTOM_PAD = 6;
+    private static final int SIGNAL_ICON = 8;
+    private static final int SIGNAL_GAP = 4;
+    private static final int ID_GAP = 4;
+    private static final Style STATIC_STYLE = Style.EMPTY.withObfuscated(true)
+            .withColor(TextColor.fromRgb(TabletTheme.TEXT_3 & 0xFFFFFF));
 
     private List<TabletSnapshot.ChatRow> cachedRows = List.of();
     private @Nullable UUID cachedSelf;
@@ -146,7 +161,15 @@ public final class TabletChatView {
                     name = bubble.name();
                     nameColor = accent.pale();
                 }
-                canvas.text(tr, name, bubbleX + 3, blockTop, nameColor);
+                int headerX = bubbleX + 3;
+                if (bubble.signal() > 0) {
+                    paintSignal(canvas, headerX, blockTop, bubble.signal(), accent);
+                    headerX += SIGNAL_ICON + SIGNAL_GAP;
+                }
+                headerX += canvas.text(tr, name, headerX, blockTop, nameColor);
+                if (!bubble.idLabel().isEmpty()) {
+                    canvas.text(tr, bubble.idLabel(), headerX + ID_GAP, blockTop, TabletTheme.TEXT_3);
+                }
             }
             drawOther(canvas, tr, bubbleX, bubbleTop, bubble);
             if (bubble.avatar()) {
@@ -186,7 +209,7 @@ public final class TabletChatView {
 
             int maxWidth = own ? ownMax : otherMax;
             String message = row.message() == null ? "" : row.message();
-            List<OrderedText> lines = tr.wrapLines(StringVisitable.plain(message), Math.max(1, maxWidth - 2 * PAD_X));
+            List<OrderedText> lines = tr.wrapLines(withStatic(message, row.signal()), Math.max(1, maxWidth - 2 * PAD_X));
             if (lines.isEmpty()) {
                 lines = List.of(OrderedText.EMPTY);
             }
@@ -209,13 +232,71 @@ public final class TabletChatView {
             // 匿名行经服务端脱敏不含 uuid/名字，此处保持不含。
             UUID uuid = anonymous ? null : row.senderUuid();
             String skinName = anonymous ? "" : row.senderName();
-            String name = anonymous ? "" : TabletCanvas.trim(tr, row.senderName(), Math.max(0, otherMax - 3));
+            int signal = row.signal();
+            int headerRoom = Math.max(0, otherMax - 3 - (signal > 0 ? SIGNAL_ICON + SIGNAL_GAP : 0));
+            String name = "";
+            String idLabel = "";
+            if (!anonymous && header) {
+                String displayName = displayName(uuid, row.senderName());
+                name = TabletCanvas.trim(tr, displayName, headerRoom);
+                if (!displayName.equals(row.senderName())) {
+                    // The account ID after the name, only when they differ. 名字与账号 ID 不同时，在名字后显示 ID。
+                    int idRoom = headerRoom - tr.getWidth(name) - ID_GAP;
+                    String id = TabletCanvas.trim(tr, row.senderName(), Math.max(0, idRoom));
+                    idLabel = idRoom > tr.getWidth("…") ? id : "";
+                }
+            }
             built.add(new Bubble(blockTop, bubbleTop, bubbleWidth, bubbleHeight, List.copyOf(lines), own, anonymous,
-                    header, !own && endsRun, endsRun, uuid, skinName, name));
+                    header, !own && endsRun, endsRun, uuid, skinName, name, idLabel, signal));
         }
         cursor += BOTTOM_PAD;
         bubbles = List.copyOf(built);
         contentHeight = cursor;
+    }
+
+    /**
+     * The message with each {@link TabletPublicRules#STATIC_CHAR} styled as obfuscated static; plain outside the public
+     * channel (signal 0), so a typed U+2592 there stays a plain glyph.
+     * 把每个 STATIC_CHAR 设为混淆样式的噪点；公共频道以外（信号为 0）保持纯文本，因此在那里手动输入的 U+2592 仍是普通字形。
+     */
+    private static StringVisitable withStatic(String message, int signal) {
+        if (signal <= 0 || message.indexOf(TabletPublicRules.STATIC_CHAR) < 0) {
+            return StringVisitable.plain(message);
+        }
+        List<StringVisitable> parts = new ArrayList<>();
+        int start = 0;
+        while (start < message.length()) {
+            boolean isStatic = message.charAt(start) == TabletPublicRules.STATIC_CHAR;
+            int end = start + 1;
+            while (end < message.length() && (message.charAt(end) == TabletPublicRules.STATIC_CHAR) == isStatic) {
+                end++;
+            }
+            String run = message.substring(start, end);
+            parts.add(isStatic ? StringVisitable.styled(run, STATIC_STYLE) : StringVisitable.plain(run));
+            start = end;
+        }
+        return StringVisitable.concat(parts);
+    }
+
+    /** Player-list name for a revealed sender, falling back to the account name. 已显示发送者的玩家列表名，缺失时用账号名。 */
+    private static String displayName(@Nullable UUID uuid, String accountName) {
+        if (uuid == null) {
+            return accountName;
+        }
+        String resolved = PlayerNameResolver.playerName(uuid);
+        return resolved == null || resolved.isBlank() || resolved.equals(uuid.toString()) ? accountName : resolved;
+    }
+
+    /** Four-bar glyph like the status bar: full signal lights all bars, weaker ones fewer. 与状态栏一致的四格信号图形。 */
+    private static void paintSignal(TabletCanvas canvas, int x, int top, int signal, TabletTheme.Accent accent) {
+        int lit = switch (signal) {
+            case TabletPublicRules.SIGNAL_FULL -> 4;
+            case TabletPublicRules.SIGNAL_FAIR -> 2;
+            default -> 1;
+        };
+        int color = signal >= TabletPublicRules.SIGNAL_FULL ? accent.pale()
+                : signal == TabletPublicRules.SIGNAL_FAIR ? TabletTheme.WARNING : TabletTheme.DANGER;
+        TabletIcons.signal(canvas, x, top - 1, SIGNAL_ICON + 1, lit, color, TabletTheme.withAlpha(TabletTheme.TEXT_3, 0x66));
     }
 
     /** Runs group only consecutive rows with the same NON-NULL sender. 只有相同且非空发送者的连续行才成组。 */
@@ -271,8 +352,9 @@ public final class TabletChatView {
 
     /**
      * One laid-out message. Y values are relative to the content top. {@code uuid}/{@code skinName} are null/empty
-     * for anonymous rows.
-     * 一条已排版的消息；Y 相对内容顶部。匿名行的 uuid/skinName 为空。
+     * for anonymous rows; {@code idLabel} is the account ID shown after a differing name; {@code signal} is the public
+     * channel's reception (0 elsewhere).
+     * 一条已排版的消息；Y 相对内容顶部。匿名行的 uuid/skinName 为空；idLabel 为名字不同时显示的账号 ID；signal 为公共频道信号（其他频道为 0）。
      */
     private record Bubble(
             int blockTop,
@@ -287,7 +369,9 @@ public final class TabletChatView {
             boolean tail,
             @Nullable UUID uuid,
             String skinName,
-            String name
+            String name,
+            String idLabel,
+            int signal
     ) {
     }
 }
