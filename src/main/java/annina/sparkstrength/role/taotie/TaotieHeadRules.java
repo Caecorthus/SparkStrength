@@ -149,6 +149,9 @@ public final class TaotieHeadRules {
             // SparkWitch Athlete dash (UseAthleteDashC2SPayload, SparkWitch #191), mirrored from the Control Expert list.
             // SparkWitch 运动员冲刺（SparkWitch #191），与控场专家名单一致。
             Identifier.of("sparkwitch", "use_athlete_dash"),
+            // SparkWitch Dominator mark/release (UseDominatorSkillC2SPacket, G key, SparkWitch #192), mirrored from
+            // the Control Expert list. / SparkWitch 支配者标记/释放（G 键，SparkWitch #192），与控场专家名单一致。
+            Identifier.of("sparkwitch", "use_dominator_skill"),
             Identifier.of("sparkwitch", "use_apprentice_purify"),
             // SparkWitch Noa painting (UseNoaPaintC2SPayload, SparkWitch #186), mirrored from the Control Expert list.
             // SparkWitch 城崎诺亚作画（SparkWitch #186），与控场专家名单一致。
