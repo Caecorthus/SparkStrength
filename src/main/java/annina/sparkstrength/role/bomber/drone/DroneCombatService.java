@@ -227,6 +227,8 @@ public final class DroneCombatService {
             world.spawnParticles(new ItemStackParticleEffect(ParticleTypes.ITEM,
                             new ItemStack(SparkStrengthItems.bombDrone())),
                     center.x, center.y, center.z, 100, 0, 0, 0, 1.0);
+            // The blast clears SparkWitch BEAR smoke around it (visual only). / 爆炸炸开周围的 SparkWitch BEAR 烟雾（仅视觉）。
+            SparkWitchCompat.carveSmoke(world, center, DroneRules.BOMB_BLAST_RADIUS);
 
             UUID ownerUuid = drone.ownerUuid();
             // Connected owners keep credit even when dead (like M67). / 在线主人即使已死亡也保留击杀归属（同 M67）。
