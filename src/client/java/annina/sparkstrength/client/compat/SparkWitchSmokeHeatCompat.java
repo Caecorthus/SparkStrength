@@ -11,9 +11,9 @@ import java.lang.reflect.Modifier;
 import java.util.function.Consumer;
 
 /**
- * SparkWitch BEAR 烟雾进入卧底热成像的客户端软兼容桥（BEAR S4“热烟挡住热成像”，Q6 默认：烟显示为暖色薄雾并遮住其后的人体）。
+ * SparkWitch BEAR 烟雾进入卧底热成像的客户端软兼容桥（BEAR S4“热烟挡住热成像”，所有者 Q6：烟显示为一团亮白并遮住其后的人体）。
  * Client-only optional bridge that puts SparkWitch's BEAR smoke into the Undercover thermal heat image (owner S4 "hot
- * smoke blocks thermal", Q6 default: smoke shows as a warm haze and hides the bodies behind it).
+ * smoke blocks thermal", owner Q6: smoke shows as a bright white blob and hides the bodies behind it).
  *
  * <p>SparkStrength 不能在编译期依赖 SparkWitch，因此仅在检测到 sparkwitch 时反射其冻结的客户端门面
  * {@code dev.caecorthus.sparkwitch.api.client.BearSmokeViewApi}（只用 JDK 类型）：{@code hasSmoke()}、
