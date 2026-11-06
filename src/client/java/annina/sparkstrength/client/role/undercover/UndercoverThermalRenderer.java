@@ -1,6 +1,7 @@
 package annina.sparkstrength.client.role.undercover;
 
 import annina.sparkstrength.SparkStrength;
+import annina.sparkstrength.client.compat.SparkWitchSmokeHeatCompat;
 import annina.sparkstrength.client.render.ClientFrame;
 import annina.sparkstrength.client.render.ManagedPostEffect;
 import annina.sparkstrength.client.world.LoadedEntities;
@@ -41,6 +42,8 @@ import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL30;
 
 import java.lang.reflect.Method;
 
@@ -49,10 +52,12 @@ import java.lang.reflect.Method;
  * white-hot monochrome image, living players and Partygoers (and the Undercover's own first-person arm) as white bodies
  * with a soft bloom, the world in readable greys, inside a rounded eyepiece. Line of sight is real: bodies are re-rendered flat
  * white into the private {@code heat} target over a copy of the world depth, so walls and furniture hide them exactly
- * like they hide anything else, and invisible players still show (their body heat is there).
+ * like they hide anything else, and invisible players still show (their body heat is there). SparkWitch's BEAR smoke,
+ * when installed, hides bodies behind it too and shows as a warm haze ({@link #applyBearSmoke}).
  * 二阶段卧底的热成像，参照塔科夫 T-7 夜视仪（负责人 2026-10-19）：干净的全分辨率白热单色画面，活人与派对客（以及卧底自己的
  * 第一人称手臂）是带柔光的白色人形，世界是看得清的灰色，外加圆角目镜。视线遮挡是真实的：人体以纯白重新渲染到私有 {@code heat}
- * 目标，并以世界深度做深度测试，所以墙和家具会像遮挡其他东西一样遮住人；隐身的人照样显示（体温还在）。
+ * 目标，并以世界深度做深度测试，所以墙和家具会像遮挡其他东西一样遮住人；隐身的人照样显示（体温还在）。安装了 SparkWitch
+ * 时，BEAR 烟雾同样遮住其后的人体，并显示为暖色热雾（applyBearSmoke）。
  *
  * <p>Two steps per frame on the render thread: {@link #captureHeat} at {@code WorldRenderEvents.BEFORE_DEBUG_RENDER}
  * (world depth still intact, before the hand clears it), then {@link #render} before the HUD. With an Iris shader pack
@@ -154,7 +159,48 @@ public final class UndercoverThermalRenderer {
         } catch (RuntimeException exception) {
             warnOnce("Undercover thermal heat capture failed", exception);
         } finally {
-            main.beginWrite(false);
+            try {
+                // Also after a failed capture: bodies already drawn must not glow through smoke (fail closed).
+                // 捕获失败后同样执行：已画出的人体不能透过烟发热（失败即遮挡）。
+                applyBearSmoke(heat);
+            } finally {
+                main.beginWrite(false);
+            }
+        }
+    }
+
+    /**
+     * SparkWitch BEAR smoke (owner S4 "hot smoke blocks thermal", Q6 default): after the bodies and before the bloom
+     * composite, heat behind smoke fades and the smoke itself glows as a warm haze, through SparkWitch's frozen
+     * {@code BearSmokeViewApi} (SparkWitchSmokeHeatCompat). Without SparkWitch, or one without BEAR, nothing changes.
+     * When the mask cannot run, the area smoke may touch is cleared here instead (fail closed).
+     * SparkWitch BEAR 烟雾（所有者 S4“热烟挡住热成像”，Q6 默认）：画完人体之后、柔光合成之前，经 SparkWitch 冻结的
+     * {@code BearSmokeViewApi}（SparkWitchSmokeHeatCompat）让烟后的热值变淡、烟本身显示为暖色热雾。没有 SparkWitch 或其没有
+     * BEAR 时一切照旧。遮罩无法执行时改在此处清空烟可能触及的区域（失败即遮挡）。
+     */
+    private static void applyBearSmoke(Framebuffer heat) {
+        int width = heat.textureWidth;
+        int height = heat.textureHeight;
+        try {
+            SparkWitchSmokeHeatCompat.applyToHeat(heat.getColorAttachment(), heat.getDepthAttachment(), width, height,
+                    rect -> clearHeat(heat, rect));
+        } catch (RuntimeException exception) {
+            warnOnce("Undercover thermal smoke mask failed", exception);
+            clearHeat(heat, new int[]{0, 0, width, height});
+        }
+    }
+
+    /**
+     * Clears the heat colour inside {@code rect} ({@code {x0, y0, x1, y1}}, GL origin bottom-left); depth stays.
+     * 清空 {@code rect}（{@code {x0, y0, x1, y1}}，GL 原点在左下）内的热图颜色；深度保留。
+     */
+    private static void clearHeat(Framebuffer heat, int[] rect) {
+        heat.beginWrite(false);
+        RenderSystem.enableScissor(rect[0], rect[1], rect[2] - rect[0], rect[3] - rect[1]);
+        try {
+            GL30.glClearBufferfv(GL11.GL_COLOR, 0, new float[]{0.0F, 0.0F, 0.0F, 0.0F});
+        } finally {
+            RenderSystem.disableScissor();
         }
     }
 
@@ -219,7 +265,11 @@ public final class UndercoverThermalRenderer {
         RenderSystem.setProjectionMatrix(projection, VertexSorter.BY_DISTANCE);
         RenderSystem.enableDepthTest();
         RenderSystem.depthFunc(GlConst.GL_LEQUAL);
-        RenderSystem.depthMask(false);
+        // The heat target keeps the bodies' depth so the BEAR smoke mask fades exactly the smoke in front of them
+        // (invisible bodies are not in the world depth). The composite samples only the heat colour, so the look is the
+        // same: every body is flat opaque white. / 热图保留人体深度，使 BEAR 烟雾遮罩只淡化人体之前的烟（隐身人体不在世界
+        // 深度里）。合成只采样热图颜色，外观不变：每个人体都是不透明的纯白。
+        RenderSystem.depthMask(true);
         // Pull the re-rendered bodies a hair toward the camera so they win against their own depth.
         // 把重新渲染的人体稍微拉近相机，使其在与自身深度比较时稳定通过。
         RenderSystem.enablePolygonOffset();
