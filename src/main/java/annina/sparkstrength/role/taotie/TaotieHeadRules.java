@@ -185,6 +185,11 @@ public final class TaotieHeadRules {
             Identifier.of("sparkwitch", "black_raven_crow_move"),
             Identifier.of("sparkwitch", "black_raven_crow_use"),
             Identifier.of("sparkwitch", "black_raven_crow_drop_feather"),
+            // SparkWitch BEAR M32A1 fire (FireM32A1C2SPayload), a held-item shot like the anti-tank launcher's, mirrored
+            // from the Control Expert list; cursor loading is an inventory click. An unregistered id never matches.
+            // SparkWitch BEAR M32A1 开火，与反坦克炮筒同类的手持射击，同步自控场专家列表；光标装填属于背包点击。未注册时
+            // 该 id 永远不会命中。
+            Identifier.of("sparkwitch", "fire_m32a1"),
 
             Identifier.of("sparkstrength", "noisemaker_glow"),
             Identifier.of("sparkstrength", "phantom_backpack_invisibility"),

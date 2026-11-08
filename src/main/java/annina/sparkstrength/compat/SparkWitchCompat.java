@@ -301,6 +301,28 @@ public final class SparkWitchCompat {
         }
     }
 
+    /**
+     * Server thread, purely visual: a real SparkStrength blast (M67, Bomber drone) punches a temporary hole of
+     * {@code radius} blocks into the SparkWitch BEAR smoke near {@code center}, through the frozen
+     * {@code SparkWitchApi.carveSmoke(ServerWorld, Vec3d, double)} (owner S3). Smoke never feeds a server rule, so
+     * nothing happens without SparkWitch, with a build before BEAR, for nulls, or when the call fails (never logged:
+     * it would repeat on every blast).
+     * 服务端线程，纯视觉：SparkStrength 的真实爆炸（M67、炸弹客无人机）经冻结的 {@code SparkWitchApi.carveSmoke} 在
+     * {@code center} 附近的 SparkWitch BEAR 烟雾中炸开半径 {@code radius} 格的临时空洞（所有者 S3）。烟雾从不影响任何服务端
+     * 规则，因此未安装 SparkWitch、BEAR 之前的版本、参数为 null 或调用失败时什么也不做（不记录日志：每次爆炸都会重复）。
+     */
+    public static void carveSmoke(@Nullable ServerWorld world, @Nullable Vec3d center, double radius) {
+        Method method = SmokeCarveQuery.METHOD;
+        if (method == null || world == null || center == null) {
+            return;
+        }
+        try {
+            method.invoke(null, world, center, radius);
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            // Visual only: the blast itself is unaffected. / 仅视觉：爆炸本身不受影响。
+        }
+    }
+
     private static @Nullable Method blindFeatureGate() {
         if (!blindFeatureGateResolved) {
             blindFeatureGateResolved = true;
@@ -413,6 +435,26 @@ public final class SparkWitchCompat {
             } catch (ReflectiveOperationException | SecurityException | LinkageError ignored) {
                 // SparkWitch builds before 2026-10-21 lack this seam; crows stay out of reach of these weapons.
                 // 2026-10-21 之前的 SparkWitch 没有此接缝；这些武器随之打不到乌鸦。
+                return null;
+            }
+        }
+    }
+
+    /** Resolved once, on the first real blast. / 首次真实爆炸时解析一次。 */
+    private static final class SmokeCarveQuery {
+        private static final @Nullable Method METHOD = resolve();
+
+        private static @Nullable Method resolve() {
+            if (!isLoaded()) {
+                return null;
+            }
+            try {
+                Method method = Class.forName(PUBLIC_API).getMethod("carveSmoke",
+                        ServerWorld.class, Vec3d.class, double.class);
+                return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == void.class
+                        ? method : null;
+            } catch (ReflectiveOperationException | SecurityException | LinkageError ignored) {
+                // SparkWitch builds before BEAR (2026-11-05) have no smoke to carve. / BEAR 之前的 SparkWitch 没有可炸开的烟。
                 return null;
             }
         }
