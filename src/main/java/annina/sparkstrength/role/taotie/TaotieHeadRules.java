@@ -168,6 +168,11 @@ public final class TaotieHeadRules {
             // 一致；与法官的两个包一样两半都拦截。
             Identifier.of("sparkwitch", "request_natsume_menu"),
             Identifier.of("sparkwitch", "confirm_natsume_target"),
+            // SparkWitch Specter mark/shriek (G, UseSpecterSkillC2SPacket) and Otherworld (Role Skill 2,
+            // UseSpecterSecondSkillC2SPacket, SparkWitch #207), mirrored from the Control Expert list.
+            // SparkWitch 幽魂标记/尖啸（G 键）与里世界（职业技能 2，SparkWitch #207），与控场专家名单一致。
+            Identifier.of("sparkwitch", "use_specter_skill"),
+            Identifier.of("sparkwitch", "use_specter_second_skill"),
             // USEC sniper rifle shot and attachment actions, mirrored from the Control Expert list; the scope toggle
             // (sparkwitch:usec_scope) stays allowed there and here. An unregistered id never matches.
             // USEC 狙击步枪开火与配件操作，同步自控场专家列表；开镜（sparkwitch:usec_scope）在两处均放行。未注册时该 id 永远不会命中。
