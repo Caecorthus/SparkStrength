@@ -30,6 +30,7 @@ import org.jetbrains.annotations.Nullable;
 public final class BodyguardProtectionService {
     public static final String SHIELD_SOURCE = "sparkstrength:democracy_shield";
     public static final String VEST_SOURCE = "sparkstrength:bodyguard_vest";
+    private static final BodyguardSettlementMemo SETTLEMENTS = new BodyguardSettlementMemo();
     private static boolean registered;
 
     private BodyguardProtectionService() {
@@ -55,6 +56,18 @@ public final class BodyguardProtectionService {
         if (force || victim == null || !GameFunctions.isPlayerPlayingAndAlive(victim)) {
             return false;
         }
+        // SparkWitch's Savior settles one hit with up to ten killPlayer retries in the same tick (SaviorRules.settleKill,
+        // SparkWitch PR #200). Once the shield has blocked that hit, the retries are the same hit: blocked again with no
+        // stamina, sound or record, even if that block broke the shield. Other reasons never take this path.
+        // SparkWitch 救世主在同一刻内以最多 10 次 killPlayer 重试结算一击（SaviorRules.settleKill，SparkWitch PR #200）。
+        // 盾挡下这一击后，这些重试仍是同一击：再次挡下，不耗体力、不响音效、不记录，即使那次格挡已经破盾。其他死因不走此路径。
+        BodyguardSettlementMemo.Key settlement = BodyguardProtectionRules.settlesOncePerTick(deathReason)
+                ? new BodyguardSettlementMemo.Key(victim.getUuid(), killer == null ? null : killer.getUuid(),
+                        deathReason, victim.getServer().getTicks())
+                : null;
+        if (settlement != null && SETTLEMENTS.wasBlocked(settlement)) {
+            return true;
+        }
         Vec3d blast = AttackOriginScope.currentBlast();
         BodyguardProtectionRules.Protection protection = BodyguardProtectionRules.forReason(deathReason, blast != null);
         if (!protection.shieldBlocks() && !protection.vest()) {
@@ -72,6 +85,7 @@ public final class BodyguardProtectionService {
         // 每次先由仍举着的盾挡，否则由防弹衣挡，都挡不住时击杀继续交给其余保护。
         int settlements = killer != null && killer != victim
                 && SparkTraitsCompat.hasTrait(killer, BodyguardRules.SECOND_STRIKE_TRAIT_ID) ? 2 : 1;
+        boolean shieldBlocked = false;
         for (; settlements > 0; settlements--) {
             if (shieldApplies && BodyguardShieldService.isRaisedForBlocking(victim)) {
                 // The AXMC never pierces the shield; only the stamina it costs depends on the round (owner 2026-10-07).
@@ -79,6 +93,7 @@ public final class BodyguardProtectionService {
                 int points = BodyguardProtectionRules.shieldPoints(protection,
                         SparkWitchCompat.piercingShotAmmoId(victim, killer, deathReason));
                 blockWithShield(victim, killer, points, deathReason.toString());
+                shieldBlocked = true;
             } else if (protection.vest() && BodyguardVestService.isWorn(victim)) {
                 // The vest is one shield layer to SparkWitch's AXMC (owner 2026-10-07): a shot with pierce budget left
                 // spends it like a pierced whiskey layer, and this same killPlayer goes on to the remaining protections
@@ -94,6 +109,9 @@ public final class BodyguardProtectionService {
             } else {
                 return false;
             }
+        }
+        if (settlement != null && shieldBlocked) {
+            SETTLEMENTS.rememberBlock(settlement);
         }
         return true;
     }
