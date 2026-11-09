@@ -4,6 +4,7 @@ import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Which kills the Bodyguard's vest and Democracy Shield stop (owner-confirmed table, 2026-10-07). Kills are told apart
@@ -37,6 +38,18 @@ public final class BodyguardProtectionRules {
     private static final int BLOCK = BodyguardRules.SHIELD_BLOCK_POINTS;
     private static final Protection PHYSICAL = new Protection(true, BLOCK, Source.ATTACKER);
     private static final Identifier BOMB = Identifier.of("noellesroles", "bomb");
+    private static final Identifier SAVIOR_PISTOL_KILL = Identifier.of("sparkwitch", "savior_pistol_kill");
+    private static final Identifier SAVIOR_LIGHTSABER_KILL = Identifier.of("sparkwitch", "lightsaber_kill");
+    /**
+     * Kill reasons settled by SparkWitch's {@code SaviorRules.settleKill}, which retries {@code killPlayer} up to ten
+     * times in one server tick so that each retry spends one protection layer. A shield block of such a hit stops the
+     * whole hit: same-tick retries with the same victim, killer and reason are blocked again at no cost
+     * ({@link BodyguardSettlementMemo}). Every other reason keeps one block per {@code killPlayer} call.
+     * 由 SparkWitch 的 {@code SaviorRules.settleKill} 结算的死因：它在同一服务端刻内最多重试 10 次 {@code killPlayer}，
+     * 每次重试消耗一层保护。盾挡下这样的一击就挡下整击：同一刻内受害者、击杀者与死因都相同的重试再次被免费挡下
+     * （{@link BodyguardSettlementMemo}）。其他死因仍然每次 {@code killPlayer} 调用各自结算。
+     */
+    private static final Set<Identifier> SAME_TICK_SETTLEMENTS = Set.of(SAVIOR_PISTOL_KILL, SAVIOR_LIGHTSABER_KILL);
     private static final Map<Identifier, Protection> TABLE = Map.ofEntries(
             Map.entry(Identifier.of("wathe", "knife_stab"), new Protection(true, BLOCK, Source.MELEE)),
             Map.entry(Identifier.of("wathe", "gun_shot"), PHYSICAL),
@@ -59,6 +72,12 @@ public final class BodyguardProtectionRules {
             // SparkWitch Witch Maiden crimson wither skull: a gunshot for protections (owner 2026-10-20).
             // SparkWitch 巫女赤色凋灵之首：防护按枪击处理（所有者 2026-10-20）。
             Map.entry(Identifier.of("sparkwitch", "crimson_wither_skull"), PHYSICAL),
+            // SparkWitch Savior pistol and lightsaber kills (SparkWitch PR #200): the shield blocks them, the vest does
+            // not (owner 2026-11-09, "盾可以挡住它的击杀"). One hit is one settlement per tick, see SAME_TICK_SETTLEMENTS.
+            // SparkWitch 救世主手枪与光剑击杀（SparkWitch PR #200）：盾能挡，防弹衣不能（所有者 2026-11-09，
+            // “盾可以挡住它的击杀”）。一次命中在同一刻内只结算一次，见 SAME_TICK_SETTLEMENTS。
+            Map.entry(SAVIOR_PISTOL_KILL, new Protection(false, BLOCK, Source.ATTACKER)),
+            Map.entry(SAVIOR_LIGHTSABER_KILL, new Protection(false, BLOCK, Source.MELEE)),
             // Party Animal's Partygoer: a worn vest is one layer it chews through (one 5 s bite); a raised shield can't
             // stop a meal. / 派对狂的派对客：穿着的防弹衣算一层，被啃掉一口（5 秒）；举盾挡不住被吃。
             Map.entry(Identifier.of("sparkstrength", "partygoer_eaten"), new Protection(true, 0, Source.ATTACKER))
@@ -86,6 +105,14 @@ public final class BodyguardProtectionRules {
             return BodyguardRules.SHIELD_AXMC_AP_POINTS;
         }
         return protection.shieldPoints();
+    }
+
+    /**
+     * Whether a shield block of this kill also covers same-tick retries of the same hit (see SAME_TICK_SETTLEMENTS).
+     * 盾挡下这次击杀后，是否同时覆盖同一刻内对同一击的重试（见 SAME_TICK_SETTLEMENTS）。
+     */
+    public static boolean settlesOncePerTick(@Nullable Identifier deathReason) {
+        return deathReason != null && SAME_TICK_SETTLEMENTS.contains(deathReason);
     }
 
     /**
