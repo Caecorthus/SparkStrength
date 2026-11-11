@@ -241,16 +241,30 @@ public final class VultureSkateboardService {
                     endRide(player, !riding && eligible && !AbilityLocks.isLocked(player, AbilityLocks.ROLE_SKILL));
                 }
             }
+            SkateboardRideComponent ride = SkateboardRideComponent.KEY.get(player);
             if (round != null && active && isActiveVulture(player)) {
                 // Mid-round reconciliation, like DroneService: Wraith promotion and SparkWitch recruitment can make a
                 // Vulture without a RoleAssigned we can rely on, so new Vultures are found by polling.
                 // 局中对账，同 DroneService：冤魂晋升与 SparkWitch 招募可能产生秃鹫而不触发可依赖的 RoleAssigned，因此靠轮询发现。
                 settleStarter(round, player);
-                int lock = Math.max(round.openingRemaining(player.getUuid(), now),
-                        round.cooldownRemaining(player.getUuid(), now));
+                int opening = round.openingRemaining(player.getUuid(), now);
+                int cooldown = round.cooldownRemaining(player.getUuid(), now);
+                int lock = Math.max(opening, cooldown);
                 if (lock > 0) {
                     preserveCooldown(player, SparkStrengthItems.skateboard(), lock);
                 }
+                // The owner's HUD and slot sweep read this window, not the vanilla entry: see SkateboardRideComponent.
+                // 本人的 HUD 与栏位冷却条读取该区间，而非原版条目：见 SkateboardRideComponent。
+                if (lock <= 0) {
+                    ride.setLock(0L, 0L);
+                } else if (opening >= cooldown) {
+                    ride.setLock(round.startTick, round.startTick + VultureSkateboardRules.OPENING_TICKS);
+                } else {
+                    long readyAt = now + cooldown;
+                    ride.setLock(readyAt - VultureSkateboardRules.USE_COOLDOWN_TICKS, readyAt);
+                }
+            } else {
+                ride.setLock(0L, 0L);
             }
         }
     }
@@ -313,8 +327,10 @@ public final class VultureSkateboardService {
     }
 
     /**
-     * Shows a server-clock lock on the board's slot: raise-only and exact, see {@link ItemCooldownSync}.
-     * 在滑板栏位显示服务端时钟锁：只提高且精确，见 {@link ItemCooldownSync}。
+     * Keeps the server's vanilla entry at the server-clock lock: raise-only and exact, see {@link ItemCooldownSync}.
+     * It gates use and feeds other mods; the owner's own display comes from the synced lock window instead.
+     * 让服务端的原版条目与服务端时钟锁保持一致：只提高且精确，见 {@link ItemCooldownSync}。它用于判定能否使用并供其他模组
+     * 读取；本人看到的显示则来自同步的锁区间。
      */
     private static void preserveCooldown(ServerPlayerEntity player, Item item, int minimumTicks) {
         ItemCooldownSync.raiseExact(player, item, minimumTicks);

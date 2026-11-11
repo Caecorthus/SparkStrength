@@ -33,8 +33,6 @@ public final class VultureSuperCurseRules {
      * 音量 2.0 把 16 格衰减距离翻倍到约 32 格，超级骂与惨叫共用。
      */
     public static final float SOUND_VOLUME = 2.0F;
-    /** Owner-only cooldown sync cadence while counting down. / 倒计时期间仅向本人同步的节奏。 */
-    public static final int COOLDOWN_SYNC_INTERVAL_TICKS = 20;
 
     private VultureSuperCurseRules() {
     }
@@ -48,14 +46,9 @@ public final class VultureSuperCurseRules {
         return traitIds != null && traitIds.contains(CHILDISH_TRAIT_ID);
     }
 
-    /** One server tick of countdown, never below zero. / 一个服务端刻的倒计时，不会低于 0。 */
-    public static int tickCooldown(int cooldownTicks) {
-        return Math.max(0, cooldownTicks - 1);
-    }
-
-    /** Sync when the countdown lands on a whole second or reaches zero. / 倒计时落在整秒或归零时同步。 */
-    public static boolean shouldSyncCooldown(int cooldownTicksAfterTick) {
-        return cooldownTicksAfterTick == 0 || cooldownTicksAfterTick % COOLDOWN_SYNC_INTERVAL_TICKS == 0;
+    /** Ticks until a curse ready at {@code readyAtTick}, 0 once ready ({@code readyAtTick} 0 means ready). / 距离可用的刻数，可用时为 0（{@code readyAtTick} 为 0 即可用）。 */
+    public static int cooldownRemaining(long readyAtTick, long now) {
+        return (int) Math.max(0L, Math.min(Integer.MAX_VALUE, readyAtTick - now));
     }
 
     /** World time after which a curse started at {@code startTick} is certainly over. / 在该时间开始的超级骂必定结束的世界时间。 */
