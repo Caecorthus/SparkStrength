@@ -152,6 +152,9 @@ public final class TaotieHeadRules {
             // SparkWitch Dominator mark/release (UseDominatorSkillC2SPacket, G key, SparkWitch #192), mirrored from
             // the Control Expert list. / SparkWitch 支配者标记/释放（G 键，SparkWitch #192），与控场专家名单一致。
             Identifier.of("sparkwitch", "use_dominator_skill"),
+            // SparkWitch Savior domain (UseSaviorSkillC2SPacket, G key, SparkWitch #200), mirrored from the Control
+            // Expert list. / SparkWitch 救世主领域（G 键，SparkWitch #200），与控场专家名单一致。
+            Identifier.of("sparkwitch", "use_savior_skill"),
             Identifier.of("sparkwitch", "use_apprentice_purify"),
             // SparkWitch Noa painting (UseNoaPaintC2SPayload, SparkWitch #186), mirrored from the Control Expert list.
             // SparkWitch 城崎诺亚作画（SparkWitch #186），与控场专家名单一致。
@@ -173,6 +176,17 @@ public final class TaotieHeadRules {
             // SparkWitch 幽魂标记/尖啸（G 键）与里世界（职业技能 2，SparkWitch #207），与控场专家名单一致。
             Identifier.of("sparkwitch", "use_specter_skill"),
             Identifier.of("sparkwitch", "use_specter_second_skill"),
+            // SparkWitch Medium Séance (G) and Haunt (Role Skill 2), SparkWitch #209: the two menu requests
+            // (UseMediumSkillC2SPacket, UseMediumSecondSkillC2SPacket) and their two paid confirmations
+            // (SubmitMediumSeanceC2SPacket, SubmitMediumHauntTargetC2SPacket), mirrored from the Control Expert list.
+            // The dead voter's submit_medium_vote stays allowed there and here: only a dead round member may send it
+            // and its handler validates that itself.
+            // SparkWitch 通灵师的通灵（G 键）与招魂（职业技能 2），SparkWitch #209：两个菜单请求及其两个付费确认，
+            // 与控场专家名单一致。死者投票包 submit_medium_vote 在两处均放行：只有本局死者可以发送，其处理器自行校验。
+            Identifier.of("sparkwitch", "use_medium_skill"),
+            Identifier.of("sparkwitch", "submit_medium_seance"),
+            Identifier.of("sparkwitch", "use_medium_second_skill"),
+            Identifier.of("sparkwitch", "submit_medium_haunt_target"),
             // SparkWitch Charon pardon (shared ability key, FerrymanPardonC2SPayload) and ferry (secondary key on a
             // body, FerrymanFerryC2SPayload), SparkWitch #202. / SparkWitch 卡戎宽恕（共享技能键）与摆渡（对遗体按第二
             // 技能键），SparkWitch #202。
@@ -200,6 +214,12 @@ public final class TaotieHeadRules {
             // SparkWitch BEAR M32A1 开火，与反坦克炮筒同类的手持射击，同步自控场专家列表；光标装填属于背包点击。未注册时
             // 该 id 永远不会命中。
             Identifier.of("sparkwitch", "fire_m32a1"),
+            // SparkWitch Savior pistol shot (SaviorPistolShootC2SPayload, SparkWitch #200), a gun shot like
+            // wathe:gunshoot, mirrored from the Control Expert list. The lightsaber swing/ignite sound intents
+            // (savior_lightsaber_swing, savior_lightsaber_ignite) are presentation only and stay allowed.
+            // SparkWitch 救世主手枪射击（SparkWitch #200），与 wathe:gunshoot 同类的枪击，同步自控场专家列表。光剑挥动/点火
+            // 音效意图（savior_lightsaber_swing、savior_lightsaber_ignite）仅为表现，保持放行。
+            Identifier.of("sparkwitch", "savior_pistol_shoot"),
 
             Identifier.of("sparkstrength", "noisemaker_glow"),
             Identifier.of("sparkstrength", "phantom_backpack_invisibility"),
