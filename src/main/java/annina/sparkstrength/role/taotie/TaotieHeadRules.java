@@ -159,6 +159,9 @@ public final class TaotieHeadRules {
             // SparkWitch Noa painting (UseNoaPaintC2SPayload, SparkWitch #186), mirrored from the Control Expert list.
             // SparkWitch 城崎诺亚作画（SparkWitch #186），与控场专家名单一致。
             Identifier.of("sparkwitch", "use_noa_paint"),
+            // SparkWitch 远野汉娜 float (UseHannaFloatC2SPayload, ability key, SparkWitch #212), mirrored from the Control
+            // Expert list. / SparkWitch 远野汉娜浮游（技能键，SparkWitch #212），与控场专家名单一致。
+            Identifier.of("sparkwitch", "use_hanna_float"),
             Identifier.of("sparkwitch", "magician_ability"),
             Identifier.of("sparkwitch", "ragpicker_search"),
             // SparkWitch Accountant passbook withdrawal (left-click item use, AccountantWithdrawC2SPacket, SparkWitch
