@@ -195,6 +195,9 @@ public final class TaotieHeadRules {
             // 技能键），SparkWitch #202。
             Identifier.of("sparkwitch", "ferryman_pardon"),
             Identifier.of("sparkwitch", "ferryman_ferry"),
+            // SparkWitch 二阶堂希罗 Nikaido Hiro's 死亡回归 (ability key, UseHiroSkillC2SPacket, an empty request),
+            // mirrored from the Control Expert list. / SparkWitch 二阶堂希罗的死亡回归（技能键，空请求），与控场专家名单一致。
+            Identifier.of("sparkwitch", "use_hiro_skill"),
             // USEC sniper rifle shot and attachment actions, mirrored from the Control Expert list; the scope toggle
             // (sparkwitch:usec_scope) stays allowed there and here. An unregistered id never matches.
             // USEC 狙击步枪开火与配件操作，同步自控场专家列表；开镜（sparkwitch:usec_scope）在两处均放行。未注册时该 id 永远不会命中。
