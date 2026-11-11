@@ -187,6 +187,11 @@ public final class TaotieHeadRules {
             Identifier.of("sparkwitch", "submit_medium_seance"),
             Identifier.of("sparkwitch", "use_medium_second_skill"),
             Identifier.of("sparkwitch", "submit_medium_haunt_target"),
+            // SparkWitch Charon pardon (shared ability key, FerrymanPardonC2SPayload) and ferry (secondary key on a
+            // body, FerrymanFerryC2SPayload), SparkWitch #202. / SparkWitch 卡戎宽恕（共享技能键）与摆渡（对遗体按第二
+            // 技能键），SparkWitch #202。
+            Identifier.of("sparkwitch", "ferryman_pardon"),
+            Identifier.of("sparkwitch", "ferryman_ferry"),
             // USEC sniper rifle shot and attachment actions, mirrored from the Control Expert list; the scope toggle
             // (sparkwitch:usec_scope) stays allowed there and here. An unregistered id never matches.
             // USEC 狙击步枪开火与配件操作，同步自控场专家列表；开镜（sparkwitch:usec_scope）在两处均放行。未注册时该 id 永远不会命中。
