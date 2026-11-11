@@ -195,7 +195,14 @@ public final class TaotieHeadRules {
             // 技能键），SparkWitch #202。
             Identifier.of("sparkwitch", "ferryman_pardon"),
             Identifier.of("sparkwitch", "ferryman_ferry"),
-            // SparkWitch 二阶堂希罗 Nikaido Hiro's 死亡回归 (ability key, UseHiroSkillC2SPacket, an empty request),
+            // SparkWitch 橘雪莉 (Sherry) 推演 (shared ability key): the target panel request and its paid confirmation,
+            // both halves dropped like the Judge pair; and her 巨力魔法 (Role Skill 2) window, SparkWitch #206,
+            // mirrored from the Control Expert list. / SparkWitch 橘雪莉的推演（共享技能键）：目标面板请求及其付费确认，
+            // 与法官的两个包一样两半都拦截；以及她的巨力魔法（职业技能 2）窗口，SparkWitch #206，与控场专家名单一致。
+            Identifier.of("sparkwitch", "request_sherry_deduction"),
+            Identifier.of("sparkwitch", "confirm_sherry_deduction"),
+            Identifier.of("sparkwitch", "use_sherry_mighty_force"),
+            // SparkWitch 二阶堂希罗 Nikaido Hiro's 死亡回归 (ability key, UseHiroSkillC2SPacket, an empty request, SparkWitch #218),
             // mirrored from the Control Expert list. / SparkWitch 二阶堂希罗的死亡回归（技能键，空请求），与控场专家名单一致。
             Identifier.of("sparkwitch", "use_hiro_skill"),
             // USEC sniper rifle shot and attachment actions, mirrored from the Control Expert list; the scope toggle
