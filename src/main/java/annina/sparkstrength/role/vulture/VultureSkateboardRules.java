@@ -33,6 +33,8 @@ public final class VultureSkateboardRules {
      * {@link #SPEED_MULTIPLIER} 对应的 ADD_MULTIPLIED_TOTAL 数值。Wathe 按属性修饰比例缩放玩家速度，因此行走与疾跑同样乘算。
      */
     public static final double SPEED_MODIFIER_AMOUNT = SPEED_MULTIPLIER - 1.0D;
+    /** Largest backward step of the client's world time that {@link #steadyTime} rides out: 1 s. / {@link #steadyTime} 忽略的客户端世界时间最大回退：1 秒。 */
+    public static final int CLOCK_HOLD_TICKS = 20;
 
     private VultureSkateboardRules() {
     }
@@ -45,5 +47,29 @@ public final class VultureSkateboardRules {
     public static int openingRemaining(long roundStartTick, long now) {
         long elapsed = Math.max(0L, now - roundStartTick);
         return (int) Math.max(0L, OPENING_TICKS - elapsed);
+    }
+
+    /** Ticks left of a lock ending at {@code lockEndTick}, 0 once over or with no lock. / 锁的剩余刻数，结束或无锁时为 0。 */
+    public static int lockRemaining(long lockEndTick, long now) {
+        return (int) Math.max(0L, Math.min(Integer.MAX_VALUE, lockEndTick - now));
+    }
+
+    /**
+     * The client's world time, held still through small backward steps. The client advances world time itself and the
+     * server corrects it once a second, so it can step back a tick or two; a countdown read from the raw value would
+     * flicker between two seconds. A larger step back (the server stalled) is real and is taken at once.
+     * 客户端的世界时间，遇到小幅回退时保持不动。客户端自行推进世界时间，服务端每秒校正一次，因此可能回退一两刻；直接用
+     * 原始值的倒计时会在两个秒数之间来回跳。更大的回退（服务端卡顿）是真实的，立即采用。
+     */
+    public static long steadyTime(long previous, long current) {
+        return current < previous && previous - current <= CLOCK_HOLD_TICKS ? previous : current;
+    }
+
+    /**
+     * Whole seconds shown for {@code ticks}, rounded up; every Vulture countdown uses this, so equal locks read equal.
+     * {@code ticks} 对应显示的整秒数（向上取整）；秃鹫的所有倒计时都用它，相同的锁显示相同的数字。
+     */
+    public static int displaySeconds(int ticks) {
+        return Math.ceilDiv(Math.max(0, ticks), 20);
     }
 }

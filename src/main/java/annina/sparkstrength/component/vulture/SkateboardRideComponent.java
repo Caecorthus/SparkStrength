@@ -10,6 +10,7 @@ import org.jetbrains.annotations.NotNull;
 import org.ladysnake.cca.api.v3.component.ComponentKey;
 import org.ladysnake.cca.api.v3.component.ComponentRegistry;
 import org.ladysnake.cca.api.v3.component.sync.AutoSyncedComponent;
+import org.ladysnake.cca.api.v3.component.sync.PlayerSyncPredicate;
 
 /**
  * The Vulture's skateboard ride, synced to every tracking client. The server's VultureSkateboardService owns it; the
@@ -17,6 +18,12 @@ import org.ladysnake.cca.api.v3.component.sync.AutoSyncedComponent;
  * movement-speed modifier, which vanilla syncs on its own.
  * 秃鹫的滑板滑行状态，同步给所有追踪该玩家的客户端。由服务端 VultureSkateboardService 维护；客户端只读取
  * （脚下滑板、固定腿部、滚轮声、HUD）。速度本身来自临时移速修饰符，由原版自行同步。
+ *
+ * <p>It also carries the board's current lock (round-start lock, or ride + cooldown) as a world-time window, sent to
+ * the owner only. The owner's HUD line and slot sweep are drawn from that window, so they follow the server's clock;
+ * a vanilla item cooldown alone counts down on the client's own clock and drifts whenever the server runs slow.
+ * 它还以世界时间区间携带滑板当前的锁（开局锁，或滑行 + 冷却），仅发送给本人。本人的 HUD 行与栏位冷却条都按该区间绘制，
+ * 因此跟随服务端时钟；单靠原版物品冷却只会按客户端自己的时钟倒数，服务端一变慢就会跑偏。</p>
  */
 public final class SkateboardRideComponent implements AutoSyncedComponent {
     public static final ComponentKey<SkateboardRideComponent> KEY = ComponentRegistry.getOrCreate(
@@ -27,6 +34,10 @@ public final class SkateboardRideComponent implements AutoSyncedComponent {
     private final PlayerEntity player;
     /** World time the ride ends at; 0 when not riding. / 滑行结束时的世界时间；未滑行时为 0。 */
     private long rideEndTick;
+    /** World time the current lock began at; 0 with no lock. / 当前锁开始的世界时间；无锁时为 0。 */
+    private long lockStartTick;
+    /** World time the current lock ends at; 0 with no lock. / 当前锁结束的世界时间；无锁时为 0。 */
+    private long lockEndTick;
 
     public SkateboardRideComponent(PlayerEntity player) {
         this.player = player;
@@ -66,6 +77,35 @@ public final class SkateboardRideComponent implements AutoSyncedComponent {
         sync();
     }
 
+    /** Whether a lock window is recorded (owner's client and server only). / 是否记录了锁区间（仅本人客户端与服务端）。 */
+    public boolean hasLock() {
+        return lockEndTick != 0L;
+    }
+
+    public long lockStartTick() {
+        return lockStartTick;
+    }
+
+    public long lockEndTick() {
+        return lockEndTick;
+    }
+
+    /**
+     * Server: records the board's lock window, or clears it with {@code endTick <= 0}. Synced to the owner, and only
+     * when the window changed, so calling it every tick is free.
+     * 服务端：记录滑板的锁区间，{@code endTick <= 0} 时清除。仅在区间变化时同步给本人，因此可以每刻调用。
+     */
+    public void setLock(long startTick, long endTick) {
+        long start = endTick <= 0L ? 0L : startTick;
+        long end = Math.max(0L, endTick);
+        if (start == lockStartTick && end == lockEndTick) {
+            return;
+        }
+        lockStartTick = start;
+        lockEndTick = end;
+        KEY.sync(player, this, PlayerSyncPredicate.only(player));
+    }
+
     private void sync() {
         KEY.sync(player);
     }
@@ -80,11 +120,18 @@ public final class SkateboardRideComponent implements AutoSyncedComponent {
     @Override
     public void writeSyncPacket(RegistryByteBuf buf, ServerPlayerEntity recipient) {
         buf.writeVarLong(rideEndTick);
+        // The lock only drives the owner's own HUD and slot; nobody else learns when the board is ready.
+        // 锁只用于本人的 HUD 与栏位，其他人不会得知滑板何时可用。
+        boolean owner = recipient == player;
+        buf.writeVarLong(owner ? lockStartTick : 0L);
+        buf.writeVarLong(owner ? lockEndTick : 0L);
     }
 
     @Override
     public void applySyncPacket(RegistryByteBuf buf) {
         rideEndTick = buf.readVarLong();
+        lockStartTick = buf.readVarLong();
+        lockEndTick = buf.readVarLong();
     }
 
     @Override
@@ -96,5 +143,7 @@ public final class SkateboardRideComponent implements AutoSyncedComponent {
     @Override
     public void readFromNbt(@NotNull NbtCompound tag, RegistryWrapper.WrapperLookup registryLookup) {
         rideEndTick = 0L;
+        lockStartTick = 0L;
+        lockEndTick = 0L;
     }
 }

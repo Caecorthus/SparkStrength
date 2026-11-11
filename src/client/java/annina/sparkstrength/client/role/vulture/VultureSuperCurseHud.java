@@ -3,6 +3,7 @@ package annina.sparkstrength.client.role.vulture;
 import annina.sparkstrength.client.compat.SparkWitchSecondaryKeyCompat;
 import annina.sparkstrength.component.vulture.VultureSuperCursePlayerComponent;
 import annina.sparkstrength.network.vulture.VultureSuperCurseC2SPacket;
+import annina.sparkstrength.role.vulture.VultureSkateboardRules;
 import annina.sparkstrength.role.vulture.VultureSuperCurseRules;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
@@ -43,9 +44,13 @@ public final class VultureSuperCurseHud {
             return;
         }
 
-        int cooldownTicks = VultureSuperCursePlayerComponent.KEY.get(player).getCooldownTicks();
+        // Same clock and rounding as the skateboard line, so the two 60 s openings count down together.
+        // 与滑板行使用同一时钟和取整方式，两个 60 秒的开局冷却同步倒数。
+        int cooldownTicks = VultureSuperCurseRules.cooldownRemaining(
+                VultureSuperCursePlayerComponent.KEY.get(player).readyAtTick(), VultureClock.now(player.getWorld()));
         Text text = cooldownTicks > 0
-                ? Text.translatable("hud.sparkstrength.vulture_super_curse.cooldown", Math.ceilDiv(cooldownTicks, 20))
+                ? Text.translatable("hud.sparkstrength.vulture_super_curse.cooldown",
+                        VultureSkateboardRules.displaySeconds(cooldownTicks))
                 : Text.translatable("hud.sparkstrength.vulture_super_curse.ready", keyText());
         int x = context.getScaledWindowWidth() - renderer.getWidth(text);
         int y = context.getScaledWindowHeight() - renderer.fontHeight * ROW_FROM_BOTTOM;

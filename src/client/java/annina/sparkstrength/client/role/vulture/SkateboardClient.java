@@ -3,6 +3,8 @@ package annina.sparkstrength.client.role.vulture;
 import annina.sparkstrength.component.vulture.SkateboardRideComponent;
 import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.entity.PlayerEntityRenderer;
 import net.minecraft.entity.player.PlayerEntity;
 
@@ -26,6 +28,14 @@ public final class SkateboardClient {
             }
         });
         WorldRenderEvents.AFTER_ENTITIES.register(SkateboardRenderer::renderCameraBoard);
+        // Before the HUD and any screen of the same frame, so the slot never shows a sweep a packet just restarted.
+        // 早于同一帧的 HUD 与界面绘制，栏位不会显示被数据包刚刚重置的冷却条。
+        WorldRenderEvents.START.register(context -> {
+            ClientPlayerEntity player = MinecraftClient.getInstance().player;
+            if (player != null) {
+                SkateboardCooldownClient.apply(player);
+            }
+        });
         SkateboardSoundClient.register();
     }
 
