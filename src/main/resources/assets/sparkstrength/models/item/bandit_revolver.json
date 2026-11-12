@@ -1,0 +1,147 @@
+{
+  "parent": "sparkstrength:item/bandit_revolver_base",
+  "textures": {
+    "layer0": "sparkstrength:item/bandit_revolver/barrel_standard",
+    "layer1": "sparkstrength:item/bandit_revolver/grip_standard",
+    "layer2": "sparkstrength:item/bandit_revolver/frame",
+    "layer3": "sparkstrength:item/bandit_revolver/cylinder_standard"
+  },
+  "overrides": [
+    {
+      "predicate": {
+        "sparkstrength:bandit_barrel": 0.0,
+        "sparkstrength:bandit_grip": 0.0,
+        "sparkstrength:bandit_cylinder": 1.0
+      },
+      "model": "sparkstrength:item/bandit_revolver/standard_standard_expanded"
+    },
+    {
+      "predicate": {
+        "sparkstrength:bandit_barrel": 0.0,
+        "sparkstrength:bandit_grip": 0.5,
+        "sparkstrength:bandit_cylinder": 0.0
+      },
+      "model": "sparkstrength:item/bandit_revolver/standard_speed_standard"
+    },
+    {
+      "predicate": {
+        "sparkstrength:bandit_barrel": 0.0,
+        "sparkstrength:bandit_grip": 0.5,
+        "sparkstrength:bandit_cylinder": 1.0
+      },
+      "model": "sparkstrength:item/bandit_revolver/standard_speed_expanded"
+    },
+    {
+      "predicate": {
+        "sparkstrength:bandit_barrel": 0.0,
+        "sparkstrength:bandit_grip": 1.0,
+        "sparkstrength:bandit_cylinder": 0.0
+      },
+      "model": "sparkstrength:item/bandit_revolver/standard_reload_standard"
+    },
+    {
+      "predicate": {
+        "sparkstrength:bandit_barrel": 0.0,
+        "sparkstrength:bandit_grip": 1.0,
+        "sparkstrength:bandit_cylinder": 1.0
+      },
+      "model": "sparkstrength:item/bandit_revolver/standard_reload_expanded"
+    },
+    {
+      "predicate": {
+        "sparkstrength:bandit_barrel": 0.5,
+        "sparkstrength:bandit_grip": 0.0,
+        "sparkstrength:bandit_cylinder": 0.0
+      },
+      "model": "sparkstrength:item/bandit_revolver/long_standard_standard"
+    },
+    {
+      "predicate": {
+        "sparkstrength:bandit_barrel": 0.5,
+        "sparkstrength:bandit_grip": 0.0,
+        "sparkstrength:bandit_cylinder": 1.0
+      },
+      "model": "sparkstrength:item/bandit_revolver/long_standard_expanded"
+    },
+    {
+      "predicate": {
+        "sparkstrength:bandit_barrel": 0.5,
+        "sparkstrength:bandit_grip": 0.5,
+        "sparkstrength:bandit_cylinder": 0.0
+      },
+      "model": "sparkstrength:item/bandit_revolver/long_speed_standard"
+    },
+    {
+      "predicate": {
+        "sparkstrength:bandit_barrel": 0.5,
+        "sparkstrength:bandit_grip": 0.5,
+        "sparkstrength:bandit_cylinder": 1.0
+      },
+      "model": "sparkstrength:item/bandit_revolver/long_speed_expanded"
+    },
+    {
+      "predicate": {
+        "sparkstrength:bandit_barrel": 0.5,
+        "sparkstrength:bandit_grip": 1.0,
+        "sparkstrength:bandit_cylinder": 0.0
+      },
+      "model": "sparkstrength:item/bandit_revolver/long_reload_standard"
+    },
+    {
+      "predicate": {
+        "sparkstrength:bandit_barrel": 0.5,
+        "sparkstrength:bandit_grip": 1.0,
+        "sparkstrength:bandit_cylinder": 1.0
+      },
+      "model": "sparkstrength:item/bandit_revolver/long_reload_expanded"
+    },
+    {
+      "predicate": {
+        "sparkstrength:bandit_barrel": 1.0,
+        "sparkstrength:bandit_grip": 0.0,
+        "sparkstrength:bandit_cylinder": 0.0
+      },
+      "model": "sparkstrength:item/bandit_revolver/short_standard_standard"
+    },
+    {
+      "predicate": {
+        "sparkstrength:bandit_barrel": 1.0,
+        "sparkstrength:bandit_grip": 0.0,
+        "sparkstrength:bandit_cylinder": 1.0
+      },
+      "model": "sparkstrength:item/bandit_revolver/short_standard_expanded"
+    },
+    {
+      "predicate": {
+        "sparkstrength:bandit_barrel": 1.0,
+        "sparkstrength:bandit_grip": 0.5,
+        "sparkstrength:bandit_cylinder": 0.0
+      },
+      "model": "sparkstrength:item/bandit_revolver/short_speed_standard"
+    },
+    {
+      "predicate": {
+        "sparkstrength:bandit_barrel": 1.0,
+        "sparkstrength:bandit_grip": 0.5,
+        "sparkstrength:bandit_cylinder": 1.0
+      },
+      "model": "sparkstrength:item/bandit_revolver/short_speed_expanded"
+    },
+    {
+      "predicate": {
+        "sparkstrength:bandit_barrel": 1.0,
+        "sparkstrength:bandit_grip": 1.0,
+        "sparkstrength:bandit_cylinder": 0.0
+      },
+      "model": "sparkstrength:item/bandit_revolver/short_reload_standard"
+    },
+    {
+      "predicate": {
+        "sparkstrength:bandit_barrel": 1.0,
+        "sparkstrength:bandit_grip": 1.0,
+        "sparkstrength:bandit_cylinder": 1.0
+      },
+      "model": "sparkstrength:item/bandit_revolver/short_reload_expanded"
+    }
+  ]
+}

@@ -8,6 +8,7 @@ import annina.sparkstrength.client.item.PerfumerItemsClient;
 import annina.sparkstrength.client.render.ClientFrame;
 import annina.sparkstrength.client.role.attendant.flashlight.FlashlightLights;
 import annina.sparkstrength.client.role.attendant.flashlight.FlashlightRenderer;
+import annina.sparkstrength.client.role.bandit.BanditRevolverClient;
 import annina.sparkstrength.client.role.bodyguard.BodyguardClient;
 import annina.sparkstrength.client.role.bomber.BomberDroneClient;
 import annina.sparkstrength.client.role.coroner.CoronerClientHooks;
@@ -72,6 +73,7 @@ public final class SparkStrengthClient implements ClientModInitializer {
         // Loaded drones, Partygoers and corpses, so per-frame picks can skip empty searches. / 已加载的无人机、派对客与尸体，
         // 让逐帧选取跳过必然落空的搜索。
         LoadedEntities.register();
+        BanditRevolverClient.register();
         BodyguardClient.register();
         CapsuleClient.register();
         FlashlightModelClient.register();

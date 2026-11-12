@@ -1,5 +1,7 @@
 package annina.sparkstrength.network;
 
+import annina.sparkstrength.network.bandit.BanditRevolverActionC2SPayload;
+import annina.sparkstrength.network.bandit.BanditRevolverShootC2SPayload;
 import annina.sparkstrength.network.coroner.CoronerMorphC2SPacket;
 import annina.sparkstrength.network.demonhunter.DemonHunterSniffC2SPacket;
 import annina.sparkstrength.network.undercover.UndercoverMaskOffC2SPacket;
@@ -113,6 +115,8 @@ public final class SparkStrengthPackets {
                 DetectiveInterrogationResultS2CPacket.CODEC
         );
         PayloadTypeRegistry.playC2S().register(SerialPistolShootC2SPayload.ID, SerialPistolShootC2SPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(BanditRevolverShootC2SPayload.ID, BanditRevolverShootC2SPayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(BanditRevolverActionC2SPayload.ID, BanditRevolverActionC2SPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(OpenTabletScreenS2CPacket.ID, OpenTabletScreenS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(TabletChatNotifyS2CPacket.ID, TabletChatNotifyS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncTabletSnapshotS2CPacket.ID, SyncTabletSnapshotS2CPacket.CODEC);
@@ -210,6 +214,10 @@ public final class SparkStrengthPackets {
                 (payload, context) -> TaotieHeadService.tryFire(context.player()));
         ServerPlayNetworking.registerGlobalReceiver(SerialPistolShootC2SPayload.ID,
                 SerialPistolShootC2SPayload::receive);
+        ServerPlayNetworking.registerGlobalReceiver(BanditRevolverShootC2SPayload.ID,
+                BanditRevolverShootC2SPayload::receive);
+        ServerPlayNetworking.registerGlobalReceiver(BanditRevolverActionC2SPayload.ID,
+                BanditRevolverActionC2SPayload::receive);
         registerSabotage();
     }
 

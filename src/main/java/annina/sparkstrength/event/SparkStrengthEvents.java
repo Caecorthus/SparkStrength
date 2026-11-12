@@ -4,6 +4,8 @@ import annina.sparkstrength.compat.SparkFactionCompat;
 import annina.sparkstrength.component.collision.PlayerCollisionGraceWorldComponent;
 import annina.sparkstrength.component.morphling.MorphBodyDisguiseWorldComponent;
 import annina.sparkstrength.item.m67.M67RoundService;
+import annina.sparkstrength.role.bandit.BanditRevolverService;
+import annina.sparkstrength.role.bandit.BanditShopService;
 import annina.sparkstrength.role.noisemaker.NoisemakerGlowService;
 import annina.sparkstrength.role.phantom.PhantomBackpackService;
 import annina.sparkstrength.role.attendant.AttendantFlashlightService;
@@ -163,6 +165,10 @@ public final class SparkStrengthEvents {
         // Serial pistols exist only during their Serial Killer's psycho: sweep + world-use guard.
         // 连环手枪只在其连环杀手疯魔期间存在：清扫与世界交互防护。
         SerialPistolGuardService.register();
+        // Bandit moddable revolver: shop (late phase, after NoellesRoles' Bandit handler) and round seating/reconcile.
+        // 强盗改装左轮：商店（晚于 NoellesRoles 强盗处理器的阶段）与子弹到位/对账。
+        BanditShopService.register();
+        ServerTickEvents.END_WORLD_TICK.register(BanditRevolverService::tick);
         // 回溯者被动收入需要按世界 tick 定时结算，注册在服务端世界 tick 末尾。
         ServerTickEvents.END_WORLD_TICK.register(CoronerEconomyService::tick);
         ServerTickEvents.END_WORLD_TICK.register(CoronerService::tick);
@@ -218,6 +224,8 @@ public final class SparkStrengthEvents {
             BodyguardShieldService.clearGear(victim, true);
             UndercoverService.afterDeath(victim);
             PartyBalloonService.clearPlayer(victim);
+            // A dead Bandit leaves a plain revolver behind. / 强盗死亡时留下一把普通左轮。
+            BanditRevolverService.afterKill(victim);
         });
 
         GameEvents.ON_FINISH_FINALIZE.register((world, gameComponent) -> {
@@ -232,6 +240,7 @@ public final class SparkStrengthEvents {
                 VeteranBlackoutService.clear(serverWorld);
                 BlackoutSightService.clear(serverWorld);
                 VeteranEconomyService.clearRoundState();
+                BanditRevolverService.clearRoundState();
                 // Per-player state is already reset: finalizeGame runs resetPlayer, and with it PlayerRoundReset, for
                 // every player of this world just before it clears the role map and fires this event.
                 // 单人状态此时已重置：finalizeGame 在清空身份表并触发本事件之前，已对本世界每名玩家执行 resetPlayer，
@@ -259,6 +268,8 @@ public final class SparkStrengthEvents {
                 TabletShopService.grantStarterTablets(serverWorld, gameComponent);
                 // Every Impostor also gets one free pry tool for junction boxes. / 每名内鬼还免费获得一把撬接线箱的撬锁工具。
                 ImpostorLockpickService.grantStarterLockpicks(serverWorld, gameComponent);
+                // Every Bandit starts with one empty moddable revolver. / 每名强盗开局获得一把空的改装左轮。
+                BanditRevolverService.grantStarterRevolvers(serverWorld, gameComponent);
                 // Crime-scene snapshots are round state; clear before granting kits so a new round starts empty.
                 // 案发快照属于单局状态；先清空再发放侦探道具，保证新一局从空白开始。
                 DetectiveCaseService.clearRoundState(serverWorld);
