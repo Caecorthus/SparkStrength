@@ -1,0 +1,9 @@
+{
+  "parent": "sparkstrength:item/bandit_revolver_base",
+  "textures": {
+    "layer0": "sparkstrength:item/bandit_revolver/barrel_standard",
+    "layer1": "sparkstrength:item/bandit_revolver/grip_speed",
+    "layer2": "sparkstrength:item/bandit_revolver/frame",
+    "layer3": "sparkstrength:item/bandit_revolver/cylinder_expanded"
+  }
+}

@@ -1,8 +1,10 @@
 package annina.sparkstrength.client.mixin.wathe;
 
+import annina.sparkstrength.client.ui.shop.ShopPageSwitchWidget;
 import dev.doctor4t.wathe.client.gui.screen.ingame.LimitedHandledScreen;
 import dev.doctor4t.wathe.client.gui.screen.ingame.LimitedInventoryScreen;
 import net.minecraft.client.gui.Element;
+import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.screen.PlayerScreenHandler;
 import net.minecraft.text.Text;
@@ -23,11 +25,12 @@ import java.util.List;
  * starts off-screen at the automatic 1080p GUI width (480). This runs after Wathe has built the row
  * and only moves the existing buttons. Icon, frame, price, stock, highlight and click hitbox all
  * derive from {@code getX()/getY()}, so they move together. When the original row fits, nothing is
- * touched. Extra rows stack upward because the hovered-item name tooltip and the hotbar sit below.</p>
+ * touched. Extra rows stack upward because the hovered-item name tooltip and the hotbar sit below. Entries hidden by
+ * {@code ShopPageMixin} (the other shop page) are skipped, and its page switch button is laid out as one more entry.</p>
  * <p>Wathe 把所有商品居中排成一行（间距 38px，不换行），14 个商品的杀手商店在 1080p 自动界面宽度
  * （480）下首个商品就会出屏。这里在 Wathe 建好按钮后只移动已有按钮：图标、边框、价格、库存、高亮和
  * 点击范围都来自 {@code getX()/getY()}，因此同步移动。原单行放得下时不做任何改动。新增行只向上堆叠，
- * 因为下方是悬停物品名称提示和快捷栏。</p>
+ * 因为下方是悬停物品名称提示和快捷栏。被 {@code ShopPageMixin} 隐藏的商品（另一页）会跳过，其翻页按钮按一个商品参与排版。</p>
  */
 @Mixin(LimitedInventoryScreen.class)
 public abstract class ShopRowOverflowMixin extends LimitedHandledScreen<PlayerScreenHandler> {
@@ -51,10 +54,11 @@ public abstract class ShopRowOverflowMixin extends LimitedHandledScreen<PlayerSc
 
     @Inject(method = "init", at = @At("TAIL"))
     private void sparkstrength$keepShopEntriesOnScreen(CallbackInfo ci) {
-        List<LimitedInventoryScreen.StoreItemWidget> entries = new ArrayList<>();
+        List<ClickableWidget> entries = new ArrayList<>();
         for (Element child : children()) {
-            if (child instanceof LimitedInventoryScreen.StoreItemWidget entry) {
-                entries.add(entry);
+            if (child instanceof LimitedInventoryScreen.StoreItemWidget entry ? entry.visible
+                    : child instanceof ShopPageSwitchWidget) {
+                entries.add((ClickableWidget) child);
             }
         }
         int count = entries.size();
@@ -65,7 +69,7 @@ public abstract class ShopRowOverflowMixin extends LimitedHandledScreen<PlayerSc
         int rowY = entries.get(0).getY();
         int minX = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE;
-        for (LimitedInventoryScreen.StoreItemWidget entry : entries) {
+        for (ClickableWidget entry : entries) {
             if (entry.getY() != rowY) {
                 // Not Wathe's single row any more; leave whichever layout produced it alone.
                 // 已不是 Wathe 的单行布局，交由产生该布局的一方处理。
@@ -100,7 +104,7 @@ public abstract class ShopRowOverflowMixin extends LimitedHandledScreen<PlayerSc
             int firstX = (width - span) / 2 + FRAME_INSET;
             int y = rowY - (rows - 1 - row) * ROW_PITCH;
             for (int column = 0; column < rowSize; column++) {
-                LimitedInventoryScreen.StoreItemWidget entry = entries.get(index++);
+                ClickableWidget entry = entries.get(index++);
                 entry.setX(firstX + column * pitch);
                 entry.setY(y);
             }
