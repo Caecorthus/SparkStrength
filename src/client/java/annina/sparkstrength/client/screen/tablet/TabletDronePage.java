@@ -1,9 +1,9 @@
 package annina.sparkstrength.client.screen.tablet;
 
-import annina.sparkstrength.client.screen.tablet.TabletScreen.Grid;
 import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.ButtonIcon;
 import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.ButtonStyle;
 import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.EmptyIcon;
+import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.Grid;
 import annina.sparkstrength.network.drone.DronePilotStartC2SPacket;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
 import annina.sparkstrength.role.bomber.drone.DroneKind;
@@ -161,18 +161,18 @@ final class TabletDronePage implements TabletPage {
             }
         }
         if (airborne > 0) {
-            return screen.paintPill(right, centerY, maxWidth, Text.translatable(KEY + "drone.airborne", airborne).getString(),
+            return screen.chrome().paintPill(right, centerY, maxWidth, Text.translatable(KEY + "drone.airborne", airborne).getString(),
                     TabletTheme.DRONE.pale(), TabletTheme.withAlpha(TabletTheme.DRONE.base(), 0x2E), 0,
-                    (canvas, x, y, size, color) -> screen.paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
+                    (canvas, x, y, size, color) -> screen.chrome().paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
                     TabletTheme.DRONE.base());
         }
         if (falling > 0) {
-            return screen.paintPill(right, centerY, maxWidth, Text.translatable(KEY + "drone.falling_count", falling).getString(),
+            return screen.chrome().paintPill(right, centerY, maxWidth, Text.translatable(KEY + "drone.falling_count", falling).getString(),
                     TabletTheme.KILLER.pale(), TabletTheme.withAlpha(TabletTheme.DANGER, 0x33), 0,
-                    (canvas, x, y, size, color) -> screen.paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
+                    (canvas, x, y, size, color) -> screen.chrome().paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
                     TabletTheme.DANGER);
         }
-        return screen.paintPill(right, centerY, maxWidth, String.valueOf(rows.size()), TabletTheme.TEXT_2, TabletTheme.SURFACE,
+        return screen.chrome().paintPill(right, centerY, maxWidth, String.valueOf(rows.size()), TabletTheme.TEXT_2, TabletTheme.SURFACE,
                 0, TabletIcons::drone, TabletTheme.TEXT_2);
     }
 
@@ -182,9 +182,9 @@ final class TabletDronePage implements TabletPage {
         // 坠落中的无人机为警报红点；无人驾驶仍在空中（持续耗电）的无人机显示脉冲点。
         DroneAlert alert = droneAlert(snapshot);
         if (alert == DroneAlert.FALLING) {
-            screen.paintBadgeDot(icon, TabletTheme.DANGER);
+            screen.chrome().paintBadgeDot(icon, TabletTheme.DANGER);
         } else if (alert == DroneAlert.UNATTENDED) {
-            screen.paintBadgePulse(icon, TabletTheme.DRONE.base(), now);
+            screen.chrome().paintBadgePulse(icon, TabletTheme.DRONE.base(), now);
         }
     }
 
@@ -211,7 +211,7 @@ final class TabletDronePage implements TabletPage {
             TabletDronePainter.droneCard(c, textRenderer, grid.area().x(), grid.rowY(row), grid.area().width(), drone,
                     Objects.requireNonNull(DroneKind.fromWire(drone.kindWire())), now);
         }
-        TabletSectionPainter.scrollThumb(c, screen.scrollTrack(grid.area()), first, grid.visibleRows(), rows.size());
+        TabletSectionPainter.scrollThumb(c, screen.chrome().scrollTrack(grid.area()), first, grid.visibleRows(), rows.size());
         int padX = layout.mode().padX();
         TabletDronePainter.droneControls(c, textRenderer, layout.footer().inset(padX, 0, padX, 0), screen.client().options);
     }

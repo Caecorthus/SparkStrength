@@ -1,9 +1,9 @@
 package annina.sparkstrength.client.screen.tablet;
 
 import annina.sparkstrength.client.screen.tablet.TabletMeetingPainter.HeroState;
-import annina.sparkstrength.client.screen.tablet.TabletScreen.Grid;
 import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.ButtonIcon;
 import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.ButtonStyle;
+import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.Grid;
 import annina.sparkstrength.network.tablet.CallTabletMeetingC2SPacket;
 import annina.sparkstrength.network.tablet.CastTabletVoteC2SPacket;
 import annina.sparkstrength.network.tablet.ConfirmTabletVoteC2SPacket;
@@ -137,11 +137,11 @@ final class TabletMeetingPage implements TabletPage {
     public int paintHeaderChip(TabletSnapshot snapshot, int right, int centerY, int maxWidth, long now) {
         TabletSnapshot.Meeting meeting = snapshot.meeting();
         return meeting.active()
-                ? screen.paintPill(right, centerY, maxWidth,
+                ? screen.chrome().paintPill(right, centerY, maxWidth,
                 Text.translatable(KEY + "meeting.timer",
                         meeting.remainingSeconds(TabletClientState.worldTime())).getString(),
                 TabletTheme.KILLER.pale(), TabletTheme.withAlpha(TabletTheme.DANGER, 0x33), 0,
-                (canvas, x, y, size, color) -> screen.paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
+                (canvas, x, y, size, color) -> screen.chrome().paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
                 TabletTheme.DANGER)
                 // Inactive: the hero card already shows the remaining chances, so no duplicate chip.
                 // 未开会：英雄卡已显示剩余次数，页眉不再重复显示。
@@ -151,7 +151,7 @@ final class TabletMeetingPage implements TabletPage {
     @Override
     public void paintBadge(TabletSnapshot snapshot, Rect icon, long now) {
         if (snapshot.meeting().active()) {
-            screen.paintBadgePulse(icon, TabletTheme.DANGER, now);
+            screen.chrome().paintBadgePulse(icon, TabletTheme.DANGER, now);
         }
     }
 
@@ -176,7 +176,7 @@ final class TabletMeetingPage implements TabletPage {
         TabletMeetingPainter.meetingProgress(c, list.x(), list.y(), list.width(),
                 meeting.remainingSeconds(TabletClientState.worldTime()));
         Grid grid = voteGrid();
-        TabletSectionPainter.scrollThumb(c, screen.scrollTrack(grid.area()), screen.session().meetingFirstRow(),
+        TabletSectionPainter.scrollThumb(c, screen.chrome().scrollTrack(grid.area()), screen.session().meetingFirstRow(),
                 grid.visibleRows(), grid.totalRows(meeting.targets().size()));
 
         ActionBar bar = actionBar(snapshot);
