@@ -199,7 +199,7 @@ final class TabletChannelSwitcher {
     private SwitcherGeometry switcherGeometry(TabletSnapshot snapshot) {
         TextRenderer textRenderer = screen.textRenderer();
         Rect screenRect = screen.layout().screen();
-        Rect chip = screen.channelChip(snapshot).rect();
+        Rect chip = screen.chrome().channelChip(snapshot).rect();
         List<TabletChannel> channels = switcherChannels(snapshot);
         SwitcherHint hint = switcherHint(snapshot);
         int width = Math.min(SWITCHER_WIDTH, Math.max(0, screenRect.width() - 16));
@@ -324,32 +324,32 @@ final class TabletChannelSwitcher {
             TabletIcons.lock(c, badgeX + 5f, badgeY + 5f, 10f, TabletTheme.TEXT_3);
         } else {
             c.roundRectGradientV(badgeX, badgeY, SWITCHER_BADGE, SWITCHER_BADGE, 6f, accent.base(), accent.deep());
-            c.textCentered(textRenderer, TabletScreen.monogram(channel), badgeX + SWITCHER_BADGE / 2, badgeY + 6,
+            c.textCentered(textRenderer, TabletChromePainter.monogram(channel), badgeX + SWITCHER_BADGE / 2, badgeY + 6,
                     TabletTheme.WHITE);
         }
 
         int chipRight = row.right() - 6;
         int maxChip = Math.max(0, row.width() / 2);
         int chipX = switch (state) {
-            case CURRENT -> screen.paintPill(chipRight, row.centerY(), maxChip, Text.translatable(KEY + "channel.current").getString(),
+            case CURRENT -> screen.chrome().paintPill(chipRight, row.centerY(), maxChip, Text.translatable(KEY + "channel.current").getString(),
                     accent.pale(), TabletTheme.withAlpha(accent.base(), 0x40), 0, TabletIcons::check, accent.pale());
             case JOIN -> hovered
-                    ? screen.paintPill(chipRight, row.centerY(), maxChip, Text.translatable(KEY + "channel.join").getString(),
+                    ? screen.chrome().paintPill(chipRight, row.centerY(), maxChip, Text.translatable(KEY + "channel.join").getString(),
                     TabletTheme.WHITE, accent.base(), 0, null, 0)
-                    : screen.paintPill(chipRight, row.centerY(), maxChip, Text.translatable(KEY + "channel.join").getString(),
+                    : screen.chrome().paintPill(chipRight, row.centerY(), maxChip, Text.translatable(KEY + "channel.join").getString(),
                     accent.base(), 0, TabletTheme.withAlpha(accent.base(), 0x99), null, 0);
-            case PENDING -> screen.paintPill(chipRight, row.centerY(), maxChip, Text.translatable(KEY + "channel.pending").getString(),
+            case PENDING -> screen.chrome().paintPill(chipRight, row.centerY(), maxChip, Text.translatable(KEY + "channel.pending").getString(),
                     TabletTheme.TEXT_2, TabletTheme.FAINT, 0,
                     (canvas, x, y, size, color) -> TabletIcons.spinner(canvas, x + size / 2f, y + size / 2f, size / 2f, now, color),
                     accent.pale());
-            case COOLDOWN -> screen.paintPill(chipRight, row.centerY(), maxChip,
+            case COOLDOWN -> screen.chrome().paintPill(chipRight, row.centerY(), maxChip,
                     Text.translatable(KEY + "channel.cooldown",
                             snapshot.channelSwitchCooldownSeconds(TabletClientState.worldTime())).getString(),
                     TabletTheme.TEXT_2, TabletTheme.FAINT, 0, TabletIcons::clock, TabletTheme.TEXT_2);
-            case MEETING_LOCKED -> screen.paintPill(chipRight, row.centerY(), maxChip,
+            case MEETING_LOCKED -> screen.chrome().paintPill(chipRight, row.centerY(), maxChip,
                     Text.translatable(KEY + "channel.meeting").getString(),
                     TabletTheme.WARNING, TabletTheme.withAlpha(TabletTheme.WARNING, 0x2E), 0, null, 0);
-            case LOCKED -> screen.paintPill(chipRight, row.centerY(), maxChip, Text.translatable(KEY + "channel.locked").getString(),
+            case LOCKED -> screen.chrome().paintPill(chipRight, row.centerY(), maxChip, Text.translatable(KEY + "channel.locked").getString(),
                     TabletTheme.TEXT_3, 0x0AFFFFFF, 0, null, 0);
         };
 

@@ -23,12 +23,12 @@ import java.util.List;
  * 各自的绘制器中（成员、会议、嫌疑、房门记录、无人机、破坏）。仅呈现服务端已脱敏的快照：这里不决定玩家能看到或能做什么，
  * 可点击/启用/状态等标志均由页面预先算好后传入。
  *
- * <p>Package-visible geometry constants are shared with the screen and its pages, which place the widgets and scroll
- * by them; changing one changes hit boxes as well as visuals. Private constants are painter-only; button hit boxes that
+ * <p>Package-visible geometry constants (and the card {@link Grid} built on {@code GRID_GAP}) are shared with the
+ * screen and its pages, which place the widgets and scroll by them; changing one changes hit boxes as well as visuals. Private constants are painter-only; button hit boxes that
  * depend on them are exposed through rect helpers ({@code heroButtonRect}, {@code suspectButtonRect},
  * {@code droneButtonRect}). Text is 8 px high and
  * is always drawn at {@code centreY - 4}.
- * 包可见的几何常量与界面及其页面共享，它们据此放置控件与滚动；修改它们会同时改变点击区域与外观。私有常量仅供绘制器使用，
+ * 包可见的几何常量（以及基于 GRID_GAP 的卡片网格 Grid）与界面及其页面共享，它们据此放置控件与滚动；修改它们会同时改变点击区域与外观。私有常量仅供绘制器使用，
  * 依赖它们的按钮点击区域通过 heroButtonRect、suspectButtonRect、droneButtonRect 暴露。文字高 8 px，一律绘制在 centreY - 4。</p>
  */
 final class TabletSectionPainter {
@@ -67,6 +67,31 @@ final class TabletSectionPainter {
     enum ButtonStyle { PRIMARY, SECONDARY, DANGER, DANGER_SOFT, WARNING_TOGGLED, LOCKED }
 
     enum ButtonIcon { NONE, LOCK, MEGAPHONE, LINK, CLOCK, SPINNER }
+
+    /**
+     * Card grid inside a list area; a final row counts as visible when its card (not its trailing gap) fits.
+     * 列表区域内的卡片网格；最后一行只要卡片本身放得下（不含行间距）即计为可见。
+     */
+    record Grid(TabletLayout.Rect area, int columns, int cellWidth, int rowStep, int visibleRows) {
+        static Grid of(TabletLayout.Rect area, int columns, int cardHeight, int rowStep) {
+            int safeColumns = Math.max(1, columns);
+            int cellWidth = Math.max(0, (area.width() - (safeColumns - 1) * GRID_GAP) / safeColumns);
+            int visibleRows = TabletLayout.rowsFitting(area.height() + rowStep - cardHeight, rowStep);
+            return new Grid(area, safeColumns, cellWidth, rowStep, visibleRows);
+        }
+
+        int totalRows(int items) {
+            return (items + columns - 1) / columns;
+        }
+
+        int cellX(int column) {
+            return area.x() + column * (cellWidth + GRID_GAP);
+        }
+
+        int rowY(int visibleRow) {
+            return area.y() + visibleRow * rowStep;
+        }
+    }
 
     // ============================================================================================ empty state
 

@@ -17,8 +17,10 @@ public final class PartygoerCarry {
     /**
      * Action payloads a carried player may not send beyond the daze list ({@code TaotieHeadRules.DAZE_BLOCKED_PAYLOADS}),
      * which lacks them: the SparkWitch Swordfish stab (released from a charge started before the grab) and the
-     * Magician's target pick.
+     * Magician's target pick. Since 2026-11-13 the daze list also blocks the Swordfish stab (classified like
+     * {@code wathe:knifestab}); its entry here is redundant and kept on purpose.
      * 除眩晕列表外，被扛着的玩家还不能发送的动作数据包（眩晕列表中没有）：SparkWitch 剑鱼刺击（抓住前开始蓄力、被扛时松开）与魔术师选目标。
+     * 自 2026-11-13 起眩晕列表也拦截剑鱼刺击（与 {@code wathe:knifestab} 同样归类）；此处的条目因此重复，有意保留。
      */
     // Generated CARRY_EXTRA column of SparkFactionAPI config/payload-policy/actions.tsv: edit that table and
     // rerun tools/payload_policy.py, never list ids here; per-id reasons are in its note column.
