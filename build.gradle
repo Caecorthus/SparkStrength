@@ -71,6 +71,11 @@ dependencies {
     implementation "de.maxhenkel.voicechat:voicechat-api:${project.voicechat_api_version}"
     modRuntimeOnly "maven.modrinth:simple-voice-chat:fabric-${project.voicechat_version}"
     modRuntimeOnly "de.maxhenkel.voicechat:voicechat-api:${project.voicechat_api_version}:fabric-stub"
+    // Wathe's main entrypoint needs MidnightLib at runtime; it is not in Wathe's jar on the dev classpath, so
+    // runClient/runServer crash without it. Dev runtime only: nothing compiles against it and it is not shipped.
+    // Wathe 的主入口在运行时需要 MidnightLib；开发类路径上的 Wathe jar 不带它，缺少时 runClient/runServer 会崩溃。
+    // 仅用于开发运行：不参与编译，也不随本模组发布。
+    modRuntimeOnly "maven.modrinth:midnightlib:${project.midnightlib_version}"
 
 }
 
