@@ -5,6 +5,9 @@
   "plugin": "annina.sparkstrength.client.mixin.SparkStrengthClientMixinPlugin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "assassin.AssassinScreenInvoker",
+    "assassin.AssassinScreenSwapMixin",
+    "assassin.ScreenInitInvoker",
     "attendant.FlashlightAimArmMixin",
     "attendant.FlashlightBlockEntityLightMixin",
     "attendant.FlashlightEntityLightMixin",

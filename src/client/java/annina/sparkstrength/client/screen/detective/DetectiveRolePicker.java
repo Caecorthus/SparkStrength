@@ -1,7 +1,8 @@
 package annina.sparkstrength.client.screen.detective;
 
-import annina.sparkstrength.compat.SparkFactionCompat;
+import annina.sparkstrength.client.ui.common.RoleFactionBands;
 import annina.sparkstrength.role.detective.DetectiveCaseRules;
+import annina.sparkstrength.role.detective.DetectiveCaseRules.RolePickerBand;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.WatheRoles;
 import net.minecraft.client.font.TextRenderer;
@@ -152,7 +153,7 @@ final class DetectiveRolePicker {
         context.enableScissor(grid.x(), grid.y(), grid.right(), grid.bottom());
         for (Band band : geometry.bands()) {
             int top = grid.y() + band.top() - (int) Math.round(scroll);
-            context.fill(grid.x(), top, grid.x() + GROUP_BAR, top + band.height(), band.group().accent);
+            context.fill(grid.x(), top, grid.x() + GROUP_BAR, top + band.height(), RoleFactionBands.accent(band.group()));
         }
         for (Cell cell : geometry.cells()) {
             int y = grid.y() + cell.y() - (int) Math.round(scroll);
@@ -234,7 +235,7 @@ final class DetectiveRolePicker {
         List<Cell> cells = new ArrayList<>();
         List<Band> bands = new ArrayList<>();
         int y = 0;
-        for (Group group : Group.values()) {
+        for (RolePickerBand group : RolePickerBand.values()) {
             List<Option> members = options.stream().filter(option -> option.group() == group).toList();
             if (members.isEmpty()) {
                 continue;
@@ -274,37 +275,9 @@ final class DetectiveRolePicker {
             if (role == null || special.contains(role.identifier()) || !seen.add(role.identifier())) {
                 continue;
             }
-            result.add(new Option(role, groupOf(role), roleName(role)));
+            result.add(new Option(role, RoleFactionBands.bandOf(role), RoleFactionBands.roleName(role)));
         }
         return List.copyOf(result);
-    }
-
-    /**
-     * Witch faction and Team Jiahao come from SparkFactionAPI's role-only base faction: as native Wathe factions they
-     * no longer read {@code isNeutral()} and would otherwise fall into the innocent band. Without SparkFactionAPI the
-     * old split stays (neutral-aligned falls back to {@code isNeutral()}).
-     * 魔女阵营与嘉豪阵营取自 SparkFactionAPI 仅由身份决定的基础阵营：作为原生 Wathe 阵营它们的 isNeutral() 已为 false，
-     * 否则会落入平民组。没有 SparkFactionAPI 时沿用原划分（与中立对齐回退为 isNeutral()）。
-     */
-    private static Group groupOf(Role role) {
-        Identifier faction = SparkFactionCompat.baseFaction(role);
-        return switch (DetectiveCaseRules.rolePickerBand(
-                role.canUseKiller(),
-                SparkFactionCompat.WITCH_FACTION_ID.equals(faction),
-                SparkFactionCompat.JIAHAO_FACTION_ID.equals(faction),
-                SparkFactionCompat.isNeutralAligned(role))) {
-            case KILLERS -> Group.KILLERS;
-            case NEUTRALS -> Group.NEUTRALS;
-            case WITCHES -> Group.WITCHES;
-            case JIAHAO -> Group.JIAHAO;
-            case INNOCENTS -> Group.INNOCENTS;
-        };
-    }
-
-    /** Role display name; mods without the lang key fall back to the id path. / 角色显示名，缺少语言键时回退为 ID 路径。 */
-    static Text roleName(Role role) {
-        String path = role.identifier().getPath();
-        return Text.translatableWithFallback("announcement.role." + path, path);
     }
 
     /** A picked role id, or null for "clear". / 选中的角色 ID；null 表示清除。 */
@@ -312,30 +285,14 @@ final class DetectiveRolePicker {
     }
 
     /** Drawn in {@link DetectiveCaseRules.RolePickerBand} order. / 按 RolePickerBand 的顺序绘制。 */
-    private enum Group {
-        KILLERS(0xFFC8372D),
-        NEUTRALS(0xFFB08A2E),
-        // SparkWitch's witch faction colour. / SparkWitch 魔女阵营颜色。
-        WITCHES(0xFFE9D5F0),
-        // SparkWitch's Team Jiahao colour. / SparkWitch 嘉豪阵营颜色。
-        JIAHAO(0xFFFFC125),
-        INNOCENTS(0xFF3E8E4E);
-
-        private final int accent;
-
-        Group(int accent) {
-            this.accent = accent;
-        }
-    }
-
-    private record Option(Role role, Group group, Text name) {
+    private record Option(Role role, RolePickerBand group, Text name) {
     }
 
     /** One grid cell; {@code y} is in scrolled content space. / 网格单元；y 为滚动内容坐标。 */
     private record Cell(Option option, int x, int y, int width) {
     }
 
-    private record Band(Group group, int top, int height) {
+    private record Band(RolePickerBand group, int top, int height) {
     }
 
     private record Geometry(
