@@ -87,6 +87,7 @@
     "vulture.SkateboardLimbsMixin",
     "vulture.SkateboardPresenceFootstepsMixin",
     "vulture.SkateboardReplacedBodyMixin",
+    "wathe.RoleAnnouncementGoalTextMixin",
     "wathe.ShopPageMixin",
     "wathe.ShopRowOverflowMixin",
     "bandit.BanditRevolverCrosshairMixin",
