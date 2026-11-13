@@ -4,9 +4,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 
 /**
  * Optional bridge to SparkTraits' public facade for the Pathogen's T-Virus: SparkTraits' fake corpses (Depression,
@@ -29,33 +27,15 @@ public final class SparkTraitsReviveCompat {
     }
 
     public static boolean isFakeDeathBody(Entity body) {
-        return body != null && Boolean.TRUE.equals(invokeOptional(IS_FAKE_DEATH_BODY, body));
+        return body != null && Boolean.TRUE.equals(OptionalReflection.invokeStatic(IS_FAKE_DEATH_BODY, body));
     }
 
     public static boolean isLastStandDeathIntercepted(PlayerEntity player) {
-        return player != null && Boolean.TRUE.equals(invokeOptional(IS_LAST_STAND_DEATH_INTERCEPTED, player));
+        return player != null
+                && Boolean.TRUE.equals(OptionalReflection.invokeStatic(IS_LAST_STAND_DEATH_INTERCEPTED, player));
     }
 
     private static Method findOptionalMethod(String name, Class<?>... parameters) {
-        if (!INSTALLED) {
-            return null;
-        }
-        try {
-            Method method = Class.forName(API_CLASS).getMethod(name, parameters);
-            return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == boolean.class ? method : null;
-        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | LinkageError ignored) {
-            return null;
-        }
-    }
-
-    private static Object invokeOptional(Method method, Object... arguments) {
-        if (method == null) {
-            return null;
-        }
-        try {
-            return method.invoke(null, arguments);
-        } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException | LinkageError ignored) {
-            return null;
-        }
+        return INSTALLED ? OptionalReflection.staticMethod(API_CLASS, name, boolean.class, parameters) : null;
     }
 }

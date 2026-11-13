@@ -32,21 +32,6 @@ public final class VeteranRules {
         return role != null && VETERAN_ID.equals(role.identifier());
     }
 
-    public static int killRewardForVictim(@Nullable Role victimRole) {
-        // 旧签名保留给潜在外部调用：没有玩家上下文时，仍按原始角色阵营结算。
-        return victimRole != null && victimRole.isInnocent()
-                ? INNOCENT_KILL_REWARD
-                : NON_INNOCENT_KILL_REWARD;
-    }
-
-    public static int killRewardForVictim(@Nullable Role victimRole, @Nullable PlayerEntity victim) {
-        // 这里专门用于老兵击杀结算：善良词条仍按“好人”处理并不给奖励，
-        // 内鬼词条则按杀手阵营处理，允许正常击杀并给出非好人奖励。
-        return isEffectiveCivilian(victimRole, victim)
-                ? INNOCENT_KILL_REWARD
-                : NON_INNOCENT_KILL_REWARD;
-    }
-
     public static boolean isEffectiveCivilian(@Nullable Role role, @Nullable PlayerEntity player) {
         return SparkTraitsCompat.isEffectiveCivilian(role, player);
     }

@@ -423,11 +423,6 @@ public record TabletSnapshot(
             return DoorLogKind.fromWire(kindWire);
         }
 
-        /** An actor is present but hidden (psycho / Jester moment). / 有操作者但被隐藏（疯魔 / 小丑时刻）。 */
-        public boolean isAnonymousActor() {
-            return hasActor && actorUuid == null;
-        }
-
         private void write(PacketByteBuf buf) {
             buf.writeVarInt(id);
             buf.writeVarInt(kindWire);

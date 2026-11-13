@@ -101,25 +101,16 @@ public final class SparkFactionCompat {
         if (!registerCorruptCopPoliceRole()) {
             return null;
         }
-        try {
-            return (Boolean) CONTAINS_POLICE_ROLE.invoke(null, role.identifier());
-        } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException | LinkageError ignored) {
-            return null;
-        }
+        return (Boolean) OptionalReflection.invokeStatic(CONTAINS_POLICE_ROLE, role.identifier());
     }
 
     /** Role-only base faction, deterministic on client and server; null means the API is unavailable.
      *  仅由身份决定的基础阵营，客户端与服务端结果一致；null 表示 API 不可用。 */
     public static @Nullable Identifier baseFaction(@Nullable Role role) {
-        if (role == null || RESOLVE_BASE_FACTION == null) {
+        if (role == null) {
             return null;
         }
-        try {
-            Object result = RESOLVE_BASE_FACTION.invoke(null, role);
-            return result instanceof Identifier id ? id : null;
-        } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException | LinkageError ignored) {
-            return null;
-        }
+        return OptionalReflection.invokeStatic(RESOLVE_BASE_FACTION, role) instanceof Identifier id ? id : null;
     }
 
     /** SparkWitch hard-depends on SparkFactionAPI, so an unavailable API exactly means no witch roles exist.
@@ -143,15 +134,11 @@ public final class SparkFactionCompat {
         if (role == null) {
             return false;
         }
-        if (IS_NEUTRAL_ALIGNED != null) {
-            try {
-                if (IS_NEUTRAL_ALIGNED.invoke(null, role) instanceof Boolean aligned) {
-                    return aligned;
-                }
-            } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException | LinkageError ignored) {
-                // Fall through to the old rule for this call only. / 仅本次调用回退为原规则。
-            }
+        if (OptionalReflection.invokeStatic(IS_NEUTRAL_ALIGNED, role) instanceof Boolean aligned) {
+            return aligned;
         }
+        // Absent API or failed call: fall through to the old rule for this call only.
+        // API 缺失或调用失败：仅本次调用回退为原规则。
         return role.isNeutral();
     }
 
@@ -203,78 +190,36 @@ public final class SparkFactionCompat {
      * 或反射失败时不排除任何人，即独立运行时的行为。
      */
     public static boolean isSettlementExcluded(@Nullable GameWorldComponent game, @Nullable UUID player) {
-        if (IS_SETTLEMENT_EXCLUDED == null || game == null || player == null) {
-            return false;
-        }
-        try {
-            return Boolean.TRUE.equals(IS_SETTLEMENT_EXCLUDED.invoke(null, game, player));
-        } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException | LinkageError ignored) {
-            return false;
-        }
+        return game != null && player != null
+                && Boolean.TRUE.equals(OptionalReflection.invokeStatic(IS_SETTLEMENT_EXCLUDED, game, player));
     }
 
     private static Method findSettlementExcluded() {
-        if (!FabricLoader.getInstance().isModLoaded("sparkfactionapi")) {
-            return null;
-        }
-        try {
-            Method method = Class.forName("dev.caecorthus.sparkfactionapi.api.settlement.SettlementExclusions")
-                    .getMethod("isExcluded", GameWorldComponent.class, UUID.class);
-            return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == boolean.class ? method : null;
-        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | LinkageError ignored) {
-            return null;
-        }
+        return FabricLoader.getInstance().isModLoaded("sparkfactionapi") ? OptionalReflection.staticMethod(
+                "dev.caecorthus.sparkfactionapi.api.settlement.SettlementExclusions", "isExcluded", boolean.class,
+                GameWorldComponent.class, UUID.class) : null;
     }
 
     private static Method findResolveBaseFaction() {
-        if (!FabricLoader.getInstance().isModLoaded("sparkfactionapi")) {
-            return null;
-        }
-        try {
-            Method method = Class.forName("dev.caecorthus.sparkfactionapi.api.SparkFactionApi")
-                    .getMethod("resolveBaseFaction", Role.class);
-            return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == Identifier.class ? method : null;
-        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | LinkageError ignored) {
-            return null;
-        }
+        return FabricLoader.getInstance().isModLoaded("sparkfactionapi") ? OptionalReflection.staticMethod(
+                "dev.caecorthus.sparkfactionapi.api.SparkFactionApi", "resolveBaseFaction", Identifier.class, Role.class)
+                : null;
     }
 
     private static Method findIsNeutralAligned() {
-        if (!FabricLoader.getInstance().isModLoaded("sparkfactionapi")) {
-            return null;
-        }
-        try {
-            Method method = Class.forName("dev.caecorthus.sparkfactionapi.api.SparkFactionApi")
-                    .getMethod("isNeutralAligned", Role.class);
-            return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == boolean.class ? method : null;
-        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | LinkageError ignored) {
-            return null;
-        }
+        return FabricLoader.getInstance().isModLoaded("sparkfactionapi") ? OptionalReflection.staticMethod(
+                "dev.caecorthus.sparkfactionapi.api.SparkFactionApi", "isNeutralAligned", boolean.class, Role.class)
+                : null;
     }
 
     private static Method findPoliceRoleMethod(String name, Class<?> returnType) {
-        if (!FabricLoader.getInstance().isModLoaded("sparkfactionapi")) {
-            return null;
-        }
-        try {
-            Method method = Class.forName("dev.caecorthus.sparkfactionapi.api.PoliceRoles")
-                    .getMethod(name, Identifier.class);
-            return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == returnType ? method : null;
-        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | LinkageError ignored) {
-            return null;
-        }
+        return FabricLoader.getInstance().isModLoaded("sparkfactionapi") ? OptionalReflection.staticMethod(
+                "dev.caecorthus.sparkfactionapi.api.PoliceRoles", name, returnType, Identifier.class) : null;
     }
 
     private static Method findCanAffect() {
-        if (!FabricLoader.getInstance().isModLoaded("sparkfactionapi")) {
-            return null;
-        }
-        try {
-            Method method = Class.forName("dev.caecorthus.sparkfactionapi.api.SparkFactionApi").getMethod(
-                    "canAffectPlayer", PlayerEntity.class, PlayerEntity.class, Identifier.class, GameWorldComponent.class);
-            return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == boolean.class ? method : null;
-        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | LinkageError ignored) {
-            return null;
-        }
+        return FabricLoader.getInstance().isModLoaded("sparkfactionapi") ? OptionalReflection.staticMethod(
+                "dev.caecorthus.sparkfactionapi.api.SparkFactionApi", "canAffectPlayer", boolean.class,
+                PlayerEntity.class, PlayerEntity.class, Identifier.class, GameWorldComponent.class) : null;
     }
 }

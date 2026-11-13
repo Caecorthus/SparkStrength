@@ -3,15 +3,11 @@ package annina.sparkstrength.role.perfumer;
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.component.perfumer.PerfumerScentComponent;
 import annina.sparkstrength.compat.SparkTraitsCompat;
+import annina.sparkstrength.util.ShopStacks;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.util.ShopEntry;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.LoreComponent;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.text.Text;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,29 +38,31 @@ public final class PerfumerShopService {
         if (!contains(entries, PerfumerRules.COOLING_OIL_ENTRY_ID, coolingOil)) {
             result = add(result, entries, player, new ShopEntry.Builder(
                     PerfumerRules.COOLING_OIL_ENTRY_ID,
-                    displayStack(coolingOil, "cooling_oil"),
+                    ShopStacks.display(coolingOil.getDefaultStack(), "shop.sparkstrength.cooling_oil"),
                     PerfumerRules.COOLING_OIL_PRICE,
                     ShopEntry.Type.TOOL
             ).actualStack(coolingOil.getDefaultStack())
-                    .onBuy(buyer -> giveStackable(buyer, coolingOil))
+                    // Purchase handler (PlayerShopComponent.tryBuy), capped at the throwable stack size.
+                    // 购买处理（PlayerShopComponent.tryBuy），堆叠上限为投掷物堆叠数。
+                    .onBuy(buyer -> ShopStacks.giveStackable(buyer, coolingOil, PerfumerRules.THROWABLE_MAX_STACK))
                     .build());
         }
         Item aromaOrb = SparkStrengthItems.aromaOrb();
         if (!contains(entries, PerfumerRules.AROMA_ORB_ENTRY_ID, aromaOrb)) {
             result = add(result, entries, player, new ShopEntry.Builder(
                     PerfumerRules.AROMA_ORB_ENTRY_ID,
-                    displayStack(aromaOrb, "aroma_orb"),
+                    ShopStacks.display(aromaOrb.getDefaultStack(), "shop.sparkstrength.aroma_orb"),
                     PerfumerRules.AROMA_ORB_PRICE,
                     ShopEntry.Type.TOOL
             ).actualStack(aromaOrb.getDefaultStack())
-                    .onBuy(buyer -> giveStackable(buyer, aromaOrb))
+                    .onBuy(buyer -> ShopStacks.giveStackable(buyer, aromaOrb, PerfumerRules.THROWABLE_MAX_STACK))
                     .build());
         }
         Item zephyrPerfume = SparkStrengthItems.zephyrPerfume();
         if (!contains(entries, PerfumerRules.ZEPHYR_PERFUME_ENTRY_ID, zephyrPerfume)) {
             result = add(result, entries, player, new ShopEntry.Builder(
                     PerfumerRules.ZEPHYR_PERFUME_ENTRY_ID,
-                    displayStack(zephyrPerfume, "zephyr_perfume"),
+                    ShopStacks.display(zephyrPerfume.getDefaultStack(), "shop.sparkstrength.zephyr_perfume"),
                     PerfumerRules.ZEPHYR_PERFUME_PRICE,
                     ShopEntry.Type.TOOL
             ).actualStack(zephyrPerfume.getDefaultStack())
@@ -73,26 +71,6 @@ public final class PerfumerShopService {
                     .build());
         }
         return result == null ? entries : result;
-    }
-
-    /**
-     * Server-side purchase handler (PlayerShopComponent.tryBuy): true charges the price, false charges nothing.
-     * Tops up an existing hotbar stack first, because Wathe's default only fills an empty hotbar slot.
-     * 服务端购买处理（PlayerShopComponent.tryBuy）：返回 true 扣费，false 不扣费。
-     * 优先补充快捷栏中已有的同类堆叠，因为 Wathe 默认只会放入空的快捷栏槽位。
-     */
-    private static boolean giveStackable(PlayerEntity player, Item item) {
-        ItemStack fresh = item.getDefaultStack();
-        PlayerInventory inventory = player.getInventory();
-        for (int slot = 0; slot < PlayerInventory.getHotbarSize(); slot++) {
-            ItemStack held = inventory.getStack(slot);
-            if (ItemStack.areItemsAndComponentsEqual(held, fresh)
-                    && held.getCount() < Math.min(PerfumerRules.THROWABLE_MAX_STACK, held.getMaxCount())) {
-                held.increment(1);
-                return true;
-            }
-        }
-        return ShopEntry.insertStackInFreeSlot(player, fresh);
     }
 
     /**
@@ -128,16 +106,5 @@ public final class PerfumerShopService {
         List<ShopEntry> target = result == null ? new ArrayList<>(entries) : result;
         target.add(SparkTraitsCompat.discountShopEntryForCharisma(player, entry));
         return target;
-    }
-
-    // Builder has no name/description API; display components must not enter the purchased stack.
-    // Builder 无名称/描述接口；展示组件不应进入实际购买的物品堆。
-    private static ItemStack displayStack(Item item, String key) {
-        ItemStack display = item.getDefaultStack();
-        display.set(DataComponentTypes.ITEM_NAME, Text.translatable("shop.sparkstrength." + key));
-        display.set(DataComponentTypes.LORE, new LoreComponent(List.of(
-                Text.translatable("shop.sparkstrength." + key + ".description")
-                        .styled(style -> style.withColor(0x808080).withItalic(false)))));
-        return display;
     }
 }

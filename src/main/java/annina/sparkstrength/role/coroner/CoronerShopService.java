@@ -12,6 +12,7 @@ import annina.sparkstrength.role.recaller.RecallerShopRules;
 import annina.sparkstrength.role.toxicologist.ToxicologistAntidoteService;
 import annina.sparkstrength.role.toxicologist.ToxicologistBlueShop;
 import annina.sparkstrength.role.toxicologist.ToxicologistCapsuleRules;
+import annina.sparkstrength.util.ShopStacks;
 import dev.doctor4t.wathe.api.Role;
 import dev.doctor4t.wathe.api.event.BuildShopEntries;
 import dev.doctor4t.wathe.cca.GameTimeComponent;
@@ -19,7 +20,6 @@ import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.index.WatheItems;
 import dev.doctor4t.wathe.util.ShopEntry;
 import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.LoreComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -27,8 +27,6 @@ import net.minecraft.item.Items;
 import net.minecraft.text.Text;
 import org.agmas.noellesroles.ModItems;
 import org.agmas.noellesroles.item.IngredientItem;
-
-import java.util.List;
 
 /**
  * 验尸官专属商店条目。
@@ -94,13 +92,8 @@ public final class CoronerShopService {
     }
 
     private static ItemStack bodyBagDisplayStack() {
-        ItemStack stack = SparkStrengthItems.coronerBodyBag().getDefaultStack();
-        stack.set(DataComponentTypes.ITEM_NAME, Text.translatable("shop.sparkstrength.coroner_body_bag"));
-        stack.set(DataComponentTypes.LORE, new LoreComponent(List.of(
-                Text.translatable("shop.sparkstrength.coroner_body_bag.description")
-                        .styled(style -> style.withColor(0x808080).withItalic(false))
-        )));
-        return stack;
+        return ShopStacks.display(SparkStrengthItems.coronerBodyBag().getDefaultStack(),
+                "shop.sparkstrength.coroner_body_bag");
     }
 
     private static void addToxicologistShop(BuildShopEntries.ShopContext context) {
@@ -264,51 +257,29 @@ public final class CoronerShopService {
     }
 
     private static ItemStack capsuleDisplayStack() {
-        ItemStack stack = SparkStrengthItems.capsule().getDefaultStack();
-        stack.set(DataComponentTypes.ITEM_NAME, Text.translatable("shop.sparkstrength.capsule"));
-        stack.set(DataComponentTypes.LORE, grayLore("shop.sparkstrength.capsule.description"));
-        return stack;
+        return ShopStacks.display(SparkStrengthItems.capsule().getDefaultStack(), "shop.sparkstrength.capsule");
     }
 
     private static ItemStack refreshAntidoteCooldownDisplayStack() {
-        ItemStack stack = Items.CLOCK.getDefaultStack();
-        stack.set(DataComponentTypes.ITEM_NAME,
-                Text.translatable("shop.sparkstrength.toxicologist.refresh_antidote_cooldown"));
-        stack.set(DataComponentTypes.LORE,
-                grayLore("shop.sparkstrength.toxicologist.refresh_antidote_cooldown.description"));
-        return stack;
+        return ShopStacks.display(Items.CLOCK.getDefaultStack(),
+                "shop.sparkstrength.toxicologist.refresh_antidote_cooldown");
     }
 
     private static ItemStack professorSerumDisplayStack(ProfessorSerumType type) {
-        ItemStack stack = type.defaultStack();
-        stack.set(DataComponentTypes.ITEM_NAME, Text.translatable("shop.sparkstrength.professor." + type.id()));
-        stack.set(DataComponentTypes.LORE, grayLore("shop.sparkstrength.professor." + type.id() + ".description"));
-        return stack;
+        return ShopStacks.display(type.defaultStack(), "shop.sparkstrength.professor." + type.id());
     }
 
     private static ItemStack professorRefreshDisplayStack() {
-        ItemStack stack = Items.CLOCK.getDefaultStack();
-        stack.set(DataComponentTypes.ITEM_NAME, Text.translatable("shop.sparkstrength.professor.refresh_cooldown"));
-        stack.set(DataComponentTypes.LORE, grayLore("shop.sparkstrength.professor.refresh_cooldown.description"));
-        return stack;
+        return ShopStacks.display(Items.CLOCK.getDefaultStack(), "shop.sparkstrength.professor.refresh_cooldown");
     }
 
     private static ItemStack captureDeviceDisplayStack() {
-        ItemStack stack = SparkStrengthItems.captureDevice().getDefaultStack();
-        stack.set(DataComponentTypes.ITEM_NAME, Text.translatable("shop.sparkstrength.engineer.capture_device"));
-        stack.set(DataComponentTypes.LORE, grayLore("shop.sparkstrength.engineer.capture_device.description"));
-        return stack;
+        return ShopStacks.display(SparkStrengthItems.captureDevice().getDefaultStack(),
+                "shop.sparkstrength.engineer.capture_device");
     }
 
     private static ItemStack sabotageRepairDisplayStack() {
-        ItemStack stack = SparkStrengthItems.powerRestoration().getDefaultStack();
-        stack.set(DataComponentTypes.ITEM_NAME, Text.translatable("shop.sparkstrength.engineer.power_restoration"));
-        stack.set(DataComponentTypes.LORE, grayLore("shop.sparkstrength.engineer.power_restoration.description"));
-        return stack;
-    }
-
-    private static LoreComponent grayLore(String translationKey) {
-        return new LoreComponent(List.of(Text.translatable(translationKey)
-                .styled(style -> style.withColor(0x808080).withItalic(false))));
+        return ShopStacks.display(SparkStrengthItems.powerRestoration().getDefaultStack(),
+                "shop.sparkstrength.engineer.power_restoration");
     }
 }

@@ -26,7 +26,6 @@ public final class EngineerRules {
     public static final double CAPTURE_RADIUS_SQUARED = CAPTURE_RADIUS * CAPTURE_RADIUS;
     public static final int CAPTURE_STUN_TICKS = GameConstants.getInTicks(0, 5);
     public static final int CAPTURE_MAX_LIFETIME_TICKS = GameConstants.getInTicks(2, 0);
-    public static final int BLACKOUT_COOLDOWN_AFTER_RESTORATION_TICKS = GameConstants.getInTicks(1, 30);
 
     private EngineerRules() {
     }

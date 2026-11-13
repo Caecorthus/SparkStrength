@@ -258,12 +258,6 @@ public final class DronePilotService {
         return dx * dx + dy * dy + dz * dz > HELD_BODY_EPSILON_SQUARED;
     }
 
-    /** The drone this player's session controls, unchecked; null when not piloting. / 该玩家会话所控制的无人机（不做校验）；未驾驶时为 null。 */
-    public static @Nullable DroneEntity pilotedDrone(ServerPlayerEntity player) {
-        Session session = player == null ? null : VIEWS.session(player.getUuid());
-        return session == null ? null : session.drone;
-    }
-
     /**
      * Remote-viewpoint anchor for {@code RemoteViewpoint}: the piloted drone while {@link RemoteViewSessions#viewing}
      * accepts it (drone alive in the pilot's world, pilot no spectator and still its own camera) and the pilot is alive

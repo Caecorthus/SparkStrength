@@ -8,9 +8,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.UUID;
 import java.util.function.Predicate;
 
@@ -68,21 +66,23 @@ public final class SparkTraitsBluePoisonCompat {
      *  服务端：把餐盘上的 Wathe 原生毒换成归属 {@code poisoner} 的蓝毒。 */
     public static boolean convertPlatePoisonToBlue(World world, BlockPos pos, UUID poisoner) {
         return world != null && pos != null && poisoner != null
-                && Boolean.TRUE.equals(invokeOptional(CONVERT_PLATE_POISON_TO_BLUE, world, pos, poisoner));
+                && Boolean.TRUE.equals(
+                        OptionalReflection.invokeStatic(CONVERT_PLATE_POISON_TO_BLUE, world, pos, poisoner));
     }
 
     /** Server-side: swaps a bed's native scorpion for a blue scorpion owned by {@code poisoner}.
      *  服务端：把床上的原生蝎子换成归属 {@code poisoner} 的蓝毒蝎子。 */
     public static boolean convertBedPoisonToBlue(World world, BlockPos pos, UUID poisoner) {
         return world != null && pos != null && poisoner != null
-                && Boolean.TRUE.equals(invokeOptional(CONVERT_BED_POISON_TO_BLUE, world, pos, poisoner));
+                && Boolean.TRUE.equals(
+                        OptionalReflection.invokeStatic(CONVERT_BED_POISON_TO_BLUE, world, pos, poisoner));
     }
 
     /** Swaps a food/drink stack's native poison marker for a blue marker owned by {@code poisoner}.
      *  把食物/饮品上的原生毒标记换成归属 {@code poisoner} 的蓝毒标记。 */
     public static boolean convertStackPoisonToBlue(ItemStack stack, UUID poisoner) {
         return stack != null && !stack.isEmpty() && poisoner != null
-                && Boolean.TRUE.equals(invokeOptional(CONVERT_STACK_POISON_TO_BLUE, stack, poisoner));
+                && Boolean.TRUE.equals(OptionalReflection.invokeStatic(CONVERT_STACK_POISON_TO_BLUE, stack, poisoner));
     }
 
     /** Stamps a blue-poison marker owned by {@code poisoner}; returns false when the facade is missing.
@@ -91,7 +91,7 @@ public final class SparkTraitsBluePoisonCompat {
         if (stack == null || stack.isEmpty() || poisoner == null || MARK_STACK_BLUE_POISON == null) {
             return false;
         }
-        invokeOptional(MARK_STACK_BLUE_POISON, stack, poisoner);
+        OptionalReflection.invokeStatic(MARK_STACK_BLUE_POISON, stack, poisoner);
         return true;
     }
 
@@ -99,14 +99,14 @@ public final class SparkTraitsBluePoisonCompat {
         if (stack == null || stack.isEmpty()) {
             return null;
         }
-        return invokeOptional(GET_STACK_BLUE_POISONER, stack) instanceof UUID uuid ? uuid : null;
+        return OptionalReflection.invokeStatic(GET_STACK_BLUE_POISONER, stack) instanceof UUID uuid ? uuid : null;
     }
 
     /** Server-side: springs a blue food trap with SparkTraits' alignment rules (sanity drain for civilians, lethal otherwise).
      *  服务端：按 SparkTraits 阵营规则触发蓝毒食物陷阱（好人扣理智，其余致死蓝毒）。 */
     public static void applyBlueTrap(ServerPlayerEntity target, UUID poisoner) {
         if (target != null && poisoner != null) {
-            invokeOptional(APPLY_BLUE_TRAP, target, poisoner);
+            OptionalReflection.invokeStatic(APPLY_BLUE_TRAP, target, poisoner);
         }
     }
 
@@ -114,7 +114,7 @@ public final class SparkTraitsBluePoisonCompat {
      *  服务端：把蓝毒扣理智窗口延长到至少 {@code ticks}。 */
     public static void applyBlueSanityDrain(ServerPlayerEntity target, int ticks) {
         if (target != null && ticks > 0) {
-            invokeOptional(APPLY_BLUE_SANITY_DRAIN, target, ticks);
+            OptionalReflection.invokeStatic(APPLY_BLUE_SANITY_DRAIN, target, ticks);
         }
     }
 
@@ -124,7 +124,8 @@ public final class SparkTraitsBluePoisonCompat {
         if (player == null) {
             return 0;
         }
-        return invokeOptional(GET_BLUE_SANITY_DRAIN_TICKS, player) instanceof Integer ticks ? Math.max(0, ticks) : 0;
+        return OptionalReflection.invokeStatic(GET_BLUE_SANITY_DRAIN_TICKS, player) instanceof Integer ticks
+                ? Math.max(0, ticks) : 0;
     }
 
     /** Registers a server predicate that skips SparkTraits' blue sanity drain; returns false when unsupported.
@@ -133,30 +134,11 @@ public final class SparkTraitsBluePoisonCompat {
         if (exemption == null || REGISTER_BLUE_SANITY_DRAIN_EXEMPTION == null) {
             return false;
         }
-        invokeOptional(REGISTER_BLUE_SANITY_DRAIN_EXEMPTION, exemption);
+        OptionalReflection.invokeStatic(REGISTER_BLUE_SANITY_DRAIN_EXEMPTION, exemption);
         return true;
     }
 
     private static Method findOptionalMethod(String name, Class<?> returnType, Class<?>... parameters) {
-        if (!INSTALLED) {
-            return null;
-        }
-        try {
-            Method method = Class.forName(API_CLASS).getMethod(name, parameters);
-            return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == returnType ? method : null;
-        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | LinkageError ignored) {
-            return null;
-        }
-    }
-
-    private static Object invokeOptional(Method method, Object... arguments) {
-        if (method == null) {
-            return null;
-        }
-        try {
-            return method.invoke(null, arguments);
-        } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException | LinkageError ignored) {
-            return null;
-        }
+        return INSTALLED ? OptionalReflection.staticMethod(API_CLASS, name, returnType, parameters) : null;
     }
 }

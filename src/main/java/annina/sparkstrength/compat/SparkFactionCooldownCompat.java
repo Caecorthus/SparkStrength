@@ -122,15 +122,7 @@ public final class SparkFactionCooldownCompat {
     }
 
     private static Method findClearItemKeepingForced() {
-        if (!FabricLoader.getInstance().isModLoaded("sparkfactionapi")) {
-            return null;
-        }
-        try {
-            Method method = Class.forName(REGISTRY_CLASS)
-                    .getMethod("clearItemKeepingForced", ServerPlayerEntity.class, Item.class);
-            return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == int.class ? method : null;
-        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | LinkageError ignored) {
-            return null;
-        }
+        return FabricLoader.getInstance().isModLoaded("sparkfactionapi") ? OptionalReflection.staticMethod(
+                REGISTRY_CLASS, "clearItemKeepingForced", int.class, ServerPlayerEntity.class, Item.class) : null;
     }
 }

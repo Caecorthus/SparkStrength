@@ -94,14 +94,8 @@ public final class SparkTraitsCompat {
      * SparkTraits 的内部实现包。mod 不存在、API 不兼容或反射失败时都返回 false。</p>
      */
     public static boolean hasTrait(PlayerEntity player, Identifier traitId) {
-        if (player == null || traitId == null || HAS_ACTIVE_TRAIT == null) {
-            return false;
-        }
-        try {
-            return Boolean.TRUE.equals(HAS_ACTIVE_TRAIT.invoke(null, player, traitId));
-        } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException | LinkageError ignored) {
-            return false;
-        }
+        return player != null && traitId != null
+                && Boolean.TRUE.equals(OptionalReflection.invokeStatic(HAS_ACTIVE_TRAIT, player, traitId));
     }
 
     /** Owner-synced like Impostor, so client shop listings and server validation agree.
@@ -110,11 +104,7 @@ public final class SparkTraitsCompat {
         if (player == null || HAS_ACTIVE_TRAIT == null) {
             return false;
         }
-        try {
-            return Boolean.TRUE.equals(HAS_ACTIVE_TRAIT.invoke(null, player, CONSCIENCE_ID));
-        } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException | LinkageError ignored) {
-            return false;
-        }
+        return Boolean.TRUE.equals(OptionalReflection.invokeStatic(HAS_ACTIVE_TRAIT, player, CONSCIENCE_ID));
     }
 
     /**
@@ -210,27 +200,13 @@ public final class SparkTraitsCompat {
     }
 
     private static Method findOptionalMethod(String name, Class<?> returnType, Class<?>... parameters) {
-        if (!INSTALLED) {
-            return null;
-        }
-        try {
-            Method method = Class.forName("dev.caecorthus.sparktraits.api.SparkTraitsApi")
-                    .getMethod(name, parameters);
-            return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == returnType ? method : null;
-        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | LinkageError ignored) {
-            return null;
-        }
+        return INSTALLED ? OptionalReflection.staticMethod(
+                "dev.caecorthus.sparktraits.api.SparkTraitsApi", name, returnType, parameters) : null;
     }
 
     private static Object invokeOptional(Method method, Object... arguments) {
-        if (method == null || !Modifier.isStatic(method.getModifiers())) {
-            return null;
-        }
-        try {
-            return method.invoke(null, arguments);
-        } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException | LinkageError ignored) {
-            return null;
-        }
+        return method == null || !Modifier.isStatic(method.getModifiers())
+                ? null : OptionalReflection.invokeStatic(method, arguments);
     }
 
     private static void disableTeamEconomy() {
@@ -248,13 +224,9 @@ public final class SparkTraitsCompat {
      * 该 API 或反射失败时静默跳过，不影响 SparkStrength 的基础命令。</p>
      */
     public static void syncTraitVisibility(ServerPlayerEntity player) {
-        if (player == null || SYNC_TRAIT_VISIBILITY == null) {
-            return;
-        }
-        try {
-            SYNC_TRAIT_VISIBILITY.invoke(null, player);
-        } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException | LinkageError ignored) {
+        if (player != null) {
             // SparkTraits 是可选依赖，兼容失败不能影响 Wathe 状态命令本身。
+            OptionalReflection.invokeStatic(SYNC_TRAIT_VISIBILITY, player);
         }
     }
 
@@ -266,13 +238,9 @@ public final class SparkTraitsCompat {
      * SparkTraits 缺失或 API 不兼容时安全跳过。</p>
      */
     public static void snapshotDeathTraitsForDebug(ServerPlayerEntity player) {
-        if (player == null || SNAPSHOT_DEATH_TRAITS_FOR_DEBUG == null) {
-            return;
-        }
-        try {
-            SNAPSHOT_DEATH_TRAITS_FOR_DEBUG.invoke(null, player);
-        } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException | LinkageError ignored) {
+        if (player != null) {
             // 可选兼容失败不能阻止 deadPlayers 状态本身生效。
+            OptionalReflection.invokeStatic(SNAPSHOT_DEATH_TRAITS_FOR_DEBUG, player);
         }
     }
 
@@ -311,26 +279,13 @@ public final class SparkTraitsCompat {
     }
 
     private static Method findSyncTraitVisibilityMethod() {
-        if (!FabricLoader.getInstance().isModLoaded(MOD_ID)) {
-            return null;
-        }
-        try {
-            Class<?> api = Class.forName("dev.caecorthus.sparktraits.api.SparkTraitsApi");
-            return api.getMethod("syncTraitVisibility", ServerPlayerEntity.class);
-        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | LinkageError ignored) {
-            return null;
-        }
+        return FabricLoader.getInstance().isModLoaded(MOD_ID) ? OptionalReflection.method(
+                "dev.caecorthus.sparktraits.api.SparkTraitsApi", "syncTraitVisibility", ServerPlayerEntity.class) : null;
     }
 
     private static Method findSnapshotDeathTraitsForDebugMethod() {
-        if (!FabricLoader.getInstance().isModLoaded(MOD_ID)) {
-            return null;
-        }
-        try {
-            Class<?> api = Class.forName("dev.caecorthus.sparktraits.api.SparkTraitsApi");
-            return api.getMethod("snapshotDeathTraitsForDebug", ServerPlayerEntity.class);
-        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | LinkageError ignored) {
-            return null;
-        }
+        return FabricLoader.getInstance().isModLoaded(MOD_ID) ? OptionalReflection.method(
+                "dev.caecorthus.sparktraits.api.SparkTraitsApi", "snapshotDeathTraitsForDebug", ServerPlayerEntity.class)
+                : null;
     }
 }

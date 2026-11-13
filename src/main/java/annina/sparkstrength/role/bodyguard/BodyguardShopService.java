@@ -3,17 +3,12 @@ package annina.sparkstrength.role.bodyguard;
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.component.bodyguard.BodyguardGearComponent;
 import annina.sparkstrength.compat.SparkTraitsCompat;
+import annina.sparkstrength.util.ShopStacks;
 import dev.doctor4t.wathe.api.event.BuildShopEntries;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.util.ShopEntry;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.LoreComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.text.Text;
-
-import java.util.List;
 
 /**
  * The Bodyguard's shop: the vest (200, chest armour) and the Democracy Shield (100), each once per round.
@@ -43,7 +38,7 @@ public final class BodyguardShopService {
         Item vest = SparkStrengthItems.bodyguardVest();
         context.addEntry(SparkTraitsCompat.discountShopEntryForCharisma(player, new ShopEntry.Builder(
                 BodyguardRules.VEST_ENTRY_ID,
-                displayStack(vest, "bodyguard_vest"),
+                ShopStacks.display(vest.getDefaultStack(), "shop.sparkstrength.bodyguard_vest"),
                 BodyguardRules.VEST_PRICE,
                 ShopEntry.Type.TOOL
         ).actualStack(vest.getDefaultStack()).stock(BodyguardRules.ENTRY_STOCK)
@@ -51,7 +46,7 @@ public final class BodyguardShopService {
         Item shield = SparkStrengthItems.democracyShield();
         context.addEntry(SparkTraitsCompat.discountShopEntryForCharisma(player, new ShopEntry.Builder(
                 BodyguardRules.SHIELD_ENTRY_ID,
-                displayStack(shield, "democracy_shield"),
+                ShopStacks.display(shield.getDefaultStack(), "shop.sparkstrength.democracy_shield"),
                 BodyguardRules.SHIELD_PRICE,
                 ShopEntry.Type.TOOL
         ).actualStack(shield.getDefaultStack()).stock(BodyguardRules.ENTRY_STOCK)
@@ -90,16 +85,5 @@ public final class BodyguardShopService {
         }
         gear.markShieldBought();
         return true;
-    }
-
-    // Builder has no name/description API; display components must not enter the purchased stack.
-    // Builder 无名称/描述接口；展示组件不应进入实际购买的物品堆。
-    private static ItemStack displayStack(Item item, String key) {
-        ItemStack display = item.getDefaultStack();
-        display.set(DataComponentTypes.ITEM_NAME, Text.translatable("shop.sparkstrength." + key));
-        display.set(DataComponentTypes.LORE, new LoreComponent(List.of(
-                Text.translatable("shop.sparkstrength." + key + ".description")
-                        .styled(style -> style.withColor(0x808080).withItalic(false)))));
-        return display;
     }
 }

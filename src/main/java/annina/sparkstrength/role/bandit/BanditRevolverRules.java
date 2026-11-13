@@ -46,11 +46,6 @@ public final class BanditRevolverRules {
     public static final double SHORT_BARREL_RANGE_MULTIPLIER = 0.3D;
     /** 0.2 s of held trigger. / 按住扳机 0.2 秒。 */
     public static final int LONG_BARREL_HOLD_TICKS = 4;
-    /**
-     * Hold the server accepts: the client counts from its own click, the server from the use packet, so the server
-     * may be a tick or two behind. / 服务端接受的按住时长：客户端自点击起算，服务端自收到使用包起算，可能落后一两刻。
-     */
-    public static final int LONG_BARREL_SERVER_HOLD_TICKS = 2;
     public static final int SHORT_BARREL_COOLDOWN_PERCENT = 25;
     public static final int RELOAD_GRIP_COOLDOWN_PERCENT = 30;
     public static final double SHORT_BARREL_SPEED_BONUS = 0.15D;

@@ -1,11 +1,6 @@
 package annina.sparkstrength.role.recaller;
 
-import annina.sparkstrength.role.economy.KillerTeamIncomeScope;
-import dev.doctor4t.wathe.api.Role;
-import dev.doctor4t.wathe.cca.GameWorldComponent;
-import dev.doctor4t.wathe.cca.PlayerShopComponent;
-import dev.doctor4t.wathe.game.GameFunctions;
-import net.minecraft.server.network.ServerPlayerEntity;
+import annina.sparkstrength.role.economy.RolePassiveIncome;
 import net.minecraft.server.world.ServerWorld;
 
 /**
@@ -19,28 +14,7 @@ public final class RecallerEconomyService {
     }
 
     public static void tick(ServerWorld world) {
-        long worldTime = world.getTime();
-        if (RecallerShopRules.PASSIVE_INCOME_INTERVAL_TICKS <= 0
-                || worldTime % RecallerShopRules.PASSIVE_INCOME_INTERVAL_TICKS != 0) {
-            return;
-        }
-
-        GameWorldComponent game = GameWorldComponent.KEY.get(world);
-        for (ServerPlayerEntity player : world.getPlayers()) {
-            if (!GameFunctions.isPlayerPlayingAndAlive(player)) {
-                continue;
-            }
-
-            Role role = game.getRole(player);
-            if (!RecallerShopRules.isRecaller(role)) {
-                continue;
-            }
-
-            PlayerShopComponent shop = PlayerShopComponent.KEY.get(player);
-            int amountToAdd = RecallerShopRules.passiveIncomeToAdd(shop.getBalance());
-            if (amountToAdd > 0) {
-                KillerTeamIncomeScope.withoutContribution(() -> shop.addToBalance(amountToAdd));
-            }
-        }
+        RolePassiveIncome.tick(world, RecallerShopRules.PASSIVE_INCOME_INTERVAL_TICKS, RecallerShopRules::isRecaller,
+                RecallerShopRules.PASSIVE_INCOME_AMOUNT, RecallerShopRules.PASSIVE_INCOME_BALANCE_CAP);
     }
 }
