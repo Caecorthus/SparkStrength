@@ -125,22 +125,22 @@ final class TabletSabotagePage implements TabletPage {
         for (TabletSnapshot.SabotageRow row : snapshot.sabotage()) {
             SabotageRowState state = TabletSabotagePainter.state(row);
             if (state == SabotageRowState.ACTIVE) {
-                return screen.paintPill(right, centerY, maxWidth, TabletSabotagePainter.activeChip(row, since),
+                return screen.chrome().paintPill(right, centerY, maxWidth, TabletSabotagePainter.activeChip(row, since),
                         TabletTheme.KILLER.pale(), TabletTheme.withAlpha(TabletTheme.DANGER, 0x33), 0,
-                        (canvas, x, y, size, color) -> screen.paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
+                        (canvas, x, y, size, color) -> screen.chrome().paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
                         TabletTheme.DANGER);
             }
         }
         for (TabletSnapshot.SabotageRow row : snapshot.sabotage()) {
             SabotageRowState state = TabletSabotagePainter.state(row);
             if (state == SabotageRowState.READY) {
-                return screen.paintPill(right, centerY, maxWidth, Text.translatable(KEY + "sabotage.chip.ready").getString(),
+                return screen.chrome().paintPill(right, centerY, maxWidth, Text.translatable(KEY + "sabotage.chip.ready").getString(),
                         TabletTheme.SABOTAGE.pale(), TabletTheme.withAlpha(TabletTheme.SABOTAGE.base(), 0x2E), 0,
-                        (canvas, x, y, size, color) -> screen.paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
+                        (canvas, x, y, size, color) -> screen.chrome().paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
                         TabletTheme.SABOTAGE.base());
             }
             if (state == SabotageRowState.COOLDOWN || state == SabotageRowState.ARMING) {
-                return screen.paintPill(right, centerY, maxWidth,
+                return screen.chrome().paintPill(right, centerY, maxWidth,
                         TabletSabotagePainter.clock(TabletSabotagePainter.liveSeconds(row, since)),
                         TabletTheme.TEXT_2, TabletTheme.SURFACE, 0, TabletIcons::clock, TabletTheme.TEXT_2);
             }
@@ -153,9 +153,9 @@ final class TabletSabotagePage implements TabletPage {
         // Ready to trigger pulses; an outage in progress is a red dot. 可触发时脉冲；熄灯进行中为红点。
         SabotageRowState alert = sabotageAlert(snapshot);
         if (alert == SabotageRowState.READY) {
-            screen.paintBadgePulse(icon, TabletTheme.SABOTAGE.base(), now);
+            screen.chrome().paintBadgePulse(icon, TabletTheme.SABOTAGE.base(), now);
         } else if (alert == SabotageRowState.ACTIVE) {
-            screen.paintBadgeDot(icon, TabletTheme.DANGER);
+            screen.chrome().paintBadgeDot(icon, TabletTheme.DANGER);
         }
     }
 
