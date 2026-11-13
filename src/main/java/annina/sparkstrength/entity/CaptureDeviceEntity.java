@@ -44,6 +44,8 @@ import java.util.UUID;
  * <p>The entity owns detection, capture effects, reports, expiry, and related replay events.
  * <p>实体在服务端独立 tick：120 秒未触发就自然消失；触发时只捕捉放置者以外的存活玩家。
  * 放置者 UUID 和天花板/地板状态使用 DataTracker 同步给客户端，客户端据此决定是否渲染。</p>
+ * <p>Only viewers allowed to see the device are tracked at all ({@link #canBeSpectated}).
+ * 服务端也只向可见的观看者追踪该实体（canBeSpectated）。</p>
  */
 public final class CaptureDeviceEntity extends Entity {
     private static final TrackedData<Optional<UUID>> OWNER_UUID =
@@ -113,6 +115,22 @@ public final class CaptureDeviceEntity extends Entity {
     @Override
     public boolean shouldRender(double cameraX, double cameraY, double cameraZ) {
         return true;
+    }
+
+    /**
+     * Vanilla's per-viewer tracking predicate ({@code EntityTracker#updateTrackedStatus}, re-checked whenever a player
+     * moves): the device is spawned and synced only to viewers allowed to see it, the renderer's own rule, so an
+     * entity-ESP client of a living non-owner never learns where the trap is. Wathe hides invisible spectators the same way.
+     * 原版按观看者的追踪判定（EntityTracker#updateTrackedStatus，玩家每次移动都会重新检查）：装置只向可见的观看者生成与同步，
+     * 规则与渲染器相同，因此局内存活的非放置者即使用实体透视客户端也无法得知陷阱位置。Wathe 以同样方式隐藏隐身的旁观者。
+     */
+    @Override
+    public boolean canBeSpectated(ServerPlayerEntity spectator) {
+        return EngineerRules.deviceVisibleTo(
+                spectator.getUuid().equals(getOwnerUuid()),
+                GameFunctions.isPlayerPlayingAndAlive(spectator),
+                GameFunctions.isPlayerSpectatingOrCreative(spectator)
+        );
     }
 
     @Override

@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.UUID;
 
 /**
@@ -23,6 +24,11 @@ public final class TabletRules {
     public static final int SUSPECT_REVEAL_TICKS = GameConstants.getInTicks(0, 5);
     public static final int SYNC_INTERVAL_TICKS = 20;
     public static final int SNAPSHOT_REQUEST_INTERVAL_TICKS = 10;
+    // State-changing tablet packets per player (see acceptAction): one every 2 ticks (10 per second), bursts of 20.
+    // 每名玩家改变状态的平板数据包（见 acceptAction）：每 2 tick 一个（每秒 10 个），可突发 20 个。
+    public static final int ACTION_REFILL_TICKS = 2;
+    public static final int ACTION_BURST = 20;
+    private static final long ACTION_WINDOW_TICKS = (long) ACTION_REFILL_TICKS * ACTION_BURST;
     private static final char SECTION_SIGN = '\u00A7';
     private static final String FORMATTING_CODES = "0123456789abcdefklmnor";
 
@@ -44,8 +50,37 @@ public final class TabletRules {
         return (int) Math.ceil(Math.max(0, ticks) / 20.0);
     }
 
+    /**
+     * Snapshot form of a countdown (v10): the world tick at which {@code remainingTicks} run out, 0 when none is
+     * running. It stays the same while the countdown runs, so the snapshot only changes on real state changes; the
+     * client derives the seconds ({@code TabletSnapshot#secondsUntil}).
+     * 倒计时在快照中的形式（v10）：剩余 remainingTicks 用完时的世界 tick，没有倒计时时为 0。倒计时进行期间它保持不变，因此快照只在
+     * 真实状态变化时改变；秒数由客户端计算（TabletSnapshot#secondsUntil）。
+     */
+    public static long deadlineTick(long now, int remainingTicks) {
+        return remainingTicks > 0 ? now + remainingTicks : 0L;
+    }
+
     public static int ticksFromSeconds(int seconds) {
         return GameConstants.getInTicks(seconds / 60, seconds % 60);
+    }
+
+    /**
+     * Rate gate for state-changing tablet packets (chat, vote, confirm, removal approval, channel switch), each of which
+     * rebuilds and pushes snapshots: a token bucket of {@link #ACTION_BURST} refilled one per
+     * {@link #ACTION_REFILL_TICKS}, far above what anyone clicking or typing reaches, so it only ever stops a modified
+     * client sending in a loop. {@code budgetTick} is the tick at which the player's budget is full again
+     * ({@link Long#MIN_VALUE} when never used); returns the new value when accepted, empty when the packet must be
+     * dropped. A value too far ahead (impossible with world time) restarts from a full budget.
+     * 改变状态的平板数据包（聊天、投票、确认、移除赞成、切换频道）的限流闸门，每个都会重建并推送快照：容量为 ACTION_BURST、
+     * 每 ACTION_REFILL_TICKS 恢复一个的令牌桶，远高于任何人点击或打字能达到的速度，因此只会拦下循环发包的改版客户端。
+     * budgetTick 是该玩家预算重新满额的 tick（从未使用时为 Long.MIN_VALUE）；接受时返回新值，应丢弃时返回空。
+     * 超前过多的值（世界时间下不可能出现）按满额预算重新开始。
+     */
+    public static OptionalLong acceptAction(long budgetTick, long currentTick) {
+        long start = budgetTick < currentTick || budgetTick - currentTick > ACTION_WINDOW_TICKS ? currentTick : budgetTick;
+        long next = start + ACTION_REFILL_TICKS;
+        return next - currentTick > ACTION_WINDOW_TICKS ? OptionalLong.empty() : OptionalLong.of(next);
     }
 
     /**

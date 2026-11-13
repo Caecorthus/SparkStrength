@@ -401,13 +401,24 @@ public final class JunctionBoxService {
             Map.Entry<BlockPos, SabotageWorldComponent.BoxProgress> entry = iterator.next();
             BlockPos pos = entry.getKey();
             SabotageWorldComponent.BoxProgress box = entry.getValue();
-            BlockState state = world.getBlockState(pos);
-            if (!state.isOf(SparkStrengthBlocks.junctionBox())) {
-                world.setBlockBreakingInfo(crackId(pos), pos, -1);
-                iterator.remove();
-                continue;
+            boolean open;
+            if (box.seenOpen != null && !world.isChunkLoaded(pos)) {
+                // Perf: reading a block in an unloaded chunk loads that chunk in full, synchronously, every tick. No
+                // block changes while its chunk is unloaded, so the box keeps its last seen state and only the
+                // arithmetic below runs (closed boxes keep healing, exactly as before).
+                // 性能：读取未加载区块中的方块会每 tick 同步地完整加载该区块。区块未加载时方块不会变化，因此箱子沿用最后读到的
+                // 状态，只执行下面的计算（未打开的箱子照常恢复，与之前完全一致）。
+                open = box.seenOpen;
+            } else {
+                BlockState state = world.getBlockState(pos);
+                if (!state.isOf(SparkStrengthBlocks.junctionBox())) {
+                    world.setBlockBreakingInfo(crackId(pos), pos, -1);
+                    iterator.remove();
+                    continue;
+                }
+                open = state.get(JunctionBoxBlock.STATE).isOpen();
+                box.seenOpen = open;
             }
-            boolean open = state.get(JunctionBoxBlock.STATE).isOpen();
             if (!pried.contains(pos)) {
                 box.durability = SabotageRules.regen(box.durability, now - box.lastDamageTick, open);
             }

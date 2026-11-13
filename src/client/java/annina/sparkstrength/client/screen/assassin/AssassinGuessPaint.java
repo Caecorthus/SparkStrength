@@ -1,6 +1,8 @@
 package annina.sparkstrength.client.screen.assassin;
 
 import annina.sparkstrength.client.screen.assassin.AssassinGuessLayout.Rect;
+import annina.sparkstrength.client.ui.common.UiColors;
+import annina.sparkstrength.client.ui.common.UiText;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 
@@ -66,8 +68,6 @@ final class AssassinGuessPaint {
 
     // WCAG AA for body text: the vanilla font is small and the panel near-black. / 正文级 WCAG AA：原版字体小、底色近黑。
     private static final double MIN_CONTRAST = 4.5D;
-    private static final int CONTRAST_STEPS = 20;
-    private static final String ELLIPSIS = "…";
 
     private AssassinGuessPaint() {
     }
@@ -84,7 +84,7 @@ final class AssassinGuessPaint {
     static void button(DrawContext context, TextRenderer renderer, Rect rect, String label, int fill, int edge, int text) {
         fill(context, rect, fill);
         border(context, rect, edge);
-        String visible = trim(renderer, label, rect.width() - 4);
+        String visible = UiText.trim(renderer, label, rect.width() - 4);
         int textX = rect.x() + (rect.width() - renderer.getWidth(visible)) / 2;
         int textY = rect.y() + (rect.height() - renderer.fontHeight) / 2 + 1;
         context.drawText(renderer, visible, textX, textY, text, false);
@@ -102,28 +102,6 @@ final class AssassinGuessPaint {
         return max * (PIP_SIZE + PIP_GAP) - PIP_GAP;
     }
 
-    static String trim(TextRenderer renderer, String value, int width) {
-        if (renderer.getWidth(value) <= width) {
-            return value;
-        }
-        return renderer.trimToWidth(value, Math.max(0, width - renderer.getWidth(ELLIPSIS))) + ELLIPSIS;
-    }
-
-    static int opaque(int rgb) {
-        return 0xFF000000 | (rgb & 0x00FFFFFF);
-    }
-
-    static int withAlpha(int color, int alpha) {
-        return (color & 0x00FFFFFF) | ((alpha & 0xFF) << 24);
-    }
-
-    static int mix(int from, int to, float amount) {
-        int red = Math.round(((from >> 16) & 0xFF) + (((to >> 16) & 0xFF) - ((from >> 16) & 0xFF)) * amount);
-        int green = Math.round(((from >> 8) & 0xFF) + (((to >> 8) & 0xFF) - ((from >> 8) & 0xFF)) * amount);
-        int blue = Math.round((from & 0xFF) + ((to & 0xFF) - (from & 0xFF)) * amount);
-        return 0xFF000000 | (red << 16) | (green << 8) | blue;
-    }
-
     /**
      * Role colour made readable on {@code background}: kept at WCAG contrast >= 4.5:1, otherwise mixed toward white
      * (toward black on a light background) in small steps, keeping the hue. Some roles are near-black or deep blue.
@@ -131,32 +109,6 @@ final class AssassinGuessPaint {
      * 部分身份颜色接近黑色或深蓝。
      */
     static int readableOn(int rgb, int background) {
-        int base = opaque(rgb);
-        if (contrast(base, background) >= MIN_CONTRAST) {
-            return base;
-        }
-        int target = luminance(background) < 0.18D ? 0xFFFFFFFF : 0xFF000000;
-        for (int step = 1; step < CONTRAST_STEPS; step++) {
-            int candidate = mix(base, target, step / (float) CONTRAST_STEPS);
-            if (contrast(candidate, background) >= MIN_CONTRAST) {
-                return candidate;
-            }
-        }
-        return target;
-    }
-
-    private static double contrast(int first, int second) {
-        double a = luminance(first);
-        double b = luminance(second);
-        return (Math.max(a, b) + 0.05D) / (Math.min(a, b) + 0.05D);
-    }
-
-    private static double luminance(int color) {
-        return 0.2126D * linear(color >> 16) + 0.7152D * linear(color >> 8) + 0.0722D * linear(color);
-    }
-
-    private static double linear(int channel) {
-        double value = (channel & 0xFF) / 255.0D;
-        return value <= 0.03928D ? value / 12.92D : Math.pow((value + 0.055D) / 1.055D, 2.4D);
+        return UiColors.readableOn(rgb, background, MIN_CONTRAST);
     }
 }

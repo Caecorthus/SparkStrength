@@ -1,6 +1,7 @@
 package annina.sparkstrength.client.screen.detective;
 
 import annina.sparkstrength.client.ui.common.RoleFactionBands;
+import annina.sparkstrength.client.ui.common.UiText;
 import annina.sparkstrength.role.detective.DetectiveCaseRules;
 import annina.sparkstrength.role.detective.DetectiveCaseRules.RolePickerBand;
 import dev.doctor4t.wathe.api.Role;
@@ -48,6 +49,8 @@ final class DetectiveRolePicker {
     private static final int COLOR_BUTTON_HOVER = 0xFF54443A;
     private static final int COLOR_SCROLL_TRACK = 0xFF2B2520;
     private static final int COLOR_SCROLL_THUMB = 0xFFB08A55;
+    private static final DetectiveFolderPaint.PickerChrome CHROME = new DetectiveFolderPaint.PickerChrome(
+            COLOR_PANEL, COLOR_EDGE, COLOR_TITLE, COLOR_DIVIDER, COLOR_BUTTON, COLOR_BUTTON_HOVER);
 
     private List<Option> options = List.of();
     private boolean open;
@@ -120,33 +123,9 @@ final class DetectiveRolePicker {
         // The scrim also covers the ACTIVE pin raised above the folder. / 遮罩同时盖住文件夹上方凸起的“调查中”图钉。
         DetectiveFolderLayout.Rect scrim = layout.scrim();
         context.fill(scrim.x(), scrim.y(), scrim.right(), scrim.bottom(), COLOR_SCRIM);
-        context.fill(box.x() + 3, box.y() + 3, box.right() + 3, box.bottom() + 3, 0x66000000);
-        context.fill(box.x(), box.y(), box.right(), box.bottom(), COLOR_PANEL);
-        context.drawBorder(box.x(), box.y(), box.width(), box.height(), COLOR_EDGE);
-
-        DetectiveFolderLayout.Rect clear = geometry.clearButton();
-        String title = Text.translatable("screen.sparkstrength.detective_folder.killer_pick_title").getString();
-        context.drawText(
-                renderer,
-                DetectiveFolderPaint.trim(renderer, title, Math.max(0, clear.x() - box.x() - 14)),
-                box.x() + 8,
-                box.y() + 6,
-                COLOR_TITLE,
-                false
-        );
-        boolean clearHovered = clear.contains(mouseX, mouseY);
-        context.fill(clear.x(), clear.y(), clear.right(), clear.bottom(), clearHovered ? COLOR_BUTTON_HOVER : COLOR_BUTTON);
-        context.drawBorder(clear.x(), clear.y(), clear.width(), clear.height(), clearHovered ? COLOR_EDGE : COLOR_DIVIDER);
-        String clearLabel = Text.translatable("screen.sparkstrength.detective_folder.killer_clear").getString();
-        context.drawText(
-                renderer,
-                clearLabel,
-                clear.x() + (clear.width() - renderer.getWidth(clearLabel)) / 2,
-                clear.y() + 3,
-                current == null ? DetectiveFolderPaint.withAlpha(COLOR_TITLE, 0x99) : COLOR_TITLE,
-                false
-        );
-        context.fill(box.x() + 6, box.y() + HEADER_HEIGHT - 1, box.right() - 6, box.y() + HEADER_HEIGHT, COLOR_DIVIDER);
+        DetectiveFolderPaint.drawPickerFrame(context, renderer, box, geometry.clearButton(), HEADER_HEIGHT,
+                Text.translatable("screen.sparkstrength.detective_folder.killer_pick_title").getString(),
+                current != null, mouseX, mouseY, CHROME);
 
         DetectiveFolderLayout.Rect grid = geometry.grid();
         Cell hovered = hoveredCell(geometry, mouseX, mouseY);
@@ -173,7 +152,7 @@ final class DetectiveRolePicker {
                 context.drawBorder(x, y, cell.width(), CELL_HEIGHT, COLOR_DIVIDER);
             }
             String name = cell.option().name().getString();
-            String visible = DetectiveFolderPaint.trim(renderer, name, cell.width() - 8);
+            String visible = UiText.trim(renderer, name, cell.width() - 8);
             context.drawText(renderer, visible, x + 4, y + 4, roleColor, false);
             if (isHovered && !visible.equals(name)) {
                 tooltip = cell.option().name();
@@ -181,14 +160,8 @@ final class DetectiveRolePicker {
         }
         context.disableScissor();
 
-        if (geometry.contentHeight() > grid.height()) {
-            int trackX = box.right() - 6 - SCROLLBAR_WIDTH;
-            context.fill(trackX, grid.y(), trackX + SCROLLBAR_WIDTH, grid.bottom(), COLOR_SCROLL_TRACK);
-            int thumbHeight = Math.max(8, grid.height() * grid.height() / geometry.contentHeight());
-            int maxScroll = geometry.contentHeight() - grid.height();
-            int thumbY = grid.y() + (int) Math.round((grid.height() - thumbHeight) * (scroll / Math.max(1, maxScroll)));
-            context.fill(trackX, thumbY, trackX + SCROLLBAR_WIDTH, thumbY + thumbHeight, COLOR_SCROLL_THUMB);
-        }
+        DetectiveFolderPaint.drawScrollbar(context, grid, box.right() - 6 - SCROLLBAR_WIDTH, SCROLLBAR_WIDTH,
+                geometry.contentHeight(), scroll, COLOR_SCROLL_TRACK, COLOR_SCROLL_THUMB);
         context.getMatrices().pop();
 
         if (tooltip != null) {

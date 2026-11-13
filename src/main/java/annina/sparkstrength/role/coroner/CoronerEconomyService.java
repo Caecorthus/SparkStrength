@@ -1,11 +1,6 @@
 package annina.sparkstrength.role.coroner;
 
-import annina.sparkstrength.role.economy.KillerTeamIncomeScope;
-import dev.doctor4t.wathe.api.Role;
-import dev.doctor4t.wathe.cca.GameWorldComponent;
-import dev.doctor4t.wathe.cca.PlayerShopComponent;
-import dev.doctor4t.wathe.game.GameFunctions;
-import net.minecraft.server.network.ServerPlayerEntity;
+import annina.sparkstrength.role.economy.RolePassiveIncome;
 import net.minecraft.server.world.ServerWorld;
 
 /**
@@ -19,28 +14,7 @@ public final class CoronerEconomyService {
     }
 
     public static void tick(ServerWorld world) {
-        long worldTime = world.getTime();
-        if (CoronerRules.PASSIVE_INCOME_INTERVAL_TICKS <= 0
-                || worldTime % CoronerRules.PASSIVE_INCOME_INTERVAL_TICKS != 0) {
-            return;
-        }
-
-        GameWorldComponent game = GameWorldComponent.KEY.get(world);
-        for (ServerPlayerEntity player : world.getPlayers()) {
-            if (!GameFunctions.isPlayerPlayingAndAlive(player)) {
-                continue;
-            }
-
-            Role role = game.getRole(player);
-            if (!CoronerRules.isCoroner(role)) {
-                continue;
-            }
-
-            PlayerShopComponent shop = PlayerShopComponent.KEY.get(player);
-            int amountToAdd = CoronerRules.passiveIncomeToAdd(shop.getBalance());
-            if (amountToAdd > 0) {
-                KillerTeamIncomeScope.withoutContribution(() -> shop.addToBalance(amountToAdd));
-            }
-        }
+        RolePassiveIncome.tick(world, CoronerRules.PASSIVE_INCOME_INTERVAL_TICKS, CoronerRules::isCoroner,
+                CoronerRules.PASSIVE_INCOME_AMOUNT, CoronerRules.PASSIVE_INCOME_BALANCE_CAP);
     }
 }

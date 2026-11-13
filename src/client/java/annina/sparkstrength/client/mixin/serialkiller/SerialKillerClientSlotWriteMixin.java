@@ -1,6 +1,6 @@
 package annina.sparkstrength.client.mixin.serialkiller;
 
-import annina.sparkstrength.SparkStrengthItems;
+import annina.sparkstrength.role.serialkiller.SerialPistolHotbar;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import dev.doctor4t.wathe.cca.PlayerPsychoComponent;
@@ -29,7 +29,7 @@ public abstract class SerialKillerClientSlotWriteMixin {
     private void sparkstrength$lockSlot(PlayerInventory inventory, int value, Operation<Void> original) {
         if (inventory.player != null
                 && PlayerPsychoComponent.KEY.get(inventory.player).getPsychoTicks() > 0) {
-            int pistolSlot = findSerialPistolSlot(inventory);
+            int pistolSlot = SerialPistolHotbar.findSerialPistolSlot(inventory);
             if (pistolSlot >= 0 && value != pistolSlot) {
                 // 数字键写槽也必须立即回到主手连环手枪，不依赖下一 tick 恢复。
                 original.call(inventory, pistolSlot);
@@ -37,12 +37,5 @@ public abstract class SerialKillerClientSlotWriteMixin {
             }
         }
         original.call(inventory, value);
-    }
-
-    private static int findSerialPistolSlot(PlayerInventory inventory) {
-        for (int slot = 0; slot < 9; slot++) {
-            if (inventory.getStack(slot).isOf(SparkStrengthItems.serialPistol())) return slot;
-        }
-        return -1;
     }
 }

@@ -188,9 +188,10 @@ public final class DroneHitGeometry {
 
     /**
      * Wathe's EntityHitResult carries the target's feet position, so measure where the look ray enters its box.
-     * Wathe 的 EntityHitResult 位置为目标脚下，因此改量视线进入其箱体处的距离。
+     * Shared with {@code PartygoerHitGeometry}.
+     * Wathe 的 EntityHitResult 位置为目标脚下，因此改量视线进入其箱体处的距离。与 PartygoerHitGeometry 共用。
      */
-    private static double referenceDistance(Vec3d start, Vec3d look, HitResult original, double range) {
+    public static double referenceDistance(Vec3d start, Vec3d look, HitResult original, double range) {
         if (original instanceof EntityHitResult entityHit) {
             Box box = entityHit.getEntity().getBoundingBox();
             double reach = Math.max(range, Math.sqrt(squaredDistanceToBox(start, box)) + 2.0);
@@ -208,7 +209,7 @@ public final class DroneHitGeometry {
     }
 
     /** Centre, 6 face centres and 8 corners, inset so none touches a block face. / 中心、6 个面中心与 8 个角，均内缩。 */
-    private static List<Vec3d> samplePoints(Box box) {
+    public static List<Vec3d> samplePoints(Box box) {
         Box in = insetBox(box);
         Vec3d c = box.getCenter();
         return List.of(
@@ -229,7 +230,8 @@ public final class DroneHitGeometry {
                 new Vec3d(in.maxX, in.minY, in.maxZ));
     }
 
-    private static Box insetBox(Box box) {
+    /** {@code box} shrunk by 0.01, or by half its thinnest side if smaller. / 箱体内缩 0.01（若最薄边的一半更小则取之）。 */
+    public static Box insetBox(Box box) {
         double inset = Math.min(SAMPLE_INSET,
                 Math.min(box.getLengthX(), Math.min(box.getLengthY(), box.getLengthZ())) / 2.0);
         return box.expand(-inset);
@@ -243,7 +245,8 @@ public final class DroneHitGeometry {
                 context);
     }
 
-    private static boolean isFinite(Vec3d vector) {
+    /** All three components finite. / 三个分量均为有限数。 */
+    public static boolean isFinite(Vec3d vector) {
         return Double.isFinite(vector.x) && Double.isFinite(vector.y) && Double.isFinite(vector.z);
     }
 }

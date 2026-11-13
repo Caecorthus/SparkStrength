@@ -195,8 +195,10 @@ public final class PartygoerBrain {
     private void tickCarry() {
         ServerPlayerEntity prey = player(preyUuid);
         if (prey == null || prey.getVehicle() != body) {
-            // Escaped the arms alive (swallowed by a Taotie, disconnected...): hunt again. Deaths come via onPlayerKilled.
-            // 活着离开了手臂（被饕餮吞、掉线……）：重新开始追。死亡由 onPlayerKilled 处理。
+            // Escaped the arms alive (swallowed by a Taotie...): hunt again. Deaths come via onPlayerKilled. A carried
+            // player who logs out never gets here: vanilla removes the Partygoer with its rider (PartygoerService.onRemoved).
+            // 活着离开了手臂（被饕餮吞……）：重新开始追。死亡由 onPlayerKilled 处理。被扛着的玩家下线时不会走到这里：
+            // 原版会把派对客连同骑乘者一起移除（PartygoerService.onRemoved）。
             preyUuid = null;
             enter(PartygoerState.HUNT);
             return;
@@ -232,9 +234,14 @@ public final class PartygoerBrain {
         // A shield bite has no killer: credited to the summoner, SparkTraits' Second Strike would retry it at once and
         // skip that shield's 5 s. Only the final, forced bite is the summoner's kill.
         // 啃盾的一口不记击杀者：若记给召唤者，SparkTraits 的二次打击会立刻重试，跳过这层盾的 5 秒。只有最后强制的一口才算召唤者击杀。
+        // A bite with no shield left in front of it (a timed layer such as whiskey or psycho armour ran out mid-meal) is
+        // the lethal one before its schedule: credited to the summoner as well (owner 2026-11), but still unforced.
+        // 面前已没有盾的一口（威士忌、疯魔护甲等限时盾在进食中途耗尽）在计划之前就是致命的一口：同样记给召唤者（主人 2026-11），
+        // 但仍不强制。
+        boolean credited = finalBite || PartygoerShieldLayers.count(prey) == 0;
         biting = true;
         try {
-            GameFunctions.killPlayer(prey, false, finalBite ? PartygoerService.killCredit(this, prey) : null,
+            GameFunctions.killPlayer(prey, false, credited ? PartygoerService.killCredit(this, prey) : null,
                     PartyAnimalRules.DEATH_REASON_EATEN, finalBite);
         } finally {
             biting = false;

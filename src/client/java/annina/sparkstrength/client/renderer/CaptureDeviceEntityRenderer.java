@@ -2,6 +2,7 @@ package annina.sparkstrength.client.renderer;
 
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.entity.CaptureDeviceEntity;
+import annina.sparkstrength.role.engineer.EngineerRules;
 import dev.doctor4t.wathe.game.GameFunctions;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.OverlayTexture;
@@ -22,6 +23,10 @@ import java.util.UUID;
  *
  * <p>可见性在这里处理：放置者本人能看到自己的装置，死亡/旁观/创造观察者也能看到；
  * 其它仍在局内存活的玩家完全不渲染，避免装置暴露位置。</p>
+ *
+ * <p>The rule is {@code EngineerRules#deviceVisibleTo}, which the server also uses to track the entity only to these
+ * viewers; this check stays as defense in depth for the moment between a viewer's state change and the next re-check.
+ * 规则为 EngineerRules#deviceVisibleTo，服务端也用它只向这些观看者追踪该实体；此处检查保留为纵深防御，覆盖观看者状态变化到下次复查之间的间隙。</p>
  */
 public final class CaptureDeviceEntityRenderer extends EntityRenderer<CaptureDeviceEntity> {
     private final ItemRenderer itemRenderer;
@@ -75,11 +80,10 @@ public final class CaptureDeviceEntityRenderer extends EntityRenderer<CaptureDev
         }
 
         UUID ownerUuid = entity.getOwnerUuid();
-        if (ownerUuid != null && ownerUuid.equals(client.player.getUuid())) {
-            return true;
-        }
-
-        return !GameFunctions.isPlayerPlayingAndAlive(client.player)
-                || GameFunctions.isPlayerSpectatingOrCreative(client.player);
+        return EngineerRules.deviceVisibleTo(
+                ownerUuid != null && ownerUuid.equals(client.player.getUuid()),
+                GameFunctions.isPlayerPlayingAndAlive(client.player),
+                GameFunctions.isPlayerSpectatingOrCreative(client.player)
+        );
     }
 }

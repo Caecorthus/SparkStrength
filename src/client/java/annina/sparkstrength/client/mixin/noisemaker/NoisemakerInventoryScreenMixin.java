@@ -78,7 +78,6 @@ public abstract class NoisemakerInventoryScreenMixin extends LimitedHandledScree
         for (UUID targetUuid : playerUuids) {
             PlayerListEntry playerListEntry = client.player.networkHandler.getPlayerListEntry(targetUuid);
             NoisemakerGlowPlayerWidget child = new NoisemakerGlowPlayerWidget(
-                    (LimitedInventoryScreen) (Object) this,
                     0,
                     y,
                     targetUuid,

@@ -41,6 +41,8 @@ public final class PartyRoomIndex {
     private static final Map<ServerWorld, Cached> CACHE = new IdentityHashMap<>();
     /** Longer key names are cut so the picker packet stays valid. / 更长的钥匙名会被截断，保证选房数据包有效。 */
     public static final int MAX_NAME_LENGTH = 64;
+    /** An incomplete scan is reused this long before the next attempt (1 s). / 不完整的扫描在下次尝试前沿用这么久（1 秒）。 */
+    private static final int INCOMPLETE_RETRY_TICKS = 20;
 
     private PartyRoomIndex() {
     }
@@ -52,15 +54,18 @@ public final class PartyRoomIndex {
     /** Rooms for this round, sorted naturally; empty when the map has none. / 本局的房间，自然排序；地图没有房间时为空。 */
     public static List<PartyRoom> rooms(ServerWorld world, @Nullable UUID roundId) {
         Cached cached = CACHE.get(world);
-        if (cached != null && roundId != null && roundId.equals(cached.roundId)) {
+        long now = world.getTime();
+        if (cached != null && roundId != null && roundId.equals(cached.roundId)
+                && (cached.complete || (now >= cached.scanTick && now - cached.scanTick < INCOMPLETE_RETRY_TICKS))) {
             return cached.rooms;
         }
         boolean[] complete = {true};
         List<PartyRoom> rooms = scan(world, newGrid(world), complete);
-        // A scan that skipped unloaded chunks is retried on the next request. / 跳过了未加载区块的扫描下次请求时重试。
-        if (complete[0]) {
-            CACHE.put(world, new Cached(roundId, rooms));
-        }
+        // A scan that skipped unloaded chunks is retried, but at most once per INCOMPLETE_RETRY_TICKS: each picker or
+        // summon packet used to repeat the whole cold-grid scan while any play-area chunk was not loaded.
+        // 跳过了未加载区块的扫描会重试，但每 INCOMPLETE_RETRY_TICKS 最多一次：以前只要游玩区有区块未加载，每个选房或召唤
+        // 数据包都会重新做一次完整的冷网格扫描。
+        CACHE.put(world, new Cached(roundId, rooms, complete[0], now));
         return rooms;
     }
 
@@ -165,6 +170,6 @@ public final class PartyRoomIndex {
         return new Vec3d(TrainNavGrid.x(cell) + 0.5, grid.floor(cell), TrainNavGrid.z(cell) + 0.5);
     }
 
-    private record Cached(@Nullable UUID roundId, List<PartyRoom> rooms) {
+    private record Cached(@Nullable UUID roundId, List<PartyRoom> rooms, boolean complete, long scanTick) {
     }
 }

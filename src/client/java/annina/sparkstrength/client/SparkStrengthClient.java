@@ -11,6 +11,7 @@ import annina.sparkstrength.client.role.attendant.flashlight.FlashlightRenderer;
 import annina.sparkstrength.client.role.bandit.BanditRevolverClient;
 import annina.sparkstrength.client.role.bodyguard.BodyguardClient;
 import annina.sparkstrength.client.role.bomber.BomberDroneClient;
+import annina.sparkstrength.client.role.bomber.TimedBombMarkerClientStore;
 import annina.sparkstrength.client.role.coroner.CoronerClientHooks;
 import annina.sparkstrength.client.role.corruptcop.CorruptCopClientHooks;
 import annina.sparkstrength.client.role.corruptcop.CorruptCopMusicController;
@@ -81,6 +82,8 @@ public final class SparkStrengthClient implements ClientModInitializer {
         M67Client.initialize();
         PerfumerItemsClient.register();
         BomberDroneClient.initialize();
+        // Planted timed-bomb traps arrive privately to trap viewers. / 已埋设的定时炸弹陷阱只私下发给陷阱观察者。
+        TimedBombMarkerClientStore.register();
         CoronerClientHooks.register();
         CorruptCopClientHooks.register();
         DemonHunterSniffClientHooks.register();
@@ -142,14 +145,13 @@ public final class SparkStrengthClient implements ClientModInitializer {
             lines.add(insertAt + 1, cooldown.copy().setStyle(style));
         });
 
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
-            BlackoutSightClient.reset();
-            KillerTeamEconomyClientHooks.reset();
-            ShadowJesterShowdownMusicController.reset();
-            // A stale snapshot would otherwise drive tablet outlines on the next server.
-            // 否则过期快照会在下一个服务器上继续驱动平板描边。
-            TabletClientState.reset();
-        });
+        // Fabric may fire DISCONNECT on the Netty thread (channelInactive), racing the client thread that still ticks and
+        // applies queued packets, so the reset runs on the client thread. JOIN (client thread, before any play packet)
+        // repeats it in case MinecraftClient.disconnect dropped the queued task.
+        // Fabric 可能在 Netty 线程（channelInactive）上触发 DISCONNECT，与仍在 tick 并执行排队数据包的客户端线程竞争，因此重置在
+        // 客户端线程上执行。JOIN（客户端线程、任何游戏数据包之前）再重置一次，以防排队的任务被 MinecraftClient.disconnect 丢弃。
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(SparkStrengthClient::resetSessionState));
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> resetSessionState());
         // The server syncs the case component before this packet, so the screen reads fresh data on open.
         // 服务端在发送此包前已同步命案组件，界面打开时即可读取最新数据。
         ClientPlayNetworking.registerGlobalReceiver(OpenDetectiveFolderS2CPacket.ID,
@@ -184,5 +186,16 @@ public final class SparkStrengthClient implements ClientModInitializer {
                 (payload, context) -> context.client().execute(() ->
                         ShadowJesterShowdownMusicController.setServerRequestedActive(payload.active()))
         );
+    }
+
+    /** Per-connection client state that must not outlive its server (client thread only). / 不得跨服务器保留的单连接客户端状态（仅客户端线程）。 */
+    private static void resetSessionState() {
+        BlackoutSightClient.reset();
+        KillerTeamEconomyClientHooks.reset();
+        ShadowJesterShowdownMusicController.reset();
+        TimedBombMarkerClientStore.clear();
+        // A stale snapshot would otherwise drive tablet outlines on the next server.
+        // 否则过期快照会在下一个服务器上继续驱动平板描边。
+        TabletClientState.reset();
     }
 }

@@ -17,17 +17,16 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Side-neutral hit geometry for Partygoers, the twin of {@link DroneHitGeometry} (whose public ray, sight and block
- * helpers it reuses): nearest-wins rays, piercing sweeps, gun aim validation and blast checks. The client uses it to
+ * Side-neutral hit geometry for Partygoers, the twin of {@link DroneHitGeometry} (whose public ray, sight, sample and
+ * block helpers it reuses): nearest-wins rays, piercing sweeps, gun aim validation and blast checks. The client uses it to
  * pick a Partygoer target; the server uses it to validate client picks and to resolve its own rays. Bomber drones on the
  * same ray are measured too, so the nearest of either takes the hit.
- * 派对客命中几何（两端通用），对应 {@link DroneHitGeometry}（复用其公开的射线、视线与方块辅助方法）：“最近者命中”射线、穿透扫掠、
+ * 派对客命中几何（两端通用），对应 {@link DroneHitGeometry}（复用其公开的射线、视线、采样与方块辅助方法）：“最近者命中”射线、穿透扫掠、
  * 枪械瞄准校验与爆炸判定。客户端用它选择派对客目标，服务端用它校验客户端选择并结算自身射线。同一射线上的炸弹客无人机也会被测量，
  * 由两者中最近者承受命中。
  */
 public final class PartygoerHitGeometry {
     private static final double SEARCH_PADDING = 1.0;
-    private static final double SAMPLE_INSET = 0.01;
 
     private PartygoerHitGeometry() {
     }
@@ -126,11 +125,11 @@ public final class PartygoerHitGeometry {
     public static boolean gunAimedAndVisible(World world, Vec3d eye, Vec3d look, double maxDistance,
                                              PartygoerEntity partygoer, @Nullable Entity context) {
         Box box = partygoer.getBoundingBox();
-        if (isFinite(look) && look.lengthSquared() > 0.0) {
+        if (DroneHitGeometry.isFinite(look) && look.lengthSquared() > 0.0) {
             Vec3d end = eye.add(look.normalize().multiply(maxDistance));
             Optional<Vec3d> point = DroneHitGeometry.entryPoint(eye, end, box);
             if (point.isEmpty()) {
-                Box in = insetBox(box);
+                Box in = DroneHitGeometry.insetBox(box);
                 point = DroneHitGeometry.entryPoint(eye, end, targetBox(partygoer)).map(hit -> new Vec3d(
                         MathHelper.clamp(hit.x, in.minX, in.maxX),
                         MathHelper.clamp(hit.y, in.minY, in.maxY),
@@ -141,7 +140,7 @@ public final class PartygoerHitGeometry {
             }
         }
         double minCosine = Math.cos(Math.toRadians(PartygoerWeaponRules.GUN_AIM_CONE_DEGREES)) - 1.0E-9;
-        for (Vec3d point : samplePoints(box)) {
+        for (Vec3d point : DroneHitGeometry.samplePoints(box)) {
             Vec3d toPoint = point.subtract(eye);
             double lengths = look.length() * toPoint.length();
             if (lengths > 0.0 && look.dotProduct(toPoint) / lengths >= minCosine) {
@@ -185,7 +184,7 @@ public final class PartygoerHitGeometry {
         }
         Vec3d start = shooter.getEyePos();
         Vec3d look = shooter.getRotationVec(0.0F);
-        double limit = referenceDistance(start, look, original, range);
+        double limit = DroneHitGeometry.referenceDistance(start, look, original, range);
         if (!(limit > 0.0) || !Double.isFinite(limit)) {
             return original;
         }
@@ -197,58 +196,5 @@ public final class PartygoerHitGeometry {
     private static List<PartygoerEntity> candidates(World world, Vec3d start, Vec3d end, @Nullable Entity attacker) {
         return world.getEntitiesByClass(PartygoerEntity.class, new Box(start, end).expand(SEARCH_PADDING),
                 partygoer -> targetableBy(attacker, partygoer));
-    }
-
-    /**
-     * Wathe's EntityHitResult carries the target's feet position, so measure where the look ray enters its box.
-     * Wathe 的 EntityHitResult 位置为目标脚下，因此改量视线进入其箱体处的距离。
-     */
-    private static double referenceDistance(Vec3d start, Vec3d look, HitResult original, double range) {
-        if (original instanceof EntityHitResult entityHit) {
-            Box box = entityHit.getEntity().getBoundingBox();
-            double reach = Math.max(range, Math.sqrt(DroneHitGeometry.squaredDistanceToBox(start, box)) + 2.0);
-            double entry = DroneHitGeometry.entryDistanceSquared(start, start.add(look.multiply(reach)), box);
-            return Math.sqrt(entry >= 0.0 ? entry : DroneHitGeometry.squaredDistanceToBox(start, box));
-        }
-        Vec3d position = original.getPos();
-        if (position != null) {
-            double distance = start.distanceTo(position);
-            if (Double.isFinite(distance) && distance > 0.0) {
-                return distance;
-            }
-        }
-        return range;
-    }
-
-    /** Centre, 6 face centres and 8 corners, inset so none touches a block face. / 中心、6 个面中心与 8 个角，均内缩。 */
-    private static List<Vec3d> samplePoints(Box box) {
-        Box in = insetBox(box);
-        Vec3d c = box.getCenter();
-        return List.of(
-                c,
-                new Vec3d(c.x, in.maxY, c.z),
-                new Vec3d(c.x, in.minY, c.z),
-                new Vec3d(in.minX, c.y, c.z),
-                new Vec3d(in.maxX, c.y, c.z),
-                new Vec3d(c.x, c.y, in.minZ),
-                new Vec3d(c.x, c.y, in.maxZ),
-                new Vec3d(in.minX, in.maxY, in.minZ),
-                new Vec3d(in.maxX, in.maxY, in.minZ),
-                new Vec3d(in.minX, in.maxY, in.maxZ),
-                new Vec3d(in.maxX, in.maxY, in.maxZ),
-                new Vec3d(in.minX, in.minY, in.minZ),
-                new Vec3d(in.maxX, in.minY, in.minZ),
-                new Vec3d(in.minX, in.minY, in.maxZ),
-                new Vec3d(in.maxX, in.minY, in.maxZ));
-    }
-
-    private static Box insetBox(Box box) {
-        double inset = Math.min(SAMPLE_INSET,
-                Math.min(box.getLengthX(), Math.min(box.getLengthY(), box.getLengthZ())) / 2.0);
-        return box.expand(-inset);
-    }
-
-    private static boolean isFinite(Vec3d vector) {
-        return Double.isFinite(vector.x) && Double.isFinite(vector.y) && Double.isFinite(vector.z);
     }
 }

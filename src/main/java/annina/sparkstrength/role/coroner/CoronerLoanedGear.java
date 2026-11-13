@@ -18,11 +18,13 @@ import net.minecraft.component.type.WrittenBookContentComponent;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.inventory.RecipeInputInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
+import net.minecraft.screen.ScreenHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.RawFilteredPair;
@@ -40,13 +42,14 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.WeakHashMap;
+import java.util.function.Predicate;
 
 /**
  * The gear a Coroner disguise lends: each stack is marked with its owner, disguise and kind when granted, and is taken
- * back from the inventory and the ground when the disguise changes, is suppressed by a morph, or ends with a death or
- * reset. The Demon Hunter disguise lends its pistol only while someone is in a frenzy.
+ * back from the inventory (cursor and crafting grid included) and the ground when the disguise changes, is suppressed by
+ * a morph, or ends with a death or reset. The Demon Hunter disguise lends its pistol only while someone is in a frenzy.
  * 验尸官伪装借出的临时装备：发放时在物品上标记主人、伪装与种类；伪装切换、被变形压制或因死亡/重置结束时，
- * 从背包和地面一并收回。恶魔猎人伪装只在有人疯魔期间借出手枪。
+ * 从背包（含光标与合成格）和地面一并收回。恶魔猎人伪装只在有人疯魔期间借出手枪。
  */
 final class CoronerLoanedGear {
     private static final String TEMP_ITEM_ROOT_KEY = "SparkStrengthCoronerTemporaryGrant";
@@ -276,7 +279,32 @@ final class CoronerLoanedGear {
                 player.getInventory().setStack(slot, ItemStack.EMPTY);
             }
         }
+        removeOffInventoryGrants(player, stack -> true);
         removeDroppedTemporaryItems(player);
+    }
+
+    /**
+     * Owned grants outside PlayerInventory: the cursor (a disguise can be picked in the inventory screen while a lent
+     * gun is held there, and putting it back afterwards would keep it with no disguise, or beside a fresh grant) and the
+     * player's own 2x2 crafting grid. Both are synced to the client by the handler's next content update.
+     * PlayerInventory 之外的自有借出装备：光标（可以在背包界面里一边用光标拿着借来的枪一边选择伪装，之后放回去就能在没有伪装
+     * 时保留它，或与新发放的装备并存）以及玩家自身的 2x2 合成格。两者都会由界面处理器的下一次内容更新同步给客户端。
+     */
+    private static void removeOffInventoryGrants(ServerPlayerEntity player, Predicate<ItemStack> kind) {
+        UUID owner = player.getUuid();
+        for (ScreenHandler handler : List.of(player.currentScreenHandler, player.playerScreenHandler)) {
+            ItemStack cursor = handler.getCursorStack();
+            if (kind.test(cursor) && isTemporaryGrantOwnedBy(cursor, owner)) {
+                handler.setCursorStack(ItemStack.EMPTY);
+            }
+        }
+        RecipeInputInventory grid = player.playerScreenHandler.getCraftingInput();
+        for (int slot = 0; slot < grid.size(); slot++) {
+            ItemStack stack = grid.getStack(slot);
+            if (kind.test(stack) && isTemporaryGrantOwnedBy(stack, owner)) {
+                grid.setStack(slot, ItemStack.EMPTY);
+            }
+        }
     }
 
     static void removeDroppedTemporaryItems(ServerPlayerEntity player) {
@@ -329,7 +357,11 @@ final class CoronerLoanedGear {
         if (DemonHunterPistolItem.findPistol(hunter) != null) {
             return;
         }
-        boolean hasAnyGun = hunter.getInventory().contains(stack -> stack.isIn(WatheItemTags.GUNS));
+        // A gun held on the cursor is still held: otherwise a second pistol would be granted beside it.
+        // 光标上拿着的枪仍算持有：否则会在它旁边再发一把手枪。
+        ItemStack cursor = hunter.currentScreenHandler.getCursorStack();
+        boolean hasAnyGun = hunter.getInventory().contains(stack -> stack.isIn(WatheItemTags.GUNS))
+                || cursor.isOf(ModItems.DEMON_HUNTER_PISTOL) || cursor.isIn(WatheItemTags.GUNS);
         if (hasAnyGun) {
             return;
         }
@@ -353,6 +385,7 @@ final class CoronerLoanedGear {
                 player.getInventory().setStack(slot, ItemStack.EMPTY);
             }
         }
+        removeOffInventoryGrants(player, stack -> stack.isOf(ModItems.DEMON_HUNTER_PISTOL));
         LOADED_ITEMS.removeIf(ItemEntity::isRemoved);
         if (LOADED_ITEMS.isEmpty()) {
             return;

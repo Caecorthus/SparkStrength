@@ -1,5 +1,6 @@
 package annina.sparkstrength.client.ui.coroner;
 
+import annina.sparkstrength.client.ui.common.InventoryWidgetPaint;
 import annina.sparkstrength.client.ui.common.PlayerHeadTextureHelper;
 import annina.sparkstrength.client.ui.common.PlayerNameResolver;
 import annina.sparkstrength.component.coroner.CoronerPlayerComponent;
@@ -13,7 +14,6 @@ import net.minecraft.client.gui.PlayerSkinDrawer;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.network.PlayerListEntry;
-import net.minecraft.client.render.RenderLayer;
 import net.minecraft.text.Text;
 import org.jetbrains.annotations.Nullable;
 
@@ -73,7 +73,7 @@ public final class CoronerPlayerWidget extends ButtonWidget {
         );
 
         if (isHovered()) {
-            drawSlotHighlight(context);
+            InventoryWidgetPaint.highlight(context, getX(), getY(), SLOT_HIGHLIGHT);
             Text name = Text.literal(PlayerNameResolver.playerName(targetUuid));
             TextRenderer textRenderer = MinecraftClient.getInstance().textRenderer;
             context.drawTooltip(
@@ -99,14 +99,6 @@ public final class CoronerPlayerWidget extends ButtonWidget {
         context.fill(x - 2, y + 16, x + 18, y + 18, color);
         context.fill(x - 2, y - 2, x, y + 18, color);
         context.fill(x + 16, y - 2, x + 18, y + 18, color);
-    }
-
-    private void drawSlotHighlight(DrawContext context) {
-        int x = getX();
-        int y = getY();
-        context.fillGradient(RenderLayer.getGuiOverlay(), x, y, x + 16, y + 14, SLOT_HIGHLIGHT, SLOT_HIGHLIGHT, 0);
-        context.fillGradient(RenderLayer.getGuiOverlay(), x, y + 14, x + 15, y + 15, SLOT_HIGHLIGHT, SLOT_HIGHLIGHT, 0);
-        context.fillGradient(RenderLayer.getGuiOverlay(), x, y + 15, x + 14, y + 16, SLOT_HIGHLIGHT, SLOT_HIGHLIGHT, 0);
     }
 
     @Override

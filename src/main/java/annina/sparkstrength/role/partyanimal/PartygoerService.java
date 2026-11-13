@@ -103,8 +103,13 @@ public final class PartygoerService {
                 PartyRoomIndex.clear(serverWorld);
             }
         });
+        // Only once removed. ENTITY_UNLOAD also fires when its chunk merely stops being tracked, from inside vanilla's
+        // stream over that section: discarding the body there removes it from the list being iterated (CME crash).
+        // The untracked-but-present body stops ticking, so the sweep ends it as stalled, outside any iteration.
+        // 只在真正移除时处理。区块只是不再被追踪时同样会触发 ENTITY_UNLOAD，且发生在原版遍历该区段的流中：此时丢弃实体会从正在
+        // 遍历的列表里删除它（并发修改崩溃）。不再追踪但仍在世界中的实体会停止 tick，由 sweep 在任何遍历之外按停滞结束它。
         ServerEntityEvents.ENTITY_UNLOAD.register((entity, world) -> {
-            if (entity instanceof PartygoerEntity partygoer) {
+            if (entity instanceof PartygoerEntity partygoer && partygoer.isRemoved()) {
                 onRemoved(partygoer);
             }
         });
@@ -271,8 +276,10 @@ public final class PartygoerService {
 
     /**
      * The entity left the world some other way (chunk unload, a rider logging out, another mod): during its round that
-     * counts as giving up (the cooldown starts), otherwise it ends quietly.
+     * counts as giving up (the cooldown starts), otherwise it ends quietly. Called only for a removed body (a chunk that
+     * merely stops being tracked is left to {@link #sweep}).
      * 实体以其他方式离开世界（区块卸载、骑乘者下线、其他模组）：仍在其对局中时算作放弃（开始冷却），否则安静结束。
+     * 只对已移除的实体调用（区块仅停止追踪的情况交给 sweep）。
      */
     public static void onRemoved(PartygoerEntity body) {
         PartygoerBrain brain = LIVE.get(body);

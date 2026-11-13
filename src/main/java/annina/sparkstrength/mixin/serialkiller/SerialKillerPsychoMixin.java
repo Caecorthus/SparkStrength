@@ -2,15 +2,13 @@ package annina.sparkstrength.mixin.serialkiller;
 
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.role.serialkiller.SerialPistolGuardService;
+import annina.sparkstrength.role.serialkiller.SerialPistolHotbar;
 import dev.doctor4t.wathe.api.event.PsychoModeEvents;
 import dev.doctor4t.wathe.api.event.PsychoType;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import dev.doctor4t.wathe.cca.PlayerPsychoComponent;
-import dev.doctor4t.wathe.game.GameFunctions;
-import dev.doctor4t.wathe.util.ShopEntry;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.network.packet.s2c.play.UpdateSelectedSlotS2CPacket;
-import net.minecraft.entity.player.PlayerInventory;
 import org.agmas.noellesroles.Noellesroles;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -44,7 +42,7 @@ public abstract class SerialKillerPsychoMixin {
     @Inject(method = "clientTick", at = @At("HEAD"))
     private void sparkstrength$forceSerialPistolClientSlot(CallbackInfo ci) {
         if (!isSerialKiller(player) || this.psychoTicks <= 0) return;
-        int pistolSlot = findSerialPistolSlot(player.getInventory());
+        int pistolSlot = SerialPistolHotbar.findSerialPistolSlot(player.getInventory());
         if (pistolSlot >= 0 && player.getInventory().selectedSlot != pistolSlot) {
             player.getInventory().selectedSlot = pistolSlot;
         }
@@ -54,7 +52,7 @@ public abstract class SerialKillerPsychoMixin {
     private void sparkstrength$forceSerialPistolServerSlot(CallbackInfo ci) {
         if (!isSerialKiller(player) || this.psychoTicks <= 0) return;
         if (!(player instanceof net.minecraft.server.network.ServerPlayerEntity serverPlayer)) return;
-        int pistolSlot = findSerialPistolSlot(player.getInventory());
+        int pistolSlot = SerialPistolHotbar.findSerialPistolSlot(player.getInventory());
         if (pistolSlot >= 0 && player.getInventory().selectedSlot != pistolSlot) {
             player.getInventory().selectedSlot = pistolSlot;
             serverPlayer.networkHandler.sendPacket(new UpdateSelectedSlotS2CPacket(pistolSlot));
@@ -119,13 +117,6 @@ public abstract class SerialKillerPsychoMixin {
 
     @Unique private static int findEmptyHotbarSlot(PlayerEntity player) {
         for (int slot = 0; slot < 9; slot++) if (player.getInventory().getStack(slot).isEmpty()) return slot;
-        return -1;
-    }
-
-    @Unique private static int findSerialPistolSlot(PlayerInventory inventory) {
-        for (int slot = 0; slot < 9; slot++) {
-            if (inventory.getStack(slot).isOf(SparkStrengthItems.serialPistol())) return slot;
-        }
         return -1;
     }
 }

@@ -152,13 +152,4 @@ public final class UndercoverRules {
         }
         return distance <= SIGHT_RANGE && lineOfSight ? THERMAL_COLOR : null;
     }
-
-    /**
-     * The Undercover's own sabotage card, read from its personal track: armed the moment stage 2 begins and then
-     * cooling down after each of its own sabotages ends. 0 for "not set".
-     * 卧底自己的破坏卡片读个人轨道：进入第二阶段那一刻开始待命，此后每次自己的破坏结束后冷却。0 表示未设置。
-     */
-    public static boolean personalTrackUnlocked(long readyTick) {
-        return readyTick > 0L;
-    }
 }

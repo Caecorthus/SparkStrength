@@ -37,7 +37,12 @@ public final class M67SoundClient {
     public static void initialize() {
         ClientPlayNetworking.registerGlobalReceiver(M67SoundPayload.ID,
                 (payload, context) -> context.client().execute(() -> handle(payload)));
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> reset());
+        // DISCONNECT may fire on the Netty thread, where clearing `remote` during tick()'s replaceAll throws a
+        // ConcurrentModificationException and SoundManager is not thread-safe: run it on the client thread. (ensureContext
+        // also resets once client.world or client.player changes.)
+        // DISCONNECT 可能在 Netty 线程上触发：在那里清空 remote 会与 tick() 的 replaceAll 冲突并抛出并发修改异常，且 SoundManager
+        // 非线程安全，因此在客户端线程上执行。（client.world 或 client.player 变化时 ensureContext 也会重置。）
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(M67SoundClient::reset));
     }
 
     public static void handle(M67SoundPayload payload) {

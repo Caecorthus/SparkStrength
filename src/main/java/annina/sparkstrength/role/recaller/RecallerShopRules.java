@@ -46,14 +46,4 @@ public final class RecallerShopRules {
     public static boolean canUseRecallerShop(@Nullable Role role) {
         return isRecaller(role);
     }
-
-    public static int passiveIncomeToAdd(int currentBalance) {
-        if (PASSIVE_INCOME_AMOUNT <= 0) {
-            return 0;
-        }
-        if (PASSIVE_INCOME_BALANCE_CAP < 0) {
-            return PASSIVE_INCOME_AMOUNT;
-        }
-        return Math.max(0, Math.min(PASSIVE_INCOME_AMOUNT, PASSIVE_INCOME_BALANCE_CAP - currentBalance));
-    }
 }

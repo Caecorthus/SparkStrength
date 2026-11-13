@@ -1,10 +1,9 @@
 package annina.sparkstrength.client.mixin.serialkiller;
 
-import annina.sparkstrength.SparkStrengthItems;
+import annina.sparkstrength.role.serialkiller.SerialPistolHotbar;
 import dev.doctor4t.wathe.cca.PlayerPsychoComponent;
 import net.minecraft.entity.player.PlayerInventory;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -25,19 +24,11 @@ public abstract class SerialKillerPlayerInventoryClientMixin {
             return;
         }
 
-        int pistolSlot = findSerialPistolSlot(inventory);
+        int pistolSlot = SerialPistolHotbar.findSerialPistolSlot(inventory);
         if (pistolSlot < 0) return;
 
         // 立即保持主手连环手枪槽，不等待 MinecraftClient.tick 的兜底恢复。
         inventory.selectedSlot = pistolSlot;
         ci.cancel();
-    }
-
-    @Unique
-    private static int findSerialPistolSlot(PlayerInventory inventory) {
-        for (int slot = 0; slot < 9; slot++) {
-            if (inventory.getStack(slot).isOf(SparkStrengthItems.serialPistol())) return slot;
-        }
-        return -1;
     }
 }

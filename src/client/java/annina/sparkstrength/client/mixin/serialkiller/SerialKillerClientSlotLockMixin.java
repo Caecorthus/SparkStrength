@@ -1,6 +1,6 @@
 package annina.sparkstrength.client.mixin.serialkiller;
 
-import annina.sparkstrength.SparkStrengthItems;
+import annina.sparkstrength.role.serialkiller.SerialPistolHotbar;
 import dev.doctor4t.wathe.cca.PlayerPsychoComponent;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerInventory;
@@ -21,16 +21,9 @@ public abstract class SerialKillerClientSlotLockMixin {
         PlayerEntity player = client.player;
         if (player == null || PlayerPsychoComponent.KEY.get(player).getPsychoTicks() <= 0) return;
         PlayerInventory inventory = player.getInventory();
-        int pistolSlot = findSerialPistolSlot(inventory);
+        int pistolSlot = SerialPistolHotbar.findSerialPistolSlot(inventory);
         if (pistolSlot >= 0 && inventory.selectedSlot != pistolSlot) {
             inventory.selectedSlot = pistolSlot;
         }
-    }
-
-    private static int findSerialPistolSlot(PlayerInventory inventory) {
-        for (int slot = 0; slot < 9; slot++) {
-            if (inventory.getStack(slot).isOf(SparkStrengthItems.serialPistol())) return slot;
-        }
-        return -1;
     }
 }

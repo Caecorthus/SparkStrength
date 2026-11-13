@@ -1,5 +1,6 @@
 package annina.sparkstrength.client.ui.phantom;
 
+import annina.sparkstrength.client.ui.common.InventoryWidgetPaint;
 import annina.sparkstrength.client.ui.common.PlayerHeadTextureHelper;
 import annina.sparkstrength.client.ui.common.PlayerNameResolver;
 import annina.sparkstrength.component.phantom.PhantomBackpackUserComponent;
@@ -13,7 +14,6 @@ import net.minecraft.client.gui.PlayerSkinDrawer;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.network.PlayerListEntry;
-import net.minecraft.client.render.RenderLayer;
 import net.minecraft.text.Text;
 import org.jetbrains.annotations.Nullable;
 
@@ -66,11 +66,11 @@ public class PhantomBackpackPlayerWidget extends ButtonWidget {
         context.setShaderColor(1f, 1f, 1f, 1f);
 
         if (onCooldown) {
-            drawCooldownText(context, cooldownTicks);
+            InventoryWidgetPaint.cooldownSeconds(context, getX(), getY(), cooldownTicks);
         }
 
         if (isHovered()) {
-            drawHighlight(context);
+            InventoryWidgetPaint.highlight(context, getX(), getY(), HIGHLIGHT_COLOR);
             Text name = targetPlayerEntry != null
                     ? Text.literal(targetPlayerEntry.getProfile().getName())
                     : Text.literal(PlayerNameResolver.playerName(targetUuid));
@@ -82,23 +82,6 @@ public class PhantomBackpackPlayerWidget extends ButtonWidget {
                     getY() - 9
             );
         }
-    }
-
-    private void drawCooldownText(DrawContext context, int cooldownTicks) {
-        int remainingSeconds = Math.max(1, (int) Math.ceil(cooldownTicks / 20.0));
-        String timeText = remainingSeconds + "s";
-        TextRenderer textRenderer = MinecraftClient.getInstance().textRenderer;
-        int textX = getX() + 8 - textRenderer.getWidth(timeText) / 2;
-        int textY = getY() + 4;
-        context.drawText(textRenderer, timeText, textX, textY, 0xFF5555, true);
-    }
-
-    private void drawHighlight(DrawContext context) {
-        int x = getX();
-        int y = getY();
-        context.fillGradient(RenderLayer.getGuiOverlay(), x, y, x + 16, y + 14, HIGHLIGHT_COLOR, HIGHLIGHT_COLOR, 0);
-        context.fillGradient(RenderLayer.getGuiOverlay(), x, y + 14, x + 15, y + 15, HIGHLIGHT_COLOR, HIGHLIGHT_COLOR, 0);
-        context.fillGradient(RenderLayer.getGuiOverlay(), x, y + 15, x + 14, y + 16, HIGHLIGHT_COLOR, HIGHLIGHT_COLOR, 0);
     }
 
     @Override

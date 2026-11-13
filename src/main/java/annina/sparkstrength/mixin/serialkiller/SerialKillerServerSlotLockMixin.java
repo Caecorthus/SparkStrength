@@ -1,6 +1,6 @@
 package annina.sparkstrength.mixin.serialkiller;
 
-import annina.sparkstrength.SparkStrengthItems;
+import annina.sparkstrength.role.serialkiller.SerialPistolHotbar;
 import dev.doctor4t.wathe.cca.PlayerPsychoComponent;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import net.minecraft.entity.player.PlayerInventory;
@@ -31,7 +31,7 @@ public abstract class SerialKillerServerSlotLockMixin {
             return;
         }
 
-        int pistolSlot = findSerialPistolSlot(inventory);
+        int pistolSlot = SerialPistolHotbar.findSerialPistolSlot(inventory);
         if (pistolSlot < 0) return;
 
         // 服务端以连环手枪所在槽为唯一合法主手槽，不依赖客户端当前 selectedSlot 是否已经同步。
@@ -42,12 +42,5 @@ public abstract class SerialKillerServerSlotLockMixin {
             ci.cancel();
             player.networkHandler.sendPacket(new UpdateSelectedSlotS2CPacket(pistolSlot));
         }
-    }
-
-    private static int findSerialPistolSlot(PlayerInventory inventory) {
-        for (int slot = 0; slot < 9; slot++) {
-            if (inventory.getStack(slot).isOf(SparkStrengthItems.serialPistol())) return slot;
-        }
-        return -1;
     }
 }

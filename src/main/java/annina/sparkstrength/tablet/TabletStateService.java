@@ -216,12 +216,20 @@ public final class TabletStateService {
         // 以服务端选择为准；过期的客户端视图绝不能把消息发进其他网络。
         if (expectedChannelWire != channel.wire()) {
             sender.sendMessage(Text.translatable("message.sparkstrength.tablet.channel_changed"), true);
-            syncTo(sender);
+            // Throttled: the snapshot carrying the new channel is already on its way, so a looping client must not
+            // turn each stale packet into a full snapshot reply.
+            // 限流：携带新频道的快照已在途中，循环发包的客户端不能把每个过期包都换成一份完整快照回复。
+            resyncThrottled(sender);
             return;
         }
         String message = TabletRules.sanitizeChatMessage(rawMessage);
         if (message.isEmpty()) {
             sender.sendMessage(Text.translatable("message.sparkstrength.tablet.chat_empty"), true);
+            return;
+        }
+        // Each message re-snapshots the whole channel (or every holder in range); see TabletRules#acceptAction.
+        // 每条消息都会为整个频道（或范围内的每名持有者）重建快照；见 TabletRules#acceptAction。
+        if (!acceptAction(sender)) {
             return;
         }
         ServerWorld world = sender.getServerWorld();
@@ -316,6 +324,11 @@ public final class TabletStateService {
         );
         switch (result) {
             case OK -> {
+                // Public <-> faction toggles have no cooldown and each answers with a full snapshot: rate-gated.
+                // 公共与阵营频道之间来回切换没有冷却，且每次都回复一份完整快照：受限流闸门约束。
+                if (!acceptAction(player)) {
+                    return;
+                }
                 TabletChannel selected = Objects.requireNonNull(target);
                 // Only a hop to another faction network starts the cooldown; the public channel is free to enter/leave.
                 // 只有换到另一个阵营网络才开始冷却；进出公共频道不受限制。
@@ -417,6 +430,15 @@ public final class TabletStateService {
         if (targetUuid != null && !isSelectableMeetingTarget(world, tablet, targetUuid)) {
             return;
         }
+        if (meeting.hasBallot(voter.getUuid(), targetUuid)) {
+            // Same ballot again (a double click): same reply, but nothing changed, so no police-wide rebuild.
+            // 重复同一选票（双击）：照常回复，但没有任何变化，因此不重建全体义警的快照。
+            voter.sendMessage(Text.translatable("message.sparkstrength.tablet.vote_recorded"), true);
+            return;
+        }
+        if (!acceptAction(voter)) {
+            return;
+        }
 
         meeting.castVote(voter.getUuid(), targetUuid);
         voter.sendMessage(Text.translatable("message.sparkstrength.tablet.vote_recorded"), true);
@@ -433,6 +455,16 @@ public final class TabletStateService {
         TabletWorldComponent.Meeting meeting = tablet.meeting();
         if (!access.isPoliceElector() || meeting == null) {
             voter.sendMessage(Text.translatable("message.sparkstrength.tablet.meeting_denied"), true);
+            return;
+        }
+        if (meeting.isConfirmed(voter.getUuid())) {
+            // Already confirmed (a double click): same reply, nothing changed, no rebuild; tick() still ends the
+            // meeting once every elector has confirmed.
+            // 已确认过（双击）：照常回复，没有任何变化，不重建；所有选民确认后 tick() 仍会结束会议。
+            voter.sendMessage(Text.translatable("message.sparkstrength.tablet.vote_confirmed"), true);
+            return;
+        }
+        if (!acceptAction(voter)) {
             return;
         }
 
@@ -458,7 +490,14 @@ public final class TabletStateService {
             return;
         }
         if (!tablet.isSuspect(suspectUuid)) {
-            syncTo(voter);
+            // Stale view (the suspect was just removed and that push is on its way): throttled resync.
+            // 过期视图（嫌疑人刚被移除，推送已在途中）：限流重新同步。
+            resyncThrottled(voter);
+            return;
+        }
+        // Not skipped when the approval is unchanged: a shrunken electorate can let a repeat reach two thirds.
+        // 赞成状态未变也不跳过：选民减少后，重复提交也可能达到三分之二。
+        if (!acceptAction(voter)) {
             return;
         }
 
@@ -535,15 +574,17 @@ public final class TabletStateService {
         // Dead viewers keep the count they reached while alive. / 死亡查看者沿用存活时达到的任务数。
         int tasksDone = tablet.completedTasks(viewerUuid);
 
+        // Countdowns travel as end ticks (v10), so a running one no longer defeats the unchanged-snapshot skip.
+        // 倒计时以结束 tick 下发（v10），进行中的倒计时不再让“快照未变则跳过”失效。
         return new TabletSnapshot(
                 true,
                 TabletChannel.wireOf(channel),
                 access.allowedMask(),
                 access.canSend(),
-                TabletRules.secondsCeil(tablet.channelSwitchCooldownTicks(viewerUuid, now)),
+                TabletRules.deadlineTick(now, tablet.channelSwitchCooldownTicks(viewerUuid, now)),
                 tablet.hasActiveMeeting() && channel == TabletChannel.POLICE && access.canSwitchChannels(),
                 meetingFeatures && electorate.contains(viewerUuid),
-                meetingFeatures ? TabletRules.secondsCeil(tablet.meetingCooldownTicks(now)) : 0,
+                meetingFeatures ? TabletRules.deadlineTick(now, tablet.meetingCooldownTicks(now)) : 0,
                 meetingFeatures ? tablet.remainingMeetingCalls(viewerUuid) : 0,
                 connectionRows(world, roster, factionView, viewerUuid, links, tasksDone),
                 chatRows(tablet, channel, viewerUuid, links, tasksDone),
@@ -686,7 +727,7 @@ public final class TabletStateService {
         Map<UUID, Integer> voteCounts = validVoteCounts(world, tablet, meeting, electorate);
         return new TabletSnapshot.Meeting(
                 true,
-                TabletRules.secondsCeil(meeting.ticksRemaining()),
+                TabletRules.deadlineTick(world.getTime(), meeting.ticksRemaining()),
                 meeting.isConfirmed(viewer.getUuid()),
                 meeting.isAbstaining(viewer.getUuid()),
                 meeting.voteFor(viewer.getUuid()).orElse(null),
@@ -801,6 +842,19 @@ public final class TabletStateService {
         }
     }
 
+    /**
+     * Security guard: per-player rate gate ({@link TabletRules#acceptAction}) for C2S packets that change tablet state
+     * and fan snapshots out. Charged only once every validation (and, for votes and confirms, the repeat check) has
+     * passed, so refused packets and repeated ballots cost nothing; an overdrawn packet is dropped silently (nothing
+     * changed, so the client's view is still current).
+     * 安全闸门：对改变平板状态并群发快照的 C2S 数据包按玩家限流（TabletRules#acceptAction）。只在所有校验（投票与确认还包括
+     * 重复检查）通过后才扣除，被拒绝的数据包与重复的选票不消耗预算；预算透支的数据包被静默丢弃（状态未变，客户端视图仍是最新的）。
+     */
+    private static boolean acceptAction(ServerPlayerEntity player) {
+        ServerWorld world = player.getServerWorld();
+        return TabletWorldComponent.KEY.get(world).tryAcceptAction(player.getUuid(), world.getTime());
+    }
+
     private static boolean acceptSnapshotRequest(ServerPlayerEntity player) {
         ServerWorld world = player.getServerWorld();
         return TabletWorldComponent.KEY.get(world).tryAcceptSnapshotRequest(
@@ -860,9 +914,9 @@ public final class TabletStateService {
     }
 
     /**
-     * Clients without the current (v9) payload are skipped instead of being disconnected by unknown bytes. Every
+     * Clients without the current (v10) payload are skipped instead of being disconnected by unknown bytes. Every
      * snapshot that goes out, empty ones included, becomes what that client holds.
-     * 未注册当前（v9）负载的客户端直接跳过，避免因未知字节断线。每份发出的快照（包括空快照）都记为该客户端当前持有的快照。
+     * 未注册当前（v10）负载的客户端直接跳过，避免因未知字节断线。每份发出的快照（包括空快照）都记为该客户端当前持有的快照。
      */
     private static boolean sendPacket(ServerPlayerEntity player, TabletSnapshot snapshot) {
         if (!ServerPlayNetworking.canSend(player, SyncTabletSnapshotS2CPacket.ID)) {

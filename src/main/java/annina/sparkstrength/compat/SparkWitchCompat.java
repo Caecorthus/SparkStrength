@@ -358,32 +358,29 @@ public final class SparkWitchCompat {
     }
 
     /**
+     * A frozen {@code SparkWitchApi} method, static and returning exactly {@code returnType}; null when SparkWitch is
+     * absent or older, or its signature or return type differs. The holders below call this once each, on first use.
+     * 冻结的 {@code SparkWitchApi} 方法（静态且返回类型恰为 {@code returnType}）；SparkWitch 缺失、版本较旧或签名与返回类型不符时
+     * 为 null。下面的各持有类各自在首次使用时调用一次。
+     */
+    private static @Nullable Method facadeMethod(String name, Class<?> returnType, Class<?>... parameterTypes) {
+        return isLoaded() ? OptionalReflection.staticMethod(PUBLIC_API, name, returnType, parameterTypes) : null;
+    }
+
+    /**
      * SparkWitch's add-on gun seam (2026-10-07), resolved once on first use; each method is null when SparkWitch is
      * absent or older, or its signature or return type differs.
      * SparkWitch 的附属模组枪械接缝（2026-10-07），首次使用时解析一次；SparkWitch 缺失、版本较旧或签名与返回类型不符时为 null。
      */
     private static final class GunWorldHitQueries {
-        private static final @Nullable Method PREFER_NEARER_TARGET = resolve("preferNearerGunWorldTarget",
+        // SparkWitch builds before 2026-10-07 lack this seam; the pistols then ignore its entities.
+        // 2026-10-07 之前的 SparkWitch 没有此接缝；手枪随之忽略其实体。
+        private static final @Nullable Method PREFER_NEARER_TARGET = facadeMethod("preferNearerGunWorldTarget",
                 HitResult.class, PlayerEntity.class, HitResult.class, double.class);
-        private static final @Nullable Method HIT_WORLD_TARGET = resolve("hitGunWorldTarget",
+        private static final @Nullable Method HIT_WORLD_TARGET = facadeMethod("hitGunWorldTarget",
                 boolean.class, ServerPlayerEntity.class, Entity.class, ItemStack.class, double.class);
-        private static final @Nullable Method BOUND_VENDETTA = resolve("isBoundKillerTargetingVendetta",
+        private static final @Nullable Method BOUND_VENDETTA = facadeMethod("isBoundKillerTargetingVendetta",
                 boolean.class, PlayerEntity.class, PlayerEntity.class);
-
-        private static @Nullable Method resolve(String name, Class<?> returnType, Class<?>... parameterTypes) {
-            if (!isLoaded()) {
-                return null;
-            }
-            try {
-                Method method = Class.forName(PUBLIC_API).getMethod(name, parameterTypes);
-                return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == returnType
-                        ? method : null;
-            } catch (ReflectiveOperationException | SecurityException | LinkageError ignored) {
-                // SparkWitch builds before 2026-10-07 lack this seam; the pistols then ignore its entities.
-                // 2026-10-07 之前的 SparkWitch 没有此接缝；手枪随之忽略其实体。
-                return null;
-            }
-        }
     }
 
     /**
@@ -392,24 +389,12 @@ public final class SparkWitchCompat {
      * SparkWitch 的穿盾接缝（2026-10-07），首次检查保镖装备时解析一次；SparkWitch 缺失、版本较旧或签名与返回类型不符时为 null。
      */
     private static final class ShieldPierceQueries {
-        private static final @Nullable Method TRY_PIERCE = resolve("tryPierceShieldLayer", boolean.class);
-        private static final @Nullable Method AMMO_ID = resolve("piercingShotAmmoId", String.class);
-
-        private static @Nullable Method resolve(String name, Class<?> returnType) {
-            if (!isLoaded()) {
-                return null;
-            }
-            try {
-                Method method = Class.forName(PUBLIC_API).getMethod(name,
-                        PlayerEntity.class, PlayerEntity.class, Identifier.class);
-                return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == returnType
-                        ? method : null;
-            } catch (ReflectiveOperationException | SecurityException | LinkageError ignored) {
-                // SparkWitch builds before 2026-10-07 lack this seam; the vest and shield keep their usual rules.
-                // 2026-10-07 之前的 SparkWitch 没有此接缝；防弹衣与盾牌保持原有规则。
-                return null;
-            }
-        }
+        // SparkWitch builds before 2026-10-07 lack this seam; the vest and shield keep their usual rules.
+        // 2026-10-07 之前的 SparkWitch 没有此接缝；防弹衣与盾牌保持原有规则。
+        private static final @Nullable Method TRY_PIERCE = facadeMethod("tryPierceShieldLayer", boolean.class,
+                PlayerEntity.class, PlayerEntity.class, Identifier.class);
+        private static final @Nullable Method AMMO_ID = facadeMethod("piercingShotAmmoId", String.class,
+                PlayerEntity.class, PlayerEntity.class, Identifier.class);
     }
 
     /**
@@ -418,81 +403,30 @@ public final class SparkWitchCompat {
      * SparkWitch 的化鸦乌鸦接缝（2026-10-21），首次使用时解析一次；SparkWitch 缺失、版本较旧或签名与返回类型不符时为 null。
      */
     private static final class RavenCrowQueries {
-        private static final @Nullable Method IS_CROW = resolve("isBlackRavenCrow", boolean.class, Entity.class);
-        private static final @Nullable Method MELEE_STAND_IN = resolve("crowMeleeStandIn",
+        // SparkWitch builds before 2026-10-21 lack this seam; crows stay out of reach of these weapons.
+        // 2026-10-21 之前的 SparkWitch 没有此接缝；这些武器随之打不到乌鸦。
+        private static final @Nullable Method IS_CROW = facadeMethod("isBlackRavenCrow", boolean.class, Entity.class);
+        private static final @Nullable Method MELEE_STAND_IN = facadeMethod("crowMeleeStandIn",
                 ServerPlayerEntity.class, ServerPlayerEntity.class, Entity.class, double.class);
-        private static final @Nullable Method BLAST = resolve("killCrowsInBlast",
+        private static final @Nullable Method BLAST = facadeMethod("killCrowsInBlast",
                 int.class, ServerWorld.class, Vec3d.class, double.class, ServerPlayerEntity.class, Identifier.class);
-
-        private static @Nullable Method resolve(String name, Class<?> returnType, Class<?>... parameterTypes) {
-            if (!isLoaded()) {
-                return null;
-            }
-            try {
-                Method method = Class.forName(PUBLIC_API).getMethod(name, parameterTypes);
-                return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == returnType
-                        ? method : null;
-            } catch (ReflectiveOperationException | SecurityException | LinkageError ignored) {
-                // SparkWitch builds before 2026-10-21 lack this seam; crows stay out of reach of these weapons.
-                // 2026-10-21 之前的 SparkWitch 没有此接缝；这些武器随之打不到乌鸦。
-                return null;
-            }
-        }
     }
 
     /** Resolved once, on the first real blast. / 首次真实爆炸时解析一次。 */
     private static final class SmokeCarveQuery {
-        private static final @Nullable Method METHOD = resolve();
-
-        private static @Nullable Method resolve() {
-            if (!isLoaded()) {
-                return null;
-            }
-            try {
-                Method method = Class.forName(PUBLIC_API).getMethod("carveSmoke",
-                        ServerWorld.class, Vec3d.class, double.class);
-                return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == void.class
-                        ? method : null;
-            } catch (ReflectiveOperationException | SecurityException | LinkageError ignored) {
-                // SparkWitch builds before BEAR (2026-11-05) have no smoke to carve. / BEAR 之前的 SparkWitch 没有可炸开的烟。
-                return null;
-            }
-        }
+        // SparkWitch builds before BEAR (2026-11-05) have no smoke to carve. / BEAR 之前的 SparkWitch 没有可炸开的烟。
+        private static final @Nullable Method METHOD = facadeMethod("carveSmoke",
+                void.class, ServerWorld.class, Vec3d.class, double.class);
     }
 
     /** Resolved once, on the first Wraith query. / 首次查询冤魂时解析一次。 */
     private static final class WraithQuery {
-        private static final @Nullable Method METHOD = resolve();
-
-        private static @Nullable Method resolve() {
-            if (!isLoaded()) {
-                return null;
-            }
-            try {
-                Method method = Class.forName(PUBLIC_API).getMethod("isWraithActive", PlayerEntity.class);
-                return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == boolean.class
-                        ? method : null;
-            } catch (ReflectiveOperationException | SecurityException | LinkageError ignored) {
-                return null;
-            }
-        }
+        private static final @Nullable Method METHOD = facadeMethod("isWraithActive", boolean.class, PlayerEntity.class);
     }
 
     /** Resolved once, on the first stun query. / 首次查询眩晕时解析一次。 */
     private static final class ControlExpertStunQuery {
-        private static final @Nullable Method METHOD = resolve();
-
-        private static @Nullable Method resolve() {
-            if (!isLoaded()) {
-                return null;
-            }
-            try {
-                Method method = Class.forName(PUBLIC_API).getMethod("isControlExpertStunned", PlayerEntity.class);
-                return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == boolean.class
-                        ? method : null;
-            } catch (ReflectiveOperationException | SecurityException | LinkageError ignored) {
-                return null;
-            }
-        }
+        private static final @Nullable Method METHOD = facadeMethod("isControlExpertStunned",
+                boolean.class, PlayerEntity.class);
     }
 }

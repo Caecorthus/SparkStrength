@@ -43,10 +43,6 @@ public final class PartyBalloonMarkComponent implements AutoSyncedComponent {
         return marked;
     }
 
-    public @Nullable UUID getMarker() {
-        return marker;
-    }
-
     /** Server only. / 仅服务端。 */
     public void mark(@Nullable UUID partyAnimal) {
         boolean changed = !marked;

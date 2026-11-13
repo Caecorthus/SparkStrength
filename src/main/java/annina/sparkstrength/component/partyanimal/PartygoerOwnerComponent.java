@@ -10,6 +10,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.registry.RegistryWrapper;
+import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -18,7 +19,9 @@ import org.ladysnake.cca.api.v3.component.ComponentRegistry;
 import org.ladysnake.cca.api.v3.component.sync.AutoSyncedComponent;
 import org.ladysnake.cca.api.v3.component.tick.ServerTickingComponent;
 
+import java.util.Map;
 import java.util.UUID;
+import java.util.WeakHashMap;
 
 /**
  * Who summoned this Partygoer (派对客), for the blackout instinct rule: a killer sees another killer's Partygoer in the
@@ -30,10 +33,11 @@ import java.util.UUID;
  * <p>Privacy: every tracking client gets a packet, but only killers and spectators/creative players
  * ({@link PartygoerVisibilityRules#receivesOwner}) get the UUID; everyone else gets "no owner", which also clears a
  * stale copy from a viewer who stopped qualifying (a role swap). Eligibility changes mid-round (deaths, Impostor,
- * swaps), so the owner is re-sent every {@link #RESYNC_INTERVAL_TICKS} ticks. Runtime only: a Partygoer never persists.
+ * swaps), so it is re-checked every {@link #RESYNC_INTERVAL_TICKS} ticks and re-sent to each tracker whose view
+ * changed. Runtime only: a Partygoer never persists.
  * 隐私：每个追踪客户端都会收到数据包，但只有杀手与旁观者/创造模式玩家（receivesOwner）会收到 UUID；其他人收到「无召唤者」，
  * 这也会清除已不再符合条件的观察者（身份互换）手里的旧副本。资格会在局中变化（死亡、内鬼、互换），因此每
- * RESYNC_INTERVAL_TICKS 刻重发一次。仅运行时：派对客从不持久化。</p>
+ * RESYNC_INTERVAL_TICKS 刻重新检查一次，并重发给视图发生变化的追踪者。仅运行时：派对客从不持久化。</p>
  */
 public final class PartygoerOwnerComponent implements AutoSyncedComponent, ServerTickingComponent {
     public static final ComponentKey<PartygoerOwnerComponent> KEY = ComponentRegistry.getOrCreate(
@@ -45,6 +49,9 @@ public final class PartygoerOwnerComponent implements AutoSyncedComponent, Serve
 
     private final PartygoerEntity partygoer;
     private @Nullable UUID owner;
+    // What each connection was last written (true = the owner UUID); per connection so a reconnect starts fresh, weak
+    // so a closed one is let go. / 每个连接最后写入的内容（true 表示召唤者 UUID）；按连接记录使重连从头开始，弱引用以释放已关闭的连接。
+    private final Map<ServerPlayNetworkHandler, Boolean> sentViews = new WeakHashMap<>();
 
     public PartygoerOwnerComponent(PartygoerEntity partygoer) {
         this.partygoer = partygoer;
@@ -67,7 +74,12 @@ public final class PartygoerOwnerComponent implements AutoSyncedComponent, Serve
     @Override
     public void serverTick() {
         if (owner != null && partygoer.age % RESYNC_INTERVAL_TICKS == 0) {
-            KEY.sync(partygoer);
+            // Perf: eligibility is still polled every RESYNC_INTERVAL_TICKS, but only a tracker whose view changed (or
+            // that was never written to through this connection) gets a packet; start-tracking syncs record theirs.
+            // 性能：仍每 RESYNC_INTERVAL_TICKS 轮询一次资格，但只有视图变化（或从未经此连接写入过）的追踪者才收到数据包；
+            // 开始追踪时的同步会记录各自发送的内容。
+            KEY.sync(partygoer, this, recipient ->
+                    !Boolean.valueOf(ownerVisibleTo(recipient)).equals(sentViews.get(recipient.networkHandler)));
         }
     }
 
@@ -80,14 +92,19 @@ public final class PartygoerOwnerComponent implements AutoSyncedComponent, Serve
 
     @Override
     public void writeSyncPacket(RegistryByteBuf buf, ServerPlayerEntity recipient) {
-        boolean send = owner != null && PartygoerVisibilityRules.receivesOwner(
-                SparkTraitsCompat.isEffectiveKiller(GameWorldComponent.KEY.get(recipient.getWorld()).getRole(recipient),
-                        recipient),
-                GameFunctions.isPlayerSpectatingOrCreative(recipient));
+        boolean send = ownerVisibleTo(recipient);
         buf.writeBoolean(send);
         if (send) {
             buf.writeUuid(owner);
         }
+        sentViews.put(recipient.networkHandler, send);
+    }
+
+    private boolean ownerVisibleTo(ServerPlayerEntity recipient) {
+        return owner != null && PartygoerVisibilityRules.receivesOwner(
+                SparkTraitsCompat.isEffectiveKiller(GameWorldComponent.KEY.get(recipient.getWorld()).getRole(recipient),
+                        recipient),
+                GameFunctions.isPlayerSpectatingOrCreative(recipient));
     }
 
     @Override

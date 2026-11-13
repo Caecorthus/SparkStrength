@@ -113,7 +113,11 @@ public final class DronePilotClient {
         ClientPlayNetworking.registerGlobalReceiver(DronePilotCorrectionS2CPacket.ID,
                 (payload, context) -> context.client().execute(() -> onCorrection(payload)));
         ClientTickEvents.END_CLIENT_TICK.register(DronePilotClient::tick);
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> reset(client));
+        // DISCONNECT may fire on the Netty thread: restoring the hand and culling there could land mid-tick, before
+        // bindCamera writes them back, and leave both stuck. JOIN already runs on the client thread.
+        // DISCONNECT 可能在 Netty 线程上触发：在那里恢复手部与剔除可能落在 tick 中途、早于 bindCamera 再次写入，导致两者卡住。
+        // JOIN 本就在客户端线程上执行。
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(() -> reset(client)));
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> reset(client));
         WorldRenderEvents.END.register(DronePilotHud::captureProjection);
     }

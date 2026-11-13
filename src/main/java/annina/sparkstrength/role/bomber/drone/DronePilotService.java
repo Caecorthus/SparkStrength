@@ -17,6 +17,7 @@ import dev.doctor4t.wathe.game.GameFunctions;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.entity.Entity;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.MathHelper;
@@ -59,11 +60,12 @@ import java.util.UUID;
  *
  * <p>Unlimited range (the whole play area): the drone is this feature's remote viewpoint. While a session lives,
  * {@link RemoteViewSessions#refreshView} keeps the drone's surroundings loaded and re-evaluates the pilot's tracking
- * every tick (the motionless body sends no movement packets), the {@code mixin/viewpoint/RemoteViewpoint*} mixins
+ * every tick (the motionless body sends no movement packets; a modified client's are dropped, see {@link #holdsBody}),
+ * the {@code mixin/viewpoint/RemoteViewpoint*} mixins
  * centre the pilot's chunk view, chunk batches and entity tracking on {@link #droneOf}, and after the session the view
  * resettles on the body.
  * 无限距离（整个游玩区域）：无人机就是本功能的远程视点。会话期间 RemoteViewSessions#refreshView 每刻保持无人机周围区块加载并
- * 重新评估驾驶者的追踪（静止的身体不发送移动包）；mixin/viewpoint/RemoteViewpoint* 以 droneOf 为中心计算驾驶者的区块视野、
+ * 重新评估驾驶者的追踪（静止的身体不发送移动包；修改过的客户端发来的会被丢弃，见 holdsBody）；mixin/viewpoint/RemoteViewpoint* 以 droneOf 为中心计算驾驶者的区块视野、
  * 区块批次与实体追踪；会话结束后视野回到身体。</p>
  */
 public final class DronePilotService {
@@ -80,6 +82,8 @@ public final class DronePilotService {
     public static final int MAX_MOVES_PER_TICK = 2;
     /** Minimum server ticks between two processed start requests of one player. / 同一玩家两次被处理的开始请求之间的最少服务器刻数。 */
     public static final int START_COOLDOWN_TICKS = 10;
+    /** A body packet within this (squared) distance repeats the held position. / 此（平方）距离内的身体包视为重复所持位置。 */
+    private static final double HELD_BODY_EPSILON_SQUARED = 1.0E-6D;
 
     /** Pilot sessions; the chunk ticket is {@code sparkstrength:drone}. / 驾驶会话；区块票据为 sparkstrength:drone。 */
     private static final RemoteViewSessions<Session> VIEWS = new RemoteViewSessions<>("drone");
@@ -234,10 +238,24 @@ public final class DronePilotService {
         return player != null && VIEWS.has(player.getUuid());
     }
 
-    /** The drone this player's session controls, unchecked; null when not piloting. / 该玩家会话所控制的无人机（不做校验）；未驾驶时为 null。 */
-    public static @Nullable DroneEntity pilotedDrone(ServerPlayerEntity player) {
-        Session session = player == null ? null : VIEWS.session(player.getUuid());
-        return session == null ? null : session.drone;
+    /**
+     * Security guard for {@code onPlayerMove} ({@code DronePilotBodyMoveGuardMixin}): while a session runs, a movement
+     * packet that would carry the body away from where the server holds it is dropped. The pilot's own client sends
+     * none (the drone is its camera, and the body was standing on the ground when the session started), so only a
+     * modified client is stopped. Rotation-only packets and ones repeating the held position (a teleport confirm) pass,
+     * and the server's own teleports still move the body.
+     * {@code onPlayerMove} 的安全闸门（DronePilotBodyMoveGuardMixin）：会话期间，会把身体带离服务端所持位置的移动包被丢弃。
+     * 驾驶者自己的客户端不会发送这类包（镜头是无人机，且开始驾驶时身体站在地面上），因此只会拦下修改过的客户端。仅含朝向的包
+     * 与重复所持位置的包（传送确认）照常通过，服务端自身的传送也照样移动身体。
+     */
+    public static boolean holdsBody(ServerPlayerEntity player, PlayerMoveC2SPacket packet) {
+        if (!packet.changesPosition() || !isPiloting(player)) {
+            return false;
+        }
+        double dx = packet.getX(player.getX()) - player.getX();
+        double dy = packet.getY(player.getY()) - player.getY();
+        double dz = packet.getZ(player.getZ()) - player.getZ();
+        return dx * dx + dy * dy + dz * dz > HELD_BODY_EPSILON_SQUARED;
     }
 
     /**

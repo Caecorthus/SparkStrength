@@ -73,16 +73,6 @@ public final class CoronerRules {
         return isCoroner(role);
     }
 
-    public static int passiveIncomeToAdd(int currentBalance) {
-        if (PASSIVE_INCOME_AMOUNT <= 0) {
-            return 0;
-        }
-        if (PASSIVE_INCOME_BALANCE_CAP < 0) {
-            return PASSIVE_INCOME_AMOUNT;
-        }
-        return Math.max(0, Math.min(PASSIVE_INCOME_AMOUNT, PASSIVE_INCOME_BALANCE_CAP - currentBalance));
-    }
-
     public static @Nullable Role resolveRole(@Nullable Identifier roleId) {
         if (roleId == null || WATHE_NO_ROLE_ID.equals(roleId)) {
             return null;

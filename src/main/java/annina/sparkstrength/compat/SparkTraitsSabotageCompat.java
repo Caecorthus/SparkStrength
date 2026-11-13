@@ -4,9 +4,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 
 /**
  * Optional bridge to SparkTraits' public facade for the sabotage system: is the Master Saboteur trait active.
@@ -25,25 +23,12 @@ public final class SparkTraitsSabotageCompat {
     }
 
     public static boolean isMasterSaboteur(PlayerEntity player) {
-        if (player == null || HAS_ACTIVE_TRAIT == null) {
-            return false;
-        }
-        try {
-            return Boolean.TRUE.equals(HAS_ACTIVE_TRAIT.invoke(null, player, MASTER_SABOTEUR_ID));
-        } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException | LinkageError ignored) {
-            return false;
-        }
+        return player != null
+                && Boolean.TRUE.equals(OptionalReflection.invokeStatic(HAS_ACTIVE_TRAIT, player, MASTER_SABOTEUR_ID));
     }
 
     private static Method findHasActiveTrait() {
-        if (!INSTALLED) {
-            return null;
-        }
-        try {
-            Method method = Class.forName(API_CLASS).getMethod("hasActiveTrait", PlayerEntity.class, Identifier.class);
-            return Modifier.isStatic(method.getModifiers()) && method.getReturnType() == boolean.class ? method : null;
-        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | LinkageError ignored) {
-            return null;
-        }
+        return INSTALLED ? OptionalReflection.staticMethod(
+                API_CLASS, "hasActiveTrait", boolean.class, PlayerEntity.class, Identifier.class) : null;
     }
 }

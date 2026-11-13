@@ -21,17 +21,9 @@ public final class PlayerHeadTextureHelper {
     }
 
     public static SkinTextures resolveStableSkinTextures(UUID targetUuid, @Nullable PlayerListEntry preferredEntry) {
-        if (preferredEntry != null) {
-            return preferredEntry.getSkinTextures();
-        }
-
-        MinecraftClient client = MinecraftClient.getInstance();
-        ClientPlayerEntity localPlayer = client.player;
-        if (localPlayer != null && localPlayer.networkHandler != null) {
-            PlayerListEntry playerListEntry = localPlayer.networkHandler.getPlayerListEntry(targetUuid);
-            if (playerListEntry != null) {
-                return playerListEntry.getSkinTextures();
-            }
+        PlayerListEntry onlineEntry = onlineEntry(targetUuid, preferredEntry);
+        if (onlineEntry != null) {
+            return onlineEntry.getSkinTextures();
         }
 
         if (WatheClient.PLAYER_ENTRIES_CACHE != null) {
@@ -42,5 +34,33 @@ public final class PlayerHeadTextureHelper {
         }
 
         return DefaultSkinHelper.getSkinTextures(targetUuid);
+    }
+
+    /**
+     * Preferred entry, then the tab-list entry, then the UUID's default skin. Unlike
+     * {@link #resolveStableSkinTextures} it skips Wathe's player cache, so a player no longer in the tab list shows
+     * the default skin (noisemaker and professor head buttons).
+     * 依次使用传入条目、Tab 列表条目、UUID 默认皮肤。与 resolveStableSkinTextures 不同，这里不查 Wathe 玩家缓存，
+     * 已不在 Tab 列表中的玩家显示默认皮肤（大嗓门与教授的头像按钮）。
+     */
+    public static SkinTextures resolveOnlineOrDefaultSkinTextures(UUID targetUuid, @Nullable PlayerListEntry preferredEntry) {
+        PlayerListEntry onlineEntry = onlineEntry(targetUuid, preferredEntry);
+        if (onlineEntry != null) {
+            return onlineEntry.getSkinTextures();
+        }
+
+        return DefaultSkinHelper.getSkinTextures(targetUuid);
+    }
+
+    private static @Nullable PlayerListEntry onlineEntry(UUID targetUuid, @Nullable PlayerListEntry preferredEntry) {
+        if (preferredEntry != null) {
+            return preferredEntry;
+        }
+
+        ClientPlayerEntity localPlayer = MinecraftClient.getInstance().player;
+        if (localPlayer != null && localPlayer.networkHandler != null) {
+            return localPlayer.networkHandler.getPlayerListEntry(targetUuid);
+        }
+        return null;
     }
 }
