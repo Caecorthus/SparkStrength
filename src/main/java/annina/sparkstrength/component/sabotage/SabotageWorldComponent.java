@@ -97,6 +97,11 @@ public final class SabotageWorldComponent implements Component {
         public long lastDamageTick = Long.MIN_VALUE / 2;
         public int lastCrackStage = -1;
         public long lastCrackSentTick = Long.MIN_VALUE / 2;
+        /**
+         * Open state last read from the block; null until first read. Runtime only, like the rest of this record.
+         * 最后一次从方块读到的打开状态；首次读取前为 null。与本记录其余字段一样仅运行时。
+         */
+        public @Nullable Boolean seenOpen;
     }
 
     private boolean mapReady;

@@ -64,7 +64,8 @@ public final class TaotieHeadRules {
     public static final float BONK_PITCH = 1.0F;
 
     /**
-     * Stable contract: C2S payloads dropped on the server while the sender is dazed. Plain ids only, so no optional
+     * Stable contract: C2S payloads dropped on the server while the sender is dazed (and, through their own guard
+     * mixins, while carried by a Partygoer or held by an Engineer stun). Plain ids only, so no optional
      * mod class is ever loaded. Built from SparkWitch's {@code ControlExpertStunRules.BLOCKED_PAYLOADS}, with these
      * deliberate differences:
      * <ul>
@@ -86,7 +87,7 @@ public final class TaotieHeadRules {
      *       so none are added.</li>
      * </ul>
      * A new skill payload must be classified here deliberately.
-     * 稳定契约：发送者处于眩晕时在服务端丢弃的 C2S 数据包。只保存纯 id，从不加载可选模组的类。以 SparkWitch 的
+     * 稳定契约：发送者处于眩晕时（以及经各自的拦截 mixin，被派对客扛着或被工程师定身时）在服务端丢弃的 C2S 数据包。只保存纯 id，从不加载可选模组的类。以 SparkWitch 的
      * {@code ControlExpertStunRules.BLOCKED_PAYLOADS} 为基础，刻意的差异如下：
      * 移除 {@code wathe:storebuy}（眩晕时仍可使用商店）；补充该表缺少的 SparkStrength 技能包：记者通讯
      * {@code reporter_communication}（有冷却的技能）、怀表模式切换 {@code timekeeper_watch_mode}、接管无人机

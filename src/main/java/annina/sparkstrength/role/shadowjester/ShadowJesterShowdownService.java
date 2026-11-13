@@ -2,6 +2,7 @@ package annina.sparkstrength.role.shadowjester;
 
 import annina.sparkstrength.compat.SparkFactionCompat;
 import annina.sparkstrength.compat.SparkTraitsCompat;
+import annina.sparkstrength.compat.SparkTraitsVultureCompat;
 import annina.sparkstrength.component.shadowjester.ShadowJesterShowdownWorldComponent;
 import annina.sparkstrength.network.shadowjester.SyncShadowJesterShowdownMusicS2CPacket;
 import annina.sparkstrength.replay.SparkStrengthReplayFormatters;
@@ -40,6 +41,9 @@ import java.util.UUID;
  */
 public final class ShadowJesterShowdownService {
     public static final int REVOLVER_COOLDOWN_TICKS = 80; // 4 秒
+    // Plain SparkTraits trait ids for its round-end view; no SparkTraits class is loaded. / SparkTraits 词条纯 id，不加载其类。
+    private static final Identifier IMPOSTOR_TRAIT_ID = Identifier.of("sparktraits", "impostor");
+    private static final Identifier CONSCIENCE_TRAIT_ID = Identifier.of("sparktraits", "conscience");
     private static boolean winPriorityListenerRegistered;
 
     private ShadowJesterShowdownService() {
@@ -153,6 +157,33 @@ public final class ShadowJesterShowdownService {
     }
 
     /**
+     * Cross-mod ordering: the victim's effective faction at its death, whichever side of SparkTraits' own
+     * {@code KillPlayer.AFTER} listener this runs on. That listener snapshots and then clears the victim's traits, so the
+     * live traits may already be gone here; SparkTraits' public round-end view (live traits, else that death snapshot)
+     * fills them in. Same precedence as {@link SparkTraitsCompat#isEffectiveKiller}: Impostor makes a killer, then
+     * Conscience a non-killer, else the raw role. Without SparkTraits both reads are empty and the raw role decides, as
+     * before. Living players keep using {@link #isEffectiveKiller}.
+     * 跨模组顺序：受害者死亡时的有效阵营，无论本调用在 SparkTraits 自己的 KillPlayer.AFTER 监听器之前还是之后执行。该监听器会先
+     * 快照、再清空受害者的词条，因此此处的在线词条可能已不存在；由 SparkTraits 公开的本局结束视图（在线词条，否则该次死亡快照）
+     * 补上。优先级与 SparkTraitsCompat#isEffectiveKiller 相同：内鬼判为杀手，其次善良判为非杀手，否则看原始职业。未安装
+     * SparkTraits 时两处读取都为空，仍由原始职业决定。存活玩家继续使用 isEffectiveKiller。
+     */
+    private static boolean diedAsEffectiveKiller(ServerWorld world, GameWorldComponent game, ServerPlayerEntity victim) {
+        Role role = game.getRole(victim);
+        if (role == null) {
+            return false;
+        }
+        List<Identifier> atDeath = SparkTraitsVultureCompat.getRoundEndTraitIds(world, victim.getUuid());
+        if (SparkTraitsCompat.hasImpostor(victim) || atDeath.contains(IMPOSTOR_TRAIT_ID)) {
+            return true;
+        }
+        if (SparkTraitsCompat.hasConscience(victim) || atDeath.contains(CONSCIENCE_TRAIT_ID)) {
+            return false;
+        }
+        return role.canUseKiller();
+    }
+
+    /**
      * 返回仍存活的、已经结盟且互相指向的影子小丑二人组。
      */
     public static @Nullable List<ServerPlayerEntity> findLivingBoundPair(
@@ -217,7 +248,7 @@ public final class ShadowJesterShowdownService {
 
         if (showdown.isActive()
                 || !game.isRunning()
-                || !isEffectiveKiller(game, victim)
+                || !diedAsEffectiveKiller(world, game, victim)
                 || hasLivingEffectiveKiller(world, game)) {
             return;
         }

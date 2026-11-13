@@ -195,8 +195,10 @@ public final class PartygoerBrain {
     private void tickCarry() {
         ServerPlayerEntity prey = player(preyUuid);
         if (prey == null || prey.getVehicle() != body) {
-            // Escaped the arms alive (swallowed by a Taotie, disconnected...): hunt again. Deaths come via onPlayerKilled.
-            // 活着离开了手臂（被饕餮吞、掉线……）：重新开始追。死亡由 onPlayerKilled 处理。
+            // Escaped the arms alive (swallowed by a Taotie...): hunt again. Deaths come via onPlayerKilled. A carried
+            // player who logs out never gets here: vanilla removes the Partygoer with its rider (PartygoerService.onRemoved).
+            // 活着离开了手臂（被饕餮吞……）：重新开始追。死亡由 onPlayerKilled 处理。被扛着的玩家下线时不会走到这里：
+            // 原版会把派对客连同骑乘者一起移除（PartygoerService.onRemoved）。
             preyUuid = null;
             enter(PartygoerState.HUNT);
             return;
