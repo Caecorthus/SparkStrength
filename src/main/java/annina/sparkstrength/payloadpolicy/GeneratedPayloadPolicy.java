@@ -15,7 +15,7 @@ import java.util.Set;
  */
 public final class GeneratedPayloadPolicy {
     /** SHA-256 of the canonical table this file was generated from. / 生成本文件所用规范表的 SHA-256。 */
-    public static final String CONTRACT_SHA256 = "af8b90bb5c30637f85257e1a19263fcf63f322a856676d1f6ad939cac6d5bb62";
+    public static final String CONTRACT_SHA256 = "06e172356273dd4403002c0bd14b180531632866e3ccef27c6b52bde865c9646";
 
     /** Column DAZE: 97 ids. / DAZE 列：97 个 id。 */
     public static final Set<Identifier> DAZE = Set.of(
