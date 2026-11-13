@@ -33,8 +33,8 @@ final class DetectiveNotesBox extends EditBoxWidget {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if ((keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) && atLineCap()) {
-            // Refuse before insertion so the caret stays put; the screen's listener revert would jump it to the end.
-            // 在插入前拒绝，光标保持原位；界面监听器的回退会把光标移到末尾。
+            // Refuse before insertion so the caret stays put; DetectiveFolderState's listener revert would jump it to
+            // the end. / 在插入前拒绝，光标保持原位；DetectiveFolderState 中监听器的回退会把光标移到末尾。
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);

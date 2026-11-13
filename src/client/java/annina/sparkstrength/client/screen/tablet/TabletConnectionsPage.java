@@ -1,7 +1,7 @@
 package annina.sparkstrength.client.screen.tablet;
 
-import annina.sparkstrength.client.screen.tablet.TabletScreen.Grid;
 import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.EmptyIcon;
+import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.Grid;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
 import annina.sparkstrength.tablet.TabletChannel;
 import annina.sparkstrength.tablet.TabletIdentityRules;
@@ -63,11 +63,11 @@ final class TabletConnectionsPage implements TabletPage {
         // Locked police view: a lock + task progress instead of a misleading "1 connected".
         // 义警身份未解锁：显示锁与任务进度，而非具有误导性的“已接入 1”。
         return identitiesLocked(snapshot)
-                ? screen.paintPill(right, centerY, maxWidth, Text.translatable(KEY + "channel.tasks_locked",
+                ? screen.chrome().paintPill(right, centerY, maxWidth, Text.translatable(KEY + "channel.tasks_locked",
                         identityTasksDone(snapshot), TabletIdentityRules.POLICE_REVEAL_TASKS).getString(),
                 frameAccent.pale(), TabletTheme.withAlpha(frameAccent.base(), 0x2E), 0, TabletIcons::lock,
                 frameAccent.pale())
-                : screen.paintPill(right, centerY, maxWidth, memberCount(snapshot).getString(),
+                : screen.chrome().paintPill(right, centerY, maxWidth, memberCount(snapshot).getString(),
                 TabletTheme.TEXT_2, TabletTheme.SURFACE, 0, null, 0);
     }
 
@@ -120,7 +120,7 @@ final class TabletConnectionsPage implements TabletPage {
             TabletConnectionsPainter.linkHint(c, textRenderer, grid.area().x(), top, grid.area().width(),
                     grid.area().bottom() - top, frameAccent);
         }
-        TabletSectionPainter.scrollThumb(c, screen.scrollTrack(grid.area()), first, grid.visibleRows(), totalRows);
+        TabletSectionPainter.scrollThumb(c, screen.chrome().scrollTrack(grid.area()), first, grid.visibleRows(), totalRows);
     }
 
     private Grid connectionsGrid() {

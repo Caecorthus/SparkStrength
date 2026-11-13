@@ -18,8 +18,8 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.Objects;
 
-import static annina.sparkstrength.client.screen.tablet.TabletScreen.PILL_GLYPH;
-import static annina.sparkstrength.client.screen.tablet.TabletScreen.PILL_GLYPH_GAP;
+import static annina.sparkstrength.client.screen.tablet.TabletChromePainter.PILL_GLYPH;
+import static annina.sparkstrength.client.screen.tablet.TabletChromePainter.PILL_GLYPH_GAP;
 import static annina.sparkstrength.client.screen.tablet.TabletSectionPainter.KEY;
 import static annina.sparkstrength.client.screen.tablet.TabletSectionPainter.PILL_PAD;
 
@@ -60,7 +60,7 @@ final class TabletChatPage implements TabletPage {
 
     TabletChatPage(TabletScreen screen) {
         this.screen = screen;
-        chatView.setBackdrop(screen::screenBackdropAt);
+        chatView.setBackdrop(screen.chrome()::screenBackdropAt);
     }
 
     // ============================================================================================ page
@@ -85,8 +85,9 @@ final class TabletChatPage implements TabletPage {
             chatInput.setPlaceholder(channel.isProximity()
                     ? Text.translatable(KEY + "chat.placeholder_public")
                     : Text.translatable(KEY + "chat.placeholder_channel", Text.translatable(channel.translationKey())));
-            chatInput.setCaretColor(screen.frameAccentFor(snapshot).pale());
-            chatInput.setSelectionColor(TabletTheme.withAlpha(screen.frameAccentFor(snapshot).base(), 0x66));
+            chatInput.setCaretColor(TabletFeatureOnly.frameAccentFor(snapshot, screen.session().section()).pale());
+            chatInput.setSelectionColor(TabletTheme.withAlpha(
+                    TabletFeatureOnly.frameAccentFor(snapshot, screen.session().section()).base(), 0x66));
             screen.addChild(chatInput);
             chatInputAttached = true;
             if (!screen.switcherOpen()) {
@@ -128,14 +129,14 @@ final class TabletChatPage implements TabletPage {
 
     @Override
     public int paintHeaderChip(TabletSnapshot snapshot, int right, int centerY, int maxWidth, long now) {
-        return screen.paintPill(right, centerY, maxWidth, String.valueOf(snapshot.chat().size()),
+        return screen.chrome().paintPill(right, centerY, maxWidth, String.valueOf(snapshot.chat().size()),
                 TabletTheme.TEXT_2, TabletTheme.SURFACE, 0, TabletIcons::chat, TabletTheme.TEXT_2);
     }
 
     @Override
     public void paintBadge(TabletSnapshot snapshot, Rect icon, long now) {
         if (TabletClientState.hasUnreadChat(snapshot)) {
-            screen.paintBadgeDot(icon, screen.accent().base());
+            screen.chrome().paintBadgeDot(icon, screen.accent().base());
         }
     }
 
@@ -343,10 +344,10 @@ final class TabletChatPage implements TabletPage {
             int topAlpha = outerIsTop ? outerAlpha : 0;
             int bottomAlpha = outerIsTop ? 0 : outerAlpha;
             screen.canvas().gradientQuad(x0, top, x1, bottom,
-                    TabletTheme.withAlpha(screen.screenBackdropAt(x0, top), topAlpha),
-                    TabletTheme.withAlpha(screen.screenBackdropAt(x1, top), topAlpha),
-                    TabletTheme.withAlpha(screen.screenBackdropAt(x0, bottom), bottomAlpha),
-                    TabletTheme.withAlpha(screen.screenBackdropAt(x1, bottom), bottomAlpha));
+                    TabletTheme.withAlpha(screen.chrome().screenBackdropAt(x0, top), topAlpha),
+                    TabletTheme.withAlpha(screen.chrome().screenBackdropAt(x1, top), topAlpha),
+                    TabletTheme.withAlpha(screen.chrome().screenBackdropAt(x0, bottom), bottomAlpha),
+                    TabletTheme.withAlpha(screen.chrome().screenBackdropAt(x1, bottom), bottomAlpha));
         }
     }
 

@@ -1,7 +1,7 @@
 package annina.sparkstrength.client.screen.tablet;
 
-import annina.sparkstrength.client.screen.tablet.TabletScreen.Grid;
 import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.EmptyIcon;
+import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.Grid;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
 import annina.sparkstrength.role.attendant.DoorLog;
 import annina.sparkstrength.tablet.TabletFeature;
@@ -86,9 +86,9 @@ final class TabletDoorLogPage implements TabletPage {
     public int paintHeaderChip(TabletSnapshot snapshot, int right, int centerY, int maxWidth, long now) {
         // Live indicator in the monitor accent whatever the channel: the feed belongs to the door monitor.
         // 无论频道如何都使用监控强调色的实时指示：该画面属于房门监控。
-        return screen.paintPill(right, centerY, maxWidth, Text.translatable(KEY + "door_log.live").getString(),
+        return screen.chrome().paintPill(right, centerY, maxWidth, Text.translatable(KEY + "door_log.live").getString(),
                 TabletTheme.MONITOR.pale(), TabletTheme.withAlpha(TabletTheme.MONITOR.base(), 0x2E), 0,
-                (canvas, x, y, size, color) -> screen.paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
+                (canvas, x, y, size, color) -> screen.chrome().paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
                 TabletTheme.MONITOR.base());
     }
 
@@ -96,7 +96,7 @@ final class TabletDoorLogPage implements TabletPage {
     public void paintBadge(TabletSnapshot snapshot, Rect icon, long now) {
         // New entries only ever surface as this red dot (no HUD). 新条目只以此红点提示（无 HUD）。
         if (TabletClientState.hasUnreadDoorLog(snapshot)) {
-            screen.paintBadgeDot(icon, TabletTheme.DANGER);
+            screen.chrome().paintBadgeDot(icon, TabletTheme.DANGER);
         }
     }
 
@@ -130,7 +130,7 @@ final class TabletDoorLogPage implements TabletPage {
                     Objects.requireNonNull(entry.kind()),
                     TabletDoorLogPainter.doorAge(DoorLog.ageSeconds(entry.lastTick(), worldTime)), ageColumn);
         }
-        TabletSectionPainter.scrollThumb(c, screen.scrollTrack(grid.area()), first, grid.visibleRows(), rows.size());
+        TabletSectionPainter.scrollThumb(c, screen.chrome().scrollTrack(grid.area()), first, grid.visibleRows(), rows.size());
     }
 
     private Grid doorLogGrid() {

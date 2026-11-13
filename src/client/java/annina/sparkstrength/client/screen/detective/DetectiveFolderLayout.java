@@ -152,8 +152,19 @@ record DetectiveFolderLayout(
         return caseCount > tabsWithoutArrows();
     }
 
+    int tabPageCount(int caseCount) {
+        int perPage = tabsPerPage(caseCount);
+        return Math.max(1, (caseCount + perPage - 1) / perPage);
+    }
+
     Rect tab(int slot) {
         return new Rect(folder.x() + PAGE_MARGIN + slot * (TAB_WIDTH + TAB_GAP), folder.y(), TAB_WIDTH, TAB_HEIGHT);
+    }
+
+    /** Tab click area; the viewed tab also covers its raised 2 px. / 标签点击区域；当前标签包含抬高的 2 像素。 */
+    Rect tabHitBox(int slot) {
+        Rect tab = tab(slot);
+        return new Rect(tab.x(), tab.y() - 2, tab.width(), tab.height());
     }
 
     Rect previousArrow() {
@@ -176,6 +187,11 @@ record DetectiveFolderLayout(
                 Math.max(0, page.width() - ROW_INSET * 2),
                 ROW_HEIGHT
         );
+    }
+
+    /** Presumed-killer click area: its name label or its polaroid. / 假定凶手点击区域：名字标签或拍立得。 */
+    boolean containsPresumed(double pointX, double pointY) {
+        return presumedLabel.contains(pointX, pointY) || presumedPolaroid.contains(pointX, pointY);
     }
 
     /** The pickers sit over the folder, inset so the folder edge stays visible. / 选择浮层覆盖文件夹并留出边缘。 */

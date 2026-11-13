@@ -1,9 +1,9 @@
 package annina.sparkstrength.client.screen.tablet;
 
-import annina.sparkstrength.client.screen.tablet.TabletScreen.Grid;
 import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.ButtonIcon;
 import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.ButtonStyle;
 import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.EmptyIcon;
+import annina.sparkstrength.client.screen.tablet.TabletSectionPainter.Grid;
 import annina.sparkstrength.network.tablet.ApproveSuspectRemovalC2SPacket;
 import annina.sparkstrength.network.tablet.TabletSnapshot;
 import annina.sparkstrength.tablet.TabletLayout.Rect;
@@ -93,7 +93,7 @@ final class TabletSuspectsPage implements TabletPage {
 
     @Override
     public int paintHeaderChip(TabletSnapshot snapshot, int right, int centerY, int maxWidth, long now) {
-        return screen.paintPill(right, centerY, maxWidth, String.valueOf(snapshot.suspects().size()),
+        return screen.chrome().paintPill(right, centerY, maxWidth, String.valueOf(snapshot.suspects().size()),
                 TabletTheme.TEXT_2, TabletTheme.SURFACE, 0, TabletIcons::target, TabletTheme.TEXT_2);
     }
 
@@ -135,7 +135,7 @@ final class TabletSuspectsPage implements TabletPage {
             TabletSuspectsPainter.suspectCard(c, textRenderer, grid.area().x(), grid.rowY(row), grid.area().width(),
                     suspects.get(first + row), screen.accent());
         }
-        TabletSectionPainter.scrollThumb(c, screen.scrollTrack(grid.area()), first, grid.visibleRows(), suspects.size());
+        TabletSectionPainter.scrollThumb(c, screen.chrome().scrollTrack(grid.area()), first, grid.visibleRows(), suspects.size());
     }
 
     private Grid suspectGrid() {
