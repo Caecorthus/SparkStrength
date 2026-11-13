@@ -574,15 +574,17 @@ public final class TabletStateService {
         // Dead viewers keep the count they reached while alive. / 死亡查看者沿用存活时达到的任务数。
         int tasksDone = tablet.completedTasks(viewerUuid);
 
+        // Countdowns travel as end ticks (v10), so a running one no longer defeats the unchanged-snapshot skip.
+        // 倒计时以结束 tick 下发（v10），进行中的倒计时不再让“快照未变则跳过”失效。
         return new TabletSnapshot(
                 true,
                 TabletChannel.wireOf(channel),
                 access.allowedMask(),
                 access.canSend(),
-                TabletRules.secondsCeil(tablet.channelSwitchCooldownTicks(viewerUuid, now)),
+                TabletRules.deadlineTick(now, tablet.channelSwitchCooldownTicks(viewerUuid, now)),
                 tablet.hasActiveMeeting() && channel == TabletChannel.POLICE && access.canSwitchChannels(),
                 meetingFeatures && electorate.contains(viewerUuid),
-                meetingFeatures ? TabletRules.secondsCeil(tablet.meetingCooldownTicks(now)) : 0,
+                meetingFeatures ? TabletRules.deadlineTick(now, tablet.meetingCooldownTicks(now)) : 0,
                 meetingFeatures ? tablet.remainingMeetingCalls(viewerUuid) : 0,
                 connectionRows(world, roster, factionView, viewerUuid, links, tasksDone),
                 chatRows(tablet, channel, viewerUuid, links, tasksDone),
@@ -725,7 +727,7 @@ public final class TabletStateService {
         Map<UUID, Integer> voteCounts = validVoteCounts(world, tablet, meeting, electorate);
         return new TabletSnapshot.Meeting(
                 true,
-                TabletRules.secondsCeil(meeting.ticksRemaining()),
+                TabletRules.deadlineTick(world.getTime(), meeting.ticksRemaining()),
                 meeting.isConfirmed(viewer.getUuid()),
                 meeting.isAbstaining(viewer.getUuid()),
                 meeting.voteFor(viewer.getUuid()).orElse(null),
@@ -912,9 +914,9 @@ public final class TabletStateService {
     }
 
     /**
-     * Clients without the current (v9) payload are skipped instead of being disconnected by unknown bytes. Every
+     * Clients without the current (v10) payload are skipped instead of being disconnected by unknown bytes. Every
      * snapshot that goes out, empty ones included, becomes what that client holds.
-     * 未注册当前（v9）负载的客户端直接跳过，避免因未知字节断线。每份发出的快照（包括空快照）都记为该客户端当前持有的快照。
+     * 未注册当前（v10）负载的客户端直接跳过，避免因未知字节断线。每份发出的快照（包括空快照）都记为该客户端当前持有的快照。
      */
     private static boolean sendPacket(ServerPlayerEntity player, TabletSnapshot snapshot) {
         if (!ServerPlayNetworking.canSend(player, SyncTabletSnapshotS2CPacket.ID)) {

@@ -48,6 +48,16 @@ public final class TabletClientState {
         return snapshot;
     }
 
+    /**
+     * The client's world time, against which the snapshot's countdown end ticks are read (v10); with no world, every
+     * countdown reads as over.
+     * 客户端的世界时间，快照中的倒计时结束 tick 以它为准（v10）；没有世界时所有倒计时都视为已结束。
+     */
+    public static long worldTime() {
+        ClientWorld world = MinecraftClient.getInstance().world;
+        return world == null ? Long.MAX_VALUE : world.getTime();
+    }
+
     public static void apply(TabletSnapshot nextSnapshot) {
         snapshot = nextSnapshot == null ? TabletSnapshot.empty() : nextSnapshot;
         snapshotAppliedAtTick = clientWorldTime();

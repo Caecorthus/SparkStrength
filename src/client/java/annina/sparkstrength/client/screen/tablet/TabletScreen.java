@@ -127,6 +127,9 @@ public final class TabletScreen extends Screen {
     private boolean requestedInitialSnapshot;
     private int lastChannelWire;
     private boolean lastCanSend;
+    // Which v10 countdowns were running when the widgets were last built (see countdownState).
+    // 上次构建控件时哪些 v10 倒计时仍在进行（见 countdownState）。
+    private int builtCountdownState;
 
     // Stable identity of each keyed widget in the current build, so a rebuild can restore keyboard focus.
     // 当前构建中各控件的稳定标识，供重建时恢复键盘焦点。
@@ -160,6 +163,7 @@ public final class TabletScreen extends Screen {
         super.init();
         updateScale();
         TabletSnapshot snapshot = TabletClientState.snapshot();
+        builtCountdownState = countdownState(snapshot);
         EnumSet<TabletFeature> features = snapshot.features();
         visibleSections = TabletUiSession.visibleSections(snapshot.channel(), features);
         referenceTabs = TabletUiSession.referenceSectionCount(snapshot.channel(), snapshot.allowedChannels(), features);
@@ -277,6 +281,19 @@ public final class TabletScreen extends Screen {
         for (TabletPage page : pages.values()) {
             page.tick(page == page());
         }
+        // v10 countdowns run on the client and an ending one changes no snapshot, so the widgets that depend on it
+        // (the call-meeting button, the cooldown hero card) are rebuilt here once, as the per-second snapshot did before.
+        // v10 倒计时在客户端运行，结束时不会产生新快照，因此依赖它的控件（召开会议按钮、冷却英雄卡）在此重建一次，与以前每秒快照的效果相同。
+        if (countdownState(TabletClientState.snapshot()) != builtCountdownState) {
+            refresh();
+        }
+    }
+
+    /** Bit 0: switch cooldown running, bit 1: meeting cooldown running. / 位 0：切换冷却进行中；位 1：会议冷却进行中。 */
+    private static int countdownState(TabletSnapshot snapshot) {
+        long worldTime = TabletClientState.worldTime();
+        return (snapshot.channelSwitchCooldownSeconds(worldTime) > 0 ? 1 : 0)
+                | (snapshot.meetingCooldownSeconds(worldTime) > 0 ? 2 : 0);
     }
 
     @Override

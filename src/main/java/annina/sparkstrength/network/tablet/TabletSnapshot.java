@@ -21,12 +21,13 @@ import java.util.UUID;
  * 服务端还会按查看者裁剪身份：杀手匿名频道按互认状态，义警频道按查看者本局已完成的任务数。被隐藏发送者的聊天行不含 UUID
  * 与名字，被隐藏成员不会出现在 connections 中。</p>
  *
- * <p>Wire layout (v8, in order; changing it requires a new sync payload id):
- * 线上布局（v8，按顺序；修改它必须更换同步包 id）：
+ * <p>Wire layout (v10, in order; changing it requires a new sync payload id):
+ * 线上布局（v10，按顺序；修改它必须更换同步包 id）：
  * <ol>
  *   <li>bool localHasTablet, varint channelWire, varint allowedChannelMask, bool canSend,
- *   varint channelSwitchCooldownSeconds, bool channelLocked</li>
- *   <li>bool localMeetingParticipant, varint cooldownSeconds, varint localMeetingCallsRemaining</li>
+ *   varlong channelSwitchCooldownEndTick (varint seconds before v10), bool channelLocked</li>
+ *   <li>bool localMeetingParticipant, varlong meetingCooldownEndTick (varint seconds before v10),
+ *   varint localMeetingCallsRemaining</li>
  *   <li>list connections ({@link PlayerRow}), list chat ({@link ChatRow}), {@link Meeting},
  *   list suspects ({@link SuspectRow})</li>
  *   <li>v4: varint featureMask, list doorLog ({@link DoorLogRow})</li>
@@ -36,6 +37,11 @@ import java.util.UUID;
  *   <li>v8: a door-log row carries its absolute world tick (varlong) instead of an age</li>
  *   <li>v9: a chat row carries its public-channel signal (varint, 0 outside the public channel); varint
  *   cooldownChannelMask appended</li>
+ *   <li>v10: the three countdowns become absolute world ticks (varlong, 0 = none) in the same places: the switch
+ *   cooldown and the meeting cooldown in item 1 and 2, the meeting's end in {@link Meeting}. The client derives the
+ *   seconds from its own world time, so a running countdown no longer changes the snapshot every second.
+ *   v10：三个倒计时在原位置改为绝对世界 tick（varlong，0 表示无）：第 1、2 项中的切换冷却与会议冷却，以及 Meeting 中的会议结束
+ *   时间。客户端按自己的世界时间计算秒数，因此进行中的倒计时不再让快照每秒变化。</li>
  * </ol>
  * Lists are a varint count followed by the rows.
  * 列表为 varint 数量后接各行。</p>
@@ -55,10 +61,10 @@ public record TabletSnapshot(
         int channelWire,
         int allowedChannelMask,
         boolean canSend,
-        int channelSwitchCooldownSeconds,
+        long channelSwitchCooldownEndTick,
         boolean channelLocked,
         boolean localMeetingParticipant,
-        int cooldownSeconds,
+        long meetingCooldownEndTick,
         int localMeetingCallsRemaining,
         List<PlayerRow> connections,
         List<ChatRow> chat,
@@ -85,10 +91,10 @@ public record TabletSnapshot(
             int channelWire,
             int allowedChannelMask,
             boolean canSend,
-            int channelSwitchCooldownSeconds,
+            long channelSwitchCooldownEndTick,
             boolean channelLocked,
             boolean localMeetingParticipant,
-            int cooldownSeconds,
+            long meetingCooldownEndTick,
             int localMeetingCallsRemaining,
             List<PlayerRow> connections,
             List<ChatRow> chat,
@@ -101,8 +107,8 @@ public record TabletSnapshot(
             List<SabotageRow> sabotage,
             List<SabotageLogRow> sabotageLog
     ) {
-        this(localHasTablet, channelWire, allowedChannelMask, canSend, channelSwitchCooldownSeconds, channelLocked,
-                localMeetingParticipant, cooldownSeconds, localMeetingCallsRemaining, connections, chat, meeting, suspects,
+        this(localHasTablet, channelWire, allowedChannelMask, canSend, channelSwitchCooldownEndTick, channelLocked,
+                localMeetingParticipant, meetingCooldownEndTick, localMeetingCallsRemaining, connections, chat, meeting, suspects,
                 featureMask, doorLog, identityTasksRemaining, drones, sabotage, sabotageLog, 0);
     }
 
@@ -147,6 +153,31 @@ public record TabletSnapshot(
         return TabletFeature.fromMask(featureMask);
     }
 
+    /** Whole seconds of the faction switch cooldown left at {@code worldTime}. / worldTime 时阵营切换冷却剩余的整秒数。 */
+    public int channelSwitchCooldownSeconds(long worldTime) {
+        return secondsUntil(channelSwitchCooldownEndTick, worldTime);
+    }
+
+    /** Whole seconds of the meeting cooldown left at {@code worldTime}. / worldTime 时会议冷却剩余的整秒数。 */
+    public int meetingCooldownSeconds(long worldTime) {
+        return secondsUntil(meetingCooldownEndTick, worldTime);
+    }
+
+    /**
+     * Whole seconds from {@code worldTime} until {@code endTick}, rounded up like {@code TabletRules#secondsCeil}; 0 once
+     * reached and for "none" (0). The client passes its own world time, synced by vanilla every second.
+     * 从 worldTime 到 endTick 的整秒数，与 TabletRules#secondsCeil 一样向上取整；到达后以及“无”（0）时为 0。客户端传入自己的
+     * 世界时间（原版每秒同步一次）。
+     */
+    public static int secondsUntil(long endTick, long worldTime) {
+        if (endTick <= worldTime) {
+            return 0;
+        }
+        long ticks = endTick - worldTime;
+        long seconds = ticks / 20 + (ticks % 20 == 0 ? 0 : 1);
+        return (int) Math.min(Integer.MAX_VALUE, seconds);
+    }
+
     public boolean hasFeature(TabletFeature feature) {
         return (featureMask & (1 << feature.wire())) != 0;
     }
@@ -156,10 +187,10 @@ public record TabletSnapshot(
         buf.writeVarInt(channelWire);
         buf.writeVarInt(allowedChannelMask);
         buf.writeBoolean(canSend);
-        buf.writeVarInt(channelSwitchCooldownSeconds);
+        buf.writeVarLong(channelSwitchCooldownEndTick);
         buf.writeBoolean(channelLocked);
         buf.writeBoolean(localMeetingParticipant);
-        buf.writeVarInt(cooldownSeconds);
+        buf.writeVarLong(meetingCooldownEndTick);
         buf.writeVarInt(localMeetingCallsRemaining);
         writeList(buf, connections, (targetBuf, row) -> row.write(targetBuf));
         writeList(buf, chat, (targetBuf, row) -> row.write(targetBuf));
@@ -180,10 +211,10 @@ public record TabletSnapshot(
                 buf.readVarInt(),
                 buf.readVarInt(),
                 buf.readBoolean(),
-                buf.readVarInt(),
+                buf.readVarLong(),
                 buf.readBoolean(),
                 buf.readBoolean(),
-                buf.readVarInt(),
+                buf.readVarLong(),
                 buf.readVarInt(),
                 readList(buf, PlayerRow::read),
                 readList(buf, ChatRow::read),
@@ -288,7 +319,7 @@ public record TabletSnapshot(
 
     public record Meeting(
             boolean active,
-            int remainingSeconds,
+            long endTick,
             boolean localConfirmed,
             boolean localAbstained,
             @Nullable UUID localVoteTarget,
@@ -298,9 +329,14 @@ public record TabletSnapshot(
             return new Meeting(false, 0, false, false, null, List.of());
         }
 
+        /** Whole seconds left at the client's {@code worldTime}. / 按客户端 worldTime 计算的剩余整秒数。 */
+        public int remainingSeconds(long worldTime) {
+            return secondsUntil(endTick, worldTime);
+        }
+
         private void write(PacketByteBuf buf) {
             buf.writeBoolean(active);
-            buf.writeVarInt(remainingSeconds);
+            buf.writeVarLong(endTick);
             buf.writeBoolean(localConfirmed);
             buf.writeBoolean(localAbstained);
             writeOptionalUuid(buf, localVoteTarget);
@@ -310,7 +346,7 @@ public record TabletSnapshot(
         private static Meeting read(PacketByteBuf buf) {
             return new Meeting(
                     buf.readBoolean(),
-                    buf.readVarInt(),
+                    buf.readVarLong(),
                     buf.readBoolean(),
                     buf.readBoolean(),
                     readOptionalUuid(buf),

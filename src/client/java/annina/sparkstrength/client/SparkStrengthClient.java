@@ -11,6 +11,7 @@ import annina.sparkstrength.client.role.attendant.flashlight.FlashlightRenderer;
 import annina.sparkstrength.client.role.bandit.BanditRevolverClient;
 import annina.sparkstrength.client.role.bodyguard.BodyguardClient;
 import annina.sparkstrength.client.role.bomber.BomberDroneClient;
+import annina.sparkstrength.client.role.bomber.TimedBombMarkerClientStore;
 import annina.sparkstrength.client.role.coroner.CoronerClientHooks;
 import annina.sparkstrength.client.role.corruptcop.CorruptCopClientHooks;
 import annina.sparkstrength.client.role.corruptcop.CorruptCopMusicController;
@@ -81,6 +82,8 @@ public final class SparkStrengthClient implements ClientModInitializer {
         M67Client.initialize();
         PerfumerItemsClient.register();
         BomberDroneClient.initialize();
+        // Planted timed-bomb traps arrive privately to trap viewers. / 已埋设的定时炸弹陷阱只私下发给陷阱观察者。
+        TimedBombMarkerClientStore.register();
         CoronerClientHooks.register();
         CorruptCopClientHooks.register();
         DemonHunterSniffClientHooks.register();
@@ -190,6 +193,7 @@ public final class SparkStrengthClient implements ClientModInitializer {
         BlackoutSightClient.reset();
         KillerTeamEconomyClientHooks.reset();
         ShadowJesterShowdownMusicController.reset();
+        TimedBombMarkerClientStore.clear();
         // A stale snapshot would otherwise drive tablet outlines on the next server.
         // 否则过期快照会在下一个服务器上继续驱动平板描边。
         TabletClientState.reset();

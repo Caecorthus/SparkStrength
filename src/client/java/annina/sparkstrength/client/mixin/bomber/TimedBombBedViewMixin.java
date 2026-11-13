@@ -1,9 +1,8 @@
 package annina.sparkstrength.client.mixin.bomber;
 
-import annina.sparkstrength.role.bomber.TimedBombTrapHolder;
-import annina.sparkstrength.role.coroner.CoronerService;
+import annina.sparkstrength.client.role.bomber.TimedBombMarkerClientStore;
+import annina.sparkstrength.role.bomber.BomberTrapService;
 import dev.doctor4t.wathe.block_entity.TrimmedBedBlockEntity;
-import dev.doctor4t.wathe.cca.GameWorldComponent;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.client.MinecraftClient;
@@ -17,6 +16,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * 床中预埋定时炸弹的客户端提示粒子。
+ *
+ * <p>Trap positions come from {@link TimedBombMarkerClientStore}, filled only for trap viewers; the bed's client NBT
+ * no longer carries the owner. 陷阱位置来自 TimedBombMarkerClientStore，只为陷阱观察者填充；床的客户端 NBT 不再携带埋设者。</p>
  */
 @Mixin(TrimmedBedBlockEntity.class)
 public abstract class TimedBombBedViewMixin {
@@ -28,7 +30,7 @@ public abstract class TimedBombBedViewMixin {
             BlockEntity blockEntity,
             CallbackInfo ci
     ) {
-        if (!(blockEntity instanceof TimedBombTrapHolder trap) || !trap.sparkstrength$hasTimedBombTrap()) {
+        if (!TimedBombMarkerClientStore.contains(world, pos)) {
             return;
         }
         if (!sparkstrength$canSeeTimedBombTrap(world)) {
@@ -55,7 +57,6 @@ public abstract class TimedBombBedViewMixin {
             return false;
         }
 
-        GameWorldComponent gameWorld = GameWorldComponent.KEY.get(world);
-        return gameWorld.canUseKillerFeatures(client.player) || CoronerService.hasBomberDisguise(client.player);
+        return BomberTrapService.seesTimedBombTraps(client.player);
     }
 }

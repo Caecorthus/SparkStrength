@@ -143,7 +143,8 @@ final class TabletChannelSwitcher {
         }
         // Only hops between faction networks wait; the public channel is always free to join or leave.
         // 只有在阵营网络之间切换需要等待；公共频道随时可以进出。
-        if (snapshot.channelSwitchCooldownSeconds() > 0 && snapshot.cooldownBlockedChannels().contains(channel)) {
+        if (snapshot.channelSwitchCooldownSeconds(TabletClientState.worldTime()) > 0
+                && snapshot.cooldownBlockedChannels().contains(channel)) {
             return SwitchState.COOLDOWN;
         }
         return SwitchState.JOIN;
@@ -176,10 +177,10 @@ final class TabletChannelSwitcher {
         if (snapshot.channelLocked()) {
             return new SwitcherHint(Text.translatable(KEY + "channel.hint.meeting"), true);
         }
-        if (allowed.size() > 1 && snapshot.channelSwitchCooldownSeconds() > 0
+        if (allowed.size() > 1 && snapshot.channelSwitchCooldownSeconds(TabletClientState.worldTime()) > 0
                 && !snapshot.cooldownBlockedChannels().isEmpty()) {
             return new SwitcherHint(Text.translatable(KEY + "channel.hint.cooldown",
-                    snapshot.channelSwitchCooldownSeconds()), false);
+                    snapshot.channelSwitchCooldownSeconds(TabletClientState.worldTime())), false);
         }
         if (allowed.size() <= 1) {
             return new SwitcherHint(Text.translatable(KEY + "channel.hint.identity"), false);
@@ -342,7 +343,8 @@ final class TabletChannelSwitcher {
                     (canvas, x, y, size, color) -> TabletIcons.spinner(canvas, x + size / 2f, y + size / 2f, size / 2f, now, color),
                     accent.pale());
             case COOLDOWN -> screen.paintPill(chipRight, row.centerY(), maxChip,
-                    Text.translatable(KEY + "channel.cooldown", snapshot.channelSwitchCooldownSeconds()).getString(),
+                    Text.translatable(KEY + "channel.cooldown",
+                            snapshot.channelSwitchCooldownSeconds(TabletClientState.worldTime())).getString(),
                     TabletTheme.TEXT_2, TabletTheme.FAINT, 0, TabletIcons::clock, TabletTheme.TEXT_2);
             case MEETING_LOCKED -> screen.paintPill(chipRight, row.centerY(), maxChip,
                     Text.translatable(KEY + "channel.meeting").getString(),

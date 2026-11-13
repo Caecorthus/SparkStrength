@@ -2,6 +2,7 @@ package annina.sparkstrength.network;
 
 import annina.sparkstrength.network.bandit.BanditRevolverActionC2SPayload;
 import annina.sparkstrength.network.bandit.BanditRevolverShootC2SPayload;
+import annina.sparkstrength.network.bomber.TimedBombMarkersPayload;
 import annina.sparkstrength.network.coroner.CoronerMorphC2SPacket;
 import annina.sparkstrength.network.demonhunter.DemonHunterSniffC2SPacket;
 import annina.sparkstrength.network.undercover.UndercoverMaskOffC2SPacket;
@@ -120,6 +121,8 @@ public final class SparkStrengthPackets {
         PayloadTypeRegistry.playS2C().register(OpenTabletScreenS2CPacket.ID, OpenTabletScreenS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(TabletChatNotifyS2CPacket.ID, TabletChatNotifyS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncTabletSnapshotS2CPacket.ID, SyncTabletSnapshotS2CPacket.CODEC);
+        // Planted timed-bomb traps, sent to trap viewers only (TimedBombMarkerSync). / 已埋设的定时炸弹陷阱，只发给陷阱观察者。
+        PayloadTypeRegistry.playS2C().register(TimedBombMarkersPayload.ID, TimedBombMarkersPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncBlackoutSightS2CPacket.ID, SyncBlackoutSightS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(SyncKillerTeamEconomyS2CPacket.ID, SyncKillerTeamEconomyS2CPacket.CODEC);
         PayloadTypeRegistry.playS2C().register(

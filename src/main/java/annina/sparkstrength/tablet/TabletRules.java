@@ -50,6 +50,17 @@ public final class TabletRules {
         return (int) Math.ceil(Math.max(0, ticks) / 20.0);
     }
 
+    /**
+     * Snapshot form of a countdown (v10): the world tick at which {@code remainingTicks} run out, 0 when none is
+     * running. It stays the same while the countdown runs, so the snapshot only changes on real state changes; the
+     * client derives the seconds ({@code TabletSnapshot#secondsUntil}).
+     * 倒计时在快照中的形式（v10）：剩余 remainingTicks 用完时的世界 tick，没有倒计时时为 0。倒计时进行期间它保持不变，因此快照只在
+     * 真实状态变化时改变；秒数由客户端计算（TabletSnapshot#secondsUntil）。
+     */
+    public static long deadlineTick(long now, int remainingTicks) {
+        return remainingTicks > 0 ? now + remainingTicks : 0L;
+    }
+
     public static int ticksFromSeconds(int seconds) {
         return GameConstants.getInTicks(seconds / 60, seconds % 60);
     }

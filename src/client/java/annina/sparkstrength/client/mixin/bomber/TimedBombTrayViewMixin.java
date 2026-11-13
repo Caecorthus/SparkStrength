@@ -1,9 +1,8 @@
 package annina.sparkstrength.client.mixin.bomber;
 
-import annina.sparkstrength.role.bomber.TimedBombTrapHolder;
-import annina.sparkstrength.role.coroner.CoronerService;
+import annina.sparkstrength.client.role.bomber.TimedBombMarkerClientStore;
+import annina.sparkstrength.role.bomber.BomberTrapService;
 import dev.doctor4t.wathe.block_entity.BeveragePlateBlockEntity;
-import dev.doctor4t.wathe.cca.GameWorldComponent;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.client.MinecraftClient;
@@ -19,7 +18,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * 托盘中预埋定时炸弹的客户端提示粒子。
  *
  * <p>粒子只在本客户端玩家能使用杀手阵营特性，或验尸官当前伪装成炸弹客时显示；
- * 方块实体 NBT 负责同步真实陷阱状态，客户端只负责“能不能看见”。</p>
+ * 陷阱位置由服务端只发给这些观察者（TimedBombMarkerClientStore），客户端只负责“能不能看见”。</p>
+ *
+ * <p>Trap positions come from {@link TimedBombMarkerClientStore}, filled only for trap viewers; the tray's client NBT
+ * no longer carries the owner. 方块实体的客户端 NBT 不再携带埋设者。</p>
  */
 @Mixin(BeveragePlateBlockEntity.class)
 public abstract class TimedBombTrayViewMixin {
@@ -31,7 +33,7 @@ public abstract class TimedBombTrayViewMixin {
             BlockEntity blockEntity,
             CallbackInfo ci
     ) {
-        if (!(blockEntity instanceof TimedBombTrapHolder trap) || !trap.sparkstrength$hasTimedBombTrap()) {
+        if (!TimedBombMarkerClientStore.contains(world, pos)) {
             return;
         }
         if (!sparkstrength$canSeeTimedBombTrap(world)) {
@@ -58,7 +60,6 @@ public abstract class TimedBombTrayViewMixin {
             return false;
         }
 
-        GameWorldComponent gameWorld = GameWorldComponent.KEY.get(world);
-        return gameWorld.canUseKillerFeatures(client.player) || CoronerService.hasBomberDisguise(client.player);
+        return BomberTrapService.seesTimedBombTraps(client.player);
     }
 }

@@ -31,6 +31,7 @@ import annina.sparkstrength.role.economy.KillerTeamEconomyService;
 import annina.sparkstrength.role.engineer.EngineerCaptureDeviceService;
 import annina.sparkstrength.role.engineer.EngineerSabotageRepairService;
 import annina.sparkstrength.role.engineer.EngineerShopService;
+import annina.sparkstrength.role.engineer.EngineerStunGuards;
 import annina.sparkstrength.role.morphling.MorphlingService;
 import annina.sparkstrength.role.morphling.MorphlingShopService;
 import annina.sparkstrength.role.partyanimal.PartyBalloonService;
@@ -108,6 +109,8 @@ public final class SparkStrengthEvents {
         KillerTeamEconomyService.register();
         EngineerSabotageRepairService.register();
         EngineerShopService.register();
+        // Server-side interaction lock of the capture stun (also runs on the client). / 捕捉定身的服务端交互锁（客户端同样运行）。
+        EngineerStunGuards.register();
         MorphlingService.register();
         MorphlingShopService.register();
         // Party Animal: the Party Balloon (25), right after Wathe's firecracker. / 派对狂：派对气球（25），紧跟在鞭炮之后。

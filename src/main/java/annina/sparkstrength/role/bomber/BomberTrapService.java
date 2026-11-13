@@ -69,6 +69,31 @@ public final class BomberTrapService {
         });
         ServerWorldEvents.UNLOAD.register((server, world) -> TRACKED_TRAPS.remove(world.getRegistryKey()));
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> TRACKED_TRAPS.clear());
+        TimedBombMarkerSync.register();
+    }
+
+    /**
+     * Who may see planted traps: killer-feature roles and a Coroner disguised as the Bomber. The client's warning smoke
+     * ({@code TimedBomb*ViewMixin}) and the server's private marker delivery ({@link TimedBombMarkerSync}) both ask this.
+     * 谁能看到已埋设的陷阱：拥有杀手功能的职业，以及伪装成炸弹客的验尸官。客户端的警示烟雾（TimedBomb*ViewMixin）与服务端的
+     * 私有标记下发（TimedBombMarkerSync）都使用这一判断。
+     */
+    public static boolean seesTimedBombTraps(@Nullable PlayerEntity player) {
+        return player != null
+                && (GameWorldComponent.KEY.get(player.getWorld()).canUseKillerFeatures(player)
+                || CoronerService.hasBomberDisguise(player));
+    }
+
+    /** Trap positions remembered for this world (a copy). / 本世界记录的陷阱位置（副本）。 */
+    public static Set<BlockPos> trackedTraps(World world) {
+        Set<BlockPos> positions = world == null ? null : TRACKED_TRAPS.get(world.getRegistryKey());
+        return positions == null ? Set.of() : Set.copyOf(positions);
+    }
+
+    /** Whether any trap is remembered for this world, without copying. / 本世界是否记录了任何陷阱（不复制）。 */
+    public static boolean hasTrackedTraps(World world) {
+        Set<BlockPos> positions = world == null ? null : TRACKED_TRAPS.get(world.getRegistryKey());
+        return positions != null && !positions.isEmpty();
     }
 
     public static boolean canPlantTimedBomb(PlayerEntity player) {

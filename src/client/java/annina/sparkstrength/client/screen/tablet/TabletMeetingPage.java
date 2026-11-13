@@ -138,7 +138,8 @@ final class TabletMeetingPage implements TabletPage {
         TabletSnapshot.Meeting meeting = snapshot.meeting();
         return meeting.active()
                 ? screen.paintPill(right, centerY, maxWidth,
-                Text.translatable(KEY + "meeting.timer", meeting.remainingSeconds()).getString(),
+                Text.translatable(KEY + "meeting.timer",
+                        meeting.remainingSeconds(TabletClientState.worldTime())).getString(),
                 TabletTheme.KILLER.pale(), TabletTheme.withAlpha(TabletTheme.DANGER, 0x33), 0,
                 (canvas, x, y, size, color) -> screen.paintPulseDot(x + size / 2f, y + size / 2f, 3f, color, now),
                 TabletTheme.DANGER)
@@ -168,11 +169,12 @@ final class TabletMeetingPage implements TabletPage {
         TabletSnapshot.Meeting meeting = snapshot.meeting();
         if (!meeting.active()) {
             TabletMeetingPainter.meetingHero(c, textRenderer, layout.bodyNoFooter(), heroState(snapshot),
-                    snapshot.cooldownSeconds(), snapshot.localMeetingCallsRemaining(), now);
+                    snapshot.meetingCooldownSeconds(TabletClientState.worldTime()), snapshot.localMeetingCallsRemaining(), now);
             return;
         }
         Rect list = layout.list();
-        TabletMeetingPainter.meetingProgress(c, list.x(), list.y(), list.width(), meeting.remainingSeconds());
+        TabletMeetingPainter.meetingProgress(c, list.x(), list.y(), list.width(),
+                meeting.remainingSeconds(TabletClientState.worldTime()));
         Grid grid = voteGrid();
         TabletSectionPainter.scrollThumb(c, screen.scrollTrack(grid.area()), screen.session().meetingFirstRow(),
                 grid.visibleRows(), grid.totalRows(meeting.targets().size()));
@@ -225,7 +227,7 @@ final class TabletMeetingPage implements TabletPage {
     }
 
     private static HeroState heroState(TabletSnapshot snapshot) {
-        if (snapshot.cooldownSeconds() > 0) {
+        if (snapshot.meetingCooldownSeconds(TabletClientState.worldTime()) > 0) {
             return HeroState.COOLDOWN;
         }
         return canCallMeeting(snapshot) ? HeroState.READY : HeroState.DISABLED;
@@ -264,7 +266,7 @@ final class TabletMeetingPage implements TabletPage {
 
     private static boolean canCallMeeting(TabletSnapshot snapshot) {
         return snapshot.localMeetingParticipant()
-                && snapshot.cooldownSeconds() <= 0
+                && snapshot.meetingCooldownSeconds(TabletClientState.worldTime()) <= 0
                 && snapshot.localMeetingCallsRemaining() > 0;
     }
 
