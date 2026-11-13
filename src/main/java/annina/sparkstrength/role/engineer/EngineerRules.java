@@ -47,4 +47,16 @@ public final class EngineerRules {
     public static boolean reportsToOwner(@Nullable Identifier placedAs, @Nullable Identifier currentRole) {
         return placedAs == null || placedAs.equals(currentRole);
     }
+
+    /**
+     * Who may see a placed capture device: its owner, anyone not alive in the round, and spectators or creative players.
+     * The server tracks the entity only to these viewers ({@code CaptureDeviceEntity#canBeSpectated}) and the client
+     * renderer draws it only for them, so a living non-owner's client never receives the trap at all.
+     * 谁能看见已放置的捕捉装置：放置者本人、不在局内存活的人，以及旁观或创造模式玩家。服务端只向这些观看者追踪该实体
+     * （CaptureDeviceEntity#canBeSpectated），客户端渲染器也只为他们绘制，因此局内存活的非放置者客户端根本收不到这个陷阱。
+     */
+    public static boolean deviceVisibleTo(boolean viewerIsOwner, boolean viewerPlayingAndAlive,
+                                          boolean viewerSpectatingOrCreative) {
+        return viewerIsOwner || !viewerPlayingAndAlive || viewerSpectatingOrCreative;
+    }
 }

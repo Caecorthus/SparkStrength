@@ -33,6 +33,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
 
@@ -73,6 +74,9 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
     // 重启后公共频道直接清空。
     private final HashMap<UUID, ArrayDeque<PublicMessage>> publicInboxes = new HashMap<>();
     private final HashMap<UUID, Long> snapshotRequestTicks = new HashMap<>();
+    // Action rate gate (TabletRules#acceptAction): round-scoped and in-memory only (never NBT).
+    // 操作限流闸门（TabletRules#acceptAction）：仅本局内存状态（绝不写入 NBT）。
+    private final HashMap<UUID, Long> actionBudgetTicks = new HashMap<>();
     private final LinkedHashSet<UUID> syncedViewers = new LinkedHashSet<>();
     // Identity links and pending requests are round-scoped and never persisted: a restart fails closed to "???".
     // 身份互认与待处理请求仅限本局且绝不持久化：重启后安全回退为“???”。
@@ -181,6 +185,16 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
             return false;
         }
         snapshotRequestTicks.put(playerUuid, currentTick);
+        return true;
+    }
+
+    /** Spends one state-changing action from the player's budget; false when it is overdrawn. / 从玩家预算中扣除一次改变状态的操作；预算透支时返回 false。 */
+    public boolean tryAcceptAction(UUID playerUuid, long currentTick) {
+        OptionalLong next = TabletRules.acceptAction(actionBudgetTicks.getOrDefault(playerUuid, Long.MIN_VALUE), currentTick);
+        if (next.isEmpty()) {
+            return false;
+        }
+        actionBudgetTicks.put(playerUuid, next.getAsLong());
         return true;
     }
 
@@ -404,6 +418,7 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
         lastFactionChannels.clear();
         publicInboxes.clear();
         snapshotRequestTicks.clear();
+        actionBudgetTicks.clear();
         identityLinks.clear();
         linkRequests.clear();
         lastLinkGestures.clear();
@@ -685,6 +700,16 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
 
         public Optional<UUID> voteFor(UUID voterUuid) {
             return Optional.ofNullable(votes.get(voterUuid));
+        }
+
+        /**
+         * Whether {@link #castVote} with {@code targetUuid} (null = abstain) would leave this voter's ballot unchanged.
+         * 以 targetUuid（null 表示弃权）调用 castVote 是否不会改变该投票者的选票。
+         */
+        public boolean hasBallot(UUID voterUuid, @Nullable UUID targetUuid) {
+            return targetUuid == null
+                    ? abstentions.contains(voterUuid) && !votes.containsKey(voterUuid)
+                    : targetUuid.equals(votes.get(voterUuid)) && !abstentions.contains(voterUuid);
         }
 
         public void castVote(UUID voterUuid, @Nullable UUID targetUuid) {

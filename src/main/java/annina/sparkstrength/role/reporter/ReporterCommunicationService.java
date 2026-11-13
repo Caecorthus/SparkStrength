@@ -94,6 +94,7 @@ public final class ReporterCommunicationService {
 
         component.setCooldownTicks(ReporterCommunicationConstants.CONNECTION_FAILURE_COOLDOWN_TICKS);
         reporter.playSoundToPlayer(SoundEvents.BLOCK_BEACON_DEACTIVATE, SoundCategory.PLAYERS, 1.0f, 1.0f);
+        boolean recordable = isRoundParticipant(gameWorld, firstUuid) && isRoundParticipant(gameWorld, secondUuid);
 
         NbtCompound extra = new NbtCompound();
         writeConnectionExtra(extra, firstUuid, secondUuid, firstName, secondName);
@@ -103,12 +104,14 @@ public final class ReporterCommunicationService {
                             .withColor(Noellesroles.REPORTER.color()),
                     true
             );
-            GameRecordManager.recordGlobalEvent(
-                    reporter.getServerWorld(),
-                    SparkStrengthReplayFormatters.REPORTER_CONNECTION_FAILED_BOTH_DEAD,
-                    reporter,
-                    extra
-            );
+            if (recordable) {
+                GameRecordManager.recordGlobalEvent(
+                        reporter.getServerWorld(),
+                        SparkStrengthReplayFormatters.REPORTER_CONNECTION_FAILED_BOTH_DEAD,
+                        reporter,
+                        extra
+                );
+            }
             return;
         }
 
@@ -121,12 +124,14 @@ public final class ReporterCommunicationService {
                         .withColor(Noellesroles.REPORTER.color()),
                 true
         );
-        GameRecordManager.recordGlobalEvent(
-                reporter.getServerWorld(),
-                SparkStrengthReplayFormatters.REPORTER_CONNECTION_FAILED_ONE_DEAD,
-                reporter,
-                extra
-        );
+        if (recordable) {
+            GameRecordManager.recordGlobalEvent(
+                    reporter.getServerWorld(),
+                    SparkStrengthReplayFormatters.REPORTER_CONNECTION_FAILED_ONE_DEAD,
+                    reporter,
+                    extra
+            );
+        }
     }
 
     private static void handleBroadcast(
@@ -166,6 +171,9 @@ public final class ReporterCommunicationService {
         );
         reporter.playSoundToPlayer(SoundEvents.BLOCK_BEACON_DEACTIVATE, SoundCategory.PLAYERS, 1.0f, 1.0f);
 
+        if (!isRoundParticipant(gameWorld, targetUuid)) {
+            return;
+        }
         NbtCompound extra = new NbtCompound();
         writeBroadcastExtra(extra, targetUuid, targetName);
         extra.putUuid("dead_player", targetUuid);
@@ -193,6 +201,17 @@ public final class ReporterCommunicationService {
 
     public static boolean isInGameOnlinePlayer(@NotNull ServerPlayerEntity viewer, @NotNull ServerPlayerEntity player) {
         return GameWorldComponent.KEY.get(viewer.getWorld()).hasAnyRole(player.getUuid());
+    }
+
+    /**
+     * Replay integrity: the picker offers every online player (lobby spectators included) and the endpoints are raw
+     * client UUIDs, so a failure involving someone who never had a role this round keeps its reply, sound and cooldown
+     * but is not written to the match replay, which would otherwise call a non-participant dead.
+     * 回放完整性：选择界面列出所有在线玩家（包括大厅旁观者），端点是客户端原样提交的 UUID；因此涉及本局从未获得身份者的失败
+     * 照常提示、播放音效并进入冷却，但不写入对局回放，否则回放会把非参与者记为死亡。
+     */
+    private static boolean isRoundParticipant(@NotNull GameWorldComponent gameWorld, @NotNull UUID uuid) {
+        return gameWorld.getGameProfiles().containsKey(uuid);
     }
 
     private static void writeConnectionExtra(

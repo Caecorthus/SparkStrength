@@ -88,7 +88,9 @@ public final class SpiritPossessionClient {
         ClientPlayNetworking.registerGlobalReceiver(SpiritPossessionStateS2CPacket.ID,
                 (payload, context) -> context.client().execute(() -> onState(context.client(), payload)));
         ClientTickEvents.END_CLIENT_TICK.register(SpiritPossessionClient::tick);
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> reset());
+        // DISCONNECT may fire on the Netty thread; the session fields belong to the client thread. JOIN already runs there.
+        // DISCONNECT 可能在 Netty 线程上触发；会话字段归客户端线程所有。JOIN 本就在客户端线程上执行。
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(SpiritPossessionClient::reset));
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> reset());
         if (!FabricLoader.getInstance().isModLoaded("sparkwitch")) {
             // Wraiths only exist with SparkWitch. / 冤魂只在安装 SparkWitch 时存在。
