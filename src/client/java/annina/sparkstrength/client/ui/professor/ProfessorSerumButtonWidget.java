@@ -1,5 +1,6 @@
 package annina.sparkstrength.client.ui.professor;
 
+import annina.sparkstrength.client.ui.common.InventoryWidgetPaint;
 import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
 import annina.sparkstrength.network.professor.ProfessorRemoteFeedC2SPacket;
 import annina.sparkstrength.role.professor.ProfessorSerumType;
@@ -10,7 +11,6 @@ import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.render.RenderLayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
 
@@ -90,11 +90,7 @@ public class ProfessorSerumButtonWidget extends ButtonWidget {
             case SEDATIVE -> 0x90FFD84A;
             case TRUTH -> 0x90FFFFFF;
         };
-        int x = getX();
-        int y = getY();
-        context.fillGradient(RenderLayer.getGuiOverlay(), x, y, x + 16, y + 14, color, color, 0);
-        context.fillGradient(RenderLayer.getGuiOverlay(), x, y + 14, x + 15, y + 15, color, color, 0);
-        context.fillGradient(RenderLayer.getGuiOverlay(), x, y + 15, x + 14, y + 16, color, color, 0);
+        InventoryWidgetPaint.highlight(context, getX(), getY(), color);
     }
 
     @Override

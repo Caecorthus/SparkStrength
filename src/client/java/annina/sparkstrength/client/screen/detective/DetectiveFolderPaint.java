@@ -1,6 +1,8 @@
 package annina.sparkstrength.client.screen.detective;
 
 import annina.sparkstrength.client.ui.common.PlayerHeadTextureHelper;
+import annina.sparkstrength.client.ui.common.UiColors;
+import annina.sparkstrength.client.ui.common.UiText;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.PlayerSkinDrawer;
@@ -46,7 +48,6 @@ final class DetectiveFolderPaint {
     private static final int STICKY_TEXT_TOP = 5;
     private static final int STICKY_TAPE_RISE = 3;
     private static final double MIN_CONTRAST = 3.0D;
-    private static final int CONTRAST_STEPS = 20;
     // Fixed uuid so an unknown victim always gets the same default skin. / 固定 UUID，未知受害人始终使用同一默认皮肤。
     private static final UUID UNKNOWN_SKIN_UUID = new UUID(0L, 0L);
 
@@ -102,7 +103,7 @@ final class DetectiveFolderPaint {
         context.fill(headX, headY, headX + headSize, headY + headSize, color);
         int shoulderY = headY + headSize + 1;
         context.fill(x + 2, shoulderY, x + width - 2, y + height, color);
-        int ink = contrast(INK_LIGHT, color) >= contrast(INK_DARK, color) ? INK_LIGHT : INK_DARK;
+        int ink = UiColors.contrast(INK_LIGHT, color) >= UiColors.contrast(INK_DARK, color) ? INK_LIGHT : INK_DARK;
         context.drawText(renderer, "?", x + 3, y + height - renderer.fontHeight, ink, false);
     }
 
@@ -240,6 +241,67 @@ final class DetectiveFolderPaint {
         });
     }
 
+    /**
+     * Colours of a modal picker's frame and header; each picker keeps its own palette.
+     * 选择浮层边框与标题栏的配色；每个选择器自带调色板。
+     */
+    record PickerChrome(int panel, int edge, int title, int divider, int button, int buttonHover) {
+    }
+
+    /**
+     * Frame and header of a modal picker over the folder: drop shadow, panel, border, trimmed title, the "clear"
+     * button (label dimmed while nothing is picked) and the header divider. The caller draws its scrim before and its
+     * grid after.
+     * 文件夹上方选择浮层的边框与标题栏：投影、面板、边框、截断后的标题、“清除”按钮（未选择时文字变淡）以及标题分隔线。
+     * 调用方先画遮罩，之后再画网格。
+     */
+    static void drawPickerFrame(DrawContext context, TextRenderer renderer, DetectiveFolderLayout.Rect box,
+                                DetectiveFolderLayout.Rect clear, int headerHeight, String title, boolean hasPick,
+                                int mouseX, int mouseY, PickerChrome chrome) {
+        context.fill(box.x() + 3, box.y() + 3, box.right() + 3, box.bottom() + 3, 0x66000000);
+        context.fill(box.x(), box.y(), box.right(), box.bottom(), chrome.panel());
+        context.drawBorder(box.x(), box.y(), box.width(), box.height(), chrome.edge());
+
+        context.drawText(
+                renderer,
+                UiText.trim(renderer, title, Math.max(0, clear.x() - box.x() - 14)),
+                box.x() + 8,
+                box.y() + 6,
+                chrome.title(),
+                false
+        );
+        boolean clearHovered = clear.contains(mouseX, mouseY);
+        context.fill(clear.x(), clear.y(), clear.right(), clear.bottom(), clearHovered ? chrome.buttonHover() : chrome.button());
+        context.drawBorder(clear.x(), clear.y(), clear.width(), clear.height(), clearHovered ? chrome.edge() : chrome.divider());
+        String clearLabel = Text.translatable("screen.sparkstrength.detective_folder.killer_clear").getString();
+        context.drawText(
+                renderer,
+                clearLabel,
+                clear.x() + (clear.width() - renderer.getWidth(clearLabel)) / 2,
+                clear.y() + 3,
+                hasPick ? chrome.title() : UiColors.withAlpha(chrome.title(), 0x99),
+                false
+        );
+        context.fill(box.x() + 6, box.y() + headerHeight - 1, box.right() - 6, box.y() + headerHeight, chrome.divider());
+    }
+
+    /**
+     * Proportional scrollbar for a pixel-scrolled {@code view}, drawn only when the content overflows it: a full-height
+     * track at {@code trackX} and a thumb (at least 8 px) placed by {@code scroll}.
+     * 像素滚动视图的比例滚动条，仅在内容溢出时绘制：位于 trackX 的整高轨道，以及按 scroll 定位的滑块（至少 8 像素）。
+     */
+    static void drawScrollbar(DrawContext context, DetectiveFolderLayout.Rect view, int trackX, int width,
+                              int contentHeight, double scroll, int trackColor, int thumbColor) {
+        if (contentHeight <= view.height()) {
+            return;
+        }
+        context.fill(trackX, view.y(), trackX + width, view.bottom(), trackColor);
+        int thumbHeight = Math.max(8, view.height() * view.height() / contentHeight);
+        int maxScroll = contentHeight - view.height();
+        int thumbY = view.y() + (int) Math.round((view.height() - thumbHeight) * (scroll / Math.max(1, maxScroll)));
+        context.fill(trackX, thumbY, trackX + width, thumbY + thumbHeight, thumbColor);
+    }
+
     /** Runs {@code draw} rotated around (centerX, centerY). / 以 (centerX, centerY) 为中心旋转绘制。 */
     static void rotated(DrawContext context, float centerX, float centerY, float degrees, Runnable draw) {
         MatrixStack matrices = context.getMatrices();
@@ -251,62 +313,12 @@ final class DetectiveFolderPaint {
         matrices.pop();
     }
 
-    static String trim(TextRenderer renderer, String value, int width) {
-        if (renderer.getWidth(value) <= width) {
-            return value;
-        }
-        String ellipsis = "…";
-        return renderer.trimToWidth(value, Math.max(0, width - renderer.getWidth(ellipsis))) + ellipsis;
-    }
-
-    static int withAlpha(int color, int alpha) {
-        return (color & 0x00FFFFFF) | ((alpha & 0xFF) << 24);
-    }
-
-    static int opaque(int rgb) {
-        return 0xFF000000 | (rgb & 0x00FFFFFF);
-    }
-
     /**
      * Role colour made readable on {@code background}: kept as-is at WCAG contrast >= 3:1, otherwise mixed toward
      * white (toward black on a light background) in small steps, keeping the hue, until it reaches 3:1.
      * 让身份颜色在给定底色上可读：WCAG 对比度不低于 3:1 时原样返回，否则逐步向白色混合（浅色底则向黑色），保持色相直到达到 3:1。
      */
     static int readableOn(int rgb, int background) {
-        int base = opaque(rgb);
-        if (contrast(base, background) >= MIN_CONTRAST) {
-            return base;
-        }
-        int target = luminance(background) < 0.18D ? 0xFFFFFFFF : 0xFF000000;
-        for (int step = 1; step < CONTRAST_STEPS; step++) {
-            int candidate = mix(base, target, step / (float) CONTRAST_STEPS);
-            if (contrast(candidate, background) >= MIN_CONTRAST) {
-                return candidate;
-            }
-        }
-        return target;
-    }
-
-    /** WCAG contrast ratio of two opaque colours (1..21). / 两种不透明颜色的 WCAG 对比度（1 到 21）。 */
-    static double contrast(int first, int second) {
-        double a = luminance(first);
-        double b = luminance(second);
-        return (Math.max(a, b) + 0.05D) / (Math.min(a, b) + 0.05D);
-    }
-
-    private static double luminance(int color) {
-        return 0.2126D * linear(color >> 16) + 0.7152D * linear(color >> 8) + 0.0722D * linear(color);
-    }
-
-    private static double linear(int channel) {
-        double value = (channel & 0xFF) / 255.0D;
-        return value <= 0.03928D ? value / 12.92D : Math.pow((value + 0.055D) / 1.055D, 2.4D);
-    }
-
-    private static int mix(int from, int to, float amount) {
-        int red = Math.round(((from >> 16) & 0xFF) + (((to >> 16) & 0xFF) - ((from >> 16) & 0xFF)) * amount);
-        int green = Math.round(((from >> 8) & 0xFF) + (((to >> 8) & 0xFF) - ((from >> 8) & 0xFF)) * amount);
-        int blue = Math.round((from & 0xFF) + ((to & 0xFF) - (from & 0xFF)) * amount);
-        return 0xFF000000 | (red << 16) | (green << 8) | blue;
+        return UiColors.readableOn(rgb, background, MIN_CONTRAST);
     }
 }

@@ -84,7 +84,6 @@ public abstract class ProfessorInventoryScreenMixin extends LimitedHandledScreen
         for (UUID targetUuid : playerUuids) {
             PlayerListEntry playerListEntry = client.player.networkHandler.getPlayerListEntry(targetUuid);
             ProfessorRemoteFeedPlayerWidget child = new ProfessorRemoteFeedPlayerWidget(
-                    (LimitedInventoryScreen) (Object) this,
                     0,
                     y,
                     targetUuid,

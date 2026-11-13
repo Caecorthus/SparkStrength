@@ -1,17 +1,14 @@
 package annina.sparkstrength.client.ui.professor;
 
-import dev.doctor4t.wathe.client.gui.screen.ingame.LimitedInventoryScreen;
+import annina.sparkstrength.client.ui.common.InventoryWidgetPaint;
+import annina.sparkstrength.client.ui.common.PlayerHeadTextureHelper;
 import dev.doctor4t.wathe.util.ShopEntry;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.PlayerSkinDrawer;
 import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.network.PlayerListEntry;
-import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.util.DefaultSkinHelper;
-import net.minecraft.client.util.SkinTextures;
 import net.minecraft.text.Text;
 import org.jetbrains.annotations.Nullable;
 
@@ -29,7 +26,6 @@ public class ProfessorRemoteFeedPlayerWidget extends ButtonWidget {
     private final PlayerListEntry targetPlayerEntry;
 
     public ProfessorRemoteFeedPlayerWidget(
-            LimitedInventoryScreen screen,
             int x,
             int y,
             UUID targetUuid,
@@ -41,17 +37,15 @@ public class ProfessorRemoteFeedPlayerWidget extends ButtonWidget {
         this.targetPlayerEntry = targetPlayerEntry;
     }
 
-    public UUID targetUuid() {
-        return targetUuid;
-    }
-
     @Override
     protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
         context.drawGuiTexture(ShopEntry.Type.TOOL.getTexture(), getX() - 7, getY() - 7, 30, 30);
-        PlayerSkinDrawer.draw(context, resolveSkinTextures().texture(), getX(), getY(), 16);
+        PlayerSkinDrawer.draw(context,
+                PlayerHeadTextureHelper.resolveOnlineOrDefaultSkinTextures(targetUuid, targetPlayerEntry).texture(),
+                getX(), getY(), 16);
 
         if (isHovered()) {
-            drawHighlight(context);
+            InventoryWidgetPaint.highlight(context, getX(), getY(), 0x907FD8FF);
             Text name = targetPlayerEntry != null
                     ? Text.literal(targetPlayerEntry.getProfile().getName())
                     : Text.translatable("ui.sparkstrength.professor.unknown_player");
@@ -63,31 +57,6 @@ public class ProfessorRemoteFeedPlayerWidget extends ButtonWidget {
                     getY() - 9
             );
         }
-    }
-
-    private SkinTextures resolveSkinTextures() {
-        if (targetPlayerEntry != null) {
-            return targetPlayerEntry.getSkinTextures();
-        }
-
-        ClientPlayerEntity localPlayer = MinecraftClient.getInstance().player;
-        if (localPlayer != null && localPlayer.networkHandler != null) {
-            PlayerListEntry entry = localPlayer.networkHandler.getPlayerListEntry(targetUuid);
-            if (entry != null) {
-                return entry.getSkinTextures();
-            }
-        }
-
-        return DefaultSkinHelper.getSkinTextures(targetUuid);
-    }
-
-    private void drawHighlight(DrawContext context) {
-        int color = 0x907FD8FF;
-        int x = getX();
-        int y = getY();
-        context.fillGradient(RenderLayer.getGuiOverlay(), x, y, x + 16, y + 14, color, color, 0);
-        context.fillGradient(RenderLayer.getGuiOverlay(), x, y + 14, x + 15, y + 15, color, color, 0);
-        context.fillGradient(RenderLayer.getGuiOverlay(), x, y + 15, x + 14, y + 16, color, color, 0);
     }
 
     @Override

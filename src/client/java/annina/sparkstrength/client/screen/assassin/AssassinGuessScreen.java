@@ -8,6 +8,8 @@ import annina.sparkstrength.client.screen.assassin.AssassinGuessLayout.RoleGrid;
 import annina.sparkstrength.client.ui.common.PlayerHeadTextureHelper;
 import annina.sparkstrength.client.ui.common.PlayerNameResolver;
 import annina.sparkstrength.client.ui.common.RoleFactionBands;
+import annina.sparkstrength.client.ui.common.UiColors;
+import annina.sparkstrength.client.ui.common.UiText;
 import annina.sparkstrength.component.assassin.AssassinMisfireComponent;
 import annina.sparkstrength.role.detective.DetectiveCaseRules.RolePickerBand;
 import dev.doctor4t.wathe.api.Role;
@@ -392,9 +394,9 @@ public final class AssassinGuessScreen extends Screen {
         context.fill(top.x(), top.bottom() - 1, top.right(), top.bottom(), AssassinGuessPaint.BAR_EDGE);
         context.fill(bottom.x(), bottom.y(), bottom.right(), bottom.y() + 1, AssassinGuessPaint.BAR_EDGE);
         int textRoom = width - AssassinGuessLayout.MARGIN * 2;
-        drawCentered(context, AssassinGuessPaint.trim(textRenderer, title.getString(), textRoom),
+        drawCentered(context, UiText.trim(textRenderer, title.getString(), textRoom),
                 top.y() + (top.height() - 8) / 2, AssassinGuessPaint.TITLE);
-        drawCentered(context, AssassinGuessPaint.trim(textRenderer, Text.translatable(KEY + "hint").getString(), textRoom),
+        drawCentered(context, UiText.trim(textRenderer, Text.translatable(KEY + "hint").getString(), textRoom),
                 bottom.y() + (bottom.height() - 8) / 2 + 1, AssassinGuessPaint.HINT);
     }
 
@@ -412,7 +414,7 @@ public final class AssassinGuessScreen extends Screen {
 
         Rect list = frame.targetList();
         if (targets.isEmpty()) {
-            String empty = AssassinGuessPaint.trim(textRenderer, Text.translatable(KEY + "no_targets").getString(), list.width() - 4);
+            String empty = UiText.trim(textRenderer, Text.translatable(KEY + "no_targets").getString(), list.width() - 4);
             context.drawText(textRenderer, empty, list.x() + 2, list.y() + 4, AssassinGuessPaint.TEXT_DIM, false);
             return;
         }
@@ -453,7 +455,7 @@ public final class AssassinGuessScreen extends Screen {
 
         int textX = headX + AssassinGuessLayout.HEAD_SIZE + 4;
         int textWidth = Math.max(0, row.right() - 3 - textX);
-        String name = AssassinGuessPaint.trim(textRenderer, target.name(), textWidth);
+        String name = UiText.trim(textRenderer, target.name(), textWidth);
         context.drawText(textRenderer, name, textX, row.y() + AssassinGuessLayout.ROW_NAME_Y, isFocused ? 0xFFFFFFFF : AssassinGuessPaint.TEXT, false);
         String markLine;
         int markColor;
@@ -464,7 +466,7 @@ public final class AssassinGuessScreen extends Screen {
             markLine = Text.translatable(KEY + "unmarked").getString();
             markColor = AssassinGuessPaint.TEXT_FAINT;
         }
-        String visibleMark = AssassinGuessPaint.trim(textRenderer, markLine, textWidth);
+        String visibleMark = UiText.trim(textRenderer, markLine, textWidth);
         context.drawText(textRenderer, visibleMark, textX, row.y() + AssassinGuessLayout.ROW_MARK_Y, markColor, false);
         if (hovered && (!name.equals(target.name()) || !visibleMark.equals(markLine))) {
             tooltip = mark == null ? List.of(Text.literal(target.name())) : List.of(Text.literal(target.name()), Text.literal(markLine));
@@ -477,7 +479,7 @@ public final class AssassinGuessScreen extends Screen {
         Target target = focusedTarget();
         if (target == null) {
             String key = targets.isEmpty() ? "no_targets" : focusLost ? "target_gone" : "pick_target";
-            String line = AssassinGuessPaint.trim(textRenderer, Text.translatable(KEY + key).getString(), header.width() - 2);
+            String line = UiText.trim(textRenderer, Text.translatable(KEY + key).getString(), header.width() - 2);
             context.drawText(textRenderer, line, header.x() + 1, header.y() + (header.height() - 8) / 2,
                     focusLost ? AssassinGuessPaint.STAKE_LETHAL : AssassinGuessPaint.TEXT_DIM, false);
             return;
@@ -487,19 +489,19 @@ public final class AssassinGuessScreen extends Screen {
                 headY, AssassinGuessLayout.HEAD_SIZE);
         int textX = header.x() + AssassinGuessLayout.HEAD_SIZE + 5;
         int textWidth = Math.max(0, header.right() - textX);
-        context.drawText(textRenderer, AssassinGuessPaint.trim(textRenderer, target.name(), textWidth), textX, header.y() + 2,
+        context.drawText(textRenderer, UiText.trim(textRenderer, target.name(), textWidth), textX, header.y() + 2,
                 0xFFFFFFFF, false);
         Role mark = roleById(AssassinGuessNotebook.markOf(target.uuid()));
         int lineY = header.y() + 12;
         if (mark == null) {
-            context.drawText(textRenderer, AssassinGuessPaint.trim(textRenderer, Text.translatable(KEY + "mark_hint").getString(),
+            context.drawText(textRenderer, UiText.trim(textRenderer, Text.translatable(KEY + "mark_hint").getString(),
                     textWidth), textX, lineY, AssassinGuessPaint.TEXT_DIM, false);
             return;
         }
         String prefix = Text.translatable(KEY + "marked").getString();
         context.drawText(textRenderer, prefix, textX, lineY, AssassinGuessPaint.TEXT_DIM, false);
         int nameX = textX + textRenderer.getWidth(prefix);
-        context.drawText(textRenderer, AssassinGuessPaint.trim(textRenderer, RoleFactionBands.roleName(mark).getString(),
+        context.drawText(textRenderer, UiText.trim(textRenderer, RoleFactionBands.roleName(mark).getString(),
                         Math.max(0, header.right() - nameX)), nameX, lineY,
                 AssassinGuessPaint.readableOn(mark.color(), AssassinGuessPaint.PANEL), false);
     }
@@ -546,14 +548,14 @@ public final class AssassinGuessScreen extends Screen {
         context.drawText(textRenderer, countText, countX, y + 1, AssassinGuessPaint.TEXT_DIM, false);
         int ruleX = countX + textRenderer.getWidth(countText) + 4;
         if (ruleX < x + width) {
-            context.fill(ruleX, y + 4, x + width, y + 5, AssassinGuessPaint.withAlpha(accent, 0x55));
+            context.fill(ruleX, y + 4, x + width, y + 5, UiColors.withAlpha(accent, 0x55));
         }
     }
 
     private void drawRoleCell(DrawContext context, RoleOption option, Rect cell, boolean hovered, boolean marked) {
-        int roleColor = AssassinGuessPaint.opaque(option.role().color());
+        int roleColor = UiColors.opaque(option.role().color());
         int fill = marked
-                ? AssassinGuessPaint.mix(AssassinGuessPaint.CELL, roleColor, AssassinGuessPaint.MARK_TINT)
+                ? UiColors.mix(AssassinGuessPaint.CELL, roleColor, AssassinGuessPaint.MARK_TINT)
                 : hovered ? AssassinGuessPaint.CELL_HOVER : AssassinGuessPaint.CELL;
         AssassinGuessPaint.fill(context, cell, fill);
         if (marked) {
@@ -563,7 +565,7 @@ public final class AssassinGuessScreen extends Screen {
         }
         int glyphRoom = marked ? textRenderer.getWidth(MARK_GLYPH) + 3 : 0;
         String name = option.name().getString();
-        String visible = AssassinGuessPaint.trim(textRenderer, name, cell.width() - 7 - glyphRoom);
+        String visible = UiText.trim(textRenderer, name, cell.width() - 7 - glyphRoom);
         int textColor = marked ? 0xFFFFFFFF : AssassinGuessPaint.readableOn(roleColor, fill);
         int textY = cell.y() + (cell.height() - 8) / 2;
         context.drawText(textRenderer, visible, cell.x() + 4, textY, textColor, false);
@@ -597,17 +599,17 @@ public final class AssassinGuessScreen extends Screen {
                 charges.getMaxGuesses());
         int countX = status.x() + 1 + (pipsWidth > 0 ? pipsWidth + 4 : 0);
         String count = Text.translatable(KEY + "guesses", charges.getGuessesRemaining(), charges.getMaxGuesses()).getString();
-        context.drawText(textRenderer, AssassinGuessPaint.trim(textRenderer, count, Math.max(0, status.right() - countX)),
+        context.drawText(textRenderer, UiText.trim(textRenderer, count, Math.max(0, status.right() - countX)),
                 countX, lineY, AssassinGuessPaint.TEXT, false);
         // The stakes read as a coloured tag, gold while a miss is forgiven, red once the next miss kills.
         // 风险提示画成一枚彩色标签：猜错可免死时为金色，下次猜错致命时为红色。
-        String stake = AssassinGuessPaint.trim(textRenderer,
+        String stake = UiText.trim(textRenderer,
                 Text.translatable(KEY + (forgiven ? "stake.forgiven" : "stake.lethal")).getString(),
                 status.width() - AssassinGuessPaint.TAG_PAD * 2 - 2);
         int stakeColor = forgiven ? AssassinGuessPaint.STAKE_FORGIVEN : AssassinGuessPaint.STAKE_LETHAL;
         int tagY = lineY + 10;
         Rect tag = new Rect(status.x(), tagY - 2, textRenderer.getWidth(stake) + AssassinGuessPaint.TAG_PAD * 2 + 2, 11);
-        AssassinGuessPaint.fill(context, tag, AssassinGuessPaint.withAlpha(stakeColor, AssassinGuessPaint.TAG_ALPHA));
+        AssassinGuessPaint.fill(context, tag, UiColors.withAlpha(stakeColor, AssassinGuessPaint.TAG_ALPHA));
         context.fill(tag.x(), tag.y(), tag.x() + 2, tag.bottom(), stakeColor);
         context.drawText(textRenderer, stake, tag.x() + 2 + AssassinGuessPaint.TAG_PAD, tagY, stakeColor, false);
 

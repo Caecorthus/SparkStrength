@@ -2,6 +2,8 @@ package annina.sparkstrength.client.screen.detective;
 
 import annina.sparkstrength.SparkStrengthItems;
 import annina.sparkstrength.client.ui.common.PlayerNameResolver;
+import annina.sparkstrength.client.ui.common.UiColors;
+import annina.sparkstrength.client.ui.common.UiText;
 import annina.sparkstrength.component.detective.DetectiveCasePlayerComponent;
 import annina.sparkstrength.component.detective.DetectiveCasePlayerComponent.DetectiveCase;
 import annina.sparkstrength.component.detective.DetectiveCasePlayerComponent.SuspectClue;
@@ -24,7 +26,6 @@ import net.minecraft.item.Item;
 import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.StringVisitable;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -102,7 +103,6 @@ public final class DetectiveInterrogationScreen extends Screen {
     private static final int COLOR_CARD_HOVER_EDGE = 0xFFD9A95B;
     private static final int COLOR_CARD_SHADOW = 0x55000000;
     private static final int COLOR_CARD_DISABLED = 0x47000000;
-    private static final int COLOR_PHOTO = 0xFF2F2F2F;
     private static final int COLOR_PHOTO_ABSENT = 0x99262626;
     private static final int COLOR_PIN = 0xFFD9B44A;
     private static final int COLOR_PIN_RECORDED = 0xFFC8372D;
@@ -341,7 +341,8 @@ public final class DetectiveInterrogationScreen extends Screen {
                 shown.getSuspects().size(), limit).getString();
         int cluesX = rightX - textRenderer.getWidth(clues);
         String title = Text.translatable(KEY + "title").getString();
-        context.drawText(textRenderer, Text.literal(trimStyled(title, bold, Math.max(0, cluesX - 6 - textX))).setStyle(bold),
+        context.drawText(textRenderer,
+                Text.literal(UiText.trimStyled(textRenderer, title, bold, Math.max(0, cluesX - 6 - textX))).setStyle(bold),
                 textX, lineOneY, DetectiveFolderPaint.INK_RED, false);
         if (!clues.isEmpty()) {
             context.drawText(textRenderer, clues, cluesX, lineOneY, DetectiveFolderPaint.INK_NAVY, false);
@@ -361,7 +362,7 @@ public final class DetectiveInterrogationScreen extends Screen {
 
         if (shown == null) {
             String none = Text.translatable(KEY + "no_case").getString();
-            context.drawText(textRenderer, DetectiveFolderPaint.trim(textRenderer, none, Math.max(0, cooldownX - 6 - textX)),
+            context.drawText(textRenderer, UiText.trim(textRenderer, none, Math.max(0, cooldownX - 6 - textX)),
                     textX, lineTwoY, DetectiveFolderPaint.INK_MUTED, false);
             return;
         }
@@ -398,7 +399,7 @@ public final class DetectiveInterrogationScreen extends Screen {
         Style bold = Style.EMPTY.withBold(true);
         int labelWidth = textRenderer.getWidth(Text.translatable(KEY + "investigating", ""));
         int room = Math.max(0, end - (arrows ? ARROW_BOX + 3 : 0) - textX - labelWidth);
-        String victim = trimStyled(shown.getVictimName(), bold, room);
+        String victim = UiText.trimStyled(textRenderer, shown.getVictimName(), bold, room);
         int textWidth = textRenderer.getWidth(Text.translatable(KEY + "investigating", Text.literal(victim).setStyle(bold)));
         DetectiveFolderLayout.Rect next = new DetectiveFolderLayout.Rect(textX + textWidth + 3, lineTwoY - 1, ARROW_BOX, ARROW_BOX);
         return new HeaderGeometry(previous, next, textX, victim);
@@ -454,15 +455,8 @@ public final class DetectiveInterrogationScreen extends Screen {
         }
         context.disableScissor();
 
-        int contentHeight = contentHeight();
-        if (contentHeight > board.height()) {
-            int trackX = board.right() + 2;
-            context.fill(trackX, board.y(), trackX + SCROLLBAR_WIDTH, board.bottom(), COLOR_SCROLL_TRACK);
-            int thumbHeight = Math.max(8, board.height() * board.height() / contentHeight);
-            int maxScroll = contentHeight - board.height();
-            int thumbY = board.y() + (int) Math.round((board.height() - thumbHeight) * (scroll / Math.max(1, maxScroll)));
-            context.fill(trackX, thumbY, trackX + SCROLLBAR_WIDTH, thumbY + thumbHeight, COLOR_SCROLL_THUMB);
-        }
+        DetectiveFolderPaint.drawScrollbar(context, board, board.right() + 2, SCROLLBAR_WIDTH, contentHeight(), scroll,
+                COLOR_SCROLL_TRACK, COLOR_SCROLL_THUMB);
     }
 
     /**
@@ -481,7 +475,7 @@ public final class DetectiveInterrogationScreen extends Screen {
         int edge = highlighted || pending ? COLOR_CARD_HOVER_EDGE : COLOR_CARD_EDGE;
         if (pending) {
             // Pulse while the server answers. / 等待服务端回应时闪烁。
-            edge = DetectiveFolderPaint.withAlpha(edge, (ageTicks / 4) % 2 == 0 ? 0xFF : 0x88);
+            edge = UiColors.withAlpha(edge, (ageTicks / 4) % 2 == 0 ? 0xFF : 0x88);
         }
         context.drawBorder(x, y, CARD_WIDTH, CARD_HEIGHT, edge);
 
@@ -493,7 +487,7 @@ public final class DetectiveInterrogationScreen extends Screen {
             context.fill(photoX, photoY, photoX + PHOTO_SIZE, photoY + PHOTO_SIZE, COLOR_PHOTO_ABSENT);
         }
 
-        String visible = DetectiveFolderPaint.trim(textRenderer, entry.name(), CARD_WIDTH - 6);
+        String visible = UiText.trim(textRenderer, entry.name(), CARD_WIDTH - 6);
         int nameY = photoY + PHOTO_SIZE + 3;
         context.drawText(textRenderer, visible, x + (CARD_WIDTH - textRenderer.getWidth(visible)) / 2, nameY,
                 DetectiveFolderPaint.INK, false);
@@ -531,7 +525,7 @@ public final class DetectiveInterrogationScreen extends Screen {
      * Small label centred on the card, trimmed to stay inside it. / 卡片居中的小标签，截短以保持在卡片内。
      */
     private void drawTag(DrawContext context, String text, int cardX, int y, int color) {
-        String visible = DetectiveFolderPaint.trim(textRenderer, text, CARD_WIDTH - 8);
+        String visible = UiText.trim(textRenderer, text, CARD_WIDTH - 8);
         int width = textRenderer.getWidth(visible) + 4;
         int x = cardX + (CARD_WIDTH - width) / 2;
         context.fill(x + 1, y + 1, x + width + 1, y + TAG_HEIGHT + 1, COLOR_CARD_SHADOW);
@@ -563,7 +557,7 @@ public final class DetectiveInterrogationScreen extends Screen {
         context.fill(footer.x(), footer.y(), footer.right(), footer.bottom(), COLOR_PAPER);
         context.drawBorder(footer.x(), footer.y(), footer.width(), footer.height(), COLOR_PAPER_EDGE);
         Text line = footerText(player, folder, shown);
-        String visible = DetectiveFolderPaint.trim(textRenderer, line.getString(), footer.width() - 10);
+        String visible = UiText.trim(textRenderer, line.getString(), footer.width() - 10);
         int color = resultLine != null && line == resultLine ? DetectiveFolderPaint.INK : DetectiveFolderPaint.INK_MUTED;
         context.drawText(textRenderer, visible, footer.x() + (footer.width() - textRenderer.getWidth(visible)) / 2,
                 footer.y() + (footer.height() - textRenderer.fontHeight) / 2 + 1, color, false);
@@ -591,15 +585,6 @@ public final class DetectiveInterrogationScreen extends Screen {
             return Text.translatable(KEY + "cooling");
         }
         return Text.translatable(KEY + "hint");
-    }
-
-    private String trimStyled(String value, Style style, int width) {
-        if (textRenderer.getWidth(StringVisitable.styled(value, style)) <= width) {
-            return value;
-        }
-        String ellipsis = "…";
-        int budget = Math.max(0, width - textRenderer.getWidth(StringVisitable.styled(ellipsis, style)));
-        return textRenderer.trimToWidth(StringVisitable.styled(value, style), budget).getString() + ellipsis;
     }
 
     // ---- State / 状态 ----

@@ -2,6 +2,8 @@ package annina.sparkstrength.client.screen.detective;
 
 import annina.sparkstrength.client.ui.common.PlayerNameResolver;
 import annina.sparkstrength.client.ui.common.RoleFactionBands;
+import annina.sparkstrength.client.ui.common.UiColors;
+import annina.sparkstrength.client.ui.common.UiText;
 import annina.sparkstrength.component.detective.DetectiveCasePlayerComponent;
 import annina.sparkstrength.component.detective.DetectiveCasePlayerComponent.DetectiveCase;
 import annina.sparkstrength.component.detective.DetectiveCasePlayerComponent.SuspectClue;
@@ -23,7 +25,6 @@ import net.minecraft.client.sound.PositionedSoundInstance;
 import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.OrderedText;
-import net.minecraft.text.StringVisitable;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -395,7 +396,7 @@ public final class DetectiveFolderScreen extends Screen {
         context.fill(tabX + 1, body.y(), tabX + tabWidth - 1, body.y() + 2, COLOR_FOLDER);
         context.drawText(
                 textRenderer,
-                DetectiveFolderPaint.trim(textRenderer, title, tabWidth - 10),
+                UiText.trim(textRenderer, title, tabWidth - 10),
                 tabX + 5,
                 tabY + 3,
                 DetectiveFolderPaint.INK,
@@ -460,7 +461,7 @@ public final class DetectiveFolderScreen extends Screen {
             DetectiveFolderPaint.drawHead(context, detectiveCase.getVictimDisplayUuid(), tab.x() + 3, contentY, 8);
             context.drawText(
                     textRenderer,
-                    DetectiveFolderPaint.trim(textRenderer, detectiveCase.getVictimName(), tab.width() - 16),
+                    UiText.trim(textRenderer, detectiveCase.getVictimName(), tab.width() - 16),
                     tab.x() + 13,
                     contentY,
                     DetectiveFolderPaint.INK,
@@ -493,7 +494,7 @@ public final class DetectiveFolderScreen extends Screen {
         boolean hovered = enabled && rect.contains(mouseX, mouseY);
         context.fill(rect.x(), rect.y(), rect.right(), rect.bottom(), hovered ? COLOR_TAB_HOVER : COLOR_TAB);
         context.drawBorder(rect.x(), rect.y(), rect.width(), rect.height(), COLOR_FOLDER_EDGE);
-        int color = enabled ? DetectiveFolderPaint.INK : DetectiveFolderPaint.withAlpha(DetectiveFolderPaint.INK, 0x55);
+        int color = enabled ? DetectiveFolderPaint.INK : UiColors.withAlpha(DetectiveFolderPaint.INK, 0x55);
         DetectiveFolderPaint.drawArrow(context, rect.x() + (rect.width() - 4) / 2, rect.y() + (rect.height() - 7) / 2, left, color);
     }
 
@@ -516,7 +517,7 @@ public final class DetectiveFolderScreen extends Screen {
         drawHeader(context, "screen.sparkstrength.detective_folder.victim", textX, page.y() + DetectiveFolderLayout.VICTIM_HEADER_Y,
                 polaroid.x() - 4 - textX);
         Style bold = Style.EMPTY.withBold(true);
-        String victimName = trimStyled(viewed.getVictimName(), bold, polaroid.x() - 4 - textX);
+        String victimName = UiText.trimStyled(textRenderer, viewed.getVictimName(), bold, polaroid.x() - 4 - textX);
         context.drawText(
                 textRenderer,
                 Text.literal(victimName).setStyle(bold),
@@ -587,7 +588,7 @@ public final class DetectiveFolderScreen extends Screen {
             color = COLOR_PILL_UNKNOWN;
         }
         String full = label.getString();
-        String visible = DetectiveFolderPaint.trim(textRenderer, full, pill.width() - 20);
+        String visible = UiText.trim(textRenderer, full, pill.width() - 20);
         context.drawText(textRenderer, visible, pill.x() + 5, pill.y() + 4, color, false);
         DetectiveFolderPaint.drawPencil(context, pill.right() - 12, pill.y() + 4);
         if (pillHovered && !visible.equals(full)) {
@@ -605,7 +606,8 @@ public final class DetectiveFolderScreen extends Screen {
                 ? PlayerNameResolver.playerName(presumed)
                 : Text.translatable("screen.sparkstrength.detective_folder.presumed_killer_none").getString();
         Style bold = Style.EMPTY.withBold(true);
-        String presumedVisible = trimStyled(presumedName, bold, Math.max(0, columnWidth - PENCIL_ROOM));
+        String presumedVisible = UiText.trimStyled(textRenderer, presumedName, bold,
+                Math.max(0, columnWidth - PENCIL_ROOM));
         Text presumedText = Text.literal(presumedVisible).setStyle(bold);
         int nameY = page.y() + DetectiveFolderLayout.PRESUMED_NAME_Y;
         context.drawText(textRenderer, presumedText, textX, nameY,
@@ -615,7 +617,7 @@ public final class DetectiveFolderScreen extends Screen {
             hoverTooltip = Text.literal(presumedName);
         }
 
-        int silhouette = role != null ? DetectiveFolderPaint.opaque(role.color()) : COLOR_SILHOUETTE;
+        int silhouette = role != null ? UiColors.opaque(role.color()) : COLOR_SILHOUETTE;
         int photoX = photo.x() + 3;
         int photoY = photo.y() + 3;
         DetectiveFolderPaint.rotated(
@@ -666,7 +668,7 @@ public final class DetectiveFolderScreen extends Screen {
         int cluesX = page.right() - 6 - cluesWidth;
         context.drawText(
                 textRenderer,
-                DetectiveFolderPaint.trim(textRenderer, clues, cluesWidth),
+                UiText.trim(textRenderer, clues, cluesWidth),
                 cluesX,
                 page.y() + DetectiveFolderLayout.SUSPECTS_TITLE_Y,
                 DetectiveFolderPaint.INK_NAVY,
@@ -676,7 +678,7 @@ public final class DetectiveFolderScreen extends Screen {
         String title = Text.translatable("screen.sparkstrength.detective_folder.suspects").getString();
         context.drawText(
                 textRenderer,
-                Text.literal(trimStyled(title, bold, Math.max(0, cluesX - 6 - textX))).setStyle(bold),
+                Text.literal(UiText.trimStyled(textRenderer, title, bold, Math.max(0, cluesX - 6 - textX))).setStyle(bold),
                 textX,
                 page.y() + DetectiveFolderLayout.SUSPECTS_TITLE_Y,
                 DetectiveFolderPaint.INK_NAVY,
@@ -797,7 +799,7 @@ public final class DetectiveFolderScreen extends Screen {
             );
             return;
         }
-        String visible = DetectiveFolderPaint.trim(textRenderer, name, nameWidth);
+        String visible = UiText.trim(textRenderer, name, nameWidth);
         context.drawText(textRenderer, visible, nameX, textY, DetectiveFolderPaint.INK, false);
         if (row.contains(mouseX, mouseY) && !visible.equals(name)) {
             hoverTooltip = Text.literal(name);
@@ -811,7 +813,7 @@ public final class DetectiveFolderScreen extends Screen {
         String placeholder = Text.translatable("screen.sparkstrength.detective_folder.suspect_placeholder", index + 1).getString();
         context.drawText(
                 textRenderer,
-                DetectiveFolderPaint.trim(textRenderer, placeholder, row.width() - 17),
+                UiText.trim(textRenderer, placeholder, row.width() - 17),
                 row.x() + 13,
                 textY,
                 DetectiveFolderPaint.INK_FADED,
@@ -821,17 +823,8 @@ public final class DetectiveFolderScreen extends Screen {
 
     private void drawHeader(DrawContext context, String key, int x, int y, int maxWidth) {
         String header = Text.translatable(key).getString();
-        context.drawText(textRenderer, DetectiveFolderPaint.trim(textRenderer, header, Math.max(0, maxWidth)), x, y,
+        context.drawText(textRenderer, UiText.trim(textRenderer, header, Math.max(0, maxWidth)), x, y,
                 DetectiveFolderPaint.INK_RED, false);
-    }
-
-    private String trimStyled(String value, Style style, int width) {
-        if (textRenderer.getWidth(StringVisitable.styled(value, style)) <= width) {
-            return value;
-        }
-        String ellipsis = "…";
-        int budget = Math.max(0, width - textRenderer.getWidth(StringVisitable.styled(ellipsis, style)));
-        return textRenderer.trimToWidth(StringVisitable.styled(value, style), budget).getString() + ellipsis;
     }
 
     // ---- State / 状态 ----

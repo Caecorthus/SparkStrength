@@ -4,7 +4,6 @@ import dev.doctor4t.wathe.util.ShopEntry;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.render.RenderLayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
 
@@ -30,17 +29,8 @@ public class PlayerPageSwitchWidget extends ButtonWidget {
         context.drawItem(iconStack, getX(), getY());
 
         if (isHovered()) {
-            drawHighlight(context);
+            InventoryWidgetPaint.highlight(context, getX(), getY(), 0x90FFBF49);
             context.drawTooltip(MinecraftClient.getInstance().textRenderer, tooltipText, mouseX, mouseY);
         }
-    }
-
-    private void drawHighlight(DrawContext context) {
-        int color = 0x90FFBF49;
-        int x = getX();
-        int y = getY();
-        context.fillGradient(RenderLayer.getGuiOverlay(), x, y, x + 16, y + 14, color, color, 0);
-        context.fillGradient(RenderLayer.getGuiOverlay(), x, y + 14, x + 15, y + 15, color, color, 0);
-        context.fillGradient(RenderLayer.getGuiOverlay(), x, y + 15, x + 14, y + 16, color, color, 0);
     }
 }
