@@ -7,6 +7,7 @@ import annina.sparkstrength.component.professor.ProfessorSerumTargetComponent;
 import annina.sparkstrength.component.professor.ProfessorSerumUserComponent;
 import annina.sparkstrength.component.reporter.ReporterCommunicationComponent;
 import annina.sparkstrength.component.timekeeper.TimekeeperWatchComponent;
+import annina.sparkstrength.role.assassin.AssassinGuessService;
 import annina.sparkstrength.role.bodyguard.BodyguardShieldService;
 import annina.sparkstrength.role.coroner.CoronerService;
 import annina.sparkstrength.role.corruptcop.CorruptCopAbilityService;
@@ -72,5 +73,6 @@ public final class PlayerRoundReset {
         BodyguardShieldService.resetRound(player);
         PartyBalloonService.clearPlayer(player);
         PartygoerSkillService.reset(player);
+        AssassinGuessService.reset(player);
     }
 }

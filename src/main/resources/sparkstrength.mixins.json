@@ -57,6 +57,7 @@
     "minecraft.ItemCooldownManagerAccessor",
     "minecraft.ServerItemCooldownManagerAccessor",
     "minecraft.RaycastShapeScopeMixin",
+    "noellesroles.AssassinGuessOutcomeMixin",
     "noellesroles.HiddenBodiesWorldComponentAccessor",
     "noellesroles.HiddenEquipmentHelperMixin",
     "noellesroles.JesterMomentTransitionMixin",

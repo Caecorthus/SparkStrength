@@ -503,6 +503,39 @@ tasks.register("verifyCompatibilityArtifact") {
                     "sparkstrength\$stage2UndercoverCannotBeSwapped",
                     providerBaselines.noellesroles.swapperHandler, "SwapperC2SPacket")
 
+            // The Assassin buff (silent, forgiven first miss; 3 s cooldown after a correct guess) binds the same guess
+            // lambda with require = 0, through @WrapOperation and @Inject: every selector must still name the pinned
+            // handler.
+            // 刺客加强（首次猜错无声免死、猜对后 3 秒冷却）同样以 require = 0 绑定这个猜测 lambda（@WrapOperation 与 @Inject）：
+            // 每个选择器都必须仍指向锁定的处理函数。
+            def assassinGuessSelector = ("${providerBaselines.noellesroles.assassinHandler}" +
+                    "(Lorg/agmas/noellesroles/packet/AssassinGuessRoleC2SPacket;" +
+                    "Lnet/fabricmc/fabric/api/networking/v1/ServerPlayNetworking\$Context;)V").toString()
+            def assassinGuessMixin = readClassNode(
+                    zipFile, "annina/sparkstrength/mixin/noellesroles/AssassinGuessOutcomeMixin.class")
+            [
+                    "sparkstrength\$forgivenMissIsSilent"      :
+                            "Lcom/llamalad7/mixinextras/injector/wrapoperation/WrapOperation;",
+                    "sparkstrength\$firstMissIsForgiven"        :
+                            "Lcom/llamalad7/mixinextras/injector/wrapoperation/WrapOperation;",
+                    "sparkstrength\$correctGuessCoolsDownFast" : "Lorg/spongepowered/asm/mixin/injection/Inject;"
+            ].each { handlerMethod, annotationDesc ->
+                def handlerNode = assassinGuessMixin.methods.find { it.name == handlerMethod }
+                if (handlerNode == null) {
+                    throw new GradleException("Missing remapped Assassin guess handler ${handlerMethod}")
+                }
+                def injection = ((handlerNode.visibleAnnotations ?: []) +
+                        (handlerNode.invisibleAnnotations ?: [])).find { it.desc == annotationDesc }
+                def selectors = annotationValue(injection, "method")
+                selectors = selectors instanceof Collection
+                        ? selectors.collect { it.toString() }
+                        : [selectors?.toString()].findAll { it != null }
+                if (selectors != [assassinGuessSelector]) {
+                    throw new GradleException("Assassin guess selector drift on ${handlerMethod}: expected " +
+                            "${assassinGuessSelector}, found ${selectors}")
+                }
+            }
+
             def nestedProviderBinary = zipFile.entries().find { entry ->
                 def entryName = entry.name.toLowerCase(Locale.ROOT)
                 (entryName.endsWith(".jar") && (entryName.contains("wathe") || entryName.contains("noellesroles"))) ||
