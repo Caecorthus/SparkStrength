@@ -8,7 +8,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.world.ClientWorld;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.EnumSet;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Objects;
 
@@ -25,10 +25,12 @@ import java.util.Objects;
  * 房门记录的未读状态是玩家在平板界面中看过的最大条目 id；只用于房门监控标签上的红点（无 HUD 提示）。</p>
  *
  * <p>Unread channels come from the server's per-message notifications ({@code TabletChatNotifyS2CPacket}), so they cover
- * every network the holder belongs to, not just the viewed one. They light the switcher rows, the channel chip and the
- * held tablet's unread screen, and clear when that channel's chat is on screen.
- * 未读频道来自服务端的逐条消息通知，因此覆盖持有者所属的每个网络，而不只是当前查看的频道。它们点亮切换浮层的行、频道胶囊
- * 与手中平板的未读屏幕，并在该频道的聊天显示在屏幕上时清除。</p>
+ * every network the holder belongs to, not just the viewed one; each keeps how many messages arrived unseen. They light
+ * the switcher rows, the channel chip, the held-tablet HUD and the held tablet's unread screen, and clear when that
+ * channel's chat is on screen (the HUD clears the viewed channel, whose last messages it shows).
+ * 未读频道来自服务端的逐条消息通知，因此覆盖持有者所属的每个网络，而不只是当前查看的频道；每个频道记录有多少条消息尚未看到。
+ * 它们点亮切换浮层的行、频道胶囊、手持平板 HUD 与手中平板的未读屏幕，并在该频道的聊天显示在屏幕上时清除（HUD 会清除当前频道，
+ * 因为它显示了该频道最近的消息）。</p>
  */
 public final class TabletClientState {
     private static TabletSnapshot snapshot = TabletSnapshot.empty();
@@ -39,7 +41,10 @@ public final class TabletClientState {
     private static int doorLogSeenId;
     private static long snapshotAppliedAtTick;
     private static @Nullable TabletUiSession.Section resumeSection;
-    private static final EnumSet<TabletChannel> unreadChannels = EnumSet.noneOf(TabletChannel.class);
+    private static final EnumMap<TabletChannel, Integer> unreadCounts = new EnumMap<>(TabletChannel.class);
+    // Client world tick before which this client sends no chat (armed on send, see armChatCooldown).
+    // 本客户端在此世界 tick 之前不发送聊天（发送时设置，见 armChatCooldown）。
+    private static long localChatCooldownEndTick;
 
     private TabletClientState() {
     }
@@ -71,9 +76,9 @@ public final class TabletClientState {
         }
         // Unread marks only survive for networks the holder still belongs to. 未读标记只保留在持有者仍所属的网络上。
         if (!snapshot.localHasTablet()) {
-            unreadChannels.clear();
+            unreadCounts.clear();
         } else {
-            unreadChannels.retainAll(snapshot.allowedChannels());
+            unreadCounts.keySet().retainAll(snapshot.allowedChannels());
         }
         int channelWire = snapshot.channelWire();
         // A different channel's backlog is history, not unread: re-baseline only when a new live channel appears.
@@ -140,37 +145,64 @@ public final class TabletClientState {
     /** A message from someone else arrived on {@code channel} while its chat was not on screen. 收到未显示频道的新消息。 */
     public static void markChannelUnread(@Nullable TabletChannel channel) {
         if (channel != null) {
-            unreadChannels.add(channel);
+            unreadCounts.merge(channel, 1, (count, one) -> count == Integer.MAX_VALUE ? count : count + one);
         }
     }
 
     /** That channel's chat is on screen now. 该频道的聊天正显示在屏幕上。 */
     public static void markChannelRead(@Nullable TabletChannel channel) {
         if (channel != null) {
-            unreadChannels.remove(channel);
+            unreadCounts.remove(channel);
         }
     }
 
     public static boolean hasUnreadChannel(@Nullable TabletChannel channel) {
-        return channel != null && unreadChannels.contains(channel);
+        return channel != null && unreadCounts.containsKey(channel);
+    }
+
+    /** Messages that arrived on {@code channel} since it was last on screen. 该频道上次显示后收到的消息条数。 */
+    public static int unreadCount(@Nullable TabletChannel channel) {
+        return channel == null ? 0 : unreadCounts.getOrDefault(channel, 0);
     }
 
     /** Drives the held tablet's unread screen. 决定手中平板是否显示未读屏幕。 */
     public static boolean hasAnyUnreadChannel() {
-        return !unreadChannels.isEmpty();
+        return !unreadCounts.isEmpty();
     }
 
     /** First unread network other than {@code viewed}, in switcher order (public first). 除当前频道外第一个有未读的网络。 */
     public static @Nullable TabletChannel firstUnreadOtherThan(@Nullable TabletChannel viewed) {
-        if (unreadChannels.contains(TabletChannel.PUBLIC) && viewed != TabletChannel.PUBLIC) {
+        if (unreadCounts.containsKey(TabletChannel.PUBLIC) && viewed != TabletChannel.PUBLIC) {
             return TabletChannel.PUBLIC;
         }
-        for (TabletChannel channel : unreadChannels) {
+        for (TabletChannel channel : unreadCounts.keySet()) {
             if (channel != viewed) {
                 return channel;
             }
         }
         return null;
+    }
+
+    /**
+     * World tick before which the local holder may not send chat: the later of the server's deadline (it counts the
+     * last message it accepted) and the one this client armed when it last sent, so a second Enter pressed before the
+     * server's answer arrives cannot slip through and be dropped.
+     * 本地持有者在此世界 tick 之前不能发送聊天：取服务端截止时间（按其最后接受的一条消息计算）与本客户端上次发送时设置的截止时间
+     * 中较晚者，使服务端回应到达前的第二次回车不会漏发后被丢弃。
+     */
+    public static long chatCooldownEndTick() {
+        return Math.max(snapshot.chatCooldownEndTick(), localChatCooldownEndTick);
+    }
+
+    /** Whole seconds until the local holder may send chat again; 0 when it may now. 距离可再次发送聊天的整秒数；可发送时为 0。 */
+    public static int chatCooldownSeconds() {
+        return TabletSnapshot.secondsUntil(chatCooldownEndTick(), worldTime());
+    }
+
+    /** Called right after this client sent a message. 本客户端刚发送一条消息后调用。 */
+    public static void armChatCooldown() {
+        int interval = snapshot.chatIntervalTicks();
+        localChatCooldownEndTick = interval > 0 ? clientWorldTime() + interval : 0L;
     }
 
     /**
@@ -239,6 +271,7 @@ public final class TabletClientState {
         lastLiveChannelWire = TabletChannel.NO_CHANNEL_WIRE;
         doorLogSeenId = 0;
         resumeSection = null;
-        unreadChannels.clear();
+        unreadCounts.clear();
+        localChatCooldownEndTick = 0L;
     }
 }

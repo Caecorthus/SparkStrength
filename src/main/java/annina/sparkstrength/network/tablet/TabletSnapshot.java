@@ -42,6 +42,10 @@ import java.util.UUID;
  *   seconds from its own world time, so a running countdown no longer changes the snapshot every second.
  *   v10：三个倒计时在原位置改为绝对世界 tick（varlong，0 表示无）：第 1、2 项中的切换冷却与会议冷却，以及 Meeting 中的会议结束
  *   时间。客户端按自己的世界时间计算秒数，因此进行中的倒计时不再让快照每秒变化。</li>
+ *   <li>v11: varlong chatCooldownEndTick (the world tick from which the viewer may send its next chat message, 0 = now)
+ *   and varint chatIntervalTicks (the server's send interval, 0 = none) appended.
+ *   v11：追加 varlong chatCooldownEndTick（查看者可发送下一条聊天消息的世界 tick，0 表示现在即可）与 varint chatIntervalTicks
+ *   （服务端的发送间隔，0 表示无）。</li>
  * </ol>
  * Lists are a varint count followed by the rows.
  * 列表为 varint 数量后接各行。</p>
@@ -76,13 +80,44 @@ public record TabletSnapshot(
         List<DroneRow> drones,
         List<SabotageRow> sabotage,
         List<SabotageLogRow> sabotageLog,
-        int cooldownChannelMask
+        int cooldownChannelMask,
+        long chatCooldownEndTick,
+        int chatIntervalTicks
 ) {
     public TabletSnapshot {
+        chatIntervalTicks = Math.max(0, chatIntervalTicks);
         identityTasksRemaining = Math.max(0, identityTasksRemaining);
         drones = drones == null ? List.of() : List.copyOf(drones);
         sabotage = sabotage == null ? List.of() : List.copyOf(sabotage);
         sabotageLog = sabotageLog == null ? List.of() : List.copyOf(sabotageLog);
+    }
+
+    /** v10 shape: no chat send interval. / v10 的形状：没有聊天发送间隔。 */
+    public TabletSnapshot(
+            boolean localHasTablet,
+            int channelWire,
+            int allowedChannelMask,
+            boolean canSend,
+            long channelSwitchCooldownEndTick,
+            boolean channelLocked,
+            boolean localMeetingParticipant,
+            long meetingCooldownEndTick,
+            int localMeetingCallsRemaining,
+            List<PlayerRow> connections,
+            List<ChatRow> chat,
+            Meeting meeting,
+            List<SuspectRow> suspects,
+            int featureMask,
+            List<DoorLogRow> doorLog,
+            int identityTasksRemaining,
+            List<DroneRow> drones,
+            List<SabotageRow> sabotage,
+            List<SabotageLogRow> sabotageLog,
+            int cooldownChannelMask
+    ) {
+        this(localHasTablet, channelWire, allowedChannelMask, canSend, channelSwitchCooldownEndTick, channelLocked,
+                localMeetingParticipant, meetingCooldownEndTick, localMeetingCallsRemaining, connections, chat, meeting, suspects,
+                featureMask, doorLog, identityTasksRemaining, drones, sabotage, sabotageLog, cooldownChannelMask, 0L, 0);
     }
 
     /** Pre-v9 shape: no channel is blocked by the switch cooldown. / v9 之前的形状：没有频道被切换冷却阻止。 */
@@ -109,7 +144,7 @@ public record TabletSnapshot(
     ) {
         this(localHasTablet, channelWire, allowedChannelMask, canSend, channelSwitchCooldownEndTick, channelLocked,
                 localMeetingParticipant, meetingCooldownEndTick, localMeetingCallsRemaining, connections, chat, meeting, suspects,
-                featureMask, doorLog, identityTasksRemaining, drones, sabotage, sabotageLog, 0);
+                featureMask, doorLog, identityTasksRemaining, drones, sabotage, sabotageLog, 0, 0L, 0);
     }
 
     public static TabletSnapshot empty() {
@@ -158,6 +193,14 @@ public record TabletSnapshot(
         return secondsUntil(channelSwitchCooldownEndTick, worldTime);
     }
 
+    /**
+     * Whole seconds the viewer still has to wait before its next chat message at {@code worldTime} (v11).
+     * worldTime 时查看者距离下一条聊天消息还需等待的整秒数（v11）。
+     */
+    public int chatCooldownSeconds(long worldTime) {
+        return secondsUntil(chatCooldownEndTick, worldTime);
+    }
+
     /** Whole seconds of the meeting cooldown left at {@code worldTime}. / worldTime 时会议冷却剩余的整秒数。 */
     public int meetingCooldownSeconds(long worldTime) {
         return secondsUntil(meetingCooldownEndTick, worldTime);
@@ -203,6 +246,8 @@ public record TabletSnapshot(
         writeList(buf, sabotage, (targetBuf, row) -> row.write(targetBuf));
         writeList(buf, sabotageLog, (targetBuf, row) -> row.write(targetBuf));
         buf.writeVarInt(cooldownChannelMask);
+        buf.writeVarLong(chatCooldownEndTick);
+        buf.writeVarInt(chatIntervalTicks);
     }
 
     public static TabletSnapshot read(PacketByteBuf buf) {
@@ -226,6 +271,8 @@ public record TabletSnapshot(
                 readList(buf, DroneRow::read),
                 readList(buf, SabotageRow::read),
                 readList(buf, SabotageLogRow::read),
+                buf.readVarInt(),
+                buf.readVarLong(),
                 buf.readVarInt()
         );
     }

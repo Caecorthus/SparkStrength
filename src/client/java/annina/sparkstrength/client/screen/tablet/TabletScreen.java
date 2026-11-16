@@ -22,6 +22,8 @@ import net.minecraft.client.gui.Element;
 import net.minecraft.client.gui.ScreenRect;
 import net.minecraft.client.gui.Selectable;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
 import net.minecraft.util.Util;
@@ -102,6 +104,16 @@ public final class TabletScreen extends Screen {
     // Stable identity of each keyed widget in the current build, so a rebuild can restore keyboard focus.
     // 当前构建中各控件的稳定标识，供重建时恢复键盘焦点。
     private final Map<Element, String> focusKeys = new IdentityHashMap<>();
+
+    // Read by InvMove (in the players' modpack), never by us: with "textFieldDisables" it stops walking only when it
+    // finds a visible, active, focused TextFieldWidget in a field declared on the open screen's class or a superclass;
+    // it does not look into children() or nested objects such as the chat page. The chat page keeps it equal to its
+    // attached input on every build (exposeToInvMove), so typing in the chat no longer walks with WASD.
+    // 由 InvMove（玩家整合包中的模组）读取，我们自己从不读取：开启“输入框禁止移动”时，它只在当前界面类或其父类声明的字段里寻找
+    // 可见、启用且获得焦点的 TextFieldWidget，不会查看 children() 或聊天页这样的嵌套对象。聊天页在每次构建时让它等于自己挂上的
+    // 输入框（exposeToInvMove），因此在聊天中打字时 WASD 不再让玩家走动。
+    @SuppressWarnings({"unused", "FieldCanBeLocal"})
+    private @Nullable TextFieldWidget invMoveTextField;
 
     public TabletScreen() {
         super(Text.translatable(KEY + "title"));
@@ -356,6 +368,11 @@ public final class TabletScreen extends Screen {
         setInitialFocus(widget);
     }
 
+    /** See {@link #invMoveTextField}; null when no input is attached. / 见 invMoveTextField；未挂输入框时为 null。 */
+    void exposeToInvMove(@Nullable TextFieldWidget input) {
+        invMoveTextField = input;
+    }
+
     // ============================================================================================ input
 
     @Override
@@ -491,6 +508,28 @@ public final class TabletScreen extends Screen {
             return true;
         }
         return super.mouseScrolled(x, y, horizontalAmount, verticalAmount);
+    }
+
+    /**
+     * {@code ClientKeyGate#held}: while the local player types in the tablet chat, walking, jumping and sprinting read
+     * as released, whatever lets movement through an open screen (InvMove with an old or edited config, another
+     * inventory-walk mod). Sneak is left alone so InvMove's "maintain sneak" keeps the player crouched or standing as
+     * before. Vanilla never moves the player behind a screen, so without such a mod this changes nothing.
+     * ClientKeyGate#held：本地玩家在平板聊天中打字时，前后左右、跳跃与疾跑都读作未按下，无论是什么让移动穿过了打开的界面
+     * （旧版或改过配置的 InvMove、其他背包行走模组）。潜行保持不动，InvMove 的“保持潜行”仍让玩家维持之前的蹲下或站立。
+     * 原版在界面打开时从不移动玩家，因此没有这类模组时这里不改变任何东西。
+     */
+    public static boolean releasesMovementKey(KeyBinding key) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client == null || !(client.currentScreen instanceof TabletScreen screen) || !screen.chat.inputFocused()) {
+            return false;
+        }
+        return key == client.options.forwardKey
+                || key == client.options.backKey
+                || key == client.options.leftKey
+                || key == client.options.rightKey
+                || key == client.options.jumpKey
+                || key == client.options.sprintKey;
     }
 
     private boolean isMovementKey(int keyCode, int scanCode) {

@@ -227,17 +227,32 @@ public final class TabletStateService {
             sender.sendMessage(Text.translatable("message.sparkstrength.tablet.chat_empty"), true);
             return;
         }
+        ServerWorld world = sender.getServerWorld();
+        TabletWorldComponent tablet = TabletWorldComponent.KEY.get(world);
+        // The admin-set send interval (/sparkStrength:tabletChatInterval). The client already waits it out, so this only
+        // stops a client that does not; the resync hands it the deadline.
+        // 管理员设置的发送间隔（/sparkStrength:tabletChatInterval）。客户端本身会等待，因此这里只拦下不等待的客户端；重新同步把截止
+        // 时间交给它。
+        int waitTicks = tablet.chatCooldownTicks(sender.getUuid(), world.getTime());
+        if (TabletRules.chatSendTooEarly(waitTicks, tablet.chatIntervalTicks())) {
+            sender.sendMessage(Text.translatable("message.sparkstrength.tablet.chat_cooldown",
+                    TabletRules.secondsCeil(waitTicks)), true);
+            resyncThrottled(sender);
+            return;
+        }
         // Each message re-snapshots the whole channel (or every holder in range); see TabletRules#acceptAction.
         // 每条消息都会为整个频道（或范围内的每名持有者）重建快照；见 TabletRules#acceptAction。
         if (!acceptAction(sender)) {
             return;
         }
-        ServerWorld world = sender.getServerWorld();
         if (channel.isProximity()) {
             sendPublicChat(sender, world, message);
             return;
         }
-        TabletWorldComponent.KEY.get(world).addChatMessage(
+        // Recorded before the sync so the sender's snapshot already carries its next allowed send.
+        // 在同步之前记录，使发送者的快照已带上其下一次可发送的时间。
+        tablet.recordChatSent(sender.getUuid(), world.getTime());
+        tablet.addChatMessage(
                 channel,
                 sender.getUuid(),
                 sender.getName().getString(),
@@ -266,6 +281,7 @@ public final class TabletStateService {
             return;
         }
         TabletWorldComponent tablet = TabletWorldComponent.KEY.get(world);
+        tablet.recordChatSent(sender.getUuid(), world.getTime());
         SyncPass pass = prepare(world);
         long now = Instant.now().toEpochMilli();
         String senderName = sender.getName().getString();
@@ -296,7 +312,7 @@ public final class TabletStateService {
         }
     }
 
-    /** Local buzz + unread screen for one receiver; old clients without the payload are skipped. / 单个接收者的本地振动与未读提示。 */
+    /** Unread mark for one receiver; old clients without the payload are skipped. / 单个接收者的本地未读提示。 */
     private static void notifyMessage(ServerPlayerEntity receiver, TabletChannel channel) {
         if (ServerPlayNetworking.canSend(receiver, TabletChatNotifyS2CPacket.ID)) {
             ServerPlayNetworking.send(receiver, new TabletChatNotifyS2CPacket(channel.wire()));
@@ -602,7 +618,9 @@ public final class TabletStateService {
                         channel,
                         tablet.lastFactionChannel(viewerUuid),
                         tablet.channelSwitchCooldownTicks(viewerUuid, now)
-                ))
+                )),
+                TabletRules.deadlineTick(now, tablet.chatCooldownTicks(viewerUuid, now)),
+                tablet.chatIntervalTicks()
         );
     }
 
@@ -914,9 +932,9 @@ public final class TabletStateService {
     }
 
     /**
-     * Clients without the current (v10) payload are skipped instead of being disconnected by unknown bytes. Every
+     * Clients without the current (v11) payload are skipped instead of being disconnected by unknown bytes. Every
      * snapshot that goes out, empty ones included, becomes what that client holds.
-     * 未注册当前（v10）负载的客户端直接跳过，避免因未知字节断线。每份发出的快照（包括空快照）都记为该客户端当前持有的快照。
+     * 未注册当前（v11）负载的客户端直接跳过，避免因未知字节断线。每份发出的快照（包括空快照）都记为该客户端当前持有的快照。
      */
     private static boolean sendPacket(ServerPlayerEntity player, TabletSnapshot snapshot) {
         if (!ServerPlayNetworking.canSend(player, SyncTabletSnapshotS2CPacket.ID)) {

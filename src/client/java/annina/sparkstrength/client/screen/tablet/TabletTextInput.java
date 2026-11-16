@@ -27,12 +27,14 @@ import java.util.function.Consumer;
  *
  * <p>It extends the vanilla {@link TextFieldWidget} only so that other mods recognise it as a text field: input-method
  * managers (IMBlocker, IngameIME) switch the IME on only while a vanilla text field is focused, so a plain widget left
- * Chinese/Japanese/Korean input impossible; InvMove stops walking only for a focused text field, so a plain widget let
- * WASD move the player while typing. The vanilla text state is never used: every public read/write of
+ * Chinese/Japanese/Korean input impossible; InvMove stops walking only for a focused text field (one it finds in a
+ * field of the screen itself, see {@code TabletScreen#invMoveTextField}), so a plain widget let WASD move the player
+ * while typing. The vanilla text state is never used: every public read/write of
  * TextFieldWidget is redirected to this widget's own model, and {@code setFocused} still runs the vanilla method those
  * mods hook.
  * 继承原版 TextFieldWidget 只为让其他模组把它识别为输入框：输入法管理模组（IMBlocker、IngameIME）只在原版输入框获得焦点时
- * 才打开输入法，普通控件会导致无法输入中文/日文/韩文；InvMove 只在输入框获得焦点时停止移动，普通控件会让打字时按 WASD 走动。
+ * 才打开输入法，普通控件会导致无法输入中文/日文/韩文；InvMove 只在输入框获得焦点时停止移动（且只认界面自身字段中的输入框，
+ * 见 TabletScreen#invMoveTextField），普通控件会让打字时按 WASD 走动。
  * 原版文本状态从不使用：TextFieldWidget 的所有公开读写都转到本控件自己的模型，而 setFocused 仍会执行这些模组挂钩的原版方法。</p>
  */
 public final class TabletTextInput extends TextFieldWidget {

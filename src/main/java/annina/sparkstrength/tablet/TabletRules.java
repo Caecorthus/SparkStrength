@@ -16,6 +16,18 @@ public final class TabletRules {
     public static final int HOTBAR_START_SLOT = 0;
     public static final int HOTBAR_END_SLOT = 8;
     public static final int CHAT_MESSAGE_MAX_LENGTH = 120;
+    // Minimum time between two chat messages of one holder, any channel; admins set it with
+    // /sparkStrength:tabletChatInterval (0 = no interval, the default, as before the command existed).
+    // 同一持有者两条聊天消息之间的最短间隔，不分频道；管理员用 /sparkStrength:tabletChatInterval 设置（0 为不限制，即默认值，
+    // 与命令出现之前相同）。
+    public static final int DEFAULT_CHAT_INTERVAL_TICKS = 0;
+    public static final int MAX_CHAT_INTERVAL_SECONDS = 600;
+    // The client waits out the interval on its own world clock, which can run a few ticks ahead of the server's under
+    // server lag; the server lets that much through (at most a quarter of the interval) instead of dropping a message
+    // the player already saw leave.
+    // 客户端按自己的世界时钟等待间隔，服务器卡顿时它可能比服务端快几 tick；服务端放行这点误差（最多为间隔的四分之一），
+    // 而不是丢弃玩家已看到发出的消息。
+    public static final int CHAT_COOLDOWN_GRACE_TICKS = 5;
     public static final int DEFAULT_EMERGENCY_MEETING_CHANCES = 1;
     public static final int DEFAULT_MEETING_DURATION_TICKS = GameConstants.getInTicks(1, 40);
     public static final int MEETING_DURATION_TICKS = DEFAULT_MEETING_DURATION_TICKS;
@@ -63,6 +75,31 @@ public final class TabletRules {
 
     public static int ticksFromSeconds(int seconds) {
         return GameConstants.getInTicks(seconds / 60, seconds % 60);
+    }
+
+    /** Fractional seconds to the nearest tick, never negative. 小数秒取最近的 tick，不为负。 */
+    public static int ticksFromSeconds(double seconds) {
+        return (int) Math.max(0L, Math.round(seconds * 20.0));
+    }
+
+    /**
+     * Ticks a holder still has to wait before its next chat message: {@code lastSentTick} is the world tick of its last
+     * accepted message ({@link Long#MIN_VALUE} when none this round). 0 when it may send now or no interval is set; a
+     * last tick in the future (impossible with world time) counts as just sent.
+     * 持有者距离下一条聊天消息还需等待的 tick：lastSentTick 为其上一条被接受消息的世界 tick（本局没有时为 Long.MIN_VALUE）。
+     * 可立即发送或未设置间隔时为 0；位于未来的 tick（世界时间下不可能出现）按刚刚发送处理。
+     */
+    public static int chatCooldownTicks(long lastSentTick, int intervalTicks, long currentTick) {
+        if (intervalTicks <= 0 || lastSentTick == Long.MIN_VALUE) {
+            return 0;
+        }
+        long elapsed = Math.max(0L, currentTick - lastSentTick);
+        return (int) Math.max(0L, intervalTicks - elapsed);
+    }
+
+    /** Server side: whether a message {@code waitTicks} early must be refused. 服务端：提前 waitTicks 的消息是否须拒绝。 */
+    public static boolean chatSendTooEarly(int waitTicks, int intervalTicks) {
+        return waitTicks > Math.min(CHAT_COOLDOWN_GRACE_TICKS, Math.max(0, intervalTicks) / 4);
     }
 
     /**

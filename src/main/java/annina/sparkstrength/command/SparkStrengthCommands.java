@@ -7,6 +7,7 @@ import annina.sparkstrength.role.detective.DetectiveCaseRules;
 import annina.sparkstrength.role.detective.DetectiveCaseService;
 import annina.sparkstrength.tablet.TabletRules;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import dev.doctor4t.wathe.cca.GameWorldComponent;
 import net.minecraft.command.argument.EntityArgumentType;
@@ -16,6 +17,7 @@ import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 
+import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.UUID;
 
@@ -53,6 +55,8 @@ public final class SparkStrengthCommands {
         // Brigadier 字面量区分大小写，因此驼峰写法的命名空间需单独注册为别名。
         registerDetectiveCaseLimitCommand(dispatcher, "sparkstrength:detectiveCaseLimit");
         registerDetectiveCaseLimitCommand(dispatcher, "sparkStrength:detectiveCaseLimit");
+        registerTabletChatIntervalCommand(dispatcher, "sparkStrength:tabletChatInterval");
+        registerTabletChatIntervalCommand(dispatcher, "sparkstrength:tabletChatInterval");
 
         registerPlayerStateCommand(dispatcher, "sparkstrength:setPlayerAlive", true);
         registerPlayerStateCommand(dispatcher, "sparkstrength:setPlayerDead", false);
@@ -121,6 +125,48 @@ public final class SparkStrengthCommands {
                 true
         );
         return limit;
+    }
+
+    /**
+     * Minimum seconds between two tablet chat messages of one player (any channel, decimals allowed, 0 = no limit);
+     * without an argument it reports the current value. Saved with the world, applies at once.
+     * 同一玩家两条平板聊天消息之间的最短秒数（不分频道，可用小数，0 为不限制）；不带参数时显示当前值。随世界保存，立即生效。
+     */
+    private static void registerTabletChatIntervalCommand(CommandDispatcher<ServerCommandSource> dispatcher, String literal) {
+        dispatcher.register(CommandManager.literal(literal)
+                .requires(source -> source.hasPermissionLevel(DEFAULT_COMMAND_LEVEL))
+                .executes(context -> queryTabletChatInterval(context.getSource()))
+                .then(CommandManager.argument("sec", DoubleArgumentType.doubleArg(0.0, TabletRules.MAX_CHAT_INTERVAL_SECONDS))
+                        .executes(context -> setTabletChatInterval(
+                                context.getSource(),
+                                DoubleArgumentType.getDouble(context, "sec")
+                        ))));
+    }
+
+    private static int queryTabletChatInterval(ServerCommandSource source) {
+        int ticks = TabletWorldComponent.KEY.get(source.getWorld()).chatIntervalTicks();
+        source.sendFeedback(() -> ticks <= 0
+                        ? Text.translatable("commands.sparkstrength.tablet_chat_interval.query_off")
+                        : Text.translatable("commands.sparkstrength.tablet_chat_interval.query", secondsLabel(ticks)),
+                false);
+        return ticks;
+    }
+
+    private static int setTabletChatInterval(ServerCommandSource source, double seconds) {
+        int ticks = TabletRules.ticksFromSeconds(seconds);
+        for (ServerWorld world : source.getServer().getWorlds()) {
+            TabletWorldComponent.KEY.get(world).setChatIntervalTicks(ticks);
+        }
+        source.sendFeedback(() -> ticks <= 0
+                        ? Text.translatable("commands.sparkstrength.tablet_chat_interval.off")
+                        : Text.translatable("commands.sparkstrength.tablet_chat_interval.success", secondsLabel(ticks)),
+                true);
+        return ticks;
+    }
+
+    /** Ticks as seconds without trailing zeros: 20 → "1", 30 → "1.5", 1 → "0.05". / tick 转为不带多余零的秒数。 */
+    private static String secondsLabel(int ticks) {
+        return BigDecimal.valueOf(ticks).divide(BigDecimal.valueOf(20)).stripTrailingZeros().toPlainString();
     }
 
     /**

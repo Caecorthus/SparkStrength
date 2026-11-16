@@ -5,6 +5,7 @@ import annina.sparkstrength.client.role.engineer.EngineerStunClient;
 import annina.sparkstrength.client.role.partyanimal.PartygoerTaotieClient;
 import annina.sparkstrength.client.role.perfumer.PerfumerClientEffects;
 import annina.sparkstrength.client.sabotage.BlackoutSightClient;
+import annina.sparkstrength.client.screen.tablet.TabletScreen;
 import annina.sparkstrength.role.partyanimal.PartygoerTaotieRules;
 import net.minecraft.client.option.KeyBinding;
 
@@ -19,8 +20,9 @@ import java.util.function.BooleanSupplier;
  *   <li>{@code isPressed} / {@code wasPressed} HEAD: an Engineer stun reads every key as released and
  *   {@code wasPressed} drains the queue, so nothing fires when the stun ends. The call returns at once: nothing below,
  *   and no RETURN hook of another mod, sees it.</li>
- *   <li>{@code isPressed} RETURN ({@link #held}): drone pilot, then Cooling Oil, then blackout release Wathe's instinct
- *   key.</li>
+ *   <li>{@code isPressed} RETURN ({@link #held}): typing in the tablet chat releases the walk/jump/sprint keys
+ *   ({@code TabletScreen#releasesMovementKey}, never the instinct key); then drone pilot, Cooling Oil and blackout
+ *   release Wathe's instinct key, in that order.</li>
  *   <li>{@code wasPressed} RETURN, three hooks: drone pilot releases the instinct key ({@link #clickedPastDrone}), then
  *   the Taotie's Partygoer claim ({@link #claimsClick}: sends {@code partygoer_swallow} and cancels, so the call
  *   returns false at once and no later RETURN hook, ours or another mod's or the carry lock, runs), then Cooling Oil
@@ -39,7 +41,8 @@ import java.util.function.BooleanSupplier;
  * 1. onKeyPressed 的 HEAD：工程师定身时丢弃按下，不入队。
  * 2. isPressed / wasPressed 的 HEAD：工程师定身时所有按键读作未按下，wasPressed 还会清空队列，定身结束时不会补发。调用立即
  * 返回：下面的规则以及其他模组的 RETURN 钩子都看不到这次调用。
- * 3. isPressed 的 RETURN（held）：无人机驾驶、风油精、熄灯依次松开 Wathe 本能键。
+ * 3. isPressed 的 RETURN（held）：在平板聊天中打字时松开行走/跳跃/疾跑键（从不涉及本能键）；然后无人机驾驶、风油精、熄灯依次松开
+ * Wathe 本能键。
  * 4. wasPressed 的 RETURN，三个钩子：无人机驾驶松开本能键（clickedPastDrone），然后是饕餮对派对客的认领（claimsClick：发送
  * partygoer_swallow 并取消，调用立即返回 false，之后的 RETURN 钩子——我们的、其他模组的、扛人锁——都不会执行），最后风油精
  * 松开本能键（clickedPastCoolingOil）。认领必须保持为夹在两者之间的可取消钩子：若并入单个返回值钩子，被认领的按下也会让
@@ -70,6 +73,7 @@ public final class ClientKeyGate {
     /** {@code isPressed} RETURN. / isPressed 的 RETURN。 */
     public static boolean held(KeyBinding key, boolean pressed) {
         return pressed
+                && !TabletScreen.releasesMovementKey(key)
                 && !DronePilotClient.blocksInstinctKey(key)
                 && !PerfumerClientEffects.blocksInstinctKey(key)
                 && !BlackoutSightClient.releasesKey(key);
