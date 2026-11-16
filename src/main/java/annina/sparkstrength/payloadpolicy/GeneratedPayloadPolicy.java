@@ -15,9 +15,9 @@ import java.util.Set;
  */
 public final class GeneratedPayloadPolicy {
     /** SHA-256 of the canonical table this file was generated from. / 生成本文件所用规范表的 SHA-256。 */
-    public static final String CONTRACT_SHA256 = "bdb7e070e692142bc12e4cd4a035c0cf6b3d26f26cdbfb4be0161a655be92ee6";
+    public static final String CONTRACT_SHA256 = "4af0774e7216850d6fa216a6c7cca5a631361166e83ed92dccb2c493eb821147";
 
-    /** Column DAZE: 99 ids. / DAZE 列：99 个 id。 */
+    /** Column DAZE: 100 ids. / DAZE 列：100 个 id。 */
     public static final Set<Identifier> DAZE = Set.of(
             Identifier.of("noellesroles", "ability"),
             Identifier.of("noellesroles", "assassin_guess_role"),
@@ -108,6 +108,7 @@ public final class GeneratedPayloadPolicy {
             Identifier.of("sparkwitch", "use_medium_skill"),
             Identifier.of("sparkwitch", "use_noa_paint"),
             Identifier.of("sparkwitch", "use_orthopedist_skill"),
+            Identifier.of("sparkwitch", "use_planner_recommend"),
             Identifier.of("sparkwitch", "use_saboteur_skill"),
             Identifier.of("sparkwitch", "use_savior_skill"),
             Identifier.of("sparkwitch", "use_sherry_mighty_force"),
