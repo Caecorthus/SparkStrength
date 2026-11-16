@@ -69,6 +69,7 @@ final class TabletChatPage implements TabletPage {
     public void prepare(TabletSnapshot snapshot) {
         ensureChatInput();
         chatInputAttached = false;
+        screen.exposeToInvMove(null);
         sendButton = null;
         newMessagesButton = null;
     }
@@ -90,6 +91,7 @@ final class TabletChatPage implements TabletPage {
                     TabletFeatureOnly.frameAccentFor(snapshot, screen.session().section()).base(), 0x66));
             screen.addChild(chatInput);
             chatInputAttached = true;
+            screen.exposeToInvMove(chatInput);
             if (!screen.switcherOpen()) {
                 screen.focusInitially(chatInput);
             }
@@ -243,11 +245,18 @@ final class TabletChatPage implements TabletPage {
         if (!snapshot.canSend() || snapshot.channel() == null || !chatInputAttached || chatInput == null) {
             return;
         }
+        if (TabletClientState.chatCooldownSeconds() > 0) {
+            // The send interval is still running: the draft stays, the send button counts down.
+            // 发送间隔仍在进行：草稿保留，发送按钮显示倒计时。
+            return;
+        }
         rememberChatDraft();
         // The wire we were viewing travels with the message; the server drops it if its selection moved on.
         // 随消息附带当前查看的频道；若服务端的选择已变化则丢弃该消息。
-        session.submitDraft().ifPresent(message ->
-                ClientPlayNetworking.send(new SendTabletChatC2SPacket(snapshot.channelWire(), message)));
+        session.submitDraft().ifPresent(message -> {
+            ClientPlayNetworking.send(new SendTabletChatC2SPacket(snapshot.channelWire(), message));
+            TabletClientState.armChatCooldown();
+        });
         TabletClientState.setChatDraft(session.draft());
         chatInput.setText(session.draft());
         resetChatScroll();
@@ -269,7 +278,8 @@ final class TabletChatPage implements TabletPage {
         return snapshot.canSend()
                 && snapshot.channel() != null
                 && chatInputAttached
-                && !screen.session().draft().isBlank();
+                && !screen.session().draft().isBlank()
+                && TabletClientState.chatCooldownSeconds() == 0;
     }
 
     private boolean counterVisible() {
@@ -447,6 +457,22 @@ final class TabletChatPage implements TabletPage {
         float radius = button.getWidth() / 2f;
         float cx = button.getX() + radius;
         float cy = button.getY() + button.getHeight() / 2f;
+        int waitSeconds = chatInputAttached ? TabletClientState.chatCooldownSeconds() : 0;
+        if (waitSeconds > 0) {
+            // Send interval: the seconds left inside a ring that drains clockwise. 发送间隔：圆环内显示剩余秒数，圆环顺时针消退。
+            int interval = Math.max(1, TabletClientState.snapshot().chatIntervalTicks());
+            long left = TabletClientState.chatCooldownEndTick() - TabletClientState.worldTime();
+            float fraction = Math.max(0f, Math.min(1f, left / (float) interval));
+            c.circle(cx, cy, radius, TabletTheme.SURFACE);
+            c.ring(cx, cy, radius - 1f, 2f, TabletTheme.HAIRLINE);
+            c.arc(cx, cy, radius - 1f, 2f, 0f, 360f * fraction, frameAccent.base());
+            c.textCentered(screen.textRenderer(), String.valueOf(waitSeconds), Math.round(cx), Math.round(cy) - 4,
+                    TabletTheme.TEXT_2);
+            if (button.keyboardFocused()) {
+                c.ring(cx, cy, radius + 2f, 1f, frameAccent.pale());
+            }
+            return;
+        }
         int fill = !button.active
                 ? TabletTheme.SURFACE
                 : hovered ? TabletTheme.mix(frameAccent.base(), frameAccent.pale(), 0.25f) : frameAccent.base();

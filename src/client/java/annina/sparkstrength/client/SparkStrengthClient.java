@@ -44,6 +44,7 @@ import annina.sparkstrength.client.screen.tablet.TabletClientState;
 import annina.sparkstrength.client.screen.tablet.TabletScreen;
 import annina.sparkstrength.client.tablet.TabletChatNotifier;
 import annina.sparkstrength.client.tablet.TabletClientHighlights;
+import annina.sparkstrength.client.tablet.TabletHeldHud;
 import annina.sparkstrength.client.world.LoadedEntities;
 import annina.sparkstrength.network.detective.DetectiveInterrogationResultS2CPacket;
 import annina.sparkstrength.network.detective.OpenDetectiveFolderS2CPacket;
@@ -105,6 +106,7 @@ public final class SparkStrengthClient implements ClientModInitializer {
         SpiritPossessionClient.register();
         TabletClientHighlights.register();
         TabletChatNotifier.register();
+        TabletHeldHud.register();
         SabotageClient.register();
         // Binds only when SparkWitch is loaded (reflection, no compile dependency).
         // 仅在加载了 SparkWitch 时挂接按键（反射，无编译依赖）。
@@ -197,5 +199,6 @@ public final class SparkStrengthClient implements ClientModInitializer {
         // A stale snapshot would otherwise drive tablet outlines on the next server.
         // 否则过期快照会在下一个服务器上继续驱动平板描边。
         TabletClientState.reset();
+        TabletHeldHud.reset();
     }
 }

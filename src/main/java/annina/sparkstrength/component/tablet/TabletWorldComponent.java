@@ -60,6 +60,10 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
     private long meetingCooldownEndTick;
     private int emergencyMeetingChances = TabletRules.DEFAULT_EMERGENCY_MEETING_CHANCES;
     private int meetingDurationTicks = TabletRules.DEFAULT_MEETING_DURATION_TICKS;
+    private int chatIntervalTicks = TabletRules.DEFAULT_CHAT_INTERVAL_TICKS;
+    // World tick of each holder's last accepted chat message: round-scoped and in-memory only (never NBT).
+    // 每名持有者上一条被接受的聊天消息的世界 tick：仅本局内存状态（绝不写入 NBT）。
+    private final HashMap<UUID, Long> lastChatTicks = new HashMap<>();
     // Round-scoped and in-memory only (never NBT): a restart simply re-derives channels from live identity.
     // 仅本局内存状态（绝不写入 NBT）：重启后直接按实时身份重新推导频道。
     private final HashMap<UUID, TabletChannel> selectedChannels = new HashMap<>();
@@ -343,6 +347,24 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
         meetingDurationTicks = Math.max(1, ticks);
     }
 
+    public int chatIntervalTicks() {
+        return chatIntervalTicks;
+    }
+
+    public void setChatIntervalTicks(int ticks) {
+        chatIntervalTicks = Math.max(0, ticks);
+    }
+
+    /** See {@link TabletRules#chatCooldownTicks}. / 见 TabletRules#chatCooldownTicks。 */
+    public int chatCooldownTicks(UUID playerUuid, long currentTick) {
+        return TabletRules.chatCooldownTicks(lastChatTicks.getOrDefault(playerUuid, Long.MIN_VALUE), chatIntervalTicks,
+                currentTick);
+    }
+
+    public void recordChatSent(UUID playerUuid, long currentTick) {
+        lastChatTicks.put(playerUuid, currentTick);
+    }
+
     public int usedMeetingCalls(UUID playerUuid) {
         return meetingCalls.getOrDefault(playerUuid, 0);
     }
@@ -419,6 +441,7 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
         publicInboxes.clear();
         snapshotRequestTicks.clear();
         actionBudgetTicks.clear();
+        lastChatTicks.clear();
         identityLinks.clear();
         linkRequests.clear();
         lastLinkGestures.clear();
@@ -498,6 +521,7 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
         }
         tag.putInt("EmergencyMeetingChances", emergencyMeetingChances);
         tag.putInt("MeetingDurationTicks", meetingDurationTicks);
+        tag.putInt("ChatIntervalTicks", chatIntervalTicks);
 
         if (!meetingCalls.isEmpty()) {
             NbtList callTags = new NbtList();
@@ -569,6 +593,9 @@ public final class TabletWorldComponent implements AutoSyncedComponent {
         meetingDurationTicks = tag.contains("MeetingDurationTicks", NbtElement.NUMBER_TYPE)
                 ? Math.max(1, tag.getInt("MeetingDurationTicks"))
                 : TabletRules.DEFAULT_MEETING_DURATION_TICKS;
+        chatIntervalTicks = tag.contains("ChatIntervalTicks", NbtElement.NUMBER_TYPE)
+                ? Math.max(0, tag.getInt("ChatIntervalTicks"))
+                : TabletRules.DEFAULT_CHAT_INTERVAL_TICKS;
 
         meetingCalls.clear();
         NbtList callTags = tag.getList("MeetingCalls", NbtElement.COMPOUND_TYPE);
