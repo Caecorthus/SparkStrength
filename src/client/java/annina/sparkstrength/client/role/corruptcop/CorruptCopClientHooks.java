@@ -73,9 +73,9 @@ public final class CorruptCopClientHooks {
                 viewer.squaredDistanceTo(targetPlayer),
                 viewerConcealingCop,
                 viewerConcealingCop && CorruptCopPlayerComponent.KEY.get(viewer).isCorruptCopMomentActive(),
-                CorruptCopRules.isInsider(viewerRole),
+                CorruptCopRules.isSparkWitchJiahaoMember(viewerRole),
                 targetConcealingCop,
-                CorruptCopRules.isInsider(targetRole)
+                CorruptCopRules.isSparkWitchJiahaoMember(targetRole)
         );
     }
 

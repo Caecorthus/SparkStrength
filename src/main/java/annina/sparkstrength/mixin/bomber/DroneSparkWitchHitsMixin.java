@@ -32,11 +32,11 @@ import java.util.List;
  * 或方法变更（零匹配或 @Local 不匹配）时静默失效。无人机吸收射线时本次调用跳过 SparkWitch 自身的设备判定
  * （同一射线上同时有搜寻者设备与无人机属于可接受的边界情况）。
  *
- * <p>Partygoers join the lethal entries here too ({@code PartygoerWeaponHits}): shotgun, feather blade, death ray,
- * backblast and USEC rifle ask the Partygoer first, which wins only when strictly nearer than the target AND every drone
+ * <p>Partygoers join the lethal entries here too ({@code PartygoerWeaponHits}): shotgun, feather blade, Sphinx Hao
+ * fist, death ray, backblast and USEC rifle ask the Partygoer first, which wins only when strictly nearer than the target AND every drone
  * on the ray, so the drone call below runs exactly as before otherwise. The taser and shriek gun are not lethal and the
  * shell sweep / blast are handled elsewhere (TR blast through {@code MagicianPuppetHits}), so those stay drone-only.
- * 派对客也加入这里的致命入口（PartygoerWeaponHits）：猎枪、羽刃、死光、尾焰与 USEC 步枪先询问派对客，只有它严格近于目标且近于射线上
+ * 派对客也加入这里的致命入口（PartygoerWeaponHits）：猎枪、羽刃、狮身豪铁拳、死光、尾焰与 USEC 步枪先询问派对客，只有它严格近于目标且近于射线上
  * 所有无人机时才获胜，否则下方无人机调用与之前完全一致。电击枪与啸音铳不致命，炮弹飞行与爆炸在别处处理（TR 爆炸经
  * MagicianPuppetHits），因此仍只处理无人机。</p>
  */
@@ -63,6 +63,24 @@ public abstract class DroneSparkWitchHitsMixin {
                                                             @Local(argsOnly = true) double range) {
         if (PartygoerWeaponHits.onSparkWitchFeatherBlade(user, target, range)
                 || DroneWeaponHits.onSparkWitchRay(user, target, range)) {
+            cir.setReturnValue(null);
+        }
+    }
+
+    /**
+     * 狮身豪 (Sphinx Hao) hand-gun fist: {@code onSphinxHaoFistFired(ServerPlayerEntity, T, double)}, a lethal straight
+     * hitscan with the USEC rifle's parity: a nearer Partygoer dies, else a nearer drone breaks; either way SparkWitch
+     * hits nobody. Silent until SparkWitch declares the entry (require = 0).
+     * 狮身豪“手”枪铁拳：致命的直线即时射线，与 USEC 步枪同等对待：更近的派对客死亡，否则更近的无人机被击毁；两种情况下
+     * SparkWitch 都不再命中任何人。SparkWitch 声明该入口之前静默失效（require = 0）。
+     */
+    @Inject(method = "onSphinxHaoFistFired", at = @At("HEAD"), cancellable = true, require = 0)
+    private static void sparkstrength$sphinxHaoFistHitsDrone(CallbackInfoReturnable<PlayerEntity> cir,
+                                                             @Local(argsOnly = true, index = 0) ServerPlayerEntity shooter,
+                                                             @Local(argsOnly = true, index = 1) PlayerEntity target,
+                                                             @Local(argsOnly = true) double range) {
+        if (PartygoerWeaponHits.onSparkWitchSphinxHaoFist(shooter, target, range)
+                || DroneWeaponHits.onSparkWitchRay(shooter, target, range)) {
             cir.setReturnValue(null);
         }
     }
