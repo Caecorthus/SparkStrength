@@ -94,12 +94,13 @@ public final class PartygoerInstinctClientHooks {
 
     /**
      * Instinct keys that neither Wathe's native gate nor a faction capability reports (each mirrors its owner's own
-     * keyed outline: SparkWitch {@code InsiderInstinctClientHooks}, {@code CorruptCopClientHooks}, NoellesRoles' Shadow
-     * Jester and Vulture listeners).
-     * Wathe 原生入口与阵营能力都不报告的本能键（各自对应原模组的按键描边：SparkWitch 内应、黑警、NoellesRoles 影小丑与秃鹫）。
+     * keyed outline: SparkWitch's Team Jiahao instinct of the Insider and the Sphinx Hao, {@code CorruptCopClientHooks},
+     * NoellesRoles' Shadow Jester and Vulture listeners).
+     * Wathe 原生入口与阵营能力都不报告的本能键（各自对应原模组的按键描边：SparkWitch 内应与狮身豪的嘉豪本能、黑警、
+     * NoellesRoles 影小丑与秃鹫）。
      */
     private static boolean hasRoleInstinctKey(ClientPlayerEntity viewer, GameWorldComponent game, @Nullable Role role) {
-        if (CorruptCopRules.isInsider(role)) {
+        if (CorruptCopRules.isSparkWitchJiahaoMember(role)) {
             return true;
         }
         if (CorruptCopRules.isCorruptCop(role)) {

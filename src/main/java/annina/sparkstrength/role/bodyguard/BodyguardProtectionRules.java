@@ -72,6 +72,10 @@ public final class BodyguardProtectionRules {
             // SparkWitch Witch Maiden crimson wither skull: a gunshot for protections (owner 2026-10-20).
             // SparkWitch 巫女赤色凋灵之首：防护按枪击处理（所有者 2026-10-20）。
             Map.entry(Identifier.of("sparkwitch", "crimson_wither_skull"), PHYSICAL),
+            // SparkWitch 狮身豪 (Sphinx Hao) hand-gun fist: a gunshot for protections like the crimson skull (vest and
+            // shield both stop it; coordinator decision 2026-11-17). / SparkWitch 狮身豪“手”枪铁拳：防护与赤色凋灵之首
+            // 一样按枪击处理（防弹衣与盾都能挡下；协调者 2026-11-17 决定）。
+            Map.entry(Identifier.of("sparkwitch", "sphinx_hao_fist"), PHYSICAL),
             // SparkWitch Savior pistol and lightsaber kills (SparkWitch PR #200): the shield blocks them, the vest does
             // not (owner 2026-11-09, "盾可以挡住它的击杀"). One hit is one settlement per tick, see SAME_TICK_SETTLEMENTS.
             // SparkWitch 救世主手枪与光剑击杀（SparkWitch PR #200）：盾能挡，防弹衣不能（所有者 2026-11-09，

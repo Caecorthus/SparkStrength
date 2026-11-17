@@ -489,6 +489,21 @@ public final class PartygoerWeaponHits {
     }
 
     /**
+     * 狮身豪 (Sphinx Hao) hand-gun fist ({@code SeekerDeviceHits.onSphinxHaoFistFired}, called by SparkWitch's fist shot
+     * after it picked its rewound target): a lethal straight hitscan, so a Partygoer strictly nearer than the target and
+     * any drone dies with the fist's own reason ({@code sparkwitch:sphinx_hao_fist}). True = absorbed, the caller hits
+     * nobody (SparkWitch then settles the shot as "not a kill").
+     * 狮身豪“手”枪铁拳（SparkWitch 铁拳射击在选出回溯目标后调用 onSphinxHaoFistFired）：致命的直线即时射线，因此严格近于目标
+     * 与任何无人机的派对客以铁拳自身死因（sparkwitch:sphinx_hao_fist）死亡。返回 true 表示已吸收，调用方不再命中任何人
+     * （SparkWitch 随后按“未击杀”结算这一枪）。
+     */
+    public static boolean onSparkWitchSphinxHaoFist(@Nullable ServerPlayerEntity shooter, @Nullable PlayerEntity target,
+                                                    double range) {
+        return shooter != null && mayKill(shooter) && killNearestOnLook(shooter, range, target,
+                sparkWitchReason("SPHINX_HAO_FIST", "sphinx_hao_fist"), true);
+    }
+
+    /**
      * Time Stealer clock ({@code onClockFired}, reached only when a player was aimed): a nearer Partygoer takes the
      * curse, which kills, so it dies now ({@code sparkwitch:time_stolen}); true = absorbed, and SparkWitch then starts
      * the clock's cooldown itself. Drones never stop the clock, so they are not measured.

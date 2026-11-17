@@ -20,6 +20,10 @@ public final class CorruptCopRules {
     // SparkWitch Insider (内应), matched by stable id only: SparkWitch is not a SparkStrength dependency.
     // SparkWitch 的内应，仅按稳定 id 匹配：SparkWitch 不是 SparkStrength 的依赖。
     public static final Identifier INSIDER_ID = Identifier.of("sparkwitch", "insider");
+    // SparkWitch 狮身豪 (Sphinx Hao): a second SparkWitch Team Jiahao member with the Insider's team capabilities,
+    // matched by stable id only like the Insider.
+    // SparkWitch 的狮身豪：与内应拥有相同阵营能力的第二个 SparkWitch 嘉豪阵营成员，与内应一样仅按稳定 id 匹配。
+    public static final Identifier SPHINX_HAO_ID = Identifier.of("sparkwitch", "sphinx_hao");
     public static final int ABILITY_COLOR = 0x193264;
     public static final float LATERAL_SPEED_MULTIPLIER = 2.25F;
     public static final int INSTINCT_PRIORITY = 90;
@@ -138,6 +142,20 @@ public final class CorruptCopRules {
 
     public static boolean isInsider(Role role) {
         return role != null && INSIDER_ID.equals(role.identifier());
+    }
+
+    public static boolean isSphinxHao(Role role) {
+        return role != null && SPHINX_HAO_ID.equals(role.identifier());
+    }
+
+    /**
+     * The Corrupt Cop's SparkWitch teammates (Team Jiahao): the Insider and the Sphinx Hao. Used wherever the Insider
+     * alone used to stand for "a SparkWitch Jiahao member" (concealment pairing, blackout team, Partygoer instinct key).
+     * 黑警在 SparkWitch 中的队友（嘉豪阵营）：内应与狮身豪。凡是此前用内应单独代表“SparkWitch 嘉豪成员”的地方
+     * （隐身配对、熄灯队伍、派对客本能键）都改用此判定。
+     */
+    public static boolean isSparkWitchJiahaoMember(Role role) {
+        return isInsider(role) || isSphinxHao(role);
     }
 
     public static boolean usesKillerStyleInstinctLight(

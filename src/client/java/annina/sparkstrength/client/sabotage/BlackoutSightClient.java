@@ -147,14 +147,14 @@ public final class BlackoutSightClient {
         Role role = game.getRole(viewer);
         cachedTeam = BlackoutSightRules.team(
                 SparkTraitsCompat.isEffectiveKiller(role, viewer),
-                CorruptCopRules.isCorruptCop(role) || CorruptCopRules.isInsider(role),
+                CorruptCopRules.isCorruptCop(role) || CorruptCopRules.isSparkWitchJiahaoMember(role),
                 SparkFactionCompat.isWitchFactionRole(role));
     }
 
     private static BlackoutSightRules.Team targetTeam(@Nullable Role role) {
         return BlackoutSightRules.team(
                 role != null && role.canUseKiller(),
-                CorruptCopRules.isCorruptCop(role) || CorruptCopRules.isInsider(role),
+                CorruptCopRules.isCorruptCop(role) || CorruptCopRules.isSparkWitchJiahaoMember(role),
                 SparkFactionCompat.isWitchFactionRole(role));
     }
 }
