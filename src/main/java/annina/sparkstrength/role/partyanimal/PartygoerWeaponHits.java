@@ -504,6 +504,20 @@ public final class PartygoerWeaponHits {
     }
 
     /**
+     * Sniper M1903A4 ({@code SeekerDeviceHits.onM1903A4Fired}, called once per shot with the full 50-block range): a
+     * lethal straight hitscan like a revolver shot, so a Partygoer strictly nearer than the target and any drone dies
+     * with Wathe's gunshot reason ({@code wathe:gun_shot}, the rifle's own reason). True = absorbed, the caller hits
+     * nobody.
+     * 狙击手 M1903A4（SparkWitch 每发调用一次 onM1903A4Fired，传入完整 50 格射程）：与左轮相同的致命直线即时射线，因此严格近于
+     * 目标与任何无人机的派对客以 Wathe 枪击死因（wathe:gun_shot，即该步枪自身死因）死亡。返回 true 表示已吸收，调用方不再命中任何人。
+     */
+    public static boolean onSparkWitchM1903A4(@Nullable ServerPlayerEntity shooter, @Nullable PlayerEntity target,
+                                              double range) {
+        return shooter != null && mayKill(shooter)
+                && killNearestOnLook(shooter, range, target, GameConstants.DeathReasons.GUN, true);
+    }
+
+    /**
      * Time Stealer clock ({@code onClockFired}, reached only when a player was aimed): a nearer Partygoer takes the
      * curse, which kills, so it dies now ({@code sparkwitch:time_stolen}); true = absorbed, and SparkWitch then starts
      * the clock's cooldown itself. Drones never stop the clock, so they are not measured.

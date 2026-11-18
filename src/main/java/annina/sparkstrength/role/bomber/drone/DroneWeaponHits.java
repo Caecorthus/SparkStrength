@@ -378,9 +378,11 @@ public final class DroneWeaponHits {
     // ---- SparkWitch server hitscans (via its SeekerDeviceHits seams) / SparkWitch 服务端即时射线 ----
 
     /**
-     * Shotgun, feather blade, taser, shriek gun: nearest-wins along the shooter's aim; a drone strictly nearer than the
-     * target (any drone in range on a miss) breaks and the caller hits nobody. True = absorbed.
-     * 猎枪、羽刃、电击枪、啸音铳：沿射手瞄准的最近者命中；严格比目标更近的无人机（未命中时射程内任意无人机）被击毁，调用方不再命中任何人。
+     * Shotgun, feather blade, Sphinx Hao fist, Sniper M1903A4, taser, shriek gun: nearest-wins along the shooter's aim;
+     * a drone strictly nearer than the target (any drone in range on a miss) breaks and the caller hits nobody.
+     * True = absorbed.
+     * 猎枪、羽刃、狮身豪铁拳、狙击手 M1903A4、电击枪、啸音铳：沿射手瞄准的最近者命中；严格比目标更近的无人机
+     * （未命中时射程内任意无人机）被击毁，调用方不再命中任何人。
      */
     public static boolean onSparkWitchRay(@Nullable PlayerEntity shooter, @Nullable PlayerEntity target, double range) {
         if (!(shooter instanceof ServerPlayerEntity user) || !(range > 0.0) || !Double.isFinite(range)) {
