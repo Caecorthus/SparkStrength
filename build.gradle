@@ -105,10 +105,14 @@ def compatibilityBaseline = [
         noellesroles_version : "1.7.6-h1.5.6-spark"
 ]
 def providerBaselines = [
+        // The runtime Wathe build that the released 1.5.6 pack ships and the other four Spark mods pin. The
+        // historical Windows build of the same commit (sha256 95d7c06…) numbers javac lambdas differently.
+        // 正式版 1.5.6 整合包所带、其余四个 Spark mod 所钉的运行时 Wathe 构建；同一提交的旧 Windows 构建
+        // （sha256 95d7c06…）的 javac lambda 编号不同。
         wathe: [
                 fileName : "wathe-1.5.6-spark-1.21.1.jar",
                 version  : "1.5.6-spark-1.21.1",
-                sha256   : "95d7c0666cca71644067493eadb3a9e079c6631d35eb9853ceb77c7783bc643c"
+                sha256   : "a4e0355c61def0b482c197a7ccd1f86ee91752b7af1b5bdafae8716c652f207f"
         ],
         // The runtime baseline build (sha1 b2302b9…). Its AbilityC2SPacket handler is $5; the historical
         // Windows build of the same sources numbers it $36. 运行时基线构建；同一源码的旧 Windows 构建编号为 $36。
