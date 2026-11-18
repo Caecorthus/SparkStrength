@@ -66,6 +66,16 @@ public final class EngineerStunnedPlayerComponent implements AutoSyncedComponent
         this.lockedX = pos.x;
         this.lockedY = pos.y;
         this.lockedZ = pos.z;
+        // The stunned client releases every key (ClientKeyGate.releasesEveryKey), so it sends RELEASE_USE_ITEM and a
+        // charged bow-class weapon would fire in onStoppedUsing (SparkWitch's M1903A4). Cancel the use without a
+        // release, as SparkWitch's Control Expert stun does; the cleared using flag syncs, so the client stops too.
+        // Covers both the capture stun and the Jester Moment freeze, which share this lock.
+        // 被定身的客户端会松开所有按键（ClientKeyGate.releasesEveryKey），从而发送 RELEASE_USE_ITEM，使蓄力中的弓类武器在
+        // onStoppedUsing 中开火（SparkWitch 的 M1903A4）。因此像 SparkWitch 控场专家眩晕一样取消使用而不触发松手；清除后的
+        // 使用标志会同步，客户端也随之停止。捕捉定身与小丑时刻全员定身共用此锁，两者都被覆盖。
+        if (player.isUsingItem()) {
+            player.clearActiveItem();
+        }
         sync();
     }
 
