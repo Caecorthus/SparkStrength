@@ -24,6 +24,11 @@ public final class CorruptCopRules {
     // matched by stable id only like the Insider.
     // SparkWitch 的狮身豪：与内应拥有相同阵营能力的第二个 SparkWitch 嘉豪阵营成员，与内应一样仅按稳定 id 匹配。
     public static final Identifier SPHINX_HAO_ID = Identifier.of("sparkwitch", "sphinx_hao");
+    // SparkWitch 狙击手 (Sniper, SparkWitch PR #245): a third SparkWitch Team Jiahao member with the Insider's team
+    // capabilities (Insider-style instinct), matched by stable id only like the Insider.
+    // SparkWitch 的狙击手（SparkWitch PR #245）：与内应拥有相同阵营能力（内应式本能）的第三个 SparkWitch 嘉豪阵营成员，
+    // 与内应一样仅按稳定 id 匹配。
+    public static final Identifier SNIPER_ID = Identifier.of("sparkwitch", "sniper");
     public static final int ABILITY_COLOR = 0x193264;
     public static final float LATERAL_SPEED_MULTIPLIER = 2.25F;
     public static final int INSTINCT_PRIORITY = 90;
@@ -148,14 +153,21 @@ public final class CorruptCopRules {
         return role != null && SPHINX_HAO_ID.equals(role.identifier());
     }
 
+    public static boolean isSniper(Role role) {
+        return role != null && SNIPER_ID.equals(role.identifier());
+    }
+
     /**
-     * The Corrupt Cop's SparkWitch teammates (Team Jiahao): the Insider and the Sphinx Hao. Used wherever the Insider
-     * alone used to stand for "a SparkWitch Jiahao member" (concealment pairing, blackout team, Partygoer instinct key).
-     * 黑警在 SparkWitch 中的队友（嘉豪阵营）：内应与狮身豪。凡是此前用内应单独代表“SparkWitch 嘉豪成员”的地方
-     * （隐身配对、熄灯队伍、派对客本能键）都改用此判定。
+     * The Corrupt Cop's SparkWitch teammates (Team Jiahao): the Insider, the Sphinx Hao and the Sniper. Used wherever
+     * the Insider alone used to stand for "a SparkWitch Jiahao member" (concealment pairing, blackout team, Partygoer
+     * instinct key). Stays id-exact (not the {@code sparkwitch:jiahao} faction) so these rules stay Minecraft-light and
+     * never count the Corrupt Cop itself, whose faction is Team Jiahao too.
+     * 黑警在 SparkWitch 中的队友（嘉豪阵营）：内应、狮身豪与狙击手。凡是此前用内应单独代表“SparkWitch 嘉豪成员”的地方
+     * （隐身配对、熄灯队伍、派对客本能键）都改用此判定。保持按 id 精确匹配（而非 sparkwitch:jiahao 阵营），使本规则类保持轻量，
+     * 且永远不把同属嘉豪阵营的黑警本身算进来。
      */
     public static boolean isSparkWitchJiahaoMember(Role role) {
-        return isInsider(role) || isSphinxHao(role);
+        return isInsider(role) || isSphinxHao(role) || isSniper(role);
     }
 
     public static boolean usesKillerStyleInstinctLight(

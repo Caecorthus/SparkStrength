@@ -33,12 +33,13 @@ import java.util.List;
  * （同一射线上同时有搜寻者设备与无人机属于可接受的边界情况）。
  *
  * <p>Partygoers join the lethal entries here too ({@code PartygoerWeaponHits}): shotgun, feather blade, Sphinx Hao
- * fist, death ray, backblast and USEC rifle ask the Partygoer first, which wins only when strictly nearer than the target AND every drone
- * on the ray, so the drone call below runs exactly as before otherwise. The taser and shriek gun are not lethal and the
- * shell sweep / blast are handled elsewhere (TR blast through {@code MagicianPuppetHits}), so those stay drone-only.
- * 派对客也加入这里的致命入口（PartygoerWeaponHits）：猎枪、羽刃、狮身豪铁拳、死光、尾焰与 USEC 步枪先询问派对客，只有它严格近于目标且近于射线上
- * 所有无人机时才获胜，否则下方无人机调用与之前完全一致。电击枪与啸音铳不致命，炮弹飞行与爆炸在别处处理（TR 爆炸经
- * MagicianPuppetHits），因此仍只处理无人机。</p>
+ * fist, Sniper M1903A4, death ray, backblast and USEC rifle ask the Partygoer first, which wins only when strictly
+ * nearer than the target AND every drone on the ray, so the drone call below runs exactly as before otherwise. The
+ * taser and shriek gun are not lethal and the shell sweep / blast are handled elsewhere (TR blast through
+ * {@code MagicianPuppetHits}), so those stay drone-only.
+ * 派对客也加入这里的致命入口（PartygoerWeaponHits）：猎枪、羽刃、狮身豪铁拳、狙击手 M1903A4、死光、尾焰与 USEC 步枪先询问
+ * 派对客，只有它严格近于目标且近于射线上所有无人机时才获胜，否则下方无人机调用与之前完全一致。电击枪与啸音铳不致命，
+ * 炮弹飞行与爆炸在别处处理（TR 爆炸经 MagicianPuppetHits），因此仍只处理无人机。</p>
  */
 @Pseudo
 @Mixin(targets = "dev.caecorthus.sparkwitch.roles.civilian.seeker.hit.SeekerDeviceHits", remap = false)
@@ -80,6 +81,25 @@ public abstract class DroneSparkWitchHitsMixin {
                                                              @Local(argsOnly = true, index = 1) PlayerEntity target,
                                                              @Local(argsOnly = true) double range) {
         if (PartygoerWeaponHits.onSparkWitchSphinxHaoFist(shooter, target, range)
+                || DroneWeaponHits.onSparkWitchRay(shooter, target, range)) {
+            cir.setReturnValue(null);
+        }
+    }
+
+    /**
+     * 狙击手 (Sniper) M1903A4: {@code onM1903A4Fired(ServerPlayerEntity, T, double)}, called once per shot with the full
+     * 50-block range; a lethal straight hitscan with the fist's parity (the ray stops at the first block): a nearer
+     * Partygoer dies, else a nearer drone breaks; either way SparkWitch hits nobody. Silent until SparkWitch declares the
+     * entry (require = 0).
+     * 狙击手 M1903A4：每发调用一次并传入完整 50 格射程；与铁拳同等对待的致命直线即时射线（射线止于第一个方块）：更近的派对客
+     * 死亡，否则更近的无人机被击毁；两种情况下 SparkWitch 都不再命中任何人。SparkWitch 声明该入口之前静默失效（require = 0）。
+     */
+    @Inject(method = "onM1903A4Fired", at = @At("HEAD"), cancellable = true, require = 0)
+    private static void sparkstrength$m1903a4HitsDrone(CallbackInfoReturnable<PlayerEntity> cir,
+                                                       @Local(argsOnly = true, index = 0) ServerPlayerEntity shooter,
+                                                       @Local(argsOnly = true, index = 1) PlayerEntity target,
+                                                       @Local(argsOnly = true) double range) {
+        if (PartygoerWeaponHits.onSparkWitchM1903A4(shooter, target, range)
                 || DroneWeaponHits.onSparkWitchRay(shooter, target, range)) {
             cir.setReturnValue(null);
         }
